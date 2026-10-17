@@ -1,0 +1,9 @@
+{
+  "name": "@ping/tsconfig",
+  "private": true,
+  "files": [
+    "base.json",
+    "nest.json",
+    "react.json"
+  ]
+}
