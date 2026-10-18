@@ -8,6 +8,10 @@ loadEnvFile({ path: resolve(process.cwd(), '../../.env') });
 
 export default defineConfig({
   schema: 'prisma/schema.prisma',
-  migrations: { path: 'prisma/migrations' },
+  migrations: {
+    path: 'prisma/migrations',
+    // `prisma db seed` chạy lệnh này — tsx chạy TS trực tiếp, không cần build step.
+    seed: 'tsx prisma/seed.ts',
+  },
   datasource: { url: env('DATABASE_URL') },
 });

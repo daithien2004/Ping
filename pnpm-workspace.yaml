@@ -2,6 +2,12 @@ packages:
   - 'apps/*'
   - 'packages/*'
 
+# pnpm 10 chặn mọi postinstall vì lý do supply-chain. argon2 là module native
+# (node-gyp) — BẮT BUỘC chạy build script thì mới require được. Chỉ cấp phép
+# đúng cái cần, giữ blocked với phần còn lại.
+onlyBuiltDependencies:
+  - argon2
+
 ignoredBuiltDependencies:
   - sharp
   - unrs-resolver

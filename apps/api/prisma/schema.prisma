@@ -1,5 +1,4 @@
 // Prisma 7: URL kết nối KHÔNG nằm ở đây nữa — nó ở prisma7.config.ts.
-// Bước 6 mới bắt đầu khai báo model (User, Session, Server, ...).
 generator client {
   provider = "prisma-client"            // generator ESM-first, sinh code TS thật
   output   = "../src/generated/prisma" // relative tới file schema này
@@ -7,4 +6,134 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+model User {
+  id           String   @id @default(uuid(7))
+  email        String   @unique
+  username     String   @unique
+  displayName  String
+  avatarUrl    String?
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  sessions     Session[]
+  members      Member[]
+  messages     Message[]
+  ownedServers Server[]
+}
+
+model Session {
+  id               String   @id @default(uuid(7))
+  userId           String
+  refreshTokenHash String
+  userAgent        String?
+  ip               String?
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  createdAt        DateTime @default(now())
+
+  // Refresh token gắn với user: xóa user thì phiên đăng nhập phải chết theo.
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Server {
+  id        String   @id @default(uuid(7))
+  name      String
+  iconUrl   String?
+  ownerId   String
+  createdAt DateTime @default(now())
+
+  // FK thật cho ownerId (guide chỉ để String trần): mặc định required relation
+  // = Restrict — không thể xóa user đang sở hữu server, phải chuyển quyền trước.
+  owner    User      @relation(fields: [ownerId], references: [id])
+  members  Member[]
+  roles    Role[]
+  channels Channel[]
+}
+
+model Role {
+  id          String   @id @default(uuid(7))
+  serverId    String
+  name      String
+  // Bitmask 64-bit — các h bit của Permission trong @ping/shared được OR vào đây.
+  permissions BigInt   @default(0)
+  position    Int      @default(0)
+  isDefault   Boolean  @default(false) // role @everyone: tạo kèm khi tạo server
+
+  server  Server       @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  members MemberRole[]
+
+  @@index([serverId])
+}
+
+model Member {
+  id       String   @id @default(uuid(7))
+  serverId String
+  userId   String
+  nickname String?
+  joinedAt DateTime @default(now())
+
+  server Server       @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  user   User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roles  MemberRole[]
+
+  // Một user chỉ là member đúng 1 lần mỗi server.
+  @@unique([serverId, userId])
+  // "Các server của tôi" — đếm nhanh không cần quét bảng Member.
+  @@index([userId])
+}
+
+model MemberRole {
+  memberId String
+  roleId   String
+
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([memberId, roleId])
+}
+
+model Channel {
+  id        String      @id @default(uuid(7))
+  serverId  String
+  name      String
+  type      ChannelType @default(TEXT)
+  position  Int         @default(0)
+  createdAt DateTime    @default(now())
+
+  server   Server    @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  messages Message[]
+
+  @@index([serverId])
+}
+
+enum ChannelType {
+  TEXT
+  // Mở rộng sau: VOICE, ANNOUNCEMENT...
+}
+
+model Message {
+  id        String    @id @default(uuid(7))
+  channelId String
+  authorId  String
+  content   String
+  editedAt  DateTime?
+  deletedAt DateTime? // soft delete: moderation + đồng bộ realtime
+  nonce     String?   // idempotency key do client sinh (xem 16.1)
+  createdAt DateTime  @default(now())
+
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  // KHÔNG onDelete Cascade ở author: xóa user không được kéo sập tin nhắn.
+  author  User    @relation(fields: [authorId], references: [id])
+
+  // Chống ghi trùng khi client retry. Postgres cho phép NULL lặp trong unique
+  // nên tin không có nonce không bao giờ bị block bởi index này.
+  @@unique([channelId, authorId, nonce])
+
+  // Index quan trọng nhất hệ thống: phân trang cursor (keyset) theo tin mới nhất.
+  @@index([channelId, id(sort: Desc)])
 }
