@@ -1,18 +1,16 @@
-import { defineConfig, globalIgnores } from "eslint/config";
-import nextVitals from "eslint-config-next/core-web-vitals";
-import nextTs from "eslint-config-next/typescript";
+import { defineConfig, globalIgnores } from 'eslint/config';
+import base from '@ping/eslint-config';
+import nextVitals from 'eslint-config-next/core-web-vitals';
 
-const eslintConfig = defineConfig([
-  ...nextVitals,
-  ...nextTs,
-  // Override default ignores of eslint-config-next.
-  globalIgnores([
-    // Default ignores of eslint-config-next:
-    ".next/**",
-    "out/**",
-    "build/**",
-    "next-env.d.ts",
-  ]),
+export default defineConfig([
+  // The shared config already registers the TypeScript parser and plugin.
+  ...nextVitals.filter((config) => config.name !== 'next/typescript'),
+  ...base,
+  {
+    settings: {
+      next: { rootDir: fileURLToPath(new URL('.', import.meta.url)) },
+    },
+  },
+  globalIgnores(['.next/**', 'out/**', 'build/**', 'next-env.d.ts', 'node_modules/**']),
 ]);
-
-export default eslintConfig;
+import { fileURLToPath } from 'node:url';

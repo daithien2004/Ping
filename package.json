@@ -9,10 +9,28 @@
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "db:migrate": "pnpm --filter api prisma migrate dev",
-    "db:studio": "pnpm --filter api prisma studio"
+    "db:studio": "pnpm --filter api prisma studio",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "apps/api/**/*.ts": [
+      "eslint --config apps/api/eslint.config.mjs --fix"
+    ],
+    "apps/web/**/*.{ts,tsx}": [
+      "eslint --config apps/web/eslint.config.mjs --fix"
+    ],
+    "**/*.{ts,tsx,js,mjs,json,md}": [
+      "prettier --write"
+    ]
   },
   "devDependencies": {
+    "eslint": "^9.39.5",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.6.0",
+    "prettier": "^3.9.10",
     "turbo": "latest",
-    "typescript": "latest"
+    "typescript": "^6.0.2"
   }
 }

@@ -15,6 +15,7 @@
     "react-dom": "19.3.0"
   },
   "devDependencies": {
+    "@ping/eslint-config": "workspace:*",
     "@ping/tsconfig": "workspace:*",
     "@tailwindcss/turbopack": "^4",
     "@types/node": "^20",
