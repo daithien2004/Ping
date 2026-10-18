@@ -11,6 +11,7 @@ const STATUS_CODES: Record<number, string> = {
   [HttpStatus.NOT_FOUND]: 'NOT_FOUND',
   [HttpStatus.CONFLICT]: 'CONFLICT',
   [HttpStatus.TOO_MANY_REQUESTS]: 'TOO_MANY_REQUESTS',
+  [HttpStatus.SERVICE_UNAVAILABLE]: 'SERVICE_UNAVAILABLE',
 };
 
 /**
@@ -59,14 +60,14 @@ export class AllExceptionsFilter implements ExceptionFilter {
         }
       }
 
-      if (status < 500 && code === 'INTERNAL_ERROR') {
-        code = STATUS_CODES[status] ?? 'ERROR';
+      if (code === 'INTERNAL_ERROR') {
+        code = STATUS_CODES[status] ?? (status >= 500 ? 'INTERNAL_ERROR' : 'ERROR');
       }
-      if (status >= 500) {
-        stack = exception.stack;
-        if (isProduction) {
-          message = 'Internal server error';
-        }
+      // A controlled HttpException never carries a stack: the response was
+      // built on purpose (e.g. terminus throwing 503 during a readiness
+      // probe). Stacks belong only to genuinely unexpected errors below.
+      if (status >= 500 && isProduction) {
+        message = 'Internal server error';
       }
     } else if (exception instanceof Error) {
       stack = exception.stack;
@@ -76,11 +77,16 @@ export class AllExceptionsFilter implements ExceptionFilter {
       }
     }
 
-    if (status >= 500) {
+    if (stack !== undefined) {
+      // Not an HttpException: something crashed unexpectedly — keep the stack.
       this.logger.error(
         { requestId, status, code, path: request.url, stack },
         'unhandled exception',
       );
+    } else if (status >= 500) {
+      // Deliberate 5xx (e.g. readiness probe while a dependency is down):
+      // error-level because it matters, but no stack — nothing was unhandled.
+      this.logger.error({ requestId, status, code, path: request.url }, 'server error');
     } else {
       this.logger.warn({ requestId, status, code, path: request.url }, 'request rejected');
     }

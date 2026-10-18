@@ -1,0 +1,10 @@
+// Prisma 7: URL kết nối KHÔNG nằm ở đây nữa — nó ở prisma7.config.ts.
+// Bước 6 mới bắt đầu khai báo model (User, Session, Server, ...).
+generator client {
+  provider = "prisma-client"            // generator ESM-first, sinh code TS thật
+  output   = "../src/generated/prisma" // relative tới file schema này
+}
+
+datasource db {
+  provider = "postgresql"
+}
