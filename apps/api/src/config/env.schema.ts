@@ -10,8 +10,9 @@ export const envSchema = z.object({
   PORT: z.coerce.number().int().min(1).max(65535).default(4000),
   DATABASE_URL: z.url(),
   REDIS_URL: z.url(),
+  // Chỉ cần MỘT secret: access token là JWT. Refresh token là chuỗi ngẫu nhiên
+  // opaque (không ký) nên không có secret riêng — hash SHA-256 lưu trong Session.
   JWT_ACCESS_SECRET: z.string().min(32),
-  JWT_REFRESH_SECRET: z.string().min(32),
   WEB_ORIGIN: z.url(),
 });
 

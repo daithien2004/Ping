@@ -12,7 +12,9 @@ import { envSchema } from './config/env.schema.js';
 import { PrismaModule } from './infra/prisma/prisma.module.js';
 import { RedisModule, RedisProvider } from './infra/redis/redis.module.js';
 import { RedisThrottlerStorage } from './infra/throttler/redis-throttler.storage.js';
+import { AuthModule } from './modules/auth/auth.module.js';
 import { HealthModule } from './modules/health/health.module.js';
+import { UsersModule } from './modules/users/users.module.js';
 
 @Module({
   imports: [
@@ -53,7 +55,9 @@ import { HealthModule } from './modules/health/health.module.js';
         storage: new RedisThrottlerStorage(redis),
       }),
     }),
+    AuthModule,
     HealthModule,
+    UsersModule,
   ],
   controllers: [AppController],
   providers: [

@@ -25,9 +25,11 @@ model User {
 }
 
 model Session {
-  id               String   @id @default(uuid(7))
-  userId           String
-  refreshTokenHash String
+  id String @id @default(uuid(7))
+  userId String
+  // Lookup refresh token theo hash phải là O(log n): mỗi request /refresh
+  // tra bảng này. @unique cũng bất biến "mỗi token ứng đúng 1 session".
+  refreshTokenHash String @unique
   userAgent        String?
   ip               String?
   expiresAt        DateTime
