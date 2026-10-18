@@ -1,6 +1,7 @@
 {
   "extends": "@ping/tsconfig/base.json",
   "compilerOptions": {
+    "target": "ES2023",
     "module": "esnext",
     "moduleResolution": "bundler",
     "noEmit": true

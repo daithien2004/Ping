@@ -1,6 +1,7 @@
-# Dependency and runtime versions
+# ADR-0001: Dependency and runtime versions
 
 Status: accepted
+Date: 2026-10-18
 
 ## Decision
 
@@ -16,6 +17,15 @@ Status: accepted
 Unbounded `latest` versions previously installed incompatible TypeScript and ESLint releases.
 Exact versions and the lockfile make upgrades deliberate and installations reproducible.
 Node.js 24 is the LTS line; this patch updates the older local 24.15.0 runtime baseline.
+
+## Alternatives considered
+
+- Keep `latest` ranges for direct dependencies — rejected: unbounded installs already
+  pulled incompatible TypeScript and ESLint releases once; upgrades must be deliberate.
+- Rely on `.nvmrc` alone for the Node version — rejected on Windows, because
+  nvm-windows does not consume `.nvmrc`; `engines` + `engine-strict` enforce it instead.
+- Centralize versions with a pnpm catalog/overrides — deferred: only a handful of
+  root-level tools exist today; revisit when version drift across packages appears.
 
 ## Consequences
 
