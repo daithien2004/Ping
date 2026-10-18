@@ -1,8 +1,9 @@
 import { ForbiddenError, subject } from '@casl/ability';
 import { Injectable, NotFoundException } from '@nestjs/common';
-import type { AppAbility, CreateMessageInput } from '@ping/shared';
+import { ServerEvents, type AppAbility, type CreateMessageInput } from '@ping/shared';
 import { isUniqueConstraintError } from '../../common/utils/prisma-errors.js';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
+import { RealtimeService } from '../realtime/realtime.service.js';
 import type { ListMessagesQuery } from './schemas.js';
 
 /** Chỉ các trường client cần — không bao giờ trả bản ghi thô (guide 10.3). */
@@ -18,7 +19,10 @@ const messageWithAuthor = {
 
 @Injectable()
 export class MessagesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly realtime: RealtimeService,
+  ) {}
 
   /**
    * Phân trang cursor/keyset (guide 10.3): WHERE id < before ORDER BY id DESC.
@@ -44,13 +48,22 @@ export class MessagesService {
 
   async create(channelId: string, authorId: string, input: CreateMessageInput) {
     try {
-      return await this.prisma.message.create({
+      const message = await this.prisma.message.create({
         data: { channelId, authorId, content: input.content, nonce: input.nonce },
         select: messageWithAuthor,
       });
+      this.realtime.emitToChannel(channelId, ServerEvents.MessageCreated, {
+        id: message.id,
+        channelId,
+        authorId,
+        content: message.content,
+        createdAt: message.createdAt.toISOString(),
+      });
+      return message;
     } catch (error) {
       // Client retry (mạng chập chờn) gửi lại CÙNG nonce → unique
       // (channelId, authorId, nonce) chặn ghi trùng: trả đúng tin cũ thay vì lỗi.
+      // Không phát event lần hai vì client khác đã nhận tin này từ lần tạo đầu.
       if (isUniqueConstraintError(error)) {
         return this.prisma.message.findUniqueOrThrow({
           where: { channelId_authorId_nonce: { channelId, authorId, nonce: input.nonce } },
@@ -67,11 +80,20 @@ export class MessagesService {
     // tra được khi đã có đối tượng thật trong tay.
     ForbiddenError.from(ability).throwUnlessCan('update', subject('Message', message));
 
-    return this.prisma.message.update({
+    const updated = await this.prisma.message.update({
       where: { id: message.id },
       data: { content, editedAt: new Date() },
       select: messageWithAuthor,
     });
+
+    this.realtime.emitToChannel(message.channelId, ServerEvents.MessageUpdated, {
+      id: updated.id,
+      channelId: message.channelId,
+      content: updated.content,
+      updatedAt: (updated.editedAt ?? updated.createdAt).toISOString(),
+    });
+
+    return updated;
   }
 
   async remove(messageId: string, ability: AppAbility): Promise<{ id: string }> {
@@ -85,6 +107,12 @@ export class MessagesService {
       where: { id: message.id },
       data: { deletedAt: new Date() },
     });
+
+    this.realtime.emitToChannel(message.channelId, ServerEvents.MessageDeleted, {
+      id: message.id,
+      channelId: message.channelId,
+    });
+
     return { id: message.id };
   }
 

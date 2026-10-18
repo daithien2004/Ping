@@ -19,6 +19,7 @@ import { AuthModule } from './modules/auth/auth.module.js';
 import { ChannelsModule } from './modules/channels/channels.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { MessagesModule } from './modules/messages/messages.module.js';
+import { RealtimeModule } from './modules/realtime/realtime.module.js';
 import { RolesModule } from './modules/roles/roles.module.js';
 import { ServersModule } from './modules/servers/servers.module.js';
 import { UsersModule } from './modules/users/users.module.js';
@@ -72,6 +73,7 @@ import { UsersModule } from './modules/users/users.module.js';
     ChannelsModule,
     RolesModule,
     MessagesModule,
+    RealtimeModule,
   ],
   controllers: [AppController],
   providers: [
