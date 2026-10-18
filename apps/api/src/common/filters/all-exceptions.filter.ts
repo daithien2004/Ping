@@ -1,3 +1,4 @@
+import { ForbiddenError } from '@casl/ability';
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Request, Response } from 'express';
@@ -69,6 +70,11 @@ export class AllExceptionsFilter implements ExceptionFilter {
       if (status >= 500 && isProduction) {
         message = 'Internal server error';
       }
+    } else if (exception instanceof ForbiddenError) {
+      // CASL throwUnlessCan — lỗi "có chủ đích",403 format thống nhất, không stack.
+      status = HttpStatus.FORBIDDEN;
+      code = 'FORBIDDEN';
+      message = exception.message;
     } else if (exception instanceof Error) {
       stack = exception.stack;
       message = exception.message;

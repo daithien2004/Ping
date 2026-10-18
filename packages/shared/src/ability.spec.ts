@@ -127,4 +127,16 @@ describe('defineAbilityFor', () => {
     expect(ability.can('manage', 'Channel')).toBe(false);
     expect(ability.can('manage', 'Role')).toBe(false);
   });
+
+  it('lets any verified member view the server and its members without extra permissions', () => {
+    const ability = defineAbilityFor({
+      userId: 'user-A',
+      isOwner: false,
+      permissions: 0n,
+    });
+
+    expect(ability.can('view', 'Server')).toBe(true);
+    expect(ability.can('view', 'Member')).toBe(true);
+    expect(ability.can('create', 'Message')).toBe(false);
+  });
 });

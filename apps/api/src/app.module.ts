@@ -7,13 +7,20 @@ import { ClsModule } from 'nestjs-cls';
 import { LoggerModule } from 'nestjs-pino';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
+// Side-effect: dạy JSON.stringify serialize BigInt (Role.permissions) thành string.
+import './common/bigint-json.js';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter.js';
 import { envSchema } from './config/env.schema.js';
 import { PrismaModule } from './infra/prisma/prisma.module.js';
 import { RedisModule, RedisProvider } from './infra/redis/redis.module.js';
 import { RedisThrottlerStorage } from './infra/throttler/redis-throttler.storage.js';
+import { AbilityModule } from './modules/ability/ability.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
+import { ChannelsModule } from './modules/channels/channels.module.js';
 import { HealthModule } from './modules/health/health.module.js';
+import { MessagesModule } from './modules/messages/messages.module.js';
+import { RolesModule } from './modules/roles/roles.module.js';
+import { ServersModule } from './modules/servers/servers.module.js';
 import { UsersModule } from './modules/users/users.module.js';
 
 @Module({
@@ -58,6 +65,13 @@ import { UsersModule } from './modules/users/users.module.js';
     AuthModule,
     HealthModule,
     UsersModule,
+    // AbilityModule toàn cục: AbilityGuard ở mọi module server-scoped resolve
+    // AbilityFactory từ đây, không phải provider riêng của từng module.
+    AbilityModule,
+    ServersModule,
+    ChannelsModule,
+    RolesModule,
+    MessagesModule,
   ],
   controllers: [AppController],
   providers: [

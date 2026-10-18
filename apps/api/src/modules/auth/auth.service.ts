@@ -10,6 +10,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { PinoLogger } from 'nestjs-pino';
 import type { LoginInput, RegisterInput } from '@ping/shared';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
+import { isUniqueConstraintError } from '../../common/utils/prisma-errors.js';
 import { REFRESH_TOKEN_TTL_MS } from './auth.constants.js';
 import type { AuthenticatedUser } from './current-user.decorator.js';
 
@@ -45,15 +46,6 @@ interface IssuedTokens {
  */
 function hashToken(rawToken: string): string {
   return createHash('sha256').update(rawToken).digest('hex');
-}
-
-function isUniqueConstraintError(error: unknown): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    (error as { code?: unknown }).code === 'P2002'
-  );
 }
 
 @Injectable()

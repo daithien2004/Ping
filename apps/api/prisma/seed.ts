@@ -66,7 +66,12 @@ async function main(): Promise<void> {
   const server = await prisma.server.upsert({
     where: { id: id('0100') },
     update: {},
-    create: { id: id('0100'), name: 'Ping Playground', ownerId: alice.id },
+    create: {
+      id: id('0100'),
+      name: 'Ping Playground',
+      ownerId: alice.id,
+      inviteCode: 'playground',
+    },
   });
 
   // ── Roles ──────────────────────────────────────────────────────────────

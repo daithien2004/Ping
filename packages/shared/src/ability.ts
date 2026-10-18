@@ -30,6 +30,12 @@ export function defineAbilityFor(ctx: AbilityContext): AppAbility {
     return build();
   }
 
+  // AbilityFactory chỉ build rules cho người ĐÃ là member (membership bị chặn
+  // ở tầng guard) — nên mọi member xem được server và danh sách thành viên
+  // mà không cần thêm bit quyền nào.
+  can('view', 'Server');
+  can('view', 'Member');
+
   if (has(Permissions.VIEW_CHANNEL)) {
     can('view', 'Channel');
     can('view', 'Message');

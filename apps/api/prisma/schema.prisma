@@ -47,6 +47,9 @@ model Server {
   name      String
   iconUrl   String?
   ownerId   String
+  // Mã mời rút gọn (guide 10.1 "tham gia bằng invite") — người chưa là member
+  // vẫn join được khi có code này, không cần biết serverId.
+  inviteCode String  @unique
   createdAt DateTime @default(now())
 
   // FK thật cho ownerId (guide chỉ để String trần): mặc định required relation
