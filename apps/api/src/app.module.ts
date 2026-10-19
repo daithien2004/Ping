@@ -10,6 +10,7 @@ import { AppService } from './app.service.js';
 // Side-effect: dạy JSON.stringify serialize BigInt (Role.permissions) thành string.
 import './common/bigint-json.js';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter.js';
+import { UuidParamsGuard } from './common/guards/uuid-params.guard.js';
 import { envSchema } from './config/env.schema.js';
 import { PrismaModule } from './infra/prisma/prisma.module.js';
 import { RedisModule, RedisProvider } from './infra/redis/redis.module.js';
@@ -81,6 +82,8 @@ import { UsersModule } from './modules/users/users.module.js';
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
     // Rate limit áp cho MỌI route — health controller tự @SkipThrottler().
     { provide: APP_GUARD, useClass: ThrottlerGuard },
+    // Chạy trước mọi guard của controller (AbilityGuard query DB bằng các id này).
+    { provide: APP_GUARD, useClass: UuidParamsGuard },
   ],
 })
 export class AppModule {}

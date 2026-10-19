@@ -269,4 +269,22 @@ describe('Messages (e2e)', () => {
       author.token,
     ).expect(400);
   });
+
+  it('id trên URL không phải UUID → 400 VALIDATION_ERROR, không bao giờ 500 từ Postgres', async () => {
+    const urls: [HttpMethod, string][] = [
+      ['get', '/api/v1/servers/abc'],
+      ['get', '/api/v1/channels/abc/messages'],
+      ['patch', '/api/v1/messages/abc'],
+      ['patch', '/api/v1/roles/abc'],
+      ['put', `/api/v1/servers/${serverId}/members/abc/roles`],
+    ];
+    for (const [method, url] of urls) {
+      const res = await api(method, url, author.token).send({ content: 'x', roleIds: [] });
+      expect({ url, status: res.status, code: res.body.code }).toEqual({
+        url,
+        status: 400,
+        code: 'VALIDATION_ERROR',
+      });
+    }
+  });
 });

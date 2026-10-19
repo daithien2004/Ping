@@ -9,7 +9,7 @@ datasource db {
 }
 
 model User {
-  id           String   @id @default(uuid(7))
+  id           String   @id @default(uuid(7)) @db.Uuid
   email        String   @unique
   username     String   @unique
   displayName  String
@@ -25,8 +25,8 @@ model User {
 }
 
 model Session {
-  id String @id @default(uuid(7))
-  userId String
+  id String @id @default(uuid(7)) @db.Uuid
+  userId String @db.Uuid
   // Lookup refresh token theo hash phải là O(log n): mỗi request /refresh
   // tra bảng này. @unique cũng bất biến "mỗi token ứng đúng 1 session".
   refreshTokenHash String @unique
@@ -43,10 +43,10 @@ model Session {
 }
 
 model Server {
-  id        String   @id @default(uuid(7))
+  id        String   @id @default(uuid(7)) @db.Uuid
   name      String
   iconUrl   String?
-  ownerId   String
+  ownerId   String @db.Uuid
   // Mã mời rút gọn (guide 10.1 "tham gia bằng invite") — người chưa là member
   // vẫn join được khi có code này, không cần biết serverId.
   inviteCode String  @unique
@@ -61,8 +61,8 @@ model Server {
 }
 
 model Role {
-  id          String   @id @default(uuid(7))
-  serverId    String
+  id          String   @id @default(uuid(7)) @db.Uuid
+  serverId    String @db.Uuid
   name      String
   // Bitmask 64-bit — các h bit của Permission trong @ping/shared được OR vào đây.
   permissions BigInt   @default(0)
@@ -76,9 +76,9 @@ model Role {
 }
 
 model Member {
-  id       String   @id @default(uuid(7))
-  serverId String
-  userId   String
+  id       String   @id @default(uuid(7)) @db.Uuid
+  serverId String @db.Uuid
+  userId   String @db.Uuid
   nickname String?
   joinedAt DateTime @default(now())
 
@@ -93,8 +93,8 @@ model Member {
 }
 
 model MemberRole {
-  memberId String
-  roleId   String
+  memberId String @db.Uuid
+  roleId   String @db.Uuid
 
   member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
   role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
@@ -103,8 +103,8 @@ model MemberRole {
 }
 
 model Channel {
-  id        String      @id @default(uuid(7))
-  serverId  String
+  id        String      @id @default(uuid(7)) @db.Uuid
+  serverId  String @db.Uuid
   name      String
   type      ChannelType @default(TEXT)
   position  Int         @default(0)
@@ -122,9 +122,9 @@ enum ChannelType {
 }
 
 model Message {
-  id        String    @id @default(uuid(7))
-  channelId String
-  authorId  String
+  id        String    @id @default(uuid(7)) @db.Uuid
+  channelId String @db.Uuid
+  authorId  String @db.Uuid
   content   String
   editedAt  DateTime?
   deletedAt DateTime? // soft delete: moderation + đồng bộ realtime

@@ -202,7 +202,7 @@ async function main(): Promise<void> {
       content: 'Index (channelId, id desc) cho cursor pagination — nice.',
     },
     {
-      id: id('050A'),
+      id: id('050a'),
       channelId: dev.id,
       authorId: bob.id,
       // Idempotency key: nếu client retry, upsert theo id + unique (channelId, authorId, nonce)
@@ -210,7 +210,7 @@ async function main(): Promise<void> {
       content: 'Message này mang nonce để demo chống retry trùng.',
       nonce: 'demo-nonce-1',
     },
-    { id: id('050B'), channelId: dev.id, authorId: carol.id, content: 'Ready for Bước 7: auth 🚀' },
+    { id: id('050b'), channelId: dev.id, authorId: carol.id, content: 'Ready for Bước 7: auth 🚀' },
   ];
 
   for (const message of messages) {
