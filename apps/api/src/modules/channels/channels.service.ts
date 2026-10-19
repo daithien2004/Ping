@@ -6,10 +6,20 @@ import type { UpdateChannelInput } from './schemas.js';
 export class ChannelsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(serverId: string, name: string) {
-    // Position nối tiếp dãy hiện có — client không phải tự tính.
-    const count = await this.prisma.channel.count({ where: { serverId } });
-    return this.prisma.channel.create({ data: { serverId, name, position: count } });
+  create(serverId: string, name: string) {
+    return this.prisma.$transaction(async (tx) => {
+      // Khóa theo server tới hết transaction: hai request tạo channel cùng lúc xếp hàng
+      // thay vì cùng đọc một giá trị max rồi cùng ghi trùng position.
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${serverId}))`;
+      const { _max } = await tx.channel.aggregate({
+        where: { serverId },
+        _max: { position: true },
+      });
+      // Nối tiếp sau channel cuối (max + 1, không phải count: xóa channel giữa dãy làm count trùng).
+      return tx.channel.create({
+        data: { serverId, name, position: (_max.position ?? -1) + 1 },
+      });
+    });
   }
 
   list(serverId: string) {

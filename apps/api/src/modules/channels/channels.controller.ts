@@ -1,5 +1,16 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
 import { createChannelSchema, type CreateChannelInput } from '@ping/shared';
+import { IdempotencyInterceptor } from '../../common/interceptors/idempotency.interceptor.js';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe.js';
 import { AbilityGuard } from '../ability/ability.guard.js';
 import { CheckAbility } from '../ability/check-ability.decorator.js';
@@ -15,6 +26,7 @@ export class ChannelsController {
 
   @Post('servers/:serverId/channels')
   @CheckAbility(['manage', 'Channel'])
+  @UseInterceptors(IdempotencyInterceptor)
   create(
     @Param('serverId') serverId: string,
     @Body(new ZodValidationPipe(createChannelSchema)) body: CreateChannelInput,

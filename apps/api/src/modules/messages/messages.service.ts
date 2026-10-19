@@ -119,7 +119,10 @@ export class MessagesService {
   }
 
   private async getMessage(messageId: string) {
-    const message = await this.prisma.message.findUnique({ where: { id: messageId } });
+    // Tin đã xóa mềm coi như không còn: không sửa/xóa lại được.
+    const message = await this.prisma.message.findFirst({
+      where: { id: messageId, deletedAt: null },
+    });
     if (!message) {
       throw new NotFoundException('Message not found');
     }

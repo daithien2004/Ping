@@ -1,4 +1,16 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Put, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Put,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
+import { IdempotencyInterceptor } from '../../common/interceptors/idempotency.interceptor.js';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe.js';
 import { AbilityGuard } from '../ability/ability.guard.js';
 import { CheckAbility } from '../ability/check-ability.decorator.js';
@@ -21,6 +33,7 @@ export class RolesController {
 
   @Post('servers/:serverId/roles')
   @CheckAbility(['manage', 'Role'])
+  @UseInterceptors(IdempotencyInterceptor)
   create(
     @CurrentUser() user: AuthenticatedUser,
     @Param('serverId') serverId: string,

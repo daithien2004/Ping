@@ -1,5 +1,16 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  Post,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
 import { createServerSchema, type CreateServerInput } from '@ping/shared';
+import { IdempotencyInterceptor } from '../../common/interceptors/idempotency.interceptor.js';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe.js';
 import { AbilityGuard } from '../ability/ability.guard.js';
 import { CheckAbility } from '../ability/check-ability.decorator.js';
@@ -15,6 +26,7 @@ export class ServersController {
 
   /** Chỉ cần đăng nhập — chưa có bối cảnh server nên không có @CheckAbility. */
   @Post()
+  @UseInterceptors(IdempotencyInterceptor)
   create(
     @CurrentUser() user: AuthenticatedUser,
     @Body(new ZodValidationPipe(createServerSchema)) body: CreateServerInput,

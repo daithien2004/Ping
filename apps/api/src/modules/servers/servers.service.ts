@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { Permissions } from '@ping/shared';
 import { randomBytes } from 'node:crypto';
+import { isUniqueConstraintError } from '../../common/utils/prisma-errors.js';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
 import { AbilityFactory } from '../ability/ability.factory.js';
 import { RealtimeService } from '../realtime/realtime.service.js';
@@ -122,14 +123,23 @@ export class ServersService {
     });
 
     // Member mới luôn nhận role @everyone — không ai "vô hình" trong server.
-    const member = await this.prisma.member.create({
-      data: {
-        serverId: server.id,
-        userId,
-        roles: everyone ? { create: { roleId: everyone.id } } : undefined,
-      },
-      include: { roles: { select: { role: { select: { id: true, name: true } } } } },
-    });
+    let member;
+    try {
+      member = await this.prisma.member.create({
+        data: {
+          serverId: server.id,
+          userId,
+          roles: everyone ? { create: { roleId: everyone.id } } : undefined,
+        },
+        include: { roles: { select: { role: { select: { id: true, name: true } } } } },
+      });
+    } catch (error) {
+      // Hai request join đồng thời cùng lọt qua check `existing`: unique (serverId, userId) chặn.
+      if (isUniqueConstraintError(error)) {
+        throw new ConflictException('You are already a member of this server');
+      }
+      throw error;
+    }
 
     return { server: { id: server.id, name: server.name, inviteCode: server.inviteCode }, member };
   }
