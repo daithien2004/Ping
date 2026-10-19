@@ -56,8 +56,10 @@ export class MessagesService {
         id: message.id,
         channelId,
         authorId,
+        author: message.author,
         content: message.content,
         createdAt: message.createdAt.toISOString(),
+        nonce: message.nonce,
       });
       return message;
     } catch (error) {

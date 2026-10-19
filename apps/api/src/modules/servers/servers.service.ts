@@ -10,6 +10,7 @@ import { Permissions } from '@ping/shared';
 import { randomBytes } from 'node:crypto';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
 import { AbilityFactory } from '../ability/ability.factory.js';
+import { RealtimeService } from '../realtime/realtime.service.js';
 
 /**
  * Tạo server trong MỘT lần insert lồng nhau (guide 10.1): server + role
@@ -21,6 +22,7 @@ export class ServersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly abilityFactory: AbilityFactory,
+    private readonly realtime: RealtimeService,
   ) {}
 
   async create(userId: string, name: string) {
@@ -149,6 +151,8 @@ export class ServersService {
     await this.prisma.member.delete({ where: { id: member.id } });
     // Không còn member: cache ability của user trong server này phải chết ngay.
     await this.abilityFactory.invalidateMember(serverId, userId);
+    // Socket đang mở của user phải rời room của server ngay, không đợi ngắt kết nối.
+    await this.realtime.refreshAccess(serverId, [userId]);
   }
 
   async remove(serverId: string, userId: string): Promise<{ id: string }> {

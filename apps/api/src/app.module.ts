@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { randomUUID } from 'node:crypto';
 import { ClsModule } from 'nestjs-cls';
 import { LoggerModule } from 'nestjs-pino';
@@ -10,6 +10,7 @@ import { AppService } from './app.service.js';
 // Side-effect: dạy JSON.stringify serialize BigInt (Role.permissions) thành string.
 import './common/bigint-json.js';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter.js';
+import { HttpThrottlerGuard } from './common/guards/http-throttler.guard.js';
 import { UuidParamsGuard } from './common/guards/uuid-params.guard.js';
 import { envSchema } from './config/env.schema.js';
 import { PrismaModule } from './infra/prisma/prisma.module.js';
@@ -81,7 +82,7 @@ import { UsersModule } from './modules/users/users.module.js';
     AppService,
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
     // Rate limit áp cho MỌI route — health controller tự @SkipThrottler().
-    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: HttpThrottlerGuard },
     // Chạy trước mọi guard của controller (AbilityGuard query DB bằng các id này).
     { provide: APP_GUARD, useClass: UuidParamsGuard },
   ],

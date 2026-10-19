@@ -1,4 +1,6 @@
 import type { INestApplication } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
 import { Test } from '@nestjs/testing';
 import { randomUUID } from 'node:crypto';
 import cookieParser from 'cookie-parser';
@@ -37,8 +39,10 @@ describe('Realtime across two instances (e2e)', () => {
   let owner: TestUser;
   let member: TestUser;
   let outsider: TestUser;
-  /** Member nhưng CHƯA BAO GIỜ mở socket — dùng cho test presence.counter chắc chắn 0 → 1. */
+  /** Member nhưng CHƯA BAO GIỜ mở socket — dùng cho test presence (lần kết nối đầu tiên). */
   let bystander: TestUser;
+  /** Member chỉ có @everyone — dùng cho test mất quyền xem và rời server. */
+  let restricted: TestUser;
   let serverId: string;
   let channelId: string;
   let inviteCode: string;
@@ -93,7 +97,8 @@ describe('Realtime across two instances (e2e)', () => {
     app.use(cookieParser());
     app.setGlobalPrefix('api/v1');
     const redis = app.get(RedisProvider);
-    app.useWebSocketAdapter(new RedisIoAdapter(app, redis, redis.duplicate()));
+    const webOrigin = app.get(ConfigService).getOrThrow<string>('WEB_ORIGIN');
+    app.useWebSocketAdapter(new RedisIoAdapter(app, redis, redis.duplicate(), webOrigin));
     await app.listen(0);
     const address = app.getHttpServer().address();
     const port = typeof address === 'object' && address !== null ? address.port : 0;
@@ -127,6 +132,7 @@ describe('Realtime across two instances (e2e)', () => {
     member = await registerUser(appA);
     outsider = await registerUser(appA);
     bystander = await registerUser(appA);
+    restricted = await registerUser(appA);
 
     const serverRes = await request(appA.getHttpServer())
       .post('/api/v1/servers')
@@ -149,12 +155,33 @@ describe('Realtime across two instances (e2e)', () => {
       .send({ inviteCode })
       .expect(201);
 
-    await request(appA.getHttpServer())
-      .post('/api/v1/servers/join')
-      .set('Authorization', `Bearer ${bystander.token}`)
-      .send({ inviteCode })
-      .expect(201);
+    for (const user of [bystander, restricted]) {
+      await request(appA.getHttpServer())
+        .post('/api/v1/servers/join')
+        .set('Authorization', `Bearer ${user.token}`)
+        .send({ inviteCode })
+        .expect(201);
+    }
   }, 30000);
+
+  /** Socket bị server ngắt trong khoảng chờ. */
+  function waitDisconnect(socket: Socket, timeoutMs: number): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error('Socket vẫn còn kết nối')), timeoutMs);
+      socket.once('disconnect', () => {
+        clearTimeout(timer);
+        resolve();
+      });
+    });
+  }
+
+  function postMessage(token: string, content: string) {
+    return request(appA.getHttpServer())
+      .post(`/api/v1/channels/${channelId}/messages`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ content, nonce: randomUUID() })
+      .expect(201);
+  }
 
   afterAll(async () => {
     for (const socket of sockets) {
@@ -209,13 +236,16 @@ describe('Realtime across two instances (e2e)', () => {
       authorId: string;
       content: string;
       createdAt: string;
+      nonce: string | null;
+      author: { id: string; username: string };
     }>(clientB, 'message.created');
 
     // Tạo tin nhắn qua REST của instance A — client đang ở instance B.
+    const nonce = randomUUID();
     const res = await request(appA.getHttpServer())
       .post(`/api/v1/channels/${channelId}/messages`)
       .set('Authorization', `Bearer ${member.token}`)
-      .send({ content: 'hello from A', nonce: randomUUID() })
+      .send({ content: 'hello from A', nonce })
       .expect(201);
 
     const payload = await received;
@@ -223,6 +253,9 @@ describe('Realtime across two instances (e2e)', () => {
     expect(payload.content).toBe('hello from A');
     expect(payload.authorId).toBe(member.id);
     expect(payload.channelId).toBe(channelId);
+    // Client gửi khớp tin optimistic theo nonce; client khác hiện tác giả không cần gọi thêm API.
+    expect(payload.nonce).toBe(nonce);
+    expect(payload.author).toMatchObject({ id: member.id, username: res.body.author.username });
     clientB.disconnect();
   });
 
@@ -241,9 +274,42 @@ describe('Realtime across two instances (e2e)', () => {
     const payload = await received;
     expect(payload.channelId).toBe(channelId);
     expect(payload.userId).toBe(member.id);
+
+    // Gõ dồn dập: event thứ hai ngay sau đó bị nuốt (giới hạn tần suất theo socket).
+    clientB.emit('typing', { channelId });
+    await assertNoEvent(clientA, 'typing.started', 500);
     clientA.disconnect();
     clientB.disconnect();
   });
+
+  it('typing từ người ngoài channel (biết channelId) không được relay', async () => {
+    const watcher = await connectClient(portA, owner.token);
+    watcher.emit('channel.join', { channelId });
+    const outsiderSocket = await connectClient(portB, outsider.token);
+    await settle();
+
+    outsiderSocket.emit('typing', { channelId });
+    await assertNoEvent(watcher, 'typing.started');
+    watcher.disconnect();
+    outsiderSocket.disconnect();
+  });
+
+  it('payload sai định dạng bị bỏ qua, không làm sập gateway', async () => {
+    const socket = await connectClient(portA, member.token);
+    socket.emit('channel.join', { channelId: 'khong-phai-uuid' });
+    socket.emit('typing', null);
+    await settle();
+    expect(socket.connected).toBe(true);
+    socket.disconnect();
+  });
+
+  it('socket bị ngắt khi access token hết hạn', async () => {
+    const shortToken = await appA
+      .get(JwtService)
+      .signAsync({ sub: member.id, username: 'short' }, { expiresIn: '2s' });
+    const socket = await connectClient(portA, shortToken);
+    await waitDisconnect(socket, 5000);
+  }, 10000);
 
   it('client không phải member không join được room và không nhận event', async () => {
     const outsiderSocket = await connectClient(portA, outsider.token);
@@ -284,7 +350,64 @@ describe('Realtime across two instances (e2e)', () => {
     const payload = await received;
     expect(payload.userId).toBe(bystander.id);
     expect(payload.status).toBe('online');
+
+    // Tab thứ hai ở instance khác: đóng một tab không được báo offline.
+    const secondTab = await connectClient(portB, bystander.token);
+    await settle();
     bystanderSocket.disconnect();
+    await assertNoEvent(watcherB, 'presence.updated');
+
+    const lastTabClosed = waitEvent<{ userId: string; status: string }>(
+      watcherB,
+      'presence.updated',
+    );
+    secondTab.disconnect();
+    expect(await lastTabClosed).toEqual({ userId: bystander.id, status: 'offline' });
     watcherB.disconnect();
+  });
+
+  it('member không có VIEW_CHANNEL không vào được room channel', async () => {
+    const roles = await request(appA.getHttpServer())
+      .get(`/api/v1/servers/${serverId}/roles`)
+      .set('Authorization', `Bearer ${owner.token}`)
+      .expect(200);
+    const everyone = roles.body.find((role: { isDefault: boolean }) => role.isDefault);
+    const setEveryone = (permissions: string) =>
+      request(appA.getHttpServer())
+        .patch(`/api/v1/roles/${everyone.id}`)
+        .set('Authorization', `Bearer ${owner.token}`)
+        .send({ permissions })
+        .expect(200);
+
+    await setEveryone('0');
+    try {
+      const socket = await connectClient(portB, restricted.token);
+      socket.emit('channel.join', { channelId });
+      await settle();
+      await postMessage(owner.token, 'hidden');
+      await assertNoEvent(socket, 'message.created');
+      socket.disconnect();
+    } finally {
+      await setEveryone(everyone.permissions);
+    }
+  });
+
+  it('rời server thì socket đang mở thôi nhận tin của channel ngay', async () => {
+    const socket = await connectClient(portB, restricted.token);
+    socket.emit('channel.join', { channelId });
+    await settle();
+    const first = waitEvent(socket, 'message.created');
+    await postMessage(member.token, 'before leave');
+    await first;
+
+    await request(appA.getHttpServer())
+      .post(`/api/v1/servers/${serverId}/leave`)
+      .set('Authorization', `Bearer ${restricted.token}`)
+      .expect(204);
+    await settle();
+
+    await postMessage(member.token, 'after leave');
+    await assertNoEvent(socket, 'message.created');
+    socket.disconnect();
   });
 });

@@ -29,7 +29,7 @@ async function bootstrap() {
   // Redis adapter cho Socket.IO (cluster/multi-instance) — dùng pub/sub cùng Redis.
   // Truyền `app` để WS share HTTP server (cùng cổng REST) thay vì mở cổng riêng.
   const redis = app.get(RedisProvider);
-  app.useWebSocketAdapter(new RedisIoAdapter(app, redis, redis.duplicate()));
+  app.useWebSocketAdapter(new RedisIoAdapter(app, redis, redis.duplicate(), webOrigin));
 
   if (nodeEnv !== 'production') {
     const swaggerConfig = new DocumentBuilder()

@@ -7,6 +7,7 @@ import {
 import { canManageMember, canManagePermissions } from '@ping/shared';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
 import { AbilityFactory } from '../ability/ability.factory.js';
+import { RealtimeService } from '../realtime/realtime.service.js';
 import type { CreateRoleInput, UpdateRoleInput } from './schemas.js';
 
 /**
@@ -18,6 +19,7 @@ export class RolesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly abilityFactory: AbilityFactory,
+    private readonly realtime: RealtimeService,
   ) {}
 
   async create(serverId: string, actorId: string, input: CreateRoleInput) {
@@ -48,6 +50,7 @@ export class RolesService {
     const updated = await this.prisma.role.update({ where: { id: role.id }, data: input });
     // Quyền của mọi member có role này đổi → cache ability của cả server phải chết.
     await this.abilityFactory.invalidateServer(role.serverId);
+    await this.realtime.refreshAccess(role.serverId);
     return updated;
   }
 
@@ -59,6 +62,7 @@ export class RolesService {
     await this.assertCanManage(role.serverId, actorId, role.permissions);
     await this.prisma.role.delete({ where: { id: role.id } });
     await this.abilityFactory.invalidateServer(role.serverId);
+    await this.realtime.refreshAccess(role.serverId);
     return { id: roleId };
   }
 
@@ -96,6 +100,7 @@ export class RolesService {
 
     // Quyền hiệu lực của member vừa đổi — cache Redis cũ không được phép nói dối.
     await this.abilityFactory.invalidateServer(serverId);
+    await this.realtime.refreshAccess(serverId, [member.userId]);
 
     return this.prisma.member.findUnique({
       where: { id: memberId },
