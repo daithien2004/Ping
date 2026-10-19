@@ -65,6 +65,18 @@ export class ServersController {
     return this.serversService.leave(serverId, user.userId);
   }
 
+  /** Kick member. Guard: cần `delete Member` (KICK_MEMBERS); service: so quyền với người bị kick. */
+  @Delete(':serverId/members/:memberId')
+  @HttpCode(204)
+  @CheckAbility(['delete', 'Member'])
+  kick(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('serverId') serverId: string,
+    @Param('memberId') memberId: string,
+  ) {
+    return this.serversService.kick(serverId, user.userId, memberId);
+  }
+
   /** Không @CheckAbility: chỉ owner được xóa (service tier-2 kiểm tra). */
   @Delete(':serverId')
   remove(@CurrentUser() user: AuthenticatedUser, @Param('serverId') serverId: string) {

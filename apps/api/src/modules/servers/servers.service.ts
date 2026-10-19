@@ -6,7 +6,7 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import { Permissions } from '@ping/shared';
+import { canKickMember, Permissions } from '@ping/shared';
 import { randomBytes } from 'node:crypto';
 import { isUniqueConstraintError } from '../../common/utils/prisma-errors.js';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
@@ -165,6 +165,46 @@ export class ServersService {
     await this.abilityFactory.invalidateMember(serverId, userId);
     // Socket đang mở của user phải rời room của server ngay, không đợi ngắt kết nối.
     await this.realtime.refreshAccess(serverId, [userId]);
+  }
+
+  /**
+   * Kick: guard đã xác nhận người gọi có `delete Member` trong server này. Ở đây kiểm tra
+   * theo đối tượng: member phải thuộc đúng server trên URL, và người bị kick không được
+   * là owner, chính người gọi, hay người có quyền vượt người gọi (canKickMember).
+   */
+  async kick(serverId: string, actorId: string, memberId: string): Promise<void> {
+    const member = await this.prisma.member.findUnique({
+      where: { id: memberId },
+      select: { id: true, serverId: true, userId: true },
+    });
+    // memberId của server khác gắn vào URL server này: coi như không tồn tại (không lộ thông tin).
+    if (!member || member.serverId !== serverId) {
+      throw new NotFoundException('Member not found in this server');
+    }
+    if (member.userId === actorId) {
+      throw new BadRequestException('Use leave to remove yourself from a server');
+    }
+
+    const actor = await this.abilityFactory.contextFor(serverId, actorId);
+    const target = await this.abilityFactory.contextFor(serverId, member.userId);
+    if (!canKickMember(actor, target)) {
+      throw new ForbiddenException('You cannot kick this member');
+    }
+
+    // Xóa member (MemberRole cascade theo) và ghi audit trong cùng một transaction.
+    await this.prisma.$transaction([
+      this.prisma.member.delete({ where: { id: member.id } }),
+      this.audit.record({
+        serverId,
+        actorId,
+        action: 'MEMBER_KICK',
+        targetId: member.id,
+        metadata: { userId: member.userId },
+      }),
+    ]);
+    // Giống leave: quyền cache và socket room của người bị kick phải mất ngay.
+    await this.abilityFactory.invalidateMember(serverId, member.userId);
+    await this.realtime.refreshAccess(serverId, [member.userId]);
   }
 
   async remove(serverId: string, userId: string): Promise<{ id: string }> {

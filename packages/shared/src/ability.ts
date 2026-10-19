@@ -63,6 +63,10 @@ export function defineAbilityFor(ctx: AbilityContext): AppAbility {
     can('update', 'Server');
   }
 
+  if (has(Permissions.KICK_MEMBERS)) {
+    can('delete', 'Member');
+  }
+
   return build();
 }
 
@@ -81,6 +85,24 @@ export function canManagePermissions(ctx: AbilityContext, permissions: bigint): 
   return (
     hasPermission(ctx.permissions, Permissions.MANAGE_ROLES) &&
     (permissions & ~ctx.permissions) === 0n
+  );
+}
+
+/**
+ * Được kick `target` không (tầng đối tượng, sau khi guard đã xác nhận `delete Member`).
+ * Không ai kick được owner hay chính mình (tự rời là `leave`). Owner/admin kick được mọi
+ * người còn lại; người khác cần KICK_MEMBERS và chỉ kick được ai có quyền nằm trong quyền mình.
+ */
+export function canKickMember(actor: AbilityContext, target: AbilityContext): boolean {
+  if (target.isOwner || actor.userId === target.userId) {
+    return false;
+  }
+  if (actor.isOwner || hasPermission(actor.permissions, Permissions.ADMINISTRATOR)) {
+    return true;
+  }
+  return (
+    hasPermission(actor.permissions, Permissions.KICK_MEMBERS) &&
+    (target.permissions & ~actor.permissions) === 0n
   );
 }
 
