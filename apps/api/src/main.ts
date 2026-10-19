@@ -25,7 +25,9 @@ async function bootstrap() {
   app.use(helmet());
   // Đọc cookie httpOnly (refresh token) — req.cookies do cookie-parser gắn vào.
   app.use(cookieParser());
-  app.enableCors({ origin: webOrigin, credentials: true });
+  // exposedHeaders: trình duyệt chỉ cho JS đọc header X-Request-Id của response khác origin
+  // khi API khai báo rõ — web cần nó để hiển thị "Mã lỗi" (hướng dẫn 15.1.1).
+  app.enableCors({ origin: webOrigin, credentials: true, exposedHeaders: ['X-Request-Id'] });
   app.setGlobalPrefix('api/v1');
   app.enableShutdownHooks();
 

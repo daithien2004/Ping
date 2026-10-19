@@ -22,6 +22,31 @@ export function isErrorCode(value: unknown): value is ErrorCode {
   return typeof value === 'string' && knownCodes.has(value);
 }
 
+/**
+ * Mã lỗi suy ra từ HTTP status khi response không mang `code` hợp lệ. Dùng chung cho
+ * AllExceptionsFilter (API) và api-client (web, ví dụ proxy trả 502 dạng HTML).
+ */
+export function errorCodeForStatus(status: number): ErrorCode {
+  switch (status) {
+    case 400:
+      return ErrorCodes.BAD_REQUEST;
+    case 401:
+      return ErrorCodes.UNAUTHORIZED;
+    case 403:
+      return ErrorCodes.FORBIDDEN;
+    case 404:
+      return ErrorCodes.NOT_FOUND;
+    case 409:
+      return ErrorCodes.CONFLICT;
+    case 429:
+      return ErrorCodes.TOO_MANY_REQUESTS;
+    case 503:
+      return ErrorCodes.SERVICE_UNAVAILABLE;
+    default:
+      return status >= 500 ? ErrorCodes.INTERNAL_ERROR : ErrorCodes.BAD_REQUEST;
+  }
+}
+
 /** Hình dạng body của mọi response lỗi từ API. */
 export interface ApiErrorBody {
   code: ErrorCode;
