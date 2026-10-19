@@ -1,6 +1,6 @@
 import { subject } from '@casl/ability';
 import { describe, expect, it } from 'vitest';
-import { canManageMember, canManagePermissions, defineAbilityFor } from './ability';
+import { canKickMember, canManageMember, canManagePermissions, defineAbilityFor } from './ability';
 import { Permissions } from './permissions';
 
 const memberPermissions = Permissions.VIEW_CHANNEL | Permissions.SEND_MESSAGES;
@@ -175,5 +175,38 @@ describe('canManagePermissions / canManageMember', () => {
     expect(
       canManageMember(manager, { userId: 'x', isOwner: false, permissions: memberPermissions }),
     ).toBe(true);
+  });
+});
+
+describe('kick', () => {
+  const kicker = {
+    userId: 'kicker',
+    isOwner: false,
+    permissions: memberPermissions | Permissions.KICK_MEMBERS,
+  };
+  const plain = { userId: 'plain', isOwner: false, permissions: memberPermissions };
+  const owner = { userId: 'owner', isOwner: true, permissions: memberPermissions };
+  const admin = { userId: 'admin', isOwner: false, permissions: Permissions.ADMINISTRATOR };
+
+  it('grants delete Member only with KICK_MEMBERS', () => {
+    expect(defineAbilityFor(kicker).can('delete', 'Member')).toBe(true);
+    expect(defineAbilityFor(plain).can('delete', 'Member')).toBe(false);
+  });
+
+  it('lets a kicker remove members whose permissions they cover', () => {
+    expect(canKickMember(kicker, plain)).toBe(true);
+    expect(canKickMember(plain, kicker)).toBe(false);
+  });
+
+  it('never allows kicking the owner, a stronger member, or yourself', () => {
+    expect(canKickMember(kicker, owner)).toBe(false);
+    expect(canKickMember(admin, owner)).toBe(false);
+    expect(canKickMember(kicker, admin)).toBe(false);
+    expect(canKickMember(kicker, kicker)).toBe(false);
+  });
+
+  it('lets owners and administrators kick anyone but the owner', () => {
+    expect(canKickMember(owner, admin)).toBe(true);
+    expect(canKickMember(admin, kicker)).toBe(true);
   });
 });

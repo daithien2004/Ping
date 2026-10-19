@@ -6,6 +6,7 @@ export const Permissions = {
   MANAGE_ROLES: 16n,
   MANAGE_SERVER: 32n,
   ADMINISTRATOR: 64n,
+  KICK_MEMBERS: 128n,
 } as const;
 
 export function hasPermission(value: bigint, flag: bigint): boolean {
