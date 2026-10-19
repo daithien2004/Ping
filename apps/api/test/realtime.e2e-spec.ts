@@ -410,4 +410,61 @@ describe('Realtime across two instances (e2e)', () => {
     await assertNoEvent(socket, 'message.created');
     socket.disconnect();
   });
+
+  it('permissions.changed: sửa role → member nhận event riêng để tải lại quyền', async () => {
+    const socket = await connectClient(portB, member.token);
+    await settle();
+    const roles = await request(appA.getHttpServer())
+      .get(`/api/v1/servers/${serverId}/roles`)
+      .set('Authorization', `Bearer ${owner.token}`)
+      .expect(200);
+    const everyone = roles.body.find((role: { isDefault: boolean }) => role.isDefault);
+
+    const received = waitEvent<{ serverId: string }>(socket, 'permissions.changed');
+    await request(appA.getHttpServer())
+      .patch(`/api/v1/roles/${everyone.id}`)
+      .set('Authorization', `Bearer ${owner.token}`)
+      .send({ name: '@everyone' })
+      .expect(200);
+
+    expect(await received).toEqual({ serverId });
+    socket.disconnect();
+  });
+
+  it('member.removed: bị kick → nhận event riêng để rời server ở client', async () => {
+    const socket = await connectClient(portB, bystander.token);
+    await settle();
+    const members = await request(appA.getHttpServer())
+      .get(`/api/v1/servers/${serverId}/members`)
+      .set('Authorization', `Bearer ${owner.token}`)
+      .expect(200);
+    const target = members.body.find((m: { userId: string }) => m.userId === bystander.id);
+
+    const received = waitEvent<{ serverId: string }>(socket, 'member.removed');
+    await request(appA.getHttpServer())
+      .delete(`/api/v1/servers/${serverId}/members/${target.id}`)
+      .set('Authorization', `Bearer ${owner.token}`)
+      .expect(204);
+
+    expect(await received).toEqual({ serverId });
+    socket.disconnect();
+  });
+
+  // LUÔN để cuối: xóa server mà các test trên dùng chung.
+  it('member.removed: server bị xóa → mọi member nhận event riêng', async () => {
+    const socket = await connectClient(portA, member.token);
+    await settle();
+    const received = waitEvent<{ serverId: string }>(socket, 'member.removed');
+
+    await request(appA.getHttpServer())
+      .delete(`/api/v1/servers/${serverId}`)
+      .set('Authorization', `Bearer ${owner.token}`)
+      .expect(200);
+
+    expect(await received).toEqual({ serverId });
+    socket.disconnect();
+    // Cho request chéo instance của handleDisconnect chạy xong trước khi afterAll tắt app:
+    // Nest đóng Redis (onModuleDestroy) trước Socket.IO, publish dở dang sẽ thành unhandled rejection.
+    await settle();
+  });
 });

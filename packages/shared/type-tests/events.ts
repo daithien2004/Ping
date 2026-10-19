@@ -22,6 +22,8 @@ export function checkEventContracts(server: ServerToClientEvents, client: Client
   server[ServerEvents.TypingStarted]({ channelId: 'channel-01', userId: 'user-A' });
   server[ServerEvents.PresenceUpdated]({ userId: 'user-A', status: 'online' });
   server[ServerEvents.PresenceUpdated]({ userId: 'user-A', status: 'offline' });
+  server[ServerEvents.PermissionsChanged]({ serverId: 'server-01' });
+  server[ServerEvents.MemberRemoved]({ serverId: 'server-01' });
   client[ClientEvents.ChannelJoin]({ channelId: 'channel-01' });
   client[ClientEvents.ChannelLeave]({ channelId: 'channel-01' });
   client[ClientEvents.Typing]({ channelId: 'channel-01' });
@@ -30,6 +32,8 @@ export function checkEventContracts(server: ServerToClientEvents, client: Client
   server[ServerEvents.MessageDeleted]({ id: 'message-01' });
   // @ts-expect-error: Message content must be a string.
   server[ServerEvents.MessageUpdated]({ id: 'm', channelId: 'c', content: 123, updatedAt: 'now' });
+  // @ts-expect-error: Membership events require the server ID.
+  server[ServerEvents.MemberRemoved]({});
   // @ts-expect-error: Presence accepts only online or offline.
   server[ServerEvents.PresenceUpdated]({ userId: 'user-A', status: 'onlien' });
   // @ts-expect-error: Client typing events do not accept a claimed identity.

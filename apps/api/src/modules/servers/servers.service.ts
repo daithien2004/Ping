@@ -6,7 +6,7 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import { canKickMember, Permissions } from '@ping/shared';
+import { canKickMember, Permissions, type MyServerPermissions } from '@ping/shared';
 import { randomBytes } from 'node:crypto';
 import { isUniqueConstraintError } from '../../common/utils/prisma-errors.js';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
@@ -92,6 +92,12 @@ export class ServersService {
         _count: { select: { members: true } },
       },
     });
+  }
+
+  /** Dùng lại AbilityFactory (có cache, đã cộng @everyone): một nơi duy nhất tính quyền. */
+  async myPermissions(serverId: string, userId: string): Promise<MyServerPermissions> {
+    const { isOwner, permissions } = await this.abilityFactory.contextFor(serverId, userId);
+    return { isOwner, permissions: permissions.toString() };
   }
 
   members(serverId: string) {
@@ -221,6 +227,11 @@ export class ServersService {
       throw new ForbiddenException('Only the owner can delete this server');
     }
 
+    // Lấy danh sách member TRƯỚC khi cascade xóa họ, để còn báo cho họ qua socket.
+    const memberUserIds = (
+      await this.prisma.member.findMany({ where: { serverId }, select: { userId: true } })
+    ).map((member) => member.userId);
+
     // Cascade trong schema dọn channels/messages/roles/members.
     // AuditLog không có khóa ngoại nên bản ghi này còn lại sau khi cascade dọn sạch server.
     await this.prisma.$transaction([
@@ -234,6 +245,7 @@ export class ServersService {
       }),
     ]);
     await this.abilityFactory.invalidateServer(serverId);
+    this.realtime.notifyServerDeleted(serverId, memberUserIds);
     return { id: serverId };
   }
 
