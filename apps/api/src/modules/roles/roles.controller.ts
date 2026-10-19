@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, Param, Patch, Post, Put, UseGuards } fro
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe.js';
 import { AbilityGuard } from '../ability/ability.guard.js';
 import { CheckAbility } from '../ability/check-ability.decorator.js';
+import { CurrentUser, type AuthenticatedUser } from '../auth/current-user.decorator.js';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { RolesService } from './roles.service.js';
 import {
@@ -21,10 +22,11 @@ export class RolesController {
   @Post('servers/:serverId/roles')
   @CheckAbility(['manage', 'Role'])
   create(
+    @CurrentUser() user: AuthenticatedUser,
     @Param('serverId') serverId: string,
     @Body(new ZodValidationPipe(createRoleSchema)) body: CreateRoleInput,
   ) {
-    return this.rolesService.create(serverId, body);
+    return this.rolesService.create(serverId, user.userId, body);
   }
 
   /** Màn quản trị role — cần manage Role, member thường xem role qua chi tiết server. */
@@ -37,25 +39,27 @@ export class RolesController {
   @Put('servers/:serverId/members/:memberId/roles')
   @CheckAbility(['manage', 'Role'])
   assign(
+    @CurrentUser() user: AuthenticatedUser,
     @Param('serverId') serverId: string,
     @Param('memberId') memberId: string,
     @Body(new ZodValidationPipe(assignRolesSchema)) body: AssignRolesInput,
   ) {
-    return this.rolesService.assign(serverId, memberId, body.roleIds);
+    return this.rolesService.assign(serverId, user.userId, memberId, body.roleIds);
   }
 
   @Patch('roles/:roleId')
   @CheckAbility(['manage', 'Role'])
   update(
+    @CurrentUser() user: AuthenticatedUser,
     @Param('roleId') roleId: string,
     @Body(new ZodValidationPipe(updateRoleSchema)) body: UpdateRoleInput,
   ) {
-    return this.rolesService.update(roleId, body);
+    return this.rolesService.update(roleId, user.userId, body);
   }
 
   @Delete('roles/:roleId')
   @CheckAbility(['manage', 'Role'])
-  remove(@Param('roleId') roleId: string) {
-    return this.rolesService.remove(roleId);
+  remove(@CurrentUser() user: AuthenticatedUser, @Param('roleId') roleId: string) {
+    return this.rolesService.remove(roleId, user.userId);
   }
 }

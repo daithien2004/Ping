@@ -25,7 +25,7 @@ export class AbilityFactory {
   ) {}
 
   async createForUser(serverId: string, userId: string): Promise<AppAbility> {
-    return defineAbilityFor(await this.loadContext(serverId, userId));
+    return defineAbilityFor(await this.contextFor(serverId, userId));
   }
 
   /** Role đổi quyền hoặc gán/tháo role hàng loạt → cache cũ đang "nói dối": xóa ngay cả server. */
@@ -45,7 +45,8 @@ export class AbilityFactory {
     return `ability:${serverId}:${userId}`;
   }
 
-  private async loadContext(serverId: string, userId: string): Promise<AbilityContext> {
+  /** Quyền hiệu lực của user trong server; ném 403 nếu không phải member. */
+  async contextFor(serverId: string, userId: string): Promise<AbilityContext> {
     const key = AbilityFactory.cacheKey(serverId, userId);
     const cached = await this.redis.get(key);
     if (cached) {
@@ -56,7 +57,13 @@ export class AbilityFactory {
     const member = await this.prisma.member.findUnique({
       where: { serverId_userId: { serverId, userId } },
       include: {
-        server: { select: { ownerId: true } },
+        // @everyone luôn tính vào quyền, kể cả khi dòng MemberRole của nó bị thiếu.
+        server: {
+          select: {
+            ownerId: true,
+            roles: { where: { isDefault: true }, select: { permissions: true } },
+          },
+        },
         roles: { select: { role: { select: { permissions: true } } } },
       },
     });
@@ -65,11 +72,11 @@ export class AbilityFactory {
       throw new ForbiddenException('You are not a member of this server');
     }
 
-    // Quyền hiệu lực = OR tất cả permissions của mọi role member có (kể cả @everyone).
-    const permissions = member.roles.reduce(
-      (acc, memberRole) => acc | memberRole.role.permissions,
-      0n,
-    );
+    // Quyền hiệu lực = OR permissions của @everyone và mọi role member có.
+    const permissions = [
+      ...member.server.roles,
+      ...member.roles.map((memberRole) => memberRole.role),
+    ].reduce((acc, role) => acc | role.permissions, 0n);
     const context: AbilityContext = {
       userId,
       isOwner: member.server.ownerId === userId,

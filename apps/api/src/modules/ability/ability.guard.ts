@@ -18,12 +18,12 @@ type RequestWithAuth = Request & { user?: AuthenticatedUser; ability?: AppAbilit
 
 /**
  * Chặn sớm theo LOẠI (guide 10.2) — luôn chạy sau JwtAuthGuard:
- * 1. Resolve serverId từ route. Route theo channelId/messageId thì tra DB ra
+ * 1. Resolve serverId từ route. Route theo channelId/messageId/roleId thì tra DB ra
  *    server tương ứng — moderator server A không bao giờ chạm được channel server B.
  * 2. Không phải member của server đó → 403 ngay (AbilityFactory ném).
  * 3. Có @CheckAbility thì check thêm ability.can(action, subject).
- * Route không có serverId/channelId/messageId trong params (vd. POST /servers)
- * không có bối cảnh server để check → bỏ qua ability.
+ * Route không có id nào ở trên (vd. POST /servers) không có bối cảnh server:
+ * cho qua nếu route không đòi quyền, từ chối nếu có @CheckAbility (fail closed).
  */
 @Injectable()
 export class AbilityGuard implements CanActivate {
@@ -42,6 +42,11 @@ export class AbilityGuard implements CanActivate {
 
     const serverId = await this.resolveServerId(request);
     if (serverId === undefined) {
+      // Fail closed: route đòi quyền mà không xác định được server là lỗi cấu hình
+      // route — từ chối thay vì cho qua (lỗ IDOR /roles/:roleId từng nằm ở đây).
+      if (required) {
+        throw new ForbiddenException('Insufficient permissions for this action');
+      }
       return true;
     }
     if (!request.user) {
@@ -82,6 +87,16 @@ export class AbilityGuard implements CanActivate {
         throw new NotFoundException('Message not found');
       }
       return message.channel.serverId;
+    }
+    if (params.roleId) {
+      const role = await this.prisma.role.findUnique({
+        where: { id: params.roleId },
+        select: { serverId: true },
+      });
+      if (!role) {
+        throw new NotFoundException('Role not found');
+      }
+      return role.serverId;
     }
     return undefined;
   }
