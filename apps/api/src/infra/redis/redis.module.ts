@@ -15,7 +15,7 @@ import type { Env } from '../../config/env.schema.js';
 @Injectable()
 export class RedisProvider extends Redis implements OnModuleDestroy {
   constructor(config: ConfigService<Env, true>, logger: PinoLogger) {
-    super(config.getOrThrow('REDIS_URL'));
+    super(config.getOrThrow('REDIS_URL', { infer: true }));
     // ioredis retries forever after ECONNREFUSED and emits 'error' on every
     // failed attempt. Without a listener it falls back to console spam
     // ("[ioredis] Unhandled error event"), so route it into structured logs.

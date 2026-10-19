@@ -9,7 +9,11 @@ export class PrismaService extends PrismaClient implements OnModuleInit, BeforeA
   constructor(config: ConfigService<Env, true>) {
     // Prisma 7 bắt buộc driver adapter: kết nối do thư viện `pg` đảm nhận,
     // không còn query engine Rust đọc DATABASE_URL phía sau nữa.
-    super({ adapter: new PrismaPg({ connectionString: config.getOrThrow('DATABASE_URL') }) });
+    super({
+      adapter: new PrismaPg({
+        connectionString: config.getOrThrow('DATABASE_URL', { infer: true }),
+      }),
+    });
   }
 
   async onModuleInit(): Promise<void> {

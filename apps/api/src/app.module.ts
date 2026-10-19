@@ -5,6 +5,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { randomUUID } from 'node:crypto';
 import { ClsModule } from 'nestjs-cls';
 import { LoggerModule } from 'nestjs-pino';
+import { z } from 'zod';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 // Side-effect: dạy JSON.stringify serialize BigInt (Role.permissions) thành string.
@@ -26,6 +27,13 @@ import { RolesModule } from './modules/roles/roles.module.js';
 import { ServersModule } from './modules/servers/servers.module.js';
 import { UsersModule } from './modules/users/users.module.js';
 
+const uuid = z.uuid();
+
+/** Chỉ dùng lại X-Request-Id của client khi là UUID: chuỗi tùy ý sẽ đi thẳng vào log và header. */
+function requestIdFrom(header: string | string[] | undefined): string {
+  return typeof header === 'string' && uuid.safeParse(header).success ? header : randomUUID();
+}
+
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -40,7 +48,7 @@ import { UsersModule } from './modules/users/users.module.js';
     LoggerModule.forRoot({
       pinoHttp: {
         level: 'info',
-        genReqId: (req) => (req.headers['x-request-id'] as string) ?? randomUUID(),
+        genReqId: (req) => requestIdFrom(req.headers['x-request-id']),
         redact: ['req.headers.authorization', 'req.headers.cookie'],
         customProps: (req) => ({ requestId: (req as { id?: string }).id }),
       },

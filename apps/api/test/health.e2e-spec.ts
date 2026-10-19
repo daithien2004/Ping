@@ -31,4 +31,20 @@ describe('Health endpoints (e2e)', () => {
     expect(res.body.details.database.status).toBe('up');
     expect(res.body.details.redis.status).toBe('up');
   });
+
+  it('X-Request-Id: giữ UUID hợp lệ của client, thay chuỗi rác bằng UUID mới', async () => {
+    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const own = '4b1c9a70-5f0e-4c1a-9b0a-2f1d3c4e5a6b';
+    const kept = await request(app.getHttpServer())
+      .get('/api/v1/health')
+      .set('X-Request-Id', own)
+      .expect(200);
+    expect(kept.headers['x-request-id']).toBe(own);
+
+    const replaced = await request(app.getHttpServer())
+      .get('/api/v1/health')
+      .set('X-Request-Id', 'x'.repeat(5000))
+      .expect(200);
+    expect(replaced.headers['x-request-id']).toMatch(uuidPattern);
+  });
 });

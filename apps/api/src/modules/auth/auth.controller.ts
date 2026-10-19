@@ -84,7 +84,7 @@ export class AuthController {
     res.cookie(REFRESH_COOKIE_NAME, cookie.token, {
       httpOnly: true,
       // Secure = chỉ gửi qua https. Dev chạy http://localhost nên bật sẵn sẽ mất cookie.
-      secure: this.config.getOrThrow('NODE_ENV') === 'production',
+      secure: this.config.getOrThrow('NODE_ENV', { infer: true }) === 'production',
       // localhost:3000 → localhost:4000 vẫn same-site (port không tính),
       // nên SameSite=Lax hoạt động trong dev lẫn production cùng-site (guide 9.3).
       sameSite: 'lax',

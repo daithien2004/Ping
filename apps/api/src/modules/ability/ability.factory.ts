@@ -30,10 +30,13 @@ export class AbilityFactory {
 
   /** Role đổi quyền hoặc gán/tháo role hàng loạt → cache cũ đang "nói dối": xóa ngay cả server. */
   async invalidateServer(serverId: string): Promise<void> {
-    // KEYS chỉ chấp nhận được ở quy mô dev; production nhiều key thì dùng SCAN.
-    const keys = await this.redis.keys(`ability:${serverId}:*`);
-    if (keys.length > 0) {
-      await this.redis.del(keys);
+    // SCAN theo từng lô thay vì KEYS: KEYS quét toàn bộ Redis trong một lệnh và chặn
+    // mọi client khác (rate limit, pub/sub) cho tới khi xong.
+    const stream = this.redis.scanStream({ match: `ability:${serverId}:*`, count: 200 });
+    for await (const keys of stream as AsyncIterable<string[]>) {
+      if (keys.length > 0) {
+        await this.redis.del(keys);
+      }
     }
   }
 
