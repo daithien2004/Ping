@@ -1,7 +1,11 @@
 import { z } from 'zod';
 
+// Email không phân biệt hoa/thường: chuẩn hóa TRƯỚC khi validate (zod 4 chạy
+// .trim() sau check định dạng nếu viết z.email().trim()).
+const emailSchema = z.string().trim().toLowerCase().pipe(z.email().max(254));
+
 export const registerSchema = z.object({
-  email: z.email().max(254),
+  email: emailSchema,
   username: z
     .string()
     .min(3)
@@ -13,7 +17,7 @@ export const registerSchema = z.object({
 export type RegisterInput = z.infer<typeof registerSchema>;
 
 export const loginSchema = z.object({
-  email: z.email(),
+  email: emailSchema,
   password: z.string().min(1).max(128),
 });
 export type LoginInput = z.infer<typeof loginSchema>;

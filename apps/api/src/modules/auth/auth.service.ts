@@ -11,7 +11,7 @@ import { PinoLogger } from 'nestjs-pino';
 import type { LoginInput, RegisterInput } from '@ping/shared';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
 import { isUniqueConstraintError } from '../../common/utils/prisma-errors.js';
-import { REFRESH_TOKEN_TTL_MS } from './auth.constants.js';
+import { REFRESH_REUSE_GRACE_MS, REFRESH_TOKEN_TTL_MS } from './auth.constants.js';
 import type { AuthenticatedUser } from './current-user.decorator.js';
 
 /** Chỉ các trường an toàn với client — passwordHash không bao giờ leave service này. */
@@ -122,6 +122,12 @@ export class AuthService {
       avatarUrl: found.avatarUrl,
       createdAt: found.createdAt,
     };
+    // Dọn session đã hết hạn của user mỗi lần đăng nhập — bảng Session không phình mãi
+    // mà không cần job định kỳ. Session revoke nhưng chưa hết hạn được GIỮ lại để
+    // còn phát hiện token bị đánh cắp dùng lại.
+    await this.prisma.session.deleteMany({
+      where: { userId: found.id, expiresAt: { lt: new Date() } },
+    });
     const tokens = await this.issueTokens(found.id, found.username, ctx);
     return { user: publicUser, ...tokens };
   }
@@ -143,6 +149,9 @@ export class AuthService {
     // Không biết kẻ giữ token cũ hay session mới — an toàn nhất là kill cả hai:
     // revoke MỌI session còn sống của user, chủ thật sẽ đăng nhập lại từ đầu.
     if (session.revokedAt) {
+      if (Date.now() - session.revokedAt.getTime() < REFRESH_REUSE_GRACE_MS) {
+        throw new UnauthorizedException('Refresh token already rotated');
+      }
       const revoked = await this.prisma.session.updateMany({
         where: { userId: session.userId, revokedAt: null },
         data: { revokedAt: new Date() },
@@ -158,11 +167,15 @@ export class AuthService {
       throw new UnauthorizedException('Refresh token expired');
     }
 
-    // Rotation: session cũ đóng lại, token mới mở session mới.
-    await this.prisma.session.update({
-      where: { id: session.id },
+    // Rotation: session cũ đóng lại, token mới mở session mới. Điều kiện revokedAt: null
+    // làm việc đóng là nguyên tử: hai refresh đồng thời thì chỉ một bên thắng.
+    const { count } = await this.prisma.session.updateMany({
+      where: { id: session.id, revokedAt: null },
       data: { revokedAt: new Date() },
     });
+    if (count === 0) {
+      throw new UnauthorizedException('Refresh token already rotated');
+    }
     return this.issueTokens(session.userId, session.user.username, ctx);
   }
 
