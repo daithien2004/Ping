@@ -1,10 +1,14 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
+import { AuditService } from '../audit/audit.module.js';
 import type { UpdateChannelInput } from './schemas.js';
 
 @Injectable()
 export class ChannelsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService,
+  ) {}
 
   create(serverId: string, name: string) {
     return this.prisma.$transaction(async (tx) => {
@@ -34,10 +38,19 @@ export class ChannelsService {
     return this.prisma.channel.update({ where: { id: channel.id }, data: input });
   }
 
-  async remove(channelId: string): Promise<{ id: string }> {
+  async remove(channelId: string, actorId: string): Promise<{ id: string }> {
     const channel = await this.getChannel(channelId);
     // Cascade khai báo trong schema: xóa channel kéo toàn bộ tin nhắn theo.
-    await this.prisma.channel.delete({ where: { id: channel.id } });
+    await this.prisma.$transaction([
+      this.prisma.channel.delete({ where: { id: channel.id } }),
+      this.audit.record({
+        serverId: channel.serverId,
+        actorId,
+        action: 'CHANNEL_DELETE',
+        targetId: channel.id,
+        metadata: { name: channel.name },
+      }),
+    ]);
     return { id: channelId };
   }
 

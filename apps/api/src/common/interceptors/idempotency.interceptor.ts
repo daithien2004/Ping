@@ -10,6 +10,7 @@ import type { Request } from 'express';
 import { catchError, from, mergeMap, type Observable, of } from 'rxjs';
 import { z } from 'zod';
 import { RedisProvider } from '../../infra/redis/redis.module.js';
+import { ErrorCodes } from '@ping/shared';
 
 const PENDING = '__pending__';
 const TTL_SECONDS = 24 * 60 * 60;
@@ -35,7 +36,7 @@ export class IdempotencyInterceptor implements NestInterceptor {
     }
     if (!uuid.safeParse(key).success) {
       throw new BadRequestException({
-        code: 'VALIDATION_ERROR',
+        code: ErrorCodes.VALIDATION_ERROR,
         message: 'Idempotency-Key must be a UUID',
       });
     }

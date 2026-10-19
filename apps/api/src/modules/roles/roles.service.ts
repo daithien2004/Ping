@@ -7,6 +7,7 @@ import {
 import { canManageMember, canManagePermissions } from '@ping/shared';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
 import { AbilityFactory } from '../ability/ability.factory.js';
+import { AuditService } from '../audit/audit.module.js';
 import { RealtimeService } from '../realtime/realtime.service.js';
 import type { CreateRoleInput, UpdateRoleInput } from './schemas.js';
 
@@ -14,19 +15,38 @@ import type { CreateRoleInput, UpdateRoleInput } from './schemas.js';
  * Guard chỉ đảm bảo người gọi có MANAGE_ROLES. Service kiểm tra thêm ĐỐI TƯỢNG:
  * không ai cấp, sửa, xóa hay gán được quyền mạnh hơn quyền của chính mình (ADR-0004).
  */
+/** Trạng thái role ghi vào audit: permissions là bigint, JSON chỉ nhận string. */
+function snapshot(role: { name: string; permissions: bigint; position: number }) {
+  return { name: role.name, permissions: role.permissions.toString(), position: role.position };
+}
+
 @Injectable()
 export class RolesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly abilityFactory: AbilityFactory,
     private readonly realtime: RealtimeService,
+    private readonly audit: AuditService,
   ) {}
 
   async create(serverId: string, actorId: string, input: CreateRoleInput) {
     const permissions = input.permissions ?? 0n;
     await this.assertCanManage(serverId, actorId, permissions);
-    return this.prisma.role.create({
-      data: { serverId, name: input.name, permissions, position: input.position ?? 0 },
+    return this.prisma.$transaction(async (tx) => {
+      const role = await tx.role.create({
+        data: { serverId, name: input.name, permissions, position: input.position ?? 0 },
+      });
+      await this.audit.record(
+        {
+          serverId,
+          actorId,
+          action: 'ROLE_CREATE',
+          targetId: role.id,
+          metadata: { name: role.name, permissions: role.permissions.toString() },
+        },
+        tx,
+      );
+      return role;
     });
   }
 
@@ -47,7 +67,20 @@ export class RolesService {
       role.permissions | (input.permissions ?? 0n),
     );
     // @everyone sửa quyền được (Discord cũng vậy) — chỉ cấm XÓA.
-    const updated = await this.prisma.role.update({ where: { id: role.id }, data: input });
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const after = await tx.role.update({ where: { id: role.id }, data: input });
+      await this.audit.record(
+        {
+          serverId: role.serverId,
+          actorId,
+          action: 'ROLE_UPDATE',
+          targetId: role.id,
+          metadata: { before: snapshot(role), after: snapshot(after) },
+        },
+        tx,
+      );
+      return after;
+    });
     // Quyền của mọi member có role này đổi → cache ability của cả server phải chết.
     await this.abilityFactory.invalidateServer(role.serverId);
     await this.realtime.refreshAccess(role.serverId);
@@ -60,7 +93,16 @@ export class RolesService {
       throw new BadRequestException('The @everyone role cannot be deleted');
     }
     await this.assertCanManage(role.serverId, actorId, role.permissions);
-    await this.prisma.role.delete({ where: { id: role.id } });
+    await this.prisma.$transaction([
+      this.prisma.role.delete({ where: { id: role.id } }),
+      this.audit.record({
+        serverId: role.serverId,
+        actorId,
+        action: 'ROLE_DELETE',
+        targetId: role.id,
+        metadata: snapshot(role),
+      }),
+    ]);
     await this.abilityFactory.invalidateServer(role.serverId);
     await this.realtime.refreshAccess(role.serverId);
     return { id: roleId };
@@ -95,6 +137,13 @@ export class RolesService {
       this.prisma.memberRole.deleteMany({ where: { memberId, role: { isDefault: false } } }),
       this.prisma.memberRole.createMany({
         data: assignable.map((roleId) => ({ memberId, roleId })),
+      }),
+      this.audit.record({
+        serverId,
+        actorId,
+        action: 'MEMBER_ROLES_UPDATE',
+        targetId: memberId,
+        metadata: { userId: member.userId, roleIds: assignable },
       }),
     ]);
 

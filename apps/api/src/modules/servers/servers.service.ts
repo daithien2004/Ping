@@ -11,6 +11,7 @@ import { randomBytes } from 'node:crypto';
 import { isUniqueConstraintError } from '../../common/utils/prisma-errors.js';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
 import { AbilityFactory } from '../ability/ability.factory.js';
+import { AuditService } from '../audit/audit.module.js';
 import { RealtimeService } from '../realtime/realtime.service.js';
 
 /**
@@ -24,6 +25,7 @@ export class ServersService {
     private readonly prisma: PrismaService,
     private readonly abilityFactory: AbilityFactory,
     private readonly realtime: RealtimeService,
+    private readonly audit: AuditService,
   ) {}
 
   async create(userId: string, name: string) {
@@ -168,7 +170,7 @@ export class ServersService {
   async remove(serverId: string, userId: string): Promise<{ id: string }> {
     const server = await this.prisma.server.findUnique({
       where: { id: serverId },
-      select: { ownerId: true },
+      select: { ownerId: true, name: true },
     });
     if (!server) {
       throw new NotFoundException('Server not found');
@@ -180,7 +182,17 @@ export class ServersService {
     }
 
     // Cascade trong schema dọn channels/messages/roles/members.
-    await this.prisma.server.delete({ where: { id: serverId } });
+    // AuditLog không có khóa ngoại nên bản ghi này còn lại sau khi cascade dọn sạch server.
+    await this.prisma.$transaction([
+      this.prisma.server.delete({ where: { id: serverId } }),
+      this.audit.record({
+        serverId,
+        actorId: userId,
+        action: 'SERVER_DELETE',
+        targetId: serverId,
+        metadata: { name: server.name },
+      }),
+    ]);
     await this.abilityFactory.invalidateServer(serverId);
     return { id: serverId };
   }

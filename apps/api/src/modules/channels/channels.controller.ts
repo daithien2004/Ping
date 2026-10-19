@@ -14,6 +14,7 @@ import { IdempotencyInterceptor } from '../../common/interceptors/idempotency.in
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe.js';
 import { AbilityGuard } from '../ability/ability.guard.js';
 import { CheckAbility } from '../ability/check-ability.decorator.js';
+import { CurrentUser, type AuthenticatedUser } from '../auth/current-user.decorator.js';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { ChannelsService } from './channels.service.js';
 import { updateChannelSchema, type UpdateChannelInput } from './schemas.js';
@@ -51,7 +52,7 @@ export class ChannelsController {
 
   @Delete('channels/:channelId')
   @CheckAbility(['manage', 'Channel'])
-  remove(@Param('channelId') channelId: string) {
-    return this.channelsService.remove(channelId);
+  remove(@CurrentUser() user: AuthenticatedUser, @Param('channelId') channelId: string) {
+    return this.channelsService.remove(channelId, user.userId);
   }
 }

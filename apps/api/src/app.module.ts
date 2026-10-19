@@ -18,6 +18,7 @@ import { PrismaModule } from './infra/prisma/prisma.module.js';
 import { RedisModule, RedisProvider } from './infra/redis/redis.module.js';
 import { RedisThrottlerStorage } from './infra/throttler/redis-throttler.storage.js';
 import { AbilityModule } from './modules/ability/ability.module.js';
+import { AuditModule } from './modules/audit/audit.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { ChannelsModule } from './modules/channels/channels.module.js';
 import { HealthModule } from './modules/health/health.module.js';
@@ -79,6 +80,8 @@ function requestIdFrom(header: string | string[] | undefined): string {
     // AbilityModule toàn cục: AbilityGuard ở mọi module server-scoped resolve
     // AbilityFactory từ đây, không phải provider riêng của từng module.
     AbilityModule,
+    // Toàn cục: service nào làm hành động nhạy cảm cũng ghi AuditLog được.
+    AuditModule,
     ServersModule,
     ChannelsModule,
     RolesModule,

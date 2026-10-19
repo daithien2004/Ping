@@ -142,3 +142,30 @@ model Message {
   // Index quan trọng nhất hệ thống: phân trang cursor (keyset) theo tin mới nhất.
   @@index([channelId, id(sort: Desc)])
 }
+
+/// Lịch sử hành động nhạy cảm (CLAUDE.md quy tắc 11): chỉ ghi thêm, không sửa/xóa.
+/// Không có khóa ngoại: bản ghi phải còn nguyên kể cả khi server/role/tin nhắn bị xóa
+/// (chính việc xóa server cũng là một hành động được ghi lại).
+model AuditLog {
+  id        String      @id @default(uuid(7)) @db.Uuid
+  serverId  String      @db.Uuid
+  actorId   String      @db.Uuid
+  action    AuditAction
+  targetId  String?     @db.Uuid
+  metadata  Json?
+  requestId String?
+  createdAt DateTime    @default(now())
+
+  // Xem lịch sử của một server, mới nhất trước.
+  @@index([serverId, id(sort: Desc)])
+}
+
+enum AuditAction {
+  ROLE_CREATE
+  ROLE_UPDATE
+  ROLE_DELETE
+  MEMBER_ROLES_UPDATE
+  MESSAGE_DELETE
+  CHANNEL_DELETE
+  SERVER_DELETE
+}

@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { z } from 'zod';
+import { ErrorCodes } from '@ping/shared';
 
 const uuid = z.uuid();
 
@@ -29,7 +30,7 @@ export class UuidParamsGuard implements CanActivate {
 
     if (invalid.length > 0) {
       throw new BadRequestException({
-        code: 'VALIDATION_ERROR',
+        code: ErrorCodes.VALIDATION_ERROR,
         message: 'Validation failed',
         details: invalid,
       });

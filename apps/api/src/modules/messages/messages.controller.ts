@@ -62,7 +62,11 @@ export class MessagesController {
   }
 
   @Delete('messages/:messageId')
-  remove(@CurrentAbility() ability: AppAbility, @Param('messageId') messageId: string) {
-    return this.messagesService.remove(messageId, ability);
+  remove(
+    @CurrentUser() user: AuthenticatedUser,
+    @CurrentAbility() ability: AppAbility,
+    @Param('messageId') messageId: string,
+  ) {
+    return this.messagesService.remove(messageId, user.userId, ability);
   }
 }

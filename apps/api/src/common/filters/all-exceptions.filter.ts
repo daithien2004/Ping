@@ -1,19 +1,27 @@
 import { ForbiddenError } from '@casl/ability';
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { ErrorCodes, isErrorCode, type ApiErrorBody, type ErrorCode } from '@ping/shared';
 import type { Request, Response } from 'express';
 import { Logger } from 'nestjs-pino';
 import type { Env } from '../../config/env.schema.js';
 
-const STATUS_CODES: Record<number, string> = {
-  [HttpStatus.BAD_REQUEST]: 'BAD_REQUEST',
-  [HttpStatus.UNAUTHORIZED]: 'UNAUTHORIZED',
-  [HttpStatus.FORBIDDEN]: 'FORBIDDEN',
-  [HttpStatus.NOT_FOUND]: 'NOT_FOUND',
-  [HttpStatus.CONFLICT]: 'CONFLICT',
-  [HttpStatus.TOO_MANY_REQUESTS]: 'TOO_MANY_REQUESTS',
-  [HttpStatus.SERVICE_UNAVAILABLE]: 'SERVICE_UNAVAILABLE',
+const STATUS_CODES: Partial<Record<number, ErrorCode>> = {
+  [HttpStatus.BAD_REQUEST]: ErrorCodes.BAD_REQUEST,
+  [HttpStatus.UNAUTHORIZED]: ErrorCodes.UNAUTHORIZED,
+  [HttpStatus.FORBIDDEN]: ErrorCodes.FORBIDDEN,
+  [HttpStatus.NOT_FOUND]: ErrorCodes.NOT_FOUND,
+  [HttpStatus.CONFLICT]: ErrorCodes.CONFLICT,
+  [HttpStatus.TOO_MANY_REQUESTS]: ErrorCodes.TOO_MANY_REQUESTS,
+  [HttpStatus.SERVICE_UNAVAILABLE]: ErrorCodes.SERVICE_UNAVAILABLE,
 };
+
+/** Mã lỗi cho một status không có code riêng: luôn nằm trong danh mục ErrorCodes. */
+function codeForStatus(status: number): ErrorCode {
+  return (
+    STATUS_CODES[status] ?? (status >= 500 ? ErrorCodes.INTERNAL_ERROR : ErrorCodes.BAD_REQUEST)
+  );
+}
 
 /**
  * Single filter that turns every thrown exception into the uniform error
@@ -35,7 +43,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const isProduction = this.config.get('NODE_ENV') === 'production';
 
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
-    let code = 'INTERNAL_ERROR';
+    let code: ErrorCode | undefined;
     let message: string = 'Internal server error';
     let details: unknown;
     let stack: string | undefined;
@@ -53,7 +61,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
         } else if (Array.isArray(record.message)) {
           details = record.message;
         }
-        if (typeof record.code === 'string') {
+        // Chỉ nhận code thuộc danh mục (quy tắc 14); code tự chế bị thay bằng code theo status.
+        if (isErrorCode(record.code)) {
           code = record.code;
         }
         if (record.details !== undefined) {
@@ -61,9 +70,6 @@ export class AllExceptionsFilter implements ExceptionFilter {
         }
       }
 
-      if (code === 'INTERNAL_ERROR') {
-        code = STATUS_CODES[status] ?? (status >= 500 ? 'INTERNAL_ERROR' : 'ERROR');
-      }
       // A controlled HttpException never carries a stack: the response was
       // built on purpose (e.g. terminus throwing 503 during a readiness
       // probe). Stacks belong only to genuinely unexpected errors below.
@@ -73,7 +79,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     } else if (exception instanceof ForbiddenError) {
       // CASL throwUnlessCan — lỗi "có chủ đích",403 format thống nhất, không stack.
       status = HttpStatus.FORBIDDEN;
-      code = 'FORBIDDEN';
+      code = ErrorCodes.FORBIDDEN;
       message = exception.message;
     } else if (exception instanceof Error) {
       stack = exception.stack;
@@ -82,6 +88,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
         message = 'Internal server error';
       }
     }
+
+    code ??= codeForStatus(status);
 
     if (stack !== undefined) {
       // Not an HttpException: something crashed unexpectedly — keep the stack.
@@ -97,7 +105,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       this.logger.warn({ requestId, status, code, path: request.url }, 'request rejected');
     }
 
-    const payload: Record<string, unknown> = { code, message, requestId };
+    const payload: ApiErrorBody & { stack?: string } = { code, message, requestId };
     if (details !== undefined) {
       payload.details = details;
     }
