@@ -1,5 +1,5 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
-import type { ServerToClientEvents } from '@ping/shared';
+import { ServerEvents, type ServerToClientEvents } from '@ping/shared';
 import { Server } from 'socket.io';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
 import { AbilityFactory } from '../ability/ability.factory.js';
@@ -42,8 +42,9 @@ export class RealtimeService {
   }
 
   /**
-   * Quyền chỉ được kiểm tra lúc `channel.join`, nên khi quyền giảm (rời server, đổi role)
-   * phải chủ động đá socket ra khỏi room — nếu không họ vẫn nhận tin tới khi ngắt kết nối.
+   * Quyền chỉ được kiểm tra lúc `channel.join`, nên khi quyền đổi (rời server, bị kick, đổi role)
+   * phải chủ động đá socket ra khỏi room — nếu không họ vẫn nhận tin tới khi ngắt kết nối —
+   * và báo riêng cho user để client tải lại quyền hoặc rời server khỏi giao diện.
    * Không truyền `userIds` = xét mọi member của server (role đổi quyền ảnh hưởng nhiều người).
    */
   async refreshAccess(serverId: string, userIds?: string[]): Promise<void> {
@@ -64,25 +65,41 @@ export class RealtimeService {
     // ponytail: một lần dựng ability cho mỗi member (có cache Redis); server rất đông thì
     // chỉ xét member mang role vừa đổi, hoặc đẩy việc này vào hàng đợi.
     for (const userId of targets) {
-      const rooms = await this.roomsToLeave(serverId, userId, channelRooms);
-      if (rooms.length > 0) {
-        this.server.in(`user:${userId}`).socketsLeave(rooms);
+      const access = await this.accessOf(serverId, userId);
+      const sockets = this.server.in(`user:${userId}`);
+      if (access === 'removed') {
+        sockets.socketsLeave([...channelRooms, `server:${serverId}`]);
+        this.server.to(`user:${userId}`).emit(ServerEvents.MemberRemoved, { serverId });
+        continue;
       }
+      if (access === 'no-view') {
+        sockets.socketsLeave(channelRooms);
+      }
+      this.server.to(`user:${userId}`).emit(ServerEvents.PermissionsChanged, { serverId });
     }
   }
 
-  private async roomsToLeave(
+  /** Server bị xóa: không còn channel hay member để tra, chỉ báo cho những người từng ở trong đó. */
+  notifyServerDeleted(serverId: string, userIds: string[]): void {
+    if (!this.server) {
+      return;
+    }
+    for (const userId of userIds) {
+      this.server.in(`user:${userId}`).socketsLeave(`server:${serverId}`);
+      this.server.to(`user:${userId}`).emit(ServerEvents.MemberRemoved, { serverId });
+    }
+  }
+
+  private async accessOf(
     serverId: string,
     userId: string,
-    channelRooms: string[],
-  ): Promise<string[]> {
+  ): Promise<'view' | 'no-view' | 'removed'> {
     try {
       const ability = await this.abilityFactory.createForUser(serverId, userId);
-      return ability.can('view', 'Message') ? [] : channelRooms;
+      return ability.can('view', 'Message') ? 'view' : 'no-view';
     } catch (error) {
       if (error instanceof ForbiddenException) {
-        // Không còn là member: rời cả room server (presence).
-        return [...channelRooms, `server:${serverId}`];
+        return 'removed'; // không còn là member
       }
       throw error;
     }

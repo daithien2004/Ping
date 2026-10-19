@@ -6,6 +6,8 @@ export const ServerEvents = {
   MessageDeleted: 'message.deleted',
   TypingStarted: 'typing.started',
   PresenceUpdated: 'presence.updated',
+  PermissionsChanged: 'permissions.changed',
+  MemberRemoved: 'member.removed',
 } as const;
 
 export const ClientEvents = {
@@ -49,6 +51,19 @@ export interface TypingStartedPayload {
   userId: string;
 }
 
+/**
+ * Gửi riêng tới user (room `user:<id>`): quyền của CHÍNH họ trong server có thể đã đổi
+ * (role bị sửa/xóa, được gán role). Client tải lại quyền của server đó.
+ */
+export interface PermissionsChangedPayload {
+  serverId: string;
+}
+
+/** Gửi riêng tới user: họ không còn là member của server (bị kick, tự rời, server bị xóa). */
+export interface MemberRemovedPayload {
+  serverId: string;
+}
+
 export interface PresenceUpdatedPayload {
   userId: string;
   status: 'online' | 'offline';
@@ -66,6 +81,8 @@ export interface ServerToClientEvents {
   [ServerEvents.MessageDeleted]: (payload: MessageDeletedPayload) => void;
   [ServerEvents.TypingStarted]: (payload: TypingStartedPayload) => void;
   [ServerEvents.PresenceUpdated]: (payload: PresenceUpdatedPayload) => void;
+  [ServerEvents.PermissionsChanged]: (payload: PermissionsChangedPayload) => void;
+  [ServerEvents.MemberRemoved]: (payload: MemberRemovedPayload) => void;
 }
 
 export interface ClientToServerEvents {

@@ -53,6 +53,13 @@ export class ServersController {
     return this.serversService.detail(serverId);
   }
 
+  /** Quyền hiệu lực của chính người gọi: frontend dựng CASL ability từ đây để ẩn/hiện nút. */
+  @Get(':serverId/me/permissions')
+  @CheckAbility(['view', 'Server'])
+  myPermissions(@CurrentUser() user: AuthenticatedUser, @Param('serverId') serverId: string) {
+    return this.serversService.myPermissions(serverId, user.userId);
+  }
+
   @Get(':serverId/members')
   @CheckAbility(['view', 'Member'])
   members(@Param('serverId') serverId: string) {
