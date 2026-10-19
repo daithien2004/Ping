@@ -3,6 +3,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { ServerEvents, type AppAbility, type CreateMessageInput } from '@ping/shared';
 import { isUniqueConstraintError } from '../../common/utils/prisma-errors.js';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
+import { AuditService } from '../audit/audit.module.js';
 import { RealtimeService } from '../realtime/realtime.service.js';
 import type { ListMessagesQuery } from './schemas.js';
 
@@ -22,6 +23,7 @@ export class MessagesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeService,
+    private readonly audit: AuditService,
   ) {}
 
   /**
@@ -56,8 +58,10 @@ export class MessagesService {
         id: message.id,
         channelId,
         authorId,
+        author: message.author,
         content: message.content,
         createdAt: message.createdAt.toISOString(),
+        nonce: message.nonce,
       });
       return message;
     } catch (error) {
@@ -96,17 +100,36 @@ export class MessagesService {
     return updated;
   }
 
-  async remove(messageId: string, ability: AppAbility): Promise<{ id: string }> {
+  async remove(messageId: string, actorId: string, ability: AppAbility): Promise<{ id: string }> {
     const message = await this.getMessage(messageId);
     // Tác giả được xóa tin của mình; ai có MANAGE_MESSAGES xóa được tin người khác.
     ForbiddenError.from(ability).throwUnlessCan('delete', subject('Message', message));
 
-    // Soft delete: moderation cần lịch sử, và Bước 9 phát event message.delete
-    // cho client — row phải còn để biết nó từng tồn tại.
-    await this.prisma.message.update({
+    // Soft delete: moderation cần lịch sử, và client cần event message.deleted
+    // — row phải còn để biết nó từng tồn tại.
+    const softDelete = this.prisma.message.update({
       where: { id: message.id },
       data: { deletedAt: new Date() },
     });
+    if (message.authorId === actorId) {
+      await softDelete;
+    } else {
+      // Xóa tin của người khác là hành động moderation: phải có AuditLog (quy tắc 11).
+      const { serverId } = await this.prisma.channel.findUniqueOrThrow({
+        where: { id: message.channelId },
+        select: { serverId: true },
+      });
+      await this.prisma.$transaction([
+        softDelete,
+        this.audit.record({
+          serverId,
+          actorId,
+          action: 'MESSAGE_DELETE',
+          targetId: message.id,
+          metadata: { authorId: message.authorId, channelId: message.channelId },
+        }),
+      ]);
+    }
 
     this.realtime.emitToChannel(message.channelId, ServerEvents.MessageDeleted, {
       id: message.id,
@@ -117,7 +140,10 @@ export class MessagesService {
   }
 
   private async getMessage(messageId: string) {
-    const message = await this.prisma.message.findUnique({ where: { id: messageId } });
+    // Tin đã xóa mềm coi như không còn: không sửa/xóa lại được.
+    const message = await this.prisma.message.findFirst({
+      where: { id: messageId, deletedAt: null },
+    });
     if (!message) {
       throw new NotFoundException('Message not found');
     }

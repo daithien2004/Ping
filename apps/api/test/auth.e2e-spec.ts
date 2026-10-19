@@ -1,6 +1,7 @@
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import cookieParser from 'cookie-parser';
+import { createHash } from 'node:crypto';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AppModule } from '../src/app.module.js';
@@ -25,6 +26,13 @@ function refreshCookieOf(setCookie: string[] | string | undefined): string {
     throw new Error('Malformed Set-Cookie header');
   }
   return nameValue;
+}
+
+/** SHA-256 của giá trị cookie — đúng cách API lưu refresh token trong bảng Session. */
+function tokenHashOf(cookie: string): string {
+  return createHash('sha256')
+    .update(cookie.slice(cookie.indexOf('=') + 1))
+    .digest('hex');
 }
 
 /** Kiểu supertest khai báo set-cookie là string, runtime Express trả string[]. */
@@ -144,6 +152,12 @@ describe('Auth (e2e)', () => {
     expect(cookie2).not.toBe(cookie1);
     expect(typeof rotated.body.accessToken).toBe('string');
 
+    // Dùng lại token cũ SAU cửa sổ ân hạn (lâu hơn một cú refresh đồng thời) mới là đánh cắp.
+    await app.get(PrismaService).session.updateMany({
+      where: { refreshTokenHash: tokenHashOf(cookie1) },
+      data: { revokedAt: new Date(Date.now() - 60_000) },
+    });
+
     // Reuse: đưa lại cookie đã bị xoay vòng → 401...
     const reused = await request(app.getHttpServer())
       .post('/api/v1/auth/refresh')
@@ -156,6 +170,27 @@ describe('Auth (e2e)', () => {
       .post('/api/v1/auth/refresh')
       .set('Cookie', cookie2)
       .expect(401);
+  });
+
+  it('email không phân biệt hoa/thường; hai refresh đồng thời không đăng xuất user', async () => {
+    const { email, username } = trackUser();
+    const mixedCase = `  ${email.toUpperCase()} `;
+
+    const registered = await register(mixedCase, username).expect(201);
+    expect(registered.body.user.email).toBe(email);
+    const loginRes = await login(email, 'password123').expect(200);
+    const cookie1 = refreshCookieOf(loginRes.headers['set-cookie']);
+
+    // Hai tab cùng hết hạn access token và cùng refresh bằng một cookie.
+    const refresh = (cookie: string) =>
+      request(app.getHttpServer()).post('/api/v1/auth/refresh').set('Cookie', cookie);
+    const results = await Promise.all([refresh(cookie1), refresh(cookie1)]);
+    expect(results.map((res) => res.status).sort()).toEqual([200, 401]);
+
+    // Bên thắng giữ được phiên: không bị coi là token bị đánh cắp.
+    const winner = results.find((res) => res.status === 200);
+    const cookie2 = refreshCookieOf(winner?.headers['set-cookie']);
+    await refresh(cookie2).expect(200);
   });
 
   it('POST /auth/logout — 204, xóa cookie, session hết hiệu lực', async () => {

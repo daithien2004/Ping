@@ -1,6 +1,6 @@
 import { subject } from '@casl/ability';
 import { describe, expect, it } from 'vitest';
-import { defineAbilityFor } from './ability';
+import { canManageMember, canManagePermissions, defineAbilityFor } from './ability';
 import { Permissions } from './permissions';
 
 const memberPermissions = Permissions.VIEW_CHANNEL | Permissions.SEND_MESSAGES;
@@ -138,5 +138,42 @@ describe('defineAbilityFor', () => {
     expect(ability.can('view', 'Server')).toBe(true);
     expect(ability.can('view', 'Member')).toBe(true);
     expect(ability.can('create', 'Message')).toBe(false);
+  });
+});
+
+describe('canManagePermissions / canManageMember', () => {
+  const manager = {
+    userId: 'manager',
+    isOwner: false,
+    permissions: memberPermissions | Permissions.MANAGE_ROLES,
+  };
+  const owner = { userId: 'owner', isOwner: true, permissions: memberPermissions };
+  const admin = { userId: 'admin', isOwner: false, permissions: Permissions.ADMINISTRATOR };
+
+  it('lets a role manager grant only a subset of their own permissions', () => {
+    expect(canManagePermissions(manager, Permissions.VIEW_CHANNEL)).toBe(true);
+    expect(canManagePermissions(manager, manager.permissions)).toBe(true);
+    expect(canManagePermissions(manager, Permissions.ADMINISTRATOR)).toBe(false);
+    expect(canManagePermissions(manager, Permissions.MANAGE_CHANNELS)).toBe(false);
+  });
+
+  it('requires MANAGE_ROLES even for permissions the member already has', () => {
+    const plain = { userId: 'plain', isOwner: false, permissions: memberPermissions };
+    expect(canManagePermissions(plain, Permissions.VIEW_CHANNEL)).toBe(false);
+  });
+
+  it('lets owners and administrators grant anything', () => {
+    expect(canManagePermissions(owner, Permissions.ADMINISTRATOR)).toBe(true);
+    expect(canManagePermissions(admin, Permissions.ADMINISTRATOR)).toBe(true);
+  });
+
+  it('protects the owner and anyone stronger than the actor', () => {
+    expect(canManageMember(manager, owner)).toBe(false);
+    expect(canManageMember(admin, owner)).toBe(false);
+    expect(canManageMember(owner, owner)).toBe(true);
+    expect(canManageMember(manager, admin)).toBe(false);
+    expect(
+      canManageMember(manager, { userId: 'x', isOwner: false, permissions: memberPermissions }),
+    ).toBe(true);
   });
 });

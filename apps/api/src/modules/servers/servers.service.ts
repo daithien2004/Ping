@@ -8,8 +8,11 @@ import {
 } from '@nestjs/common';
 import { Permissions } from '@ping/shared';
 import { randomBytes } from 'node:crypto';
+import { isUniqueConstraintError } from '../../common/utils/prisma-errors.js';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
 import { AbilityFactory } from '../ability/ability.factory.js';
+import { AuditService } from '../audit/audit.module.js';
+import { RealtimeService } from '../realtime/realtime.service.js';
 
 /**
  * Tạo server trong MỘT lần insert lồng nhau (guide 10.1): server + role
@@ -21,6 +24,8 @@ export class ServersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly abilityFactory: AbilityFactory,
+    private readonly realtime: RealtimeService,
+    private readonly audit: AuditService,
   ) {}
 
   async create(userId: string, name: string) {
@@ -120,14 +125,23 @@ export class ServersService {
     });
 
     // Member mới luôn nhận role @everyone — không ai "vô hình" trong server.
-    const member = await this.prisma.member.create({
-      data: {
-        serverId: server.id,
-        userId,
-        roles: everyone ? { create: { roleId: everyone.id } } : undefined,
-      },
-      include: { roles: { select: { role: { select: { id: true, name: true } } } } },
-    });
+    let member;
+    try {
+      member = await this.prisma.member.create({
+        data: {
+          serverId: server.id,
+          userId,
+          roles: everyone ? { create: { roleId: everyone.id } } : undefined,
+        },
+        include: { roles: { select: { role: { select: { id: true, name: true } } } } },
+      });
+    } catch (error) {
+      // Hai request join đồng thời cùng lọt qua check `existing`: unique (serverId, userId) chặn.
+      if (isUniqueConstraintError(error)) {
+        throw new ConflictException('You are already a member of this server');
+      }
+      throw error;
+    }
 
     return { server: { id: server.id, name: server.name, inviteCode: server.inviteCode }, member };
   }
@@ -149,12 +163,14 @@ export class ServersService {
     await this.prisma.member.delete({ where: { id: member.id } });
     // Không còn member: cache ability của user trong server này phải chết ngay.
     await this.abilityFactory.invalidateMember(serverId, userId);
+    // Socket đang mở của user phải rời room của server ngay, không đợi ngắt kết nối.
+    await this.realtime.refreshAccess(serverId, [userId]);
   }
 
   async remove(serverId: string, userId: string): Promise<{ id: string }> {
     const server = await this.prisma.server.findUnique({
       where: { id: serverId },
-      select: { ownerId: true },
+      select: { ownerId: true, name: true },
     });
     if (!server) {
       throw new NotFoundException('Server not found');
@@ -166,7 +182,17 @@ export class ServersService {
     }
 
     // Cascade trong schema dọn channels/messages/roles/members.
-    await this.prisma.server.delete({ where: { id: serverId } });
+    // AuditLog không có khóa ngoại nên bản ghi này còn lại sau khi cascade dọn sạch server.
+    await this.prisma.$transaction([
+      this.prisma.server.delete({ where: { id: serverId } }),
+      this.audit.record({
+        serverId,
+        actorId: userId,
+        action: 'SERVER_DELETE',
+        targetId: serverId,
+        metadata: { name: server.name },
+      }),
+    ]);
     await this.abilityFactory.invalidateServer(serverId);
     return { id: serverId };
   }

@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 export const ServerEvents = {
   MessageCreated: 'message.created',
   MessageUpdated: 'message.updated',
@@ -12,12 +14,22 @@ export const ClientEvents = {
   Typing: 'typing',
 } as const;
 
+export interface MessageAuthor {
+  id: string;
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+}
+
 export interface MessageCreatedPayload {
   id: string;
   channelId: string;
   authorId: string;
+  author: MessageAuthor;
   content: string;
   createdAt: string;
+  /** Nonce của client gửi: khớp tin optimistic với tin thật. null với tin không có nonce. */
+  nonce: string | null;
 }
 
 export interface MessageUpdatedPayload {
@@ -42,17 +54,11 @@ export interface PresenceUpdatedPayload {
   status: 'online' | 'offline';
 }
 
-export interface ChannelJoinPayload {
-  channelId: string;
-}
-
-export interface ChannelLeavePayload {
-  channelId: string;
-}
-
-export interface TypingPayload {
-  channelId: string;
-}
+/** Payload client gửi lên chỉ là dữ liệu chưa tin cậy: gateway parse bằng schema này. */
+export const channelEventSchema = z.object({ channelId: z.uuid() });
+export type ChannelJoinPayload = z.infer<typeof channelEventSchema>;
+export type ChannelLeavePayload = z.infer<typeof channelEventSchema>;
+export type TypingPayload = z.infer<typeof channelEventSchema>;
 
 export interface ServerToClientEvents {
   [ServerEvents.MessageCreated]: (payload: MessageCreatedPayload) => void;

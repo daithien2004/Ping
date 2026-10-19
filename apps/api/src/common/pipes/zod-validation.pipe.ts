@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, type PipeTransform } from '@nestjs/common';
 import { ZodType } from 'zod';
+import { ErrorCodes } from '@ping/shared';
 
 /**
  * Validates a request payload with a Zod schema (typically one imported
@@ -14,7 +15,7 @@ export class ZodValidationPipe implements PipeTransform {
     const result = this.schema.safeParse(value);
     if (!result.success) {
       throw new BadRequestException({
-        code: 'VALIDATION_ERROR',
+        code: ErrorCodes.VALIDATION_ERROR,
         message: 'Validation failed',
         details: result.error.issues.map((issue) => ({
           path: issue.path.join('.'),

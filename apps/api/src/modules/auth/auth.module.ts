@@ -14,7 +14,7 @@ import { AuthService } from './auth.service.js';
       global: true,
       inject: [ConfigService],
       useFactory: (config: ConfigService<Env, true>) => ({
-        secret: config.getOrThrow('JWT_ACCESS_SECRET'),
+        secret: config.getOrThrow('JWT_ACCESS_SECRET', { infer: true }),
         signOptions: { expiresIn: ACCESS_TOKEN_TTL },
       }),
     }),

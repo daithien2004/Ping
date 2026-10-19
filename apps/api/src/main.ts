@@ -1,5 +1,6 @@
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 import { Logger } from 'nestjs-pino';
@@ -10,14 +11,16 @@ import { RedisProvider } from './infra/redis/redis.module.js';
 import { RedisIoAdapter } from './infra/socket/redis-io.adapter.js';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { bufferLogs: true });
   app.useLogger(app.get(Logger));
   app.flushLogs();
 
   const config = app.get(ConfigService<Env, true>);
-  const nodeEnv = config.getOrThrow('NODE_ENV');
-  const port = config.getOrThrow('PORT');
-  const webOrigin = config.getOrThrow('WEB_ORIGIN');
+  const nodeEnv = config.getOrThrow('NODE_ENV', { infer: true });
+  const port = config.getOrThrow('PORT', { infer: true });
+  const webOrigin = config.getOrThrow('WEB_ORIGIN', { infer: true });
+
+  app.set('trust proxy', config.getOrThrow('TRUST_PROXY', { infer: true }));
 
   app.use(helmet());
   // Đọc cookie httpOnly (refresh token) — req.cookies do cookie-parser gắn vào.
@@ -29,7 +32,7 @@ async function bootstrap() {
   // Redis adapter cho Socket.IO (cluster/multi-instance) — dùng pub/sub cùng Redis.
   // Truyền `app` để WS share HTTP server (cùng cổng REST) thay vì mở cổng riêng.
   const redis = app.get(RedisProvider);
-  app.useWebSocketAdapter(new RedisIoAdapter(app, redis, redis.duplicate()));
+  app.useWebSocketAdapter(new RedisIoAdapter(app, redis, redis.duplicate(), webOrigin));
 
   if (nodeEnv !== 'production') {
     const swaggerConfig = new DocumentBuilder()

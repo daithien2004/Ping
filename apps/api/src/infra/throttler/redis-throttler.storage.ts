@@ -9,15 +9,31 @@ import { RedisProvider } from '../redis/redis.module.js';
 type ThrottlerStorageRecord = Awaited<ReturnType<ThrottlerStorage['increment']>>;
 
 /**
+ * Một lần gọi, chạy nguyên tử trên Redis: tăng bộ đếm, mở window nếu là hit đầu,
+ * bật cờ block khi vượt limit. Trả về [số hit, ms còn lại của window, ms còn lại của block (≤ 0 = không block)].
+ * KEYS[1] = bộ đếm, KEYS[2] = cờ block; ARGV = ttl ms, limit, blockDuration ms.
+ */
+const INCREMENT_SCRIPT = `
+local hits = redis.call('INCR', KEYS[1])
+local ttl = redis.call('PTTL', KEYS[1])
+if ttl < 0 then
+  redis.call('PEXPIRE', KEYS[1], ARGV[1])
+  ttl = tonumber(ARGV[1])
+end
+local blockTtl = redis.call('PTTL', KEYS[2])
+if blockTtl <= 0 and hits > tonumber(ARGV[2]) then
+  redis.call('SET', KEYS[2], '1', 'PX', ARGV[3])
+  blockTtl = tonumber(ARGV[3])
+end
+return { hits, ttl, blockTtl }
+`;
+
+/**
  * Fixed-window counter trên Redis.
  *
  * Vào:  ttl / blockDuration là MILLISECONDS (guard dịch từ cấu hình module).
  * Ra:   timeToExpire / timeToBlockExpire là SECONDS — guard gán thẳng vào
  *       header X-RateLimit-Reset và Retry-After (chuẩn HTTP dùng giây).
- *
- * Lưu ý atomicity: INCR rồi mới PEXPIRE không phải transaction — hai lời gọi
- * cùng lúc có thể đua nhau. Vết race ở đây vô hại (cùng lắm window lệch vài ms);
- * hardening thật sự bằng Lua script là bài nâng cao sau.
  */
 @Injectable()
 export class RedisThrottlerStorage implements ThrottlerStorage {
@@ -31,41 +47,22 @@ export class RedisThrottlerStorage implements ThrottlerStorage {
     throttlerName: string,
   ): Promise<ThrottlerStorageRecord> {
     const hitsKey = `throttle:${throttlerName}:${key}`;
-    const blockKey = `${hitsKey}:block`;
+    const [totalHits, counterTtl, blockTtl] = (await this.redis.eval(
+      INCREMENT_SCRIPT,
+      2,
+      hitsKey,
+      `${hitsKey}:block`,
+      ttl,
+      limit,
+      blockDuration,
+    )) as [number, number, number];
 
-    const [totalHits, counterTtl, blockTtl] = await Promise.all([
-      this.redis.incr(hitsKey),
-      this.redis.pttl(hitsKey), // ms; -1 = key chưa có expiry
-      this.redis.pttl(blockKey),
-    ]);
-
-    // Lần đầu của window (hoặc counter mất ttl do crash giữa chừng) → mở window.
-    if (counterTtl < 0) {
-      await this.redis.pexpire(hitsKey, ttl);
-    }
-
-    const timeToExpire = counterTtl > 0 ? Math.ceil(counterTtl / 1000) : Math.ceil(ttl / 1000);
-
-    if (blockTtl > 0) {
-      // Vẫn trong vùng block của lần vượt limit trước.
-      return {
-        totalHits,
-        timeToExpire,
-        isBlocked: true,
-        timeToBlockExpire: Math.ceil(blockTtl / 1000),
-      };
-    }
-
-    if (totalHits > limit) {
-      await this.redis.set(blockKey, '1', 'PX', blockDuration);
-      return {
-        totalHits,
-        timeToExpire,
-        isBlocked: true,
-        timeToBlockExpire: Math.ceil(blockDuration / 1000),
-      };
-    }
-
-    return { totalHits, timeToExpire, isBlocked: false, timeToBlockExpire: 0 };
+    const isBlocked = blockTtl > 0;
+    return {
+      totalHits,
+      timeToExpire: Math.ceil(counterTtl / 1000),
+      isBlocked,
+      timeToBlockExpire: isBlocked ? Math.ceil(blockTtl / 1000) : 0,
+    };
   }
 }

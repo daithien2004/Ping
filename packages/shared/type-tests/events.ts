@@ -7,8 +7,10 @@ export function checkEventContracts(server: ServerToClientEvents, client: Client
     id: 'message-01',
     channelId: 'channel-01',
     authorId: 'user-A',
+    author: { id: 'user-A', username: 'alice', displayName: 'Alice', avatarUrl: null },
     content: 'Hello',
     createdAt: '2026-10-18T03:00:00.000Z',
+    nonce: null,
   });
   server[ServerEvents.MessageUpdated]({
     id: 'message-01',

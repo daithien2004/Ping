@@ -9,3 +9,9 @@ export const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
 /** Path giới hạn cookie ở nhóm auth — chỉ refresh/logout cần gửi kèm, tin nhắn không cần. */
 export const REFRESH_COOKIE_PATH = '/api/v1/auth';
+
+/**
+ * Token vừa bị xoay vòng trong khoảng này mà xuất hiện lại = hai request refresh đồng thời
+ * (hai tab), không phải bị đánh cắp: trả 401 nhưng KHÔNG revoke mọi session.
+ */
+export const REFRESH_REUSE_GRACE_MS = 10_000;

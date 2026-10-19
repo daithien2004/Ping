@@ -65,3 +65,29 @@ export function defineAbilityFor(ctx: AbilityContext): AppAbility {
 
   return build();
 }
+
+/**
+ * Được đụng tới một tập bit quyền không: cấp nó trong role, sửa/xóa role mang nó,
+ * gán role mang nó. CASL không diễn đạt được "tập con bitmask" nên luật nằm ở đây,
+ * cạnh defineAbilityFor (ADR-0004).
+ *
+ * Owner/admin luôn được. Người khác cần MANAGE_ROLES và tập bit phải nằm trong
+ * quyền của chính mình — không ai trao được thứ mình không có.
+ */
+export function canManagePermissions(ctx: AbilityContext, permissions: bigint): boolean {
+  if (ctx.isOwner || hasPermission(ctx.permissions, Permissions.ADMINISTRATOR)) {
+    return true;
+  }
+  return (
+    hasPermission(ctx.permissions, Permissions.MANAGE_ROLES) &&
+    (permissions & ~ctx.permissions) === 0n
+  );
+}
+
+/** Được đổi role của member `target` không: chỉ owner đụng được owner; còn lại so quyền như trên. */
+export function canManageMember(actor: AbilityContext, target: AbilityContext): boolean {
+  if (target.isOwner) {
+    return actor.isOwner;
+  }
+  return canManagePermissions(actor, target.permissions);
+}

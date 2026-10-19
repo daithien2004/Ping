@@ -1,3 +1,5 @@
+import { ForbiddenException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import {
   ConnectedSocket,
   MessageBody,
@@ -8,7 +10,12 @@ import {
   WebSocketGateway,
   WebSocketServer,
 } from '@nestjs/websockets';
-import { ClientEvents, ServerEvents, type ServerToClientEvents } from '@ping/shared';
+import {
+  ClientEvents,
+  ServerEvents,
+  channelEventSchema,
+  type ServerToClientEvents,
+} from '@ping/shared';
 import { Logger } from 'nestjs-pino';
 import { Server, Socket } from 'socket.io';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
@@ -16,20 +23,19 @@ import { AbilityFactory } from '../ability/ability.factory.js';
 import { AuthService } from '../auth/auth.service.js';
 import { RealtimeService } from './realtime.service.js';
 
+/** Khoảng tối thiểu giữa hai event typing của một socket. */
+const TYPING_INTERVAL_MS = 1000;
+
 type AuthSocket = Socket & {
   data: {
+    // socket.data được serialize khi instance khác gọi fetchSockets(): chỉ để dữ liệu JSON thuần.
     userId?: string;
+    lastTypingAt?: number;
   };
 };
 
-@WebSocketGateway({
-  namespace: '/',
-  cors: {
-    origin: process.env.WEB_ORIGIN,
-    credentials: true,
-  },
-  transports: ['websocket'],
-})
+// CORS được cấu hình trong RedisIoAdapter (lấy từ ConfigService), không ở đây.
+@WebSocketGateway({ namespace: '/', transports: ['websocket'] })
 export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server!: Server<ServerToClientEvents>;
@@ -38,6 +44,7 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
 
   constructor(
     private readonly authService: AuthService,
+    private readonly jwt: JwtService,
     private readonly prisma: PrismaService,
     private readonly abilityFactory: AbilityFactory,
     private readonly realtimeService: RealtimeService,
@@ -61,12 +68,21 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
 
       const payload = await this.authService.verifyAccessToken(token);
       socket.data.userId = payload.userId;
+      // JWT chỉ được kiểm tra lúc handshake: ngắt socket đúng lúc token hết hạn,
+      // client phải refresh rồi kết nối lại với token mới.
+      const exp = this.jwt.decode<{ exp?: number } | null>(token)?.exp;
+      if (exp !== undefined) {
+        const timer = setTimeout(
+          () => socket.disconnect(true),
+          Math.max(0, exp * 1000 - Date.now()),
+        );
+        socket.once('disconnect', () => clearTimeout(timer));
+      }
       await socket.join(`user:${payload.userId}`);
 
-      const count = await this.realtimeService.addUserConnection(payload.userId);
-      if (count === 1) {
-        await this.broadcastPresence(payload.userId, 'online');
-      }
+      // Phát online ở MỌI lần kết nối: idempotent với client, và tránh đua khi hai tab
+      // cùng kết nối (cả hai cùng thấy "đã có 2 socket" thì không ai báo online).
+      await this.broadcastPresence(payload.userId, 'online');
       this.logger.debug({ sid: socket.id, userId: payload.userId }, 'ws: connected');
     } catch (error) {
       this.logger.warn({ sid: socket.id, err: (error as Error).message }, 'ws: auth failed');
@@ -79,70 +95,90 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
     if (!userId) {
       return;
     }
-    const count = await this.realtimeService.removeUserConnection(userId);
-    if (count === 0) {
-      await this.broadcastPresence(userId, 'offline');
+    try {
+      // Socket đã rời mọi room khi tới đây: còn 0 socket nghĩa là tab cuối vừa đóng.
+      if ((await this.realtimeService.countUserSockets(userId)) === 0) {
+        await this.broadcastPresence(userId, 'offline');
+      }
+      this.logger.debug({ sid: socket.id, userId }, 'ws: disconnected');
+    } catch (error) {
+      // Lúc app tắt, Nest đóng Redis/Prisma (onModuleDestroy) TRƯỚC khi đóng Socket.IO, nên
+      // các socket bị ngắt lúc đó không còn Redis để đếm. Nest không await handler này:
+      // để lỗi bay ra là unhandled rejection.
+      this.logger.warn(
+        { sid: socket.id, userId, err: (error as Error).message },
+        'ws: presence update skipped',
+      );
     }
-    this.logger.debug({ sid: socket.id, userId }, 'ws: disconnected');
   }
 
   @SubscribeMessage(ClientEvents.ChannelJoin)
   async handleChannelJoin(
     @ConnectedSocket() socket: AuthSocket,
-    @MessageBody() payload: { channelId: string } | undefined,
+    @MessageBody() body: unknown,
   ): Promise<void> {
     const userId = socket.data.userId;
-    if (!userId) {
-      socket.disconnect(true);
+    const parsed = channelEventSchema.safeParse(body);
+    if (!userId || !parsed.success) {
       return;
     }
-
-    const channelId = payload?.channelId;
-    if (!channelId) {
-      return;
-    }
+    const { channelId } = parsed.data;
 
     const channel = await this.prisma.channel.findUnique({
       where: { id: channelId },
-      select: { id: true, serverId: true },
+      select: { serverId: true },
     });
     if (!channel) {
       return;
     }
 
+    let canView: boolean;
     try {
-      // Chỉ member có quyền view channel mới được vào room để nhận message/typing.
-      await this.abilityFactory.createForUser(channel.serverId, userId);
-      await socket.join(`channel:${channelId}`);
-      await socket.join(`server:${channel.serverId}`);
-    } catch {
-      // Không có quyền → im lặng hoặc có thể trả lỗi; lặng để tránh lộ server/channel.
+      const ability = await this.abilityFactory.createForUser(channel.serverId, userId);
+      canView = ability.can('view', 'Message');
+    } catch (error) {
+      if (!(error instanceof ForbiddenException)) {
+        throw error;
+      }
+      canView = false; // không phải member
     }
+    // Im lặng khi không có quyền: không tiết lộ channel/server có tồn tại hay không.
+    if (!canView) {
+      return;
+    }
+    await socket.join([`channel:${channelId}`, `server:${channel.serverId}`]);
   }
 
   @SubscribeMessage(ClientEvents.ChannelLeave)
   async handleChannelLeave(
     @ConnectedSocket() socket: AuthSocket,
-    @MessageBody() payload: { channelId: string } | undefined,
+    @MessageBody() body: unknown,
   ): Promise<void> {
-    const channelId = payload?.channelId;
-    if (channelId) {
-      await socket.leave(`channel:${channelId}`);
+    const parsed = channelEventSchema.safeParse(body);
+    if (parsed.success) {
+      await socket.leave(`channel:${parsed.data.channelId}`);
     }
   }
 
   @SubscribeMessage(ClientEvents.Typing)
-  async handleTyping(
-    @ConnectedSocket() socket: AuthSocket,
-    @MessageBody() payload: { channelId: string } | undefined,
-  ): Promise<void> {
+  handleTyping(@ConnectedSocket() socket: AuthSocket, @MessageBody() body: unknown): void {
     const userId = socket.data.userId;
-    const channelId = payload?.channelId;
-    if (!userId || !channelId) {
+    const parsed = channelEventSchema.safeParse(body);
+    if (!userId || !parsed.success) {
       return;
     }
-    this.server.to(`channel:${channelId}`).emit(ServerEvents.TypingStarted, {
-      channelId,
+    const room = `channel:${parsed.data.channelId}`;
+    // Chỉ người đang ở trong room (đã qua kiểm tra quyền lúc join) mới được báo đang gõ.
+    if (!socket.rooms.has(room)) {
+      return;
+    }
+    const now = Date.now();
+    if (now - (socket.data.lastTypingAt ?? 0) < TYPING_INTERVAL_MS) {
+      return;
+    }
+    socket.data.lastTypingAt = now;
+    this.server.to(room).emit(ServerEvents.TypingStarted, {
+      channelId: parsed.data.channelId,
       userId,
     });
   }

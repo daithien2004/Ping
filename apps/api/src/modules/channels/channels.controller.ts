@@ -1,8 +1,20 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
 import { createChannelSchema, type CreateChannelInput } from '@ping/shared';
+import { IdempotencyInterceptor } from '../../common/interceptors/idempotency.interceptor.js';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe.js';
 import { AbilityGuard } from '../ability/ability.guard.js';
 import { CheckAbility } from '../ability/check-ability.decorator.js';
+import { CurrentUser, type AuthenticatedUser } from '../auth/current-user.decorator.js';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { ChannelsService } from './channels.service.js';
 import { updateChannelSchema, type UpdateChannelInput } from './schemas.js';
@@ -15,6 +27,7 @@ export class ChannelsController {
 
   @Post('servers/:serverId/channels')
   @CheckAbility(['manage', 'Channel'])
+  @UseInterceptors(IdempotencyInterceptor)
   create(
     @Param('serverId') serverId: string,
     @Body(new ZodValidationPipe(createChannelSchema)) body: CreateChannelInput,
@@ -39,7 +52,7 @@ export class ChannelsController {
 
   @Delete('channels/:channelId')
   @CheckAbility(['manage', 'Channel'])
-  remove(@Param('channelId') channelId: string) {
-    return this.channelsService.remove(channelId);
+  remove(@CurrentUser() user: AuthenticatedUser, @Param('channelId') channelId: string) {
+    return this.channelsService.remove(channelId, user.userId);
   }
 }
