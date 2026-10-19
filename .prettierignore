@@ -5,3 +5,5 @@ dist
 coverage
 pnpm-lock.yaml
 *.tsbuildinfo
+# Next.js tự sinh khi build (đã nằm trong apps/web/.gitignore, nhưng Prettier chỉ đọc .gitignore ở gốc)
+next-env.d.ts

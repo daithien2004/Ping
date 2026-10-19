@@ -1,1 +1,4 @@
+# Mọi file text luôn là LF, kể cả khi checkout trên Windows (core.autocrlf=true):
+# Prettier mặc định endOfLine=lf, bản CRLF trên đĩa làm `pnpm format:check` báo lỗi.
+* text=auto eol=lf
 .husky/pre-commit text eol=lf
