@@ -95,11 +95,21 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
     if (!userId) {
       return;
     }
-    // Socket đã rời mọi room khi tới đây: còn 0 socket nghĩa là tab cuối vừa đóng.
-    if ((await this.realtimeService.countUserSockets(userId)) === 0) {
-      await this.broadcastPresence(userId, 'offline');
+    try {
+      // Socket đã rời mọi room khi tới đây: còn 0 socket nghĩa là tab cuối vừa đóng.
+      if ((await this.realtimeService.countUserSockets(userId)) === 0) {
+        await this.broadcastPresence(userId, 'offline');
+      }
+      this.logger.debug({ sid: socket.id, userId }, 'ws: disconnected');
+    } catch (error) {
+      // Lúc app tắt, Nest đóng Redis/Prisma (onModuleDestroy) TRƯỚC khi đóng Socket.IO, nên
+      // các socket bị ngắt lúc đó không còn Redis để đếm. Nest không await handler này:
+      // để lỗi bay ra là unhandled rejection.
+      this.logger.warn(
+        { sid: socket.id, userId, err: (error as Error).message },
+        'ws: presence update skipped',
+      );
     }
-    this.logger.debug({ sid: socket.id, userId }, 'ws: disconnected');
   }
 
   @SubscribeMessage(ClientEvents.ChannelJoin)
