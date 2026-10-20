@@ -4,8 +4,9 @@ name: CI
 
 on:
   pull_request:
+  # Nhánh làm việc cũng chạy khi được đẩy lên (không cần mở PR mới thấy kết quả); main luôn chạy.
   push:
-    branches: [main]
+    branches: [main, 'feat/**', 'fix/**', 'chore/**', 'docs/**', 'ci/**']
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -26,6 +27,9 @@ jobs:
     name: verify
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      # Bản build production của web bắt buộc có biến này (src/lib/env.ts).
+      NEXT_PUBLIC_API_URL: http://localhost:4000
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -39,6 +43,10 @@ jobs:
           key: turbo-${{ runner.os }}-${{ github.sha }}
           restore-keys: turbo-${{ runner.os }}-
       - run: pnpm install --frozen-lockfile
+      # Prisma client nằm ở src/generated (git bỏ qua): phải sinh trước lint và typecheck, nếu không
+      # PrismaService thiếu các model và typecheck đỏ (chỉ lộ ra trên máy sạch như CI).
+      - run: cp .env.example .env
+      - run: pnpm --filter api exec prisma generate
       - run: pnpm format:check
       - run: pnpm docs:check
       - run: pnpm lint
@@ -232,6 +240,8 @@ jobs:
     name: lighthouse
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      NEXT_PUBLIC_API_URL: http://localhost:4000
     # Báo cáo, chưa chặn merge (quyết định B): ngưỡng cần vài lần chạy để ổn định.
     continue-on-error: true
     steps:

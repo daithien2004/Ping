@@ -12,7 +12,8 @@ export default defineConfig({
   workers: 1,
   timeout: 60_000,
   expect: { timeout: 10_000 },
-  reporter: 'list',
+  // Trên CI thêm reporter `github`: test hỏng hiện thành annotation đọc được ngay trên trang chạy.
+  reporter: process.env.CI ? [['list'], ['github']] : 'list',
   use: {
     baseURL: 'http://localhost:3000',
     trace: 'retain-on-failure',
