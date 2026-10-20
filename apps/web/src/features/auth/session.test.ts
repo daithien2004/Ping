@@ -1,7 +1,7 @@
 import { ErrorCodes } from '@ping/shared';
 import { describe, expect, it } from 'vitest';
 import { ApiError } from '@/lib/api-client';
-import { authErrorMessage, safeRedirectPath } from './session';
+import { authErrorMessage, loginRedirectPath, markSignedOut, safeRedirectPath } from './session';
 
 describe('safeRedirectPath', () => {
   it('giữ đường dẫn nội bộ', () => {
@@ -19,6 +19,20 @@ describe('safeRedirectPath', () => {
     [null],
   ])('từ chối %j (open redirect) → "/"', (next) => {
     expect(safeRedirectPath(next)).toBe('/');
+  });
+});
+
+describe('loginRedirectPath', () => {
+  it('phiên hết hạn: giữ trang đang đứng trong ?next= để đăng nhập lại xong quay về', () => {
+    expect(loginRedirectPath('/servers/s1/channels/c1')).toBe(
+      '/login?next=%2Fservers%2Fs1%2Fchannels%2Fc1',
+    );
+  });
+
+  it('tự đăng xuất: về /login không kèm next (người sau không bị dẫn tới trang của người trước), chỉ một lần', () => {
+    markSignedOut();
+    expect(loginRedirectPath('/servers/s1/channels/c1')).toBe('/login');
+    expect(loginRedirectPath('/servers/s1')).toBe('/login?next=%2Fservers%2Fs1');
   });
 });
 

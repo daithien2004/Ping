@@ -9,14 +9,18 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { createServerSchema, type CreateServerInput } from '@ping/shared';
+import {
+  createServerSchema,
+  joinServerSchema,
+  type CreateServerInput,
+  type JoinServerInput,
+} from '@ping/shared';
 import { IdempotencyInterceptor } from '../../common/interceptors/idempotency.interceptor.js';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe.js';
 import { AbilityGuard } from '../ability/ability.guard.js';
 import { CheckAbility } from '../ability/check-ability.decorator.js';
 import { CurrentUser, type AuthenticatedUser } from '../auth/current-user.decorator.js';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
-import { joinServerSchema, type JoinServerInput } from './schemas.js';
 import { ServersService } from './servers.service.js';
 
 @Controller('servers')

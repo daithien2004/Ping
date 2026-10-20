@@ -7,6 +7,7 @@ import { browser } from 'react-dom';
 import { setUnauthenticatedHandler } from '@/lib/api-client';
 import { qk } from '@/lib/query-keys';
 import { useMe } from '../hooks';
+import { loginRedirectPath } from '../session';
 
 /**
  * Bọc mọi trang cần đăng nhập (route group `(app)`). Là nơi DUY NHẤT gọi `use(browser())`
@@ -29,7 +30,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!me) {
-      router.replace(`/login?next=${encodeURIComponent(pathname)}`);
+      router.replace(loginRedirectPath(pathname));
     }
   }, [me, router, pathname]);
 
