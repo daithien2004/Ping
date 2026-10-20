@@ -279,5 +279,5 @@ jobs:
           pnpm dlx @lhci/cli@0.15.1 autorun --config=./lighthouserc.json 2>&1 | tee lhci.log
           code=${PIPESTATUS[0]}
           # Đưa dòng lỗi lên annotation: log đầy đủ của job cần đăng nhập mới đọc được.
-          grep -iE 'error|fail|assert|✘|❌' lhci.log | head -8 | while IFS= read -r line; do echo "::warning::lhci: ${line}"; done
+          grep -iE 'error|fail|assert|✘|❌|expected|found|audit|score' lhci.log | head -24 | while IFS= read -r line; do echo "::warning::lhci: ${line}"; done
           exit "$code"
