@@ -14,7 +14,7 @@ export const ServerEvents = {
 export const ClientEvents = {
   ChannelJoin: 'channel.join',
   ChannelLeave: 'channel.leave',
-  Typing: 'typing',
+  Typing: 'typing.start',
 } as const;
 
 export interface MessageAuthor {

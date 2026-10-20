@@ -21,6 +21,30 @@ export const myServerPermissionsSchema = z.object({
 });
 export type MyServerPermissions = z.infer<typeof myServerPermissionsSchema>;
 
+/** Một thành viên trong GET /servers/:id/members. Ngày giờ là chuỗi ISO 8601 qua JSON. */
+export interface MemberDto {
+  id: string;
+  serverId: string;
+  userId: string;
+  nickname: string | null;
+  joinedAt: string;
+  user: { id: string; username: string; displayName: string; avatarUrl: string | null };
+  /** Role của thành viên, bọc theo bảng nối (MemberRole): `roles[i].role`. @everyone không nằm đây. */
+  roles: Array<{ role: { id: string; name: string } }>;
+}
+
+/** GET /servers/:id/members — phân trang cursor (ADR-0028): `after` = id thành viên cuối trang trước. */
+export interface MemberPage {
+  members: MemberDto[];
+  hasMore: boolean;
+}
+
+export const listMembersQuerySchema = z.object({
+  after: z.uuid().optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+});
+export type ListMembersQuery = z.infer<typeof listMembersQuerySchema>;
+
 /** Một dòng trong GET /servers (các server của tôi). Ngày giờ là chuỗi ISO 8601 qua JSON. */
 export interface ServerSummary {
   id: string;
@@ -29,7 +53,8 @@ export interface ServerSummary {
   ownerId: string;
   inviteCode: string;
   createdAt: string;
-  _count: { members: number; channels: number };
+  memberCount: number;
+  channelCount: number;
 }
 
 export interface RoleDto {
@@ -40,13 +65,16 @@ export interface RoleDto {
   permissions: string;
   position: number;
   isDefault: boolean;
+  /** Chỉ có ở GET /servers/:id/roles. */
+  memberCount?: number;
 }
 
 /** GET /servers/:id và POST /servers. */
-export interface ServerDetail extends Omit<ServerSummary, '_count'> {
+export interface ServerDetail extends Omit<ServerSummary, 'memberCount' | 'channelCount'> {
   channels: ChannelDto[];
   roles: RoleDto[];
-  _count?: { members: number };
+  /** Có ở GET /servers/:id, không có ở POST /servers (server mới chỉ có chủ). */
+  memberCount?: number;
 }
 
 /** POST /servers/join. */

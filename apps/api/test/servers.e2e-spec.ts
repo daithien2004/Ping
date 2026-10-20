@@ -66,7 +66,7 @@ describe('Servers, channels & roles (e2e)', () => {
 
   async function memberIdOf(user: TestUser): Promise<string> {
     const res = await api('get', `/api/v1/servers/${serverId}/members`, owner.token).expect(200);
-    const member = res.body.find((item: { userId: string }) => item.userId === user.id);
+    const member = res.body.members.find((item: { userId: string }) => item.userId === user.id);
     if (!member) {
       throw new Error('Member not found');
     }
@@ -127,10 +127,10 @@ describe('Servers, channels & roles (e2e)', () => {
     const members = await api('get', `/api/v1/servers/${serverId}/members`, owner.token).expect(
       200,
     );
-    expect(members.body).toHaveLength(1);
-    expect(members.body[0].userId).toBe(owner.id);
+    expect(members.body.members).toHaveLength(1);
+    expect(members.body.members[0].userId).toBe(owner.id);
     expect(
-      members.body[0].roles.map((entry: { role: { name: string } }) => entry.role.name),
+      members.body.members[0].roles.map((entry: { role: { name: string } }) => entry.role.name),
     ).toContain('@everyone');
   });
 
@@ -171,7 +171,7 @@ describe('Servers, channels & roles (e2e)', () => {
     const members = await api('get', `/api/v1/servers/${serverId}/members`, plain.token).expect(
       200,
     );
-    expect(members.body).toHaveLength(3); // owner + plain + joiner
+    expect(members.body.members).toHaveLength(3); // owner + plain + joiner
   });
 
   it('member thiếu MANAGE_CHANNELS → tạo channel 403', async () => {

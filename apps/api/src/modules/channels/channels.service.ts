@@ -1,4 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { Limits } from '@ping/shared';
+import { limitReached } from '../../common/limit-reached.js';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
 import { AuditService } from '../audit/audit.module.js';
 import type { UpdateChannelInput } from './schemas.js';
@@ -15,6 +17,10 @@ export class ChannelsService {
       // Khóa theo server tới hết transaction: hai request tạo channel cùng lúc xếp hàng
       // thay vì cùng đọc một giá trị max rồi cùng ghi trùng position.
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${serverId}))`;
+      // Đếm TRONG lock nên trần chính xác, không bị vượt khi tạo đồng thời.
+      if ((await tx.channel.count({ where: { serverId } })) >= Limits.MAX_CHANNELS_PER_SERVER) {
+        throw limitReached('channels', Limits.MAX_CHANNELS_PER_SERVER);
+      }
       const { _max } = await tx.channel.aggregate({
         where: { serverId },
         _max: { position: true },

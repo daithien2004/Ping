@@ -50,7 +50,7 @@ describe('Role authorization (e2e)', () => {
 
   async function memberIdOf(user: TestUser): Promise<string> {
     const res = await api('get', `/api/v1/servers/${serverId}/members`, owner.token).expect(200);
-    return res.body.find((item: { userId: string }) => item.userId === user.id).id;
+    return res.body.members.find((item: { userId: string }) => item.userId === user.id).id;
   }
 
   beforeAll(async () => {

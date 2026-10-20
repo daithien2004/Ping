@@ -90,6 +90,8 @@ model Member {
   @@unique([serverId, userId])
   // "Các server của tôi" — đếm nhanh không cần quét bảng Member.
   @@index([userId])
+  // Phân trang cursor danh sách thành viên: WHERE serverId = ? AND id > ? ORDER BY id.
+  @@index([serverId, id])
 }
 
 model MemberRole {

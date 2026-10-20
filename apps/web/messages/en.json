@@ -82,6 +82,7 @@
     "failed": "Failed to send"
   },
   "errors": {
+    "VALIDATION_ERROR": "Invalid data, or a limit has been reached.",
     "BAD_REQUEST": "Invalid request.",
     "UNAUTHORIZED": "Your session has expired. Please sign in again.",
     "FORBIDDEN": "You don't have permission to do this.",

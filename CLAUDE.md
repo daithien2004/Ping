@@ -49,6 +49,8 @@
 18. Endpoint xác thực bằng cookie (hiện: /auth/refresh, /auth/logout) phải có `CsrfGuard` và client
     gửi `X-Ping-Client` (ADR-0027). Header bảo mật/CSP của web nằm trong `next.config.ts`; thay đổi
     phải chạy e2e `security-headers` trên bản build production.
+19. Hình dạng response, lỗi, phân trang, trần số lượng và tên event theo `docs/api-conventions.md`
+    (checklist ở mục 9); `test/api-conventions.e2e-spec.ts` phải xanh.
 
 ## Cấu trúc code
 

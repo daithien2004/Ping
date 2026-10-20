@@ -4,7 +4,8 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { canManageMember, canManagePermissions } from '@ping/shared';
+import { canManageMember, canManagePermissions, Limits } from '@ping/shared';
+import { limitReached } from '../../common/limit-reached.js';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
 import { AbilityFactory } from '../ability/ability.factory.js';
 import { AuditService } from '../audit/audit.module.js';
@@ -32,6 +33,10 @@ export class RolesService {
   async create(serverId: string, actorId: string, input: CreateRoleInput) {
     const permissions = input.permissions ?? 0n;
     await this.assertCanManage(serverId, actorId, permissions);
+    // Trần mềm: hai request đồng thời có thể vượt vài đơn vị, chấp nhận được cho giới hạn chống phình.
+    if ((await this.prisma.role.count({ where: { serverId } })) >= Limits.MAX_ROLES_PER_SERVER) {
+      throw limitReached('roles', Limits.MAX_ROLES_PER_SERVER);
+    }
     return this.prisma.$transaction(async (tx) => {
       const role = await tx.role.create({
         data: { serverId, name: input.name, permissions, position: input.position ?? 0 },
@@ -50,12 +55,13 @@ export class RolesService {
     });
   }
 
-  list(serverId: string) {
-    return this.prisma.role.findMany({
+  async list(serverId: string) {
+    const roles = await this.prisma.role.findMany({
       where: { serverId },
       include: { _count: { select: { members: true } } },
       orderBy: [{ position: 'asc' }, { name: 'asc' }],
     });
+    return roles.map(({ _count, ...role }) => ({ ...role, memberCount: _count.members }));
   }
 
   async update(roleId: string, actorId: string, input: UpdateRoleInput) {
