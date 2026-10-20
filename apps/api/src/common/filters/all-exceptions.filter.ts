@@ -12,6 +12,7 @@ import type { Request, Response } from 'express';
 import { Logger } from 'nestjs-pino';
 import type { Env } from '../../config/env.schema.js';
 import { isDatabaseUnavailable } from '../db-unavailable.js';
+import { TooManyRequestsError } from '../too-many-requests.error.js';
 
 /**
  * Single filter that turns every thrown exception into the uniform error
@@ -53,6 +54,9 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     if (exception instanceof HttpException) {
       status = exception.getStatus();
+      if (exception instanceof TooManyRequestsError) {
+        response.setHeader('Retry-After', String(exception.retryAfterSeconds));
+      }
       const body = exception.getResponse();
 
       if (typeof body === 'string') {

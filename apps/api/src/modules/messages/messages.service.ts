@@ -5,6 +5,7 @@ import { isUniqueConstraintError } from '../../common/utils/prisma-errors.js';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
 import { AuditService } from '../audit/audit.module.js';
 import { RealtimeService } from '../realtime/realtime.service.js';
+import { MessageRateLimiter } from './message-rate-limiter.js';
 import type { ListMessagesQuery } from './schemas.js';
 
 /** Chỉ các trường client cần — không bao giờ trả bản ghi thô (guide 10.3). */
@@ -24,6 +25,7 @@ export class MessagesService {
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeService,
     private readonly audit: AuditService,
+    private readonly rateLimiter: MessageRateLimiter,
   ) {}
 
   /**
@@ -49,6 +51,7 @@ export class MessagesService {
   }
 
   async create(channelId: string, authorId: string, input: CreateMessageInput) {
+    await this.rateLimiter.consume(authorId, channelId);
     try {
       const message = await this.prisma.message.create({
         data: { channelId, authorId, content: input.content, nonce: input.nonce },

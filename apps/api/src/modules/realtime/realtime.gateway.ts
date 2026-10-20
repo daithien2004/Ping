@@ -28,11 +28,23 @@ import { RealtimeService } from './realtime.service.js';
 /** Khoảng tối thiểu giữa hai event typing của một socket. */
 const TYPING_INTERVAL_MS = 1000;
 
+/**
+ * Ngân sách event của MỘT socket trong cửa sổ 1 giây (ADR-0027): quá mức mềm thì bỏ qua event,
+ * quá mức cứng thì ngắt socket. Client của ta gửi vài event mỗi giây là cùng; ngưỡng rộng hơn hẳn.
+ * Bộ đếm nằm trong socket.data vì trạng thái này gắn với một kết nối sống trên đúng một instance.
+ */
+const EVENT_WINDOW_MS = 1000;
+const EVENT_SOFT_LIMIT = 20;
+const EVENT_HARD_LIMIT = 60;
+/** Số socket đồng thời tối đa của một user (mọi tab, mọi instance). */
+const MAX_SOCKETS_PER_USER = 10;
+
 type AuthSocket = Socket & {
   data: {
     // socket.data được serialize khi instance khác gọi fetchSockets(): chỉ để dữ liệu JSON thuần.
     userId?: string;
     lastTypingAt?: number;
+    eventWindow?: { start: number; count: number };
   };
 };
 
@@ -104,6 +116,11 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
         socket.once('disconnect', () => clearTimeout(timer));
       }
       await socket.join(`user:${userId}`);
+      if (await this.tooManySockets(userId)) {
+        this.logger.warn({ sid: socket.id, userId }, 'ws: too many sockets for this user');
+        socket.disconnect(true);
+        return;
+      }
 
       // Phát online ở MỌI lần kết nối: idempotent với client, và tránh đua khi hai tab
       // cùng kết nối (cả hai cùng thấy "đã có 2 socket" thì không ai báo online).
@@ -142,6 +159,9 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
     @ConnectedSocket() socket: AuthSocket,
     @MessageBody() body: unknown,
   ): Promise<ChannelJoinResult> {
+    if (this.overBudget(socket)) {
+      return { ok: false, code: ErrorCodes.TOO_MANY_REQUESTS };
+    }
     return this.enqueueRoomCommand(socket, () => this.joinChannel(socket, body));
   }
 
@@ -187,9 +207,41 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
     @ConnectedSocket() socket: AuthSocket,
     @MessageBody() body: unknown,
   ): Promise<void> {
+    if (this.overBudget(socket)) {
+      return;
+    }
     const parsed = channelEventSchema.safeParse(body);
     if (parsed.success) {
       await this.enqueueRoomCommand(socket, () => socket.leave(`channel:${parsed.data.channelId}`));
+    }
+  }
+
+  /** Tính một event vào ngân sách của socket. true = bỏ qua event này (đã ngắt socket nếu quá cứng). */
+  private overBudget(socket: AuthSocket): boolean {
+    const now = Date.now();
+    const window = socket.data.eventWindow;
+    if (!window || now - window.start >= EVENT_WINDOW_MS) {
+      socket.data.eventWindow = { start: now, count: 1 };
+      return false;
+    }
+    window.count += 1;
+    if (window.count > EVENT_HARD_LIMIT) {
+      this.logger.warn(
+        { sid: socket.id, userId: socket.data.userId },
+        'ws: event flood, disconnecting',
+      );
+      socket.disconnect(true);
+      return true;
+    }
+    return window.count > EVENT_SOFT_LIMIT;
+  }
+
+  /** Socket hiện tại đã nằm trong room user nên được đếm. Lỗi đếm (Redis) → cho qua, không chặn nhầm. */
+  private async tooManySockets(userId: string): Promise<boolean> {
+    try {
+      return (await this.realtimeService.countUserSockets(userId)) > MAX_SOCKETS_PER_USER;
+    } catch {
+      return false;
     }
   }
 
@@ -204,6 +256,9 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
 
   @SubscribeMessage(ClientEvents.Typing)
   handleTyping(@ConnectedSocket() socket: AuthSocket, @MessageBody() body: unknown): void {
+    if (this.overBudget(socket)) {
+      return;
+    }
     const userId = socket.data.userId;
     const parsed = channelEventSchema.safeParse(body);
     if (!userId || !parsed.success) {
