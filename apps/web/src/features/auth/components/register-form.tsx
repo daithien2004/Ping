@@ -8,7 +8,7 @@ import { browser } from 'react-dom';
 import { z } from 'zod';
 import { useMe, useRegister } from '../hooks';
 import { authErrorMessage, safeRedirectPath } from '../session';
-import { Field, FormError, SubmitButton } from '@/components/form-parts';
+import { Field, FormError, SubmitButton, useClearOnHide } from '@/components/form-parts';
 
 type FieldErrors = Partial<Record<'email' | 'username' | 'password' | 'displayName', string[]>>;
 
@@ -19,6 +19,7 @@ export function RegisterForm() {
   const { data: me } = useMe();
   const registerMutation = useRegister();
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const formRef = useClearOnHide();
 
   useEffect(() => {
     if (me) {
@@ -46,7 +47,12 @@ export function RegisterForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} noValidate className="flex w-full max-w-sm flex-col gap-4">
+    <form
+      ref={formRef}
+      onSubmit={onSubmit}
+      noValidate
+      className="flex w-full max-w-sm flex-col gap-4"
+    >
       <h1 className="text-2xl font-semibold">Tạo tài khoản</h1>
       <Field
         label="Email"

@@ -13,6 +13,8 @@
 - Cài đặt: `pnpm install`
 - Dev: `pnpm dev` | Build: `pnpm build`
 - Lint/Typecheck/Test: `pnpm lint` / `pnpm typecheck` / `pnpm test`
+- E2E web (Playwright, cần Docker; dùng lại dev server nếu đang chạy): `pnpm --filter web test:e2e`
+- E2E api: `pnpm --filter api test:e2e` (cần biến môi trường từ `.env` gốc)
 - Format: `pnpm format` (ghi), `pnpm format:check` (chỉ kiểm tra)
 - DB: `pnpm db:migrate`, `pnpm db:studio`
 - Hạ tầng local: `docker compose up -d`
@@ -52,8 +54,21 @@
 - TypeScript strict (packages/tsconfig), không dùng `any` (đã bật rule lint no-explicit-any).
 - Test: Vitest. File tên kebab-case. Commit theo Conventional Commits (feat:, fix:, chore:).
 - Prettier quyết định định dạng (singleQuote, printWidth 100) — ESLint không cãi Prettier.
-- Trước khi commit: chạy `pnpm lint` + `pnpm typecheck` (hook pre-commit chỉ lo
-  ESLint + Prettier, KHÔNG chạy typecheck/test — đừng chủ quan).
+- Pre-commit chạy lint-staged (ESLint + Prettier) và `pnpm typecheck`; KHÔNG chạy test/e2e —
+  tự chạy `pnpm test` (và e2e khi đổi UI) trước khi commit.
+
+## Frontend (apps/web)
+
+- Phụ thuộc một chiều: `app → features → components → lib` (ESLint chặn). `app/` chỉ định tuyến.
+- Page đọc params từ prop `params` của page, KHÔNG `useParams()`: `<Activity>` giữ trang cũ ẩn
+  và `useParams()` trong đó trả params của URL hiện tại (ADR-0020). Chỉ component trong layout
+  (server rail, channel sidebar, channel redirect) được dùng `useParams()`.
+- `<Activity>` giấu chứ không gỡ trang đã rời: state, DOM, giá trị input còn nguyên. Form chứa dữ
+  liệu nhạy cảm phải xóa khi ẩn (`useClearOnHide`).
+- Dữ liệu server chỉ ghi vào cache trong `features/<domain>/hooks.ts`; logic biến đổi cache là hàm
+  thuần trong `*-cache.ts` có test. Component không gọi `queryClient` trực tiếp.
+- `useEffect` chỉ để đồng bộ với bên ngoài (cuộn, socket, DOM), không để tính dữ liệu.
+- Thay đổi UI: thêm/cập nhật kịch bản Playwright trong `apps/web/e2e/`.
 
 ## Cách làm việc
 
