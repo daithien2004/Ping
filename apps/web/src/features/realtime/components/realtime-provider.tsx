@@ -2,6 +2,7 @@
 import { ServerEvents, type TypingStartedPayload } from '@ping/shared';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useMe } from '@/features/auth/hooks';
+import { useMemberPresence } from '@/features/members/hooks';
 import { useMessageEvents } from '@/features/messages/hooks';
 import { useServerEvents } from '@/features/servers/hooks';
 import { RealtimeContext } from '../context';
@@ -21,6 +22,7 @@ function SignedInRealtime({ userId, children }: { userId: string; children: Reac
   const [session] = useState(() => new RealtimeSession(createSocket()));
   useMessageEvents(session);
   useServerEvents(session);
+  useMemberPresence(session);
   useEffect(() => {
     const typing = (event: TypingStartedPayload) => {
       if (event.userId !== userId) session.store.getState().type(event.channelId, event.userId);

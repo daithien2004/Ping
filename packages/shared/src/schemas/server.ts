@@ -31,6 +31,8 @@ export interface MemberDto {
   user: { id: string; username: string; displayName: string; avatarUrl: string | null };
   /** Role của thành viên, bọc theo bảng nối (MemberRole): `roles[i].role`. @everyone không nằm đây. */
   roles: Array<{ role: { id: string; name: string } }>;
+  /** Đang có ít nhất một socket mở (ADR-0030). Sau đó `presence.updated` cập nhật tiếp. */
+  online: boolean;
 }
 
 /** GET /servers/:id/members — phân trang cursor (ADR-0028): `after` = id thành viên cuối trang trước. */
