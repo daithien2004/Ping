@@ -1,0 +1,48 @@
+# Quy tắc cảnh báo Prometheus cho ping (ADR-0031). Kiểm tra cú pháp: promtool check rules ops/alerts.yml
+# Ý nghĩa và cách xử lý từng cảnh báo: docs/runbook/alerts.md. Ngưỡng là điểm khởi đầu, chỉnh sau khi có số đo thật.
+groups:
+  - name: ping-api
+    rules:
+      - alert: PingHighErrorRate
+        expr: |
+          sum(rate(http_request_duration_seconds_count{status_class="5xx"}[5m]))
+            / sum(rate(http_request_duration_seconds_count[5m])) > 0.02
+        for: 5m
+        labels: { severity: page }
+        annotations:
+          summary: 'Hơn 2% request trả 5xx trong 5 phút'
+          runbook: docs/runbook/alerts.md#pinghigherrorrate
+
+      - alert: PingPostgresDown
+        expr: dependency_up{name="postgres"} == 0
+        for: 1m
+        labels: { severity: page }
+        annotations:
+          summary: 'API không truy vấn được Postgres'
+          runbook: docs/runbook/alerts.md#pingpostgresdown
+
+      - alert: PingRedisDown
+        expr: dependency_up{name="redis"} == 0
+        for: 2m
+        labels: { severity: ticket }
+        annotations:
+          summary: 'API không nói chuyện được với Redis (chế độ suy giảm)'
+          runbook: docs/runbook/alerts.md#pingredisdown
+
+      - alert: PingSocketDropSpike
+        # Nhiều socket rớt cùng lúc so với số đang mở: dấu hiệu deploy hỏng, LB ngắt, hoặc mạng.
+        expr: |
+          sum(rate(ws_disconnects_total[5m])) * 300 > 0.5 * sum(ws_connections) and sum(ws_connections) > 20
+        for: 5m
+        labels: { severity: ticket }
+        annotations:
+          summary: 'Hơn nửa số socket đang mở đã rớt trong 5 phút'
+          runbook: docs/runbook/alerts.md#pingsocketdropspike
+
+      - alert: PingInstanceDown
+        expr: up{job="ping-api"} == 0
+        for: 2m
+        labels: { severity: page }
+        annotations:
+          summary: 'Không scrape được metrics của một instance API'
+          runbook: docs/runbook/alerts.md#pinginstancedown
