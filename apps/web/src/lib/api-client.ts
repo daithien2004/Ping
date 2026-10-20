@@ -21,6 +21,7 @@ export class ApiError extends Error {
 let accessToken: string | null = null;
 // Promise refresh đang chạy: mọi request gặp 401 cùng lúc chờ chung một lần refresh.
 let refreshing: Promise<string | null> | null = null;
+let tokenGeneration = 0;
 let unauthenticatedHandler: (() => void) | undefined;
 
 export function getAccessToken(): string | null {
@@ -28,11 +29,18 @@ export function getAccessToken(): string | null {
 }
 
 export function setAccessToken(token: string | null): void {
+  tokenGeneration++;
+  refreshing = null;
   accessToken = token;
 }
 
+export function expireSession(): void {
+  setAccessToken(null);
+  unauthenticatedHandler?.();
+}
+
 /** Gọi khi phiên đăng nhập hết hẳn (refresh thất bại) — F2 nối vào điều hướng tới /login. */
-export function setUnauthenticatedHandler(handler: () => void): void {
+export function setUnauthenticatedHandler(handler?: () => void): void {
   unauthenticatedHandler = handler;
 }
 
@@ -66,19 +74,24 @@ async function send(method: Method, path: string, body?: unknown): Promise<Respo
  * Trả null nếu phiên đã hết (chưa đăng nhập, cookie hết hạn hoặc bị thu hồi).
  */
 export function refreshAccessToken(): Promise<string | null> {
-  refreshing ??= send('POST', '/auth/refresh')
-    .then(async (res) =>
-      res.ok ? ((await res.json()) as { accessToken: string }).accessToken : null,
-    )
-    .catch(() => null)
+  if (refreshing) return refreshing;
+  const generation = tokenGeneration;
+  const pending = send('POST', '/auth/refresh')
+    .then(async (res) => {
+      if (res.status === 401) return null;
+      if (!res.ok) throw await toApiError(res);
+      return ((await res.json()) as { accessToken: string }).accessToken;
+    })
     .then((token) => {
+      if (generation !== tokenGeneration) return null;
       accessToken = token;
       return token;
     })
     .finally(() => {
-      refreshing = null;
+      if (refreshing === pending) refreshing = null;
     });
-  return refreshing;
+  refreshing = pending;
+  return pending;
 }
 
 async function toApiError(res: Response): Promise<ApiError> {
@@ -107,17 +120,17 @@ async function request<T>(
   body?: unknown,
   schema?: ZodType<T>,
 ): Promise<T> {
+  const generation = tokenGeneration;
   let res = await send(method, path, body);
 
   // Access token hết hạn (15 phút): refresh một lần rồi thử lại đúng một lần.
   // Bỏ qua /auth/*: login sai mật khẩu cũng là 401, refresh ở đó sẽ thành vòng lặp.
-  if (res.status === 401 && !path.startsWith('/auth/')) {
-    if (await refreshAccessToken()) {
+  if (res.status === 401 && !path.startsWith('/auth/') && generation === tokenGeneration) {
+    if ((await refreshAccessToken()) && generation === tokenGeneration) {
       res = await send(method, path, body);
     }
-    if (res.status === 401) {
-      accessToken = null;
-      unauthenticatedHandler?.();
+    if (res.status === 401 && generation === tokenGeneration) {
+      expireSession();
     }
   }
 

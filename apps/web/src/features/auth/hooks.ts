@@ -1,6 +1,8 @@
 'use client';
 
 import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
+import { useEffect } from 'react';
+import { setUnauthenticatedHandler } from '@/lib/api-client';
 import { qk } from '@/lib/query-keys';
 import { getSession, login, logout, register } from './api';
 import { markSignedOut } from './session';
@@ -12,6 +14,18 @@ import { markSignedOut } from './session';
  */
 export function useMe() {
   return useSuspenseQuery({ queryKey: qk.me, queryFn: getSession, staleTime: Infinity });
+}
+
+/** Expired sessions must discard the same private cache as an intentional logout. */
+export function useSessionExpiry() {
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    setUnauthenticatedHandler(() => {
+      queryClient.setQueryData(qk.me, null);
+      queryClient.removeQueries({ predicate: (query) => query.queryKey[0] !== qk.me[0] });
+    });
+    return () => setUnauthenticatedHandler(undefined);
+  }, [queryClient]);
 }
 
 export function useLogin() {

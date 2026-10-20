@@ -37,7 +37,12 @@ export function ChannelView({
         fallback={<p className="m-auto text-sm text-muted-foreground">{t('messages.loading')}</p>}
       >
         {/* key: mỗi channel một trạng thái riêng (nháp, vị trí cuộn lần đầu). */}
-        <MessagePane key={channel.id} channelId={channel.id} channelName={channel.name} />
+        <MessagePane
+          key={channel.id}
+          serverId={serverId}
+          channelId={channel.id}
+          channelName={channel.name}
+        />
       </Suspense>
     </section>
   );

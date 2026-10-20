@@ -1,12 +1,9 @@
 'use client';
 
-import { useQueryClient } from '@tanstack/react-query';
 import { usePathname, useRouter } from 'next/navigation';
 import { use, useEffect, type ReactNode } from 'react';
 import { browser } from 'react-dom';
-import { setUnauthenticatedHandler } from '@/lib/api-client';
-import { qk } from '@/lib/query-keys';
-import { useMe } from '../hooks';
+import { useMe, useSessionExpiry } from '../hooks';
 import { loginRedirectPath } from '../session';
 
 /**
@@ -19,14 +16,9 @@ import { loginRedirectPath } from '../session';
 export function AuthGate({ children }: { children: ReactNode }) {
   use(browser('Phiên đăng nhập chỉ tồn tại trong trình duyệt.'));
   const { data: me } = useMe();
-  const queryClient = useQueryClient();
+  useSessionExpiry();
   const router = useRouter();
   const pathname = usePathname();
-
-  // Phiên hết hạn giữa chừng (refresh thất bại ở một request bất kỳ): đánh dấu chưa đăng nhập.
-  useEffect(() => {
-    setUnauthenticatedHandler(() => queryClient.setQueryData(qk.me, null));
-  }, [queryClient]);
 
   useEffect(() => {
     if (!me) {

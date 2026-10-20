@@ -24,7 +24,12 @@ export function checkEventContracts(server: ServerToClientEvents, client: Client
   server[ServerEvents.PresenceUpdated]({ userId: 'user-A', status: 'offline' });
   server[ServerEvents.PermissionsChanged]({ serverId: 'server-01' });
   server[ServerEvents.MemberRemoved]({ serverId: 'server-01' });
-  client[ClientEvents.ChannelJoin]({ channelId: 'channel-01' });
+  client[ClientEvents.ChannelJoin]({ channelId: 'channel-01' }, (result) => {
+    if (!result.ok) {
+      const code: string = result.code;
+      void code;
+    }
+  });
   client[ClientEvents.ChannelLeave]({ channelId: 'channel-01' });
   client[ClientEvents.Typing]({ channelId: 'channel-01' });
 
@@ -39,7 +44,7 @@ export function checkEventContracts(server: ServerToClientEvents, client: Client
   // @ts-expect-error: Client typing events do not accept a claimed identity.
   client[ClientEvents.Typing]({ channelId: 'channel-01', userId: 'user-B' });
   // @ts-expect-error: Joining requires a string channel ID.
-  client[ClientEvents.ChannelJoin]({ channelId: 123 });
+  client[ClientEvents.ChannelJoin]({ channelId: 123 }, () => {});
   // @ts-expect-error: Clients cannot send server-only message creation events.
   client[ServerEvents.MessageCreated]({ content: 'Hello' });
   // @ts-expect-error: Unknown event names must be rejected.

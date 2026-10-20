@@ -8,6 +8,7 @@ import request from 'supertest';
 import { io, type Socket } from 'socket.io-client';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AppModule } from '../src/app.module.js';
+import { type ChannelJoinResult } from '@ping/shared';
 import { PrismaService } from '../src/infra/prisma/prisma.service.js';
 import { RedisProvider } from '../src/infra/redis/redis.module.js';
 import { RedisIoAdapter } from '../src/infra/socket/redis-io.adapter.js';
@@ -183,6 +184,37 @@ describe('Realtime across two instances (e2e)', () => {
       .expect(201);
   }
 
+  it('ACK confirms an immediate join; outsiders and unknown ids get the same denial', async () => {
+    const socket = await connectClient(portB, owner.token);
+    const join = (client: Socket, id: string) =>
+      client
+        .timeout(3000)
+        .emitWithAck('channel.join', { channelId: id }) as Promise<ChannelJoinResult>;
+    await expect(join(socket, channelId)).resolves.toEqual({ ok: true });
+    const received = waitEvent<{ content: string }>(socket, 'message.created');
+    await postMessage(owner.token, 'after ACK');
+    expect((await received).content).toBe('after ACK');
+    const alien = await connectClient(portB, outsider.token);
+    await expect(join(alien, channelId)).resolves.toEqual({ ok: false, code: 'FORBIDDEN' });
+    await expect(join(alien, randomUUID())).resolves.toEqual({ ok: false, code: 'FORBIDDEN' });
+    socket.disconnect();
+    alien.disconnect();
+    await settle();
+  });
+
+  it('leave sent before an async join completes still leaves the channel', async () => {
+    const socket = await connectClient(portB, owner.token);
+    const joined = socket.timeout(3000).emitWithAck('channel.join', { channelId });
+    socket.emit('channel.leave', { channelId });
+    await joined;
+    await settle();
+    const noEvent = assertNoEvent(socket, 'message.created');
+    await postMessage(owner.token, 'after rapid leave');
+    await noEvent;
+    socket.disconnect();
+    await settle();
+  });
+
   afterAll(async () => {
     for (const socket of sockets) {
       socket.disconnect();
@@ -199,8 +231,7 @@ describe('Realtime across two instances (e2e)', () => {
   });
 
   it('từ chối kết nối socket không có access token', async () => {
-    // Không có middleware chặn handshake nên client luôn "connect" được rồi mới
-    // bị gateway ngắt khi xác thực — kỳ vọng là disconnect ngay sau đó.
+    // Authentication now rejects before the namespace emits connect.
     const socket = io(`http://127.0.0.1:${portB}`, {
       transports: ['websocket'],
       reconnection: false,

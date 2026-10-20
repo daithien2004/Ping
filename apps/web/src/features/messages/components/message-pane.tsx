@@ -3,6 +3,8 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'use-intl';
+import { useChannelRealtime } from '@/features/realtime/hooks';
+import { TypingIndicator } from '@/features/realtime/components/typing-indicator';
 import { useMessages, useSendMessage } from '../hooks';
 import { type ClientMessage, oldestFirst } from '../message-cache';
 import { MessageComposer } from './message-composer';
@@ -20,16 +22,20 @@ const HEADER_HEIGHT = 48;
  * - Vào channel lần đầu thì cuộn xuống đáy (một lần; <Activity> giữ vị trí khi quay lại).
  */
 export function MessagePane({
+  serverId,
   channelId,
   channelName,
 }: {
+  serverId: string;
   channelId: string;
   channelName: string;
 }) {
+  const roomDenied = useChannelRealtime(serverId, channelId);
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useMessages(channelId);
   const sendMutation = useSendMessage(channelId);
   const messages = useMemo(() => oldestFirst(data), [data]);
   const t = useTranslations('messages');
+  const errors = useTranslations('errors');
   const scrollRef = useRef<HTMLDivElement>(null);
   const didInitialScroll = useRef(false);
   // Chỉ tải tin cũ SAU khi đã xuống đáy lần đầu: ở lần render đầu danh sách còn đứng ở đầu,
@@ -107,6 +113,14 @@ export function MessagePane({
     if (message.nonce) send(message.content, message.nonce);
   };
 
+  // A background query error retains old data; hide it immediately on denied room ACK.
+  if (roomDenied)
+    return (
+      <p role="alert" className="m-auto text-sm text-muted-foreground">
+        {errors('FORBIDDEN')}
+      </p>
+    );
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div
@@ -143,7 +157,8 @@ export function MessagePane({
         </div>
       </div>
 
-      <MessageComposer channelName={channelName} onSend={sendOwn} />
+      <TypingIndicator channelId={channelId} />
+      <MessageComposer channelId={channelId} channelName={channelName} onSend={sendOwn} />
     </div>
   );
 }

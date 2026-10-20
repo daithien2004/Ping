@@ -1,4 +1,9 @@
 {
+  "realtime": {
+    "connecting": "Đang kết nối…",
+    "disconnected": "Mất kết nối. Đang thử kết nối lại…",
+    "typing": "{count, plural, =1 {Có người đang gõ…} other {# người đang gõ…}}"
+  },
   "common": {
     "loading": "Đang tải…",
     "processing": "Đang xử lý…",

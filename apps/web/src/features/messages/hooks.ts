@@ -1,6 +1,14 @@
 'use client';
 
-import type { CreateMessageInput } from '@ping/shared';
+import {
+  ServerEvents,
+  type CreateMessageInput,
+  type MessageCreatedPayload,
+  type MessageUpdatedPayload,
+  type MessageDeletedPayload,
+} from '@ping/shared';
+import { useEffect } from 'react';
+import type { RealtimeSession } from '@/features/realtime/session';
 import { useMutation, useQueryClient, useSuspenseInfiniteQuery } from '@tanstack/react-query';
 import { useMe } from '@/features/auth/hooks';
 import { qk } from '@/lib/query-keys';
@@ -11,6 +19,9 @@ import {
   markFailed,
   optimisticMessage,
   upsertMessage,
+  updateMessage,
+  deleteMessage,
+  preserveLocalMessages,
 } from './message-cache';
 
 /** Lịch sử tin theo trang (cursor `before`). Trang 0 mới nhất; fetchNextPage() lấy trang cũ hơn. */
@@ -21,7 +32,50 @@ export function useMessages(channelId: string) {
     initialPageParam: undefined as string | undefined,
     // Tin cuối trang là tin CŨ NHẤT của trang đó → con trỏ cho trang kế tiếp.
     getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.messages.at(-1)?.id : undefined),
+    structuralSharing: (before, after) =>
+      preserveLocalMessages(before as MessagesCache | undefined, after as MessagesCache),
   });
+}
+
+/** The socket carries events; only domain hooks are allowed to write server cache. */
+export function useMessageEvents(session: RealtimeSession) {
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    const apply = async (
+      channelId: string,
+      update: (old: MessagesCache | undefined) => MessagesCache | undefined,
+    ) => {
+      const key = qk.messages(channelId);
+      const fetching = queryClient.getQueryState(key)?.fetchStatus === 'fetching';
+      if (fetching) await queryClient.cancelQueries({ queryKey: key, exact: true });
+      if (!session.active) return;
+      queryClient.setQueryData<MessagesCache>(key, update);
+      // An event interrupted reconciliation: restart it rather than lose missed messages.
+      if (fetching) void queryClient.invalidateQueries({ queryKey: key, exact: true });
+    };
+    const created = (event: MessageCreatedPayload) =>
+      void apply(event.channelId, (old) => upsertMessage(old, { ...event, editedAt: null }));
+    const updated = (event: MessageUpdatedPayload) =>
+      void apply(event.channelId, (old) => updateMessage(old, event));
+    const deleted = (event: MessageDeletedPayload) =>
+      void apply(event.channelId, (old) => deleteMessage(old, event.id));
+    session.socket.on(ServerEvents.MessageCreated, created);
+    session.socket.on(ServerEvents.MessageUpdated, updated);
+    session.socket.on(ServerEvents.MessageDeleted, deleted);
+    return () => {
+      session.socket.off(ServerEvents.MessageCreated, created);
+      session.socket.off(ServerEvents.MessageUpdated, updated);
+      session.socket.off(ServerEvents.MessageDeleted, deleted);
+    };
+  }, [session, queryClient]);
+}
+
+export function useChannelSync(channelId: string) {
+  const queryClient = useQueryClient();
+  return async () => {
+    await queryClient.cancelQueries({ queryKey: qk.messages(channelId), exact: true });
+    await queryClient.invalidateQueries({ queryKey: qk.messages(channelId), exact: true });
+  };
 }
 
 /**

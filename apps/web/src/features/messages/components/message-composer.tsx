@@ -4,18 +4,22 @@ import { createMessageSchema } from '@ping/shared';
 import { useState, type KeyboardEvent } from 'react';
 import { useTranslations } from 'use-intl';
 import { Textarea } from '@/components/ui/textarea';
+import { useRealtime } from '@/features/realtime/context';
 
 /**
  * Ô soạn tin. Giữ `draft` ở ĐÂY (không ở MessagePane): mỗi phím gõ chỉ render lại ô soạn, không
  * render lại cả danh sách tin ảo hóa. <Activity> vẫn giữ nháp khi chuyển channel.
  */
 export function MessageComposer({
+  channelId,
   channelName,
   onSend,
 }: {
+  channelId: string;
   channelName: string;
   onSend: (content: string, nonce: string) => void;
 }) {
+  const realtime = useRealtime();
   const [draft, setDraft] = useState('');
   const t = useTranslations('messages');
   const label = t('composerLabel', { channel: channelName });
@@ -38,7 +42,10 @@ export function MessageComposer({
     <div className="shrink-0 px-4 pb-4">
       <Textarea
         value={draft}
-        onChange={(event) => setDraft(event.target.value)}
+        onChange={(event) => {
+          setDraft(event.target.value);
+          if (event.target.value.trim()) realtime.type(channelId);
+        }}
         onKeyDown={onKeyDown}
         rows={1}
         maxLength={4000}

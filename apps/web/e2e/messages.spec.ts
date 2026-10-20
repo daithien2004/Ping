@@ -61,7 +61,7 @@ test('3 + 5. gửi khi đang đọc tin cũ: hiện ngay (đang gửi), được
   await page.unrouteAll();
 });
 
-test('4. server đã lưu nhưng client mất response → Thử lại cùng nonce, không trùng tin', async () => {
+test('4. server đã lưu nhưng HTTP mất response → socket xác nhận, không trùng tin', async () => {
   const content = `e2e thử lại ${Date.now()}`;
   // Request TỚI server (tin được lưu) nhưng trình duyệt thấy lỗi mạng: đúng ca nonce phải chặn trùng.
   await page.route('**/channels/*/messages', async (route) => {
@@ -71,13 +71,11 @@ test('4. server đã lưu nhưng client mất response → Thử lại cùng non
   });
   await composer('long').fill(content);
   await composer('long').press('Enter');
-  await expect(page.getByText('Gửi thất bại')).toBeVisible();
-
-  await page.unrouteAll();
-  await page.getByRole('button', { name: 'Thử lại' }).click();
   const sent = page.locator('article', { hasText: content });
+  await expect(sent).toBeVisible();
   await expect(sent).not.toHaveAttribute('aria-busy');
   await expect(page.getByText('Gửi thất bại')).toHaveCount(0);
+  await page.unrouteAll();
 
   // Dữ liệu từ server (không phải cache): đúng MỘT tin.
   await page.reload();

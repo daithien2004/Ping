@@ -6,6 +6,9 @@ import {
   oldestFirst,
   optimisticMessage,
   upsertMessage,
+  updateMessage,
+  deleteMessage,
+  preserveLocalMessages,
 } from './message-cache';
 
 const author = { id: 'u1', username: 'a', displayName: 'A', avatarUrl: null };
@@ -30,6 +33,78 @@ const ids = (data: MessagesCache | undefined) =>
   data?.pages.map((page) => page.messages.map((message) => message.id));
 
 describe('message-cache', () => {
+  it('a deletion arriving before confirmation also removes the matching optimistic nonce', () => {
+    const pending = optimisticMessage({ content: 'hi', nonce: 'n1' }, author);
+    const before = deleteMessage(cache([pending]), 'm1')!;
+    const after = upsertMessage(before, msg('m1', 'n1', 'hi'))!;
+    expect(ids(preserveLocalMessages(before, after))).toEqual([[]]);
+  });
+  it('late create/HTTP response cannot resurrect a deleted message or undo a newer edit', () => {
+    const original = cache([msg('m1', 'n1')]);
+    const edited = updateMessage(original, {
+      id: 'm1',
+      channelId: 'c',
+      content: 'new',
+      updatedAt: '2026-10-20T01:00:00.000Z',
+    });
+    expect(upsertMessage(edited, msg('m1', 'n1'))?.pages[0]?.messages[0]?.content).toBe('new');
+    const deleted = deleteMessage(original, 'm1');
+    expect(ids(upsertMessage(deleted, msg('m1', 'n1')))).toEqual([[]]);
+    expect(ids(preserveLocalMessages(deleted, original))).toEqual([[]]);
+  });
+  it('HTTP failure after socket confirmation must not mark the confirmed row failed', () => {
+    const confirmed = cache([msg('m1', 'n1')]);
+    expect(markFailed(confirmed, 'n1')?.pages[0]?.messages[0]?.status).toBeUndefined();
+  });
+
+  it('updates loaded rows across pages, ignores old events and unknown ids', () => {
+    const before = cache([msg('m2')], [msg('m1')]);
+    const updated = updateMessage(before, {
+      id: 'm1',
+      channelId: 'c',
+      content: 'edited',
+      updatedAt: '2026-10-20T01:00:00.000Z',
+    });
+    expect(updated?.pages[1]?.messages[0]).toMatchObject({
+      content: 'edited',
+      editedAt: '2026-10-20T01:00:00.000Z',
+    });
+    expect(
+      updateMessage(updated, {
+        id: 'm1',
+        channelId: 'c',
+        content: 'old',
+        updatedAt: '2026-10-20T00:00:00.000Z',
+      }),
+    ).toEqual(updated);
+    expect(
+      updateMessage(before, {
+        id: 'unknown',
+        channelId: 'c',
+        content: 'x',
+        updatedAt: '2026-10-20T01:00:00.000Z',
+      }),
+    ).toEqual(before);
+    expect(before.pages[1]?.messages[0]?.content).toBe('m1');
+  });
+
+  it('deletes idempotently without changing pagination metadata', () => {
+    const before = cache([msg('m2')], [msg('m1')]);
+    const after = deleteMessage(before, 'm1');
+    expect(ids(after)).toEqual([['m2'], []]);
+    expect(after?.pageParams).toEqual(before.pageParams);
+    expect(deleteMessage(after, 'm1')).toEqual(after);
+    expect(deleteMessage(undefined, 'm1')).toBeUndefined();
+  });
+
+  it('refetch preserves local pending/failed rows and server confirmation wins by nonce', () => {
+    const pending = optimisticMessage({ content: 'hi', nonce: 'n1' }, author);
+    const before = cache([pending, msg('old')]);
+    expect(ids(preserveLocalMessages(before, cache([msg('new')])))).toEqual([['temp-n1', 'new']]);
+    expect(ids(preserveLocalMessages(before, cache([msg('confirmed', 'n1')])))).toEqual([
+      ['confirmed'],
+    ]);
+  });
   it('oldestFirst: nối các trang rồi đảo để tin cũ ở trên, mới ở dưới', () => {
     expect(
       oldestFirst(cache([msg('m4'), msg('m3')], [msg('m2'), msg('m1')])).map((m) => m.id),
