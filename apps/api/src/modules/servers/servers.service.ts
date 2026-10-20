@@ -137,7 +137,9 @@ export class ServersService {
       take: limit + 1, // lấy dư một hàng để biết còn trang sau
     });
     const hasMore = rows.length > limit;
-    return { members: hasMore ? rows.slice(0, limit) : rows, hasMore };
+    const page = hasMore ? rows.slice(0, limit) : rows;
+    const online = await this.realtime.onlineUserIds(page.map((row) => row.userId));
+    return { members: page.map((row) => ({ ...row, online: online.has(row.userId) })), hasMore };
   }
 
   async join(userId: string, inviteCode: string) {

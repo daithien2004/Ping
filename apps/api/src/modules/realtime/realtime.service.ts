@@ -47,6 +47,20 @@ export class RealtimeService {
   }
 
   /**
+   * Trong `userIds`, ai đang có socket mở (trên mọi instance). Một lần hỏi adapter cho cả danh sách
+   * room `user:<id>` (một trang member ≤ 100) thay vì một lần mỗi người. Redis chết: chỉ đếm
+   * instance này (presence suy giảm, không chậm; ADR-0026).
+   */
+  async onlineUserIds(userIds: string[]): Promise<Set<string>> {
+    if (!this.server || userIds.length === 0) {
+      return new Set();
+    }
+    const rooms = this.server.in(userIds.map((id) => `user:${id}`));
+    const sockets = await (this.redis.isUp ? rooms : rooms.local).fetchSockets();
+    return new Set(sockets.map((socket) => socket.data.userId as string));
+  }
+
+  /**
    * Quyền chỉ được kiểm tra lúc `channel.join`, nên khi quyền đổi (rời server, bị kick, đổi role)
    * phải chủ động đá socket ra khỏi room — nếu không họ vẫn nhận tin tới khi ngắt kết nối —
    * và báo riêng cho user để client tải lại quyền hoặc rời server khỏi giao diện.

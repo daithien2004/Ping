@@ -78,6 +78,13 @@ describe('Redis outage (e2e)', () => {
     expect(res.body.messages.map((m: { id: string }) => m.id)).toContain(existingMessageId);
   });
 
+  it('the members list still loads (presence degrades to offline instead of failing)', async () => {
+    const res = await timed(() => asUser('get', `/api/v1/servers/${serverId}/members`));
+    expect(res.status).toBe(200);
+    expect(res.body.members).toHaveLength(1);
+    expect(res.body.members[0].online).toBe(false);
+  });
+
   it('sending, editing and deleting a message still work (saved in Postgres)', async () => {
     const nonce = randomUUID();
     const sent = await timed(() =>

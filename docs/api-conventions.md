@@ -74,7 +74,7 @@ trùng khi lần đầu còn đang chạy → 409).
 - **Cursor, không bao giờ offset.** Danh sách có thể lớn trả `{ <tênDanhSách>, hasMore }`, tham số
   `limit` (1–100, mặc định 50) và một cursor là **id** của phần tử cuối trang trước:
   - tin nhắn: `GET /channels/:id/messages?before=<id>` — mới → cũ;
-  - thành viên: `GET /servers/:id/members?after=<id>` — cũ → mới.
+  - thành viên: `GET /servers/:id/members?after=<id>` — cũ → mới; mỗi phần tử có `online` (ADR-0030).
 - `limit` ngoài khoảng hoặc không phải số → 400 `VALIDATION_ERROR`. Tham số lạ (như `offset`) bị bỏ qua.
 - Danh sách **bị chặn bằng trần** trả mảng thuần (channel, role, server của tôi). Trần ở
   `@ping/shared` `Limits`: 200 channel/server, 100 role/server, 100 server/user; vượt → 400
