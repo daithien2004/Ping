@@ -9,19 +9,20 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { createMessageSchema, type AppAbility, type CreateMessageInput } from '@ping/shared';
+import {
+  createMessageSchema,
+  updateMessageSchema,
+  type AppAbility,
+  type CreateMessageInput,
+  type UpdateMessageInput,
+} from '@ping/shared';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe.js';
 import { AbilityGuard } from '../ability/ability.guard.js';
 import { CheckAbility, CurrentAbility } from '../ability/check-ability.decorator.js';
 import { CurrentUser, type AuthenticatedUser } from '../auth/current-user.decorator.js';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { MessagesService } from './messages.service.js';
-import {
-  listMessagesQuerySchema,
-  updateMessageSchema,
-  type ListMessagesQuery,
-  type UpdateMessageInput,
-} from './schemas.js';
+import { listMessagesQuerySchema, type ListMessagesQuery } from './schemas.js';
 
 @Controller()
 @UseGuards(JwtAuthGuard, AbilityGuard)

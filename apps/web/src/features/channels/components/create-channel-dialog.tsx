@@ -6,7 +6,9 @@ import { useState, type FormEvent } from 'react';
 import { useTranslations } from 'use-intl';
 import { z } from 'zod';
 import { Dialog } from '@/components/dialog';
-import { Field, FormError, SubmitButton } from '@/components/form-parts';
+import { Field, FormError } from '@/components/form-parts';
+import { Button } from '@/components/ui/button';
+import { useServerAbility } from '@/features/permissions/context';
 import { channelPath } from '@/features/servers/navigation';
 import { useErrorMessage } from '@/lib/error-message';
 import { useCreateChannel } from '../hooks';
@@ -18,6 +20,7 @@ interface Props {
 }
 
 export function CreateChannelDialog({ serverId, open, onClose }: Props) {
+  const { ready, ability } = useServerAbility();
   const router = useRouter();
   const createMutation = useCreateChannel(serverId);
   const [errors, setErrors] = useState<string[] | undefined>();
@@ -26,6 +29,7 @@ export function CreateChannelDialog({ serverId, open, onClose }: Props) {
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!ready || !ability.can('create', 'Channel')) return;
     const form = event.currentTarget;
     const parsed = createChannelSchema.safeParse({ name: new FormData(form).get('name') });
     if (!parsed.success) {
@@ -48,13 +52,14 @@ export function CreateChannelDialog({ serverId, open, onClose }: Props) {
         <Field label={t('channels.name')} name="name" errors={errors} />
         {createMutation.isError && (
           <FormError>
-            {/* F6 sẽ ẩn nút với người không có MANAGE_CHANNELS; tới lúc đó 403 hiện ở đây. */}
             {errorMessage(createMutation.error, {
               [ErrorCodes.FORBIDDEN]: t('channels.noPermissionCreate'),
             })}
           </FormError>
         )}
-        <SubmitButton pending={createMutation.isPending}>{t('common.create')}</SubmitButton>
+        <Button type="submit" disabled={!ready || createMutation.isPending}>
+          {createMutation.isPending ? t('common.processing') : t('common.create')}
+        </Button>
       </form>
     </Dialog>
   );

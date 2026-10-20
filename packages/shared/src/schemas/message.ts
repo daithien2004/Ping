@@ -8,6 +8,9 @@ export const createMessageSchema = z.object({
 });
 export type CreateMessageInput = z.infer<typeof createMessageSchema>;
 
+export const updateMessageSchema = z.object({ content: z.string().trim().min(1).max(4000) });
+export type UpdateMessageInput = z.infer<typeof updateMessageSchema>;
+
 /** Tin nhắn từ API (GET danh sách, POST gửi). Ngày giờ là chuỗi ISO 8601 qua JSON. */
 export interface MessageDto {
   id: string;

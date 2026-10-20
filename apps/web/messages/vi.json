@@ -5,6 +5,8 @@
     "typing": "{count, plural, =1 {Có người đang gõ…} other {# người đang gõ…}}"
   },
   "common": {
+    "cancel": "Hủy",
+    "save": "Lưu",
     "loading": "Đang tải…",
     "processing": "Đang xử lý…",
     "create": "Tạo",
@@ -60,6 +62,17 @@
     "empty": "Server chưa có channel nào."
   },
   "messages": {
+    "actions": "Thao tác tin nhắn",
+    "edit": "Sửa",
+    "delete": "Xóa",
+    "editTitle": "Sửa tin nhắn",
+    "editContent": "Nội dung tin nhắn",
+    "deleteTitle": "Xóa tin nhắn",
+    "deleteConfirm": "Bạn muốn xóa tin nhắn này? Thao tác không thể hoàn tác.",
+    "invalidContent": "Nội dung cần có từ 1 đến 4.000 ký tự.",
+    "changedElsewhere": "Tin nhắn đã được sửa ở nơi khác. Nạp bản mới trước khi lưu.",
+    "loadLatest": "Nạp bản mới",
+    "cannotSend": "Bạn không có quyền gửi tin nhắn trong channel này.",
     "loading": "Đang tải tin nhắn…",
     "loadingOlder": "Đang tải tin cũ…",
     "channelStart": "Đây là đầu kênh #{channel}.",
