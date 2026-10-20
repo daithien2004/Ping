@@ -36,7 +36,12 @@
     "accessDenied": "Can't open this page",
     "notMember": "You are not a member of this server.",
     "notFound": "This server or channel does not exist.",
-    "invalidPath": "Invalid link."
+    "invalidPath": "Invalid link.",
+    "errorId": "Error ID: {id}",
+    "fatalTitle": "A fatal error occurred",
+    "fatalHint": "The app could not be displayed. Try reloading; if it keeps failing, send the error ID to an administrator.",
+    "notFoundTitle": "Page not found",
+    "notFoundHint": "This link does not exist or has been removed."
   },
   "servers": {
     "navLabel": "Servers",
@@ -91,6 +96,7 @@
     "TOO_MANY_REQUESTS": "Too many attempts. Wait a while and try again.",
     "SERVICE_UNAVAILABLE": "Can't reach the server.",
     "unknown": "Something went wrong.",
-    "unknownWithId": "Something went wrong. Error ID: {requestId}"
+    "unknownWithId": "Something went wrong. Error ID: {requestId}",
+    "withReference": "{message} Error ID: {requestId}"
   }
 }

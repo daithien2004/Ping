@@ -19,7 +19,9 @@ type KnownCode = (typeof KNOWN)[number];
 export type ErrorOverrides = Partial<Record<ErrorCode, string>>;
 
 export type ErrorDescription =
-  { text: string } | { key: KnownCode | 'unknown' } | { key: 'unknownWithId'; requestId: string };
+  | { text: string }
+  | { key: KnownCode | 'unknown'; requestId?: string }
+  | { key: 'unknownWithId'; requestId: string };
 
 /**
  * Chọn câu báo lỗi theo `ApiError.code` (hợp đồng), không theo `message` của server (hướng dẫn
@@ -34,7 +36,10 @@ export function describeError(error: unknown, overrides: ErrorOverrides = {}): E
     }
     const known = KNOWN.find((code) => code === error.code);
     if (known) {
-      return { key: known };
+      // Lỗi phía server (5xx) kèm mã để báo lại; lỗi do người dùng (4xx) hay mất kết nối thì không.
+      return error.status >= 500 && error.requestId
+        ? { key: known, requestId: error.requestId }
+        : { key: known };
     }
     if (error.requestId) {
       return { key: 'unknownWithId', requestId: error.requestId };
@@ -51,6 +56,9 @@ export function useErrorMessage() {
     if ('text' in described) return described.text;
     if (described.key === 'unknownWithId') {
       return t('unknownWithId', { requestId: described.requestId });
+    }
+    if (described.requestId) {
+      return t('withReference', { message: t(described.key), requestId: described.requestId });
     }
     return t(described.key);
   };
