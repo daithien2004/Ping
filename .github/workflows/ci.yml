@@ -1,0 +1,245 @@
+# CI của ping (ADR-0032). Chạy cho mọi PR và mọi lần push main. Tên job là tên bạn chọn làm
+# "required status check" khi bật branch protection: verify, api-e2e, web-e2e, migrations, security.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # Giá trị cho dịch vụ chạy trong job (service containers). Trùng với .env.example.
+  DATABASE_URL: postgresql://ping:ping@localhost:5432/ping
+  REDIS_URL: redis://localhost:6379
+  JWT_ACCESS_SECRET: ci-only-secret-ci-only-secret-ci-only-0123456789
+  WEB_ORIGIN: http://localhost:3000
+
+jobs:
+  verify:
+    name: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: turbo-${{ runner.os }}-${{ github.sha }}
+          restore-keys: turbo-${{ runner.os }}-
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm format:check
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+      - run: pnpm --filter web check:bundle
+
+  api-e2e:
+    name: api-e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:17
+        env: { POSTGRES_USER: ping, POSTGRES_PASSWORD: ping, POSTGRES_DB: ping }
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U ping" --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Các spec đọc cấu hình qua ConfigModule (../../.env) và một số đọc thẳng process.env.
+      - run: cp .env.example .env
+      - run: pnpm --filter api exec prisma generate
+      - run: pnpm --filter api exec prisma migrate deploy
+      - run: pnpm --filter api test:e2e
+
+  web-e2e:
+    name: web-e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:17
+        env: { POSTGRES_USER: ping, POSTGRES_PASSWORD: ping, POSTGRES_DB: ping }
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U ping" --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: cp .env.example .env
+      - run: pnpm --filter @ping/shared build
+      - run: pnpm --filter api exec prisma generate
+      - run: pnpm --filter api exec prisma migrate deploy
+      - run: pnpm --filter web exec playwright install --with-deps chromium
+      # Playwright tự bật API (start:dev) và web (dev) theo playwright.config.ts.
+      - run: pnpm --filter web test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-traces
+          path: apps/web/test-results
+          retention-days: 7
+
+  migrations:
+    name: migrations
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env: { POSTGRES_USER: ping, POSTGRES_PASSWORD: ping, POSTGRES_DB: ping }
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U ping" --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # DB trống chạy toàn bộ migration từ đầu: bắt migration hỏng hoặc thiếu.
+      - run: pnpm --filter api exec prisma migrate deploy
+      # Schema trong code phải khớp đúng kết quả của các migration: bắt quên tạo migration
+      # (exit 2 = có khác biệt). Quy tắc 7: thay đổi DB chỉ qua migration.
+      - run: pnpm --filter api exec prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code
+
+  drills:
+    name: drills
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: cp .env.example .env
+      # Diễn tập tắt thật Postgres/Redis bằng docker (tên container theo project "ping" của compose).
+      - run: docker compose up -d --wait
+      - run: pnpm --filter api exec prisma generate
+      - run: pnpm --filter api exec prisma migrate deploy
+      - run: pnpm --filter @ping/shared build
+      - run: pnpm --filter api build
+      - run: pnpm --filter api drill:redis
+      - run: pnpm --filter api drill:postgres
+
+  docker:
+    name: docker
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      # Dựng stack production mẫu, chạy kiểm tra khói qua Caddy (gồm WebSocket), rồi kiểm tra SIGTERM thật:
+      # dừng api phải thoát mã 0 (tắt êm), không bị SIGKILL (137).
+      - name: Prepare env
+        run: |
+          {
+            echo "POSTGRES_PASSWORD=ci-password-ci-password"
+            echo "JWT_ACCESS_SECRET=ci-only-secret-ci-only-secret-ci-only-0123456789"
+            echo "PUBLIC_URL=http://localhost:8080"
+            echo "SITE_ADDRESS=:80"
+            echo "HTTP_PORT=8080"
+            echo "HTTPS_PORT=8443"
+          } > .env.prod
+      - name: Build and start the stack
+        run: docker compose -p pingprod -f docker-compose.prod.example.yml --env-file .env.prod up -d --build --wait --wait-timeout 180
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: BASE_URL=http://localhost:8080 node apps/api/test/smoke/prod-stack.mjs
+      - name: Graceful shutdown on SIGTERM
+        run: |
+          docker compose -p pingprod stop api
+          code=$(docker inspect pingprod-api-1 --format '{{.State.ExitCode}}')
+          echo "api exit code: $code"
+          test "$code" = "0"
+      - name: Logs on failure
+        if: failure()
+        run: docker compose -p pingprod logs --tail 100
+      - name: Vulnerability scan (high and critical)
+        # Báo cáo, chưa bắt buộc (quyết định C trong kế hoạch H6): bỏ continue-on-error khi muốn chặn.
+        continue-on-error: true
+        run: |
+          for image in pingprod-api pingprod-web; do
+            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.58.0 \
+              image --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 "$image"
+          done
+
+  security:
+    name: security
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # gitleaks quét cả lịch sử
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Chỉ chặn lỗ hổng mức high trở lên trong dependency production.
+      - run: pnpm audit --prod --audit-level=high
+      - name: Secret scan (gitleaks)
+        run: docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:latest detect --source /repo --redact --no-banner
+      - name: Alert rules syntax (promtool)
+        run: docker run --rm -v "$PWD/ops:/ops" --entrypoint promtool prom/prometheus:latest check rules /ops/alerts.yml
+
+  lighthouse:
+    name: lighthouse
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Báo cáo, chưa chặn merge (quyết định B): ngưỡng cần vài lần chạy để ổn định.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter web build
+      - run: pnpm dlx @lhci/cli@0.15.1 autorun --config=./lighthouserc.json

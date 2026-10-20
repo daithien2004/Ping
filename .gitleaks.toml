@@ -1,0 +1,12 @@
+# Cấu hình gitleaks (CI job `security`, ADR-0032). Giữ bộ luật mặc định, chỉ bỏ qua đúng hai dương tính giả
+# đã xem xét: file mẫu toàn giá trị giả, và huy hiệu có token công khai trong README mẫu của NestJS.
+# Thêm ngoại lệ mới phải kèm lý do ở đây.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Dương tính giả đã xem xét"
+paths = [
+  '''^\.env\.prod\.example$''',
+  '''^apps/api/README\.md$''',
+]
