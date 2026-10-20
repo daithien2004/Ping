@@ -3,6 +3,7 @@
 import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { qk } from '@/lib/query-keys';
 import { getSession, login, logout, register } from './api';
+import { markSignedOut } from './session';
 
 /**
  * Người dùng hiện tại (null = chưa đăng nhập). Chỉ dùng dưới `use(browser())`: phiên chỉ có
@@ -34,6 +35,8 @@ export function useLogout() {
   return useMutation({
     mutationFn: logout,
     onSettled: () => {
+      // AuthGate sẽ về /login không kèm ?next= (không dẫn người sau tới trang của người trước).
+      markSignedOut();
       // Đặt me = null TRƯỚC: AuthGate đang theo dõi query này sẽ chuyển về /login.
       // (Không dùng queryClient.clear(): nó xóa luôn query `me`, AuthGate mất theo dõi và
       // không bao giờ biết đã đăng xuất — đã gặp khi kiểm tra trong trình duyệt.)

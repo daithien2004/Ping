@@ -1,5 +1,5 @@
 import { ErrorCodes } from '@ping/shared';
-import { ApiError } from '@/lib/api-client';
+import { errorMessage } from '@/lib/error-message';
 
 /**
  * Chỉ chấp nhận đường dẫn nội bộ cho `?next=` (chống open redirect: link
@@ -13,27 +13,33 @@ export function safeRedirectPath(next: string | null): string {
   return next;
 }
 
+// Người dùng vừa TỰ đăng xuất (khác với phiên hết hạn). Chỉ dùng một lần cho lần chuyển trang kế tiếp.
+let signedOutIntentionally = false;
+
+/** Gọi khi người dùng bấm đăng xuất, trước khi đánh dấu `me = null`. */
+export function markSignedOut(): void {
+  signedOutIntentionally = true;
+}
+
 /**
- * Câu báo lỗi cho form đăng nhập/đăng ký, chọn theo `code` (không theo `message` của server:
- * câu chữ server có thể đổi, code thì là hợp đồng — hướng dẫn 16.7).
+ * Trang đăng nhập khi AuthGate thấy chưa đăng nhập. Phiên hết hạn: giữ trang đang đứng trong
+ * `?next=` để đăng nhập lại xong quay về. Tự đăng xuất: không giữ — người đăng nhập tiếp theo
+ * trên cùng trình duyệt không được dẫn tới trang (và lộ id server) của người trước.
  */
-export function authErrorMessage(error: unknown, action: 'login' | 'register'): string {
-  if (error instanceof ApiError) {
-    switch (error.code) {
-      case ErrorCodes.UNAUTHORIZED:
-        if (action === 'login') return 'Email hoặc mật khẩu không đúng.';
-        break;
-      case ErrorCodes.CONFLICT:
-        if (action === 'register') return 'Email hoặc tên người dùng đã được dùng.';
-        break;
-      case ErrorCodes.TOO_MANY_REQUESTS:
-        return 'Thử quá nhiều lần. Đợi một phút rồi thử lại.';
-      case ErrorCodes.SERVICE_UNAVAILABLE:
-        return 'Không kết nối được máy chủ.';
-    }
-    if (error.requestId) {
-      return `Có lỗi xảy ra. Mã lỗi: ${error.requestId}`;
-    }
+export function loginRedirectPath(currentPath: string): string {
+  if (signedOutIntentionally) {
+    signedOutIntentionally = false;
+    return '/login';
   }
-  return 'Có lỗi xảy ra.';
+  return `/login?next=${encodeURIComponent(currentPath)}`;
+}
+
+/** Câu báo lỗi cho form đăng nhập/đăng ký: câu chung của lib/error-message + câu riêng của auth. */
+export function authErrorMessage(error: unknown, action: 'login' | 'register'): string {
+  return errorMessage(
+    error,
+    action === 'login'
+      ? { [ErrorCodes.UNAUTHORIZED]: 'Email hoặc mật khẩu không đúng.' }
+      : { [ErrorCodes.CONFLICT]: 'Email hoặc tên người dùng đã được dùng.' },
+  );
 }
