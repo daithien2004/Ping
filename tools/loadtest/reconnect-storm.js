@@ -16,7 +16,9 @@ const ROUNDS = Number(__ENV.ROUNDS || 3);
 const HOLD_MS = Number(__ENV.HOLD_S || 15) * 1000;
 
 const recovery = new Trend('reconnect_ms', true);
-const failures = new Counter('reconnect_failures');
+const failures = new Counter('reconnect_failures'); // tổng = nối thất bại + join thất bại
+const connectFailed = new Counter('connect_failed'); // socket không mở được (bị từ chối, ngắt, không nối được)
+const joinFailed = new Counter('join_failed'); // mở được nhưng channel.join không trả ok
 const joined = new Counter('joins_ok');
 
 export const options = {
@@ -53,6 +55,7 @@ export default function () {
         socket.emit('channel.join', { channelId }, (result) => {
           if (!result || !result.ok) {
             failures.add(1);
+            joinFailed.add(1);
             return;
           }
           joined.add(1);
@@ -74,7 +77,10 @@ export default function () {
       },
       onClose() {
         if (ending) return;
-        if (!opened) failures.add(1); // nối không thành công
+        if (!opened) {
+          failures.add(1); // nối không thành công
+          connectFailed.add(1);
+        }
         if (!lostAt) lostAt = Date.now(); // server tự đóng (restart): tính từ lúc này
         if (Date.now() - lostAt > 60000) return; // bỏ cuộc sau 60 giây không nối lại được
         closing = false;

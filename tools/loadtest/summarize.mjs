@@ -32,6 +32,7 @@ for (const counter of [
   'send_failed',
   'socket_errors',
   'reconnect_failures',
+  'connect_failed',
   'joins_ok',
 ]) {
   if (metrics[counter]) rows.push(`${counter.padEnd(24)}${metrics[counter].count}`);

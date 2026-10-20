@@ -127,10 +127,23 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
 
       // Phát online ở MỌI lần kết nối: idempotent với client, và tránh đua khi hai tab
       // cùng kết nối (cả hai cùng thấy "đã có 2 socket" thì không ai báo online).
-      await this.broadcastPresence(userId, 'online');
+      // Presence là best-effort (như chiều ngắt ở handleDisconnect): khi pool Postgres cạn lúc nhiều người
+      // nối cùng lúc, truy vấn này quá hạn. Người dùng đã xác thực xong thì không bị ngắt vì thế.
+      try {
+        await this.broadcastPresence(userId, 'online');
+      } catch (error) {
+        this.logger.warn(
+          { sid: socket.id, userId, err: (error as Error).message },
+          'ws: presence update skipped',
+        );
+      }
       this.logger.debug({ sid: socket.id, userId }, 'ws: connected');
     } catch (error) {
-      this.logger.warn({ sid: socket.id, err: (error as Error).message }, 'ws: auth failed');
+      // Xác thực đã xong ở middleware; tới đây là lỗi thiết lập kết nối (join room, đếm socket).
+      this.logger.warn(
+        { sid: socket.id, err: (error as Error).message },
+        'ws: connect setup failed',
+      );
       socket.disconnect(true);
     }
   }
