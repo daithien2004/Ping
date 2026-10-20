@@ -6,7 +6,12 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import { canKickMember, Permissions, type MyServerPermissions } from '@ping/shared';
+import {
+  canKickMember,
+  Permissions,
+  type ListMembersQuery,
+  type MyServerPermissions,
+} from '@ping/shared';
 import { randomBytes } from 'node:crypto';
 import { isUniqueConstraintError } from '../../common/utils/prisma-errors.js';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
@@ -75,16 +80,22 @@ export class ServersService {
     });
   }
 
-  listForUser(userId: string) {
-    return this.prisma.server.findMany({
+  async listForUser(userId: string) {
+    const servers = await this.prisma.server.findMany({
       where: { members: { some: { userId } } },
       include: { _count: { select: { members: true, channels: true } } },
       orderBy: { createdAt: 'asc' },
     });
+    // Không đưa `_count` (chi tiết của Prisma) ra API: số đếm là trường phẳng camelCase (ADR-0028).
+    return servers.map(({ _count, ...server }) => ({
+      ...server,
+      memberCount: _count.members,
+      channelCount: _count.channels,
+    }));
   }
 
-  detail(serverId: string) {
-    return this.prisma.server.findUniqueOrThrow({
+  async detail(serverId: string) {
+    const { _count, ...server } = await this.prisma.server.findUniqueOrThrow({
       where: { id: serverId },
       include: {
         channels: { orderBy: { position: 'asc' } },
@@ -92,6 +103,7 @@ export class ServersService {
         _count: { select: { members: true } },
       },
     });
+    return { ...server, memberCount: _count.members };
   }
 
   /** Dùng lại AbilityFactory (có cache, đã cộng @everyone): một nơi duy nhất tính quyền. */
@@ -100,15 +112,22 @@ export class ServersService {
     return { isOwner, permissions: permissions.toString() };
   }
 
-  members(serverId: string) {
-    return this.prisma.member.findMany({
-      where: { serverId },
+  /**
+   * Phân trang cursor (keyset) theo id thành viên tăng dần (UUIDv7: cũ → mới, cùng thứ tự `joinedAt`).
+   * `after` thuộc server khác thì chỉ đơn giản không khớp hàng nào của server này, không lộ gì.
+   */
+  async members(serverId: string, { after, limit }: ListMembersQuery) {
+    const rows = await this.prisma.member.findMany({
+      where: { serverId, ...(after ? { id: { gt: after } } : {}) },
       include: {
         user: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
         roles: { select: { role: { select: { id: true, name: true } } } },
       },
-      orderBy: { joinedAt: 'asc' },
+      orderBy: { id: 'asc' },
+      take: limit + 1, // lấy dư một hàng để biết còn trang sau
     });
+    const hasMore = rows.length > limit;
+    return { members: hasMore ? rows.slice(0, limit) : rows, hasMore };
   }
 
   async join(userId: string, inviteCode: string) {

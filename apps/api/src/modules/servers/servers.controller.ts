@@ -6,14 +6,17 @@ import {
   HttpCode,
   Param,
   Post,
+  Query,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import {
   createServerSchema,
   joinServerSchema,
+  listMembersQuerySchema,
   type CreateServerInput,
   type JoinServerInput,
+  type ListMembersQuery,
 } from '@ping/shared';
 import { IdempotencyInterceptor } from '../../common/interceptors/idempotency.interceptor.js';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe.js';
@@ -66,8 +69,11 @@ export class ServersController {
 
   @Get(':serverId/members')
   @CheckAbility(['view', 'Member'])
-  members(@Param('serverId') serverId: string) {
-    return this.serversService.members(serverId);
+  members(
+    @Param('serverId') serverId: string,
+    @Query(new ZodValidationPipe(listMembersQuerySchema)) query: ListMembersQuery,
+  ) {
+    return this.serversService.members(serverId, query);
   }
 
   @Post(':serverId/leave')

@@ -69,7 +69,7 @@ describe('Messages (e2e)', () => {
 
   async function memberIdOf(user: TestUser): Promise<string> {
     const res = await api('get', `/api/v1/servers/${serverId}/members`, author.token).expect(200);
-    const member = res.body.find((item: { userId: string }) => item.userId === user.id);
+    const member = res.body.members.find((item: { userId: string }) => item.userId === user.id);
     if (!member) {
       throw new Error('Member not found');
     }

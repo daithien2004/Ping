@@ -114,12 +114,12 @@ describe('IDOR (e2e)', () => {
       .expect(201);
     serverB = b.body.id;
 
-    const membersA = (await as(alice, 'get', `/servers/${serverA}/members`).expect(200))
-      .body as Array<{ id: string; userId: string }>;
+    const membersA = (await as(alice, 'get', `/servers/${serverA}/members`).expect(200)).body
+      .members as Array<{ id: string; userId: string }>;
     aliceMemberA = membersA.find((m) => m.userId === alice.id)!.id;
     carolMemberA = membersA.find((m) => m.userId === carol.id)!.id;
-    const membersB = (await as(bob, 'get', `/servers/${serverB}/members`).expect(200))
-      .body as Array<{ id: string; userId: string }>;
+    const membersB = (await as(bob, 'get', `/servers/${serverB}/members`).expect(200)).body
+      .members as Array<{ id: string; userId: string }>;
     bobMemberB = membersB.find((m) => m.userId === bob.id)!.id;
 
     aliceMessage = (

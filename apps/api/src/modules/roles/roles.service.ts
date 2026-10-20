@@ -50,12 +50,13 @@ export class RolesService {
     });
   }
 
-  list(serverId: string) {
-    return this.prisma.role.findMany({
+  async list(serverId: string) {
+    const roles = await this.prisma.role.findMany({
       where: { serverId },
       include: { _count: { select: { members: true } } },
       orderBy: [{ position: 'asc' }, { name: 'asc' }],
     });
+    return roles.map(({ _count, ...role }) => ({ ...role, memberCount: _count.members }));
   }
 
   async update(roleId: string, actorId: string, input: UpdateRoleInput) {

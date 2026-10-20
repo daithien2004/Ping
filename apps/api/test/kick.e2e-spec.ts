@@ -48,7 +48,7 @@ describe('Kick member (e2e)', () => {
 
   async function memberIdOf(serverId: string, user: TestUser, as: TestUser): Promise<string> {
     const res = await api('get', `/api/v1/servers/${serverId}/members`, as.token).expect(200);
-    return res.body.find((m: { userId: string }) => m.userId === user.id).id;
+    return res.body.members.find((m: { userId: string }) => m.userId === user.id).id;
   }
 
   async function giveRole(user: TestUser, permissions: bigint) {

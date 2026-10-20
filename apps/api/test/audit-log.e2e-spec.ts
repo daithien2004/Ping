@@ -121,7 +121,9 @@ describe('Audit log (e2e)', () => {
     const members = await api('get', `/api/v1/servers/${serverId}/members`, owner.token).expect(
       200,
     );
-    const moderatorMember = members.body.find((m: { userId: string }) => m.userId === moderator.id);
+    const moderatorMember = members.body.members.find(
+      (m: { userId: string }) => m.userId === moderator.id,
+    );
     await api('put', `/api/v1/servers/${serverId}/members/${moderatorMember.id}/roles`, owner.token)
       .send({ roleIds: [roleId] })
       .expect(200);

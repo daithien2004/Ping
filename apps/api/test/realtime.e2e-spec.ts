@@ -469,7 +469,7 @@ describe('Realtime across two instances (e2e)', () => {
       .get(`/api/v1/servers/${serverId}/members`)
       .set('Authorization', `Bearer ${owner.token}`)
       .expect(200);
-    const target = members.body.find((m: { userId: string }) => m.userId === bystander.id);
+    const target = members.body.members.find((m: { userId: string }) => m.userId === bystander.id);
 
     const received = waitEvent<{ serverId: string }>(socket, 'member.removed');
     await request(appA.getHttpServer())

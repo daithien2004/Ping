@@ -5,7 +5,6 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { randomUUID } from 'node:crypto';
 import { ClsModule } from 'nestjs-cls';
 import { LoggerModule } from 'nestjs-pino';
-import { z } from 'zod';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 // Side-effect: dạy JSON.stringify serialize BigInt (Role.permissions) thành string.
@@ -14,6 +13,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter.js';
 import { HttpThrottlerGuard } from './common/guards/http-throttler.guard.js';
 import { UuidParamsGuard } from './common/guards/uuid-params.guard.js';
 import { LOG_REDACT_PATHS } from './common/log-redaction.js';
+import { requestIdFrom } from './common/request-id.js';
 import { envSchema } from './config/env.schema.js';
 import { LifecycleModule } from './infra/lifecycle/lifecycle.module.js';
 import { PrismaModule } from './infra/prisma/prisma.module.js';
@@ -29,13 +29,6 @@ import { RealtimeModule } from './modules/realtime/realtime.module.js';
 import { RolesModule } from './modules/roles/roles.module.js';
 import { ServersModule } from './modules/servers/servers.module.js';
 import { UsersModule } from './modules/users/users.module.js';
-
-const uuid = z.uuid();
-
-/** Chỉ dùng lại X-Request-Id của client khi là UUID: chuỗi tùy ý sẽ đi thẳng vào log và header. */
-function requestIdFrom(header: string | string[] | undefined): string {
-  return typeof header === 'string' && uuid.safeParse(header).success ? header : randomUUID();
-}
 
 @Module({
   imports: [
