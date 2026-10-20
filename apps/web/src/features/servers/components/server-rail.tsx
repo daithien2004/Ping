@@ -10,18 +10,11 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useLogout, useMe } from '@/features/auth/hooks';
+import { initials } from '@/lib/initials';
 import { useServers } from '../hooks';
 import { serverPath } from '../navigation';
 import { CreateServerDialog } from './create-server-dialog';
 import { JoinServerDialog } from './join-server-dialog';
-
-const initials = (name: string) =>
-  name
-    .split(/\s+/)
-    .map((word) => word[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
 
 /** Một mục trên rail: tooltip bên phải + thanh chỉ báo bên trái khi đang chọn (kiểu app chat). */
 function RailItem({

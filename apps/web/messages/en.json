@@ -68,6 +68,17 @@
     "notFound": "This channel does not exist.",
     "empty": "This server has no channels yet."
   },
+  "members": {
+    "panel": "Members",
+    "show": "Show member list",
+    "hide": "Hide member list",
+    "loading": "Loading members…",
+    "online": "Online — {count}",
+    "offline": "Offline — {count}",
+    "statusOnline": "Online",
+    "statusOffline": "Offline",
+    "loadMore": "Load more"
+  },
   "messages": {
     "actions": "Message actions",
     "edit": "Edit",

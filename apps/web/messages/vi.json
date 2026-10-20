@@ -68,6 +68,17 @@
     "notFound": "Channel không tồn tại.",
     "empty": "Server chưa có channel nào."
   },
+  "members": {
+    "panel": "Thành viên",
+    "show": "Hiện danh sách thành viên",
+    "hide": "Ẩn danh sách thành viên",
+    "loading": "Đang tải thành viên…",
+    "online": "Đang online — {count}",
+    "offline": "Offline — {count}",
+    "statusOnline": "Đang online",
+    "statusOffline": "Offline",
+    "loadMore": "Xem thêm"
+  },
   "messages": {
     "actions": "Thao tác tin nhắn",
     "edit": "Sửa",
