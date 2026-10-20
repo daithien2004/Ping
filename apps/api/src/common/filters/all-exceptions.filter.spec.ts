@@ -56,6 +56,19 @@ describe('AllExceptionsFilter', () => {
     expect(run(new MethodNotAllowedException()).body?.code).toBe(ErrorCodes.BAD_REQUEST);
   });
 
+  it('maps a database outage to 503 SERVICE_UNAVAILABLE without leaking driver details', () => {
+    const outage = Object.assign(new Error('connect ECONNREFUSED 127.0.0.1:5432'), {
+      name: 'PrismaClientKnownRequestError',
+      code: 'ECONNREFUSED',
+    });
+    const sent = run(outage);
+    expect(sent).toMatchObject({
+      status: 503,
+      body: { code: ErrorCodes.SERVICE_UNAVAILABLE, requestId: 'req-1' },
+    });
+    expect(JSON.stringify(sent.body)).not.toContain('5432');
+  });
+
   it('maps unexpected errors to INTERNAL_ERROR with status 500', () => {
     expect(run(new Error('boom'))).toMatchObject({
       status: 500,

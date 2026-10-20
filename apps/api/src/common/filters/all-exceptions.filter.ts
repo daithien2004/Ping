@@ -11,6 +11,7 @@ import {
 import type { Request, Response } from 'express';
 import { Logger } from 'nestjs-pino';
 import type { Env } from '../../config/env.schema.js';
+import { isDatabaseUnavailable } from '../db-unavailable.js';
 
 /**
  * Single filter that turns every thrown exception into the uniform error
@@ -36,6 +37,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     let message: string = 'Internal server error';
     let details: unknown;
     let stack: string | undefined;
+    let logContext: Record<string, unknown> = {};
 
     if (exception instanceof HttpException) {
       status = exception.getStatus();
@@ -70,6 +72,13 @@ export class AllExceptionsFilter implements ExceptionFilter {
       status = HttpStatus.FORBIDDEN;
       code = ErrorCodes.FORBIDDEN;
       message = exception.message;
+    } else if (isDatabaseUnavailable(exception)) {
+      // Hạ tầng hỏng, không phải bug của request: 503 + requestId, không stack, không lộ chi tiết
+      // driver (host, port…). Chỉ log tên lỗi để biết nguồn.
+      status = HttpStatus.SERVICE_UNAVAILABLE;
+      code = ErrorCodes.SERVICE_UNAVAILABLE;
+      message = 'Service unavailable';
+      logContext = { dependency: 'postgres', cause: (exception as Error).name };
     } else if (exception instanceof Error) {
       stack = exception.stack;
       message = exception.message;
@@ -89,7 +98,10 @@ export class AllExceptionsFilter implements ExceptionFilter {
     } else if (status >= 500) {
       // Deliberate 5xx (e.g. readiness probe while a dependency is down):
       // error-level because it matters, but no stack — nothing was unhandled.
-      this.logger.error({ requestId, status, code, path: request.url }, 'server error');
+      this.logger.error(
+        { requestId, status, code, path: request.url, ...logContext },
+        'server error',
+      );
     } else {
       this.logger.warn({ requestId, status, code, path: request.url }, 'request rejected');
     }
