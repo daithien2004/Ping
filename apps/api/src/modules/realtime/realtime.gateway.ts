@@ -127,9 +127,9 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
       }
       this.logger.debug({ sid: socket.id, userId }, 'ws: disconnected');
     } catch (error) {
-      // Lúc app tắt, Nest đóng Redis/Prisma (onModuleDestroy) TRƯỚC khi đóng Socket.IO, nên
-      // các socket bị ngắt lúc đó không còn Redis để đếm. Nest không await handler này:
-      // để lỗi bay ra là unhandled rejection.
+      // Nest không await handler này: để lỗi bay ra là unhandled rejection. Redis/Postgres chỉ
+      // đóng SAU Socket.IO (ADR-0026) nên lúc tắt app lỗi này hiếm; còn khi hạ tầng hỏng giữa chừng
+      // thì presence bị bỏ qua chứ không được làm sập tiến trình.
       this.logger.warn(
         { sid: socket.id, userId, err: (error as Error).message },
         'ws: presence update skipped',

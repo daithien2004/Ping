@@ -1,8 +1,10 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, ServiceUnavailableException } from '@nestjs/common';
 import { SkipThrottle } from '@nestjs/throttler';
 import { HealthCheck, HealthCheckService, PrismaHealthIndicator } from '@nestjs/terminus';
+import { ErrorCodes } from '@ping/shared';
+import { ShutdownService } from '../../infra/lifecycle/shutdown.service.js';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
-import { RedisHealthIndicator } from './redis.health.js';
+import { RedisProvider } from '../../infra/redis/redis.module.js';
 
 // Controller ở root (không prefix) để 2 endpoint là siblings:
 //   GET /api/v1/health  và  GET /api/v1/ready
@@ -13,7 +15,8 @@ export class HealthController {
     private readonly healthCheck: HealthCheckService,
     private readonly prisma: PrismaService,
     private readonly prismaIndicator: PrismaHealthIndicator,
-    private readonly redisIndicator: RedisHealthIndicator,
+    private readonly redis: RedisProvider,
+    private readonly shutdown: ShutdownService,
   ) {}
 
   /**
@@ -27,14 +30,44 @@ export class HealthController {
     return { status: 'ok' };
   }
 
-  /** Readiness: nhận traffic được chưa — DB và Redis cùng phải up. */
+  /**
+   * Readiness: instance có nên nhận traffic không (ADR-0026).
+   * - đang tắt (SIGTERM) hoặc Postgres chết → 503: load balancer loại instance khỏi pool.
+   * - chỉ Redis chết → 200 `degraded`: REST và lưu tin nhắn vẫn chạy (Postgres là nguồn sự thật),
+   *   chỉ realtime giữa các instance suy giảm. Giám sát đọc `status`/`details.redis`.
+   */
   @Get('ready')
   @SkipThrottle()
   @HealthCheck()
-  readiness() {
-    return this.healthCheck.check([
+  async readiness() {
+    if (this.shutdown.draining) {
+      throw new ServiceUnavailableException({
+        code: ErrorCodes.SERVICE_UNAVAILABLE,
+        message: 'Shutting down',
+      });
+    }
+    // Throw 503 (body của terminus kèm chi tiết) nếu Postgres chết.
+    const result = await this.healthCheck.check([
       () => this.prismaIndicator.pingCheck('database', this.prisma),
-      () => this.redisIndicator.pingCheck('redis'),
     ]);
+    const redis = await this.redisIsUp();
+    return {
+      ...result,
+      status: redis ? result.status : 'degraded',
+      info: { ...result.info, redis: { status: redis ? 'up' : 'down' } },
+      details: { ...result.details, redis: { status: redis ? 'up' : 'down' } },
+    };
+  }
+
+  private async redisIsUp(): Promise<boolean> {
+    if (!this.redis.isUp) {
+      return false;
+    }
+    try {
+      await this.redis.ping(); // commandTimeout cắt nếu Redis treo
+      return true;
+    } catch {
+      return false;
+    }
   }
 }

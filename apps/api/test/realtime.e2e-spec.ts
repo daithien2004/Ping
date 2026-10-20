@@ -494,8 +494,8 @@ describe('Realtime across two instances (e2e)', () => {
 
     expect(await received).toEqual({ serverId });
     socket.disconnect();
-    // Cho request chéo instance của handleDisconnect chạy xong trước khi afterAll tắt app:
-    // Nest đóng Redis (onModuleDestroy) trước Socket.IO, publish dở dang sẽ thành unhandled rejection.
+    // Cho các request chéo instance của handleDisconnect chạy xong trước khi afterAll tắt app.
+    // (Từ ADR-0026 Redis đóng sau Socket.IO nên không còn bắt buộc, giữ lại cho test ổn định.)
     await settle();
   });
 });

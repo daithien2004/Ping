@@ -2,6 +2,7 @@ import { ForbiddenException, Injectable } from '@nestjs/common';
 import { ServerEvents, type ServerToClientEvents } from '@ping/shared';
 import { Server } from 'socket.io';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
+import { RedisProvider } from '../../infra/redis/redis.module.js';
 import { AbilityFactory } from '../ability/ability.factory.js';
 
 type EventName = keyof ServerToClientEvents;
@@ -14,6 +15,7 @@ export class RealtimeService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly abilityFactory: AbilityFactory,
+    private readonly redis: RedisProvider,
   ) {}
 
   attach(server: Server<ServerToClientEvents>): void {
@@ -38,7 +40,10 @@ export class RealtimeService {
     if (!this.server) {
       return 0;
     }
-    return (await this.server.in(`user:${userId}`).fetchSockets()).length;
+    const room = this.server.in(`user:${userId}`);
+    // Redis chết: fetchSockets() hỏi các instance khác qua pub/sub và sẽ chờ tới 5 giây rồi lỗi.
+    // Đếm riêng instance này thay vì chờ (presence suy giảm, không chậm; ADR-0026).
+    return (await (this.redis.isUp ? room : room.local).fetchSockets()).length;
   }
 
   /**

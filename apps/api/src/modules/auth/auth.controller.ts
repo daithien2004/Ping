@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { Throttle } from '@nestjs/throttler';
 import { loginSchema, registerSchema, type LoginInput, type RegisterInput } from '@ping/shared';
 import type { Request, Response } from 'express';
+import { RateLimitFailClosed } from '../../common/decorators.js';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe.js';
 import type { Env } from '../../config/env.schema.js';
 import { REFRESH_COOKIE_NAME, REFRESH_COOKIE_PATH } from './auth.constants.js';
@@ -21,6 +22,7 @@ export class AuthController {
    * lần argon2.verify tốn CPU. Global 100 là phòng cháy, cái này là khóa cửa.
    */
   @Post('register')
+  @RateLimitFailClosed()
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @UsePipes(new ZodValidationPipe(registerSchema))
   async register(
@@ -37,6 +39,7 @@ export class AuthController {
   }
 
   @Post('login')
+  @RateLimitFailClosed()
   @HttpCode(200)
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @UsePipes(new ZodValidationPipe(loginSchema))
@@ -55,6 +58,7 @@ export class AuthController {
 
   /** Không cần JwtAuthGuard: tự xác thực hoàn toàn bằng cookie httpOnly. */
   @Post('refresh')
+  @RateLimitFailClosed()
   @HttpCode(200)
   async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const { accessToken, refreshCookie } = await this.authService.refresh(

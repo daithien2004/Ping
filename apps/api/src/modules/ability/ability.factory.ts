@@ -1,7 +1,8 @@
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable, Logger } from '@nestjs/common';
 import { defineAbilityFor, type AbilityContext, type AppAbility } from '@ping/shared';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
 import { RedisProvider } from '../../infra/redis/redis.module.js';
+import { failOpen } from '../../infra/redis/redis-policy.js';
 
 interface CachedContext {
   isOwner: boolean;
@@ -18,6 +19,7 @@ interface CachedContext {
 export class AbilityFactory {
   /** Cache ngắn hạn: quyền chỉ đổi khi role đổi hoặc member bị gỡ role. */
   private readonly ttlSeconds = 30;
+  private readonly logger = new Logger(AbilityFactory.name);
 
   constructor(
     private readonly prisma: PrismaService,
@@ -32,16 +34,32 @@ export class AbilityFactory {
   async invalidateServer(serverId: string): Promise<void> {
     // SCAN theo từng lô thay vì KEYS: KEYS quét toàn bộ Redis trong một lệnh và chặn
     // mọi client khác (rate limit, pub/sub) cho tới khi xong.
-    const stream = this.redis.scanStream({ match: `ability:${serverId}:*`, count: 200 });
-    for await (const keys of stream as AsyncIterable<string[]>) {
-      if (keys.length > 0) {
-        await this.redis.del(keys);
-      }
-    }
+    // Redis chết: không xóa được cache. Cache chỉ sống tối đa `ttlSeconds` nên quyền sai tồn tại
+    // không quá 30 giây (ADR-0026), còn đổi role vẫn thành công thay vì lỗi 500.
+    await failOpen(
+      this.redis,
+      this.logger,
+      'ability-invalidate',
+      async () => {
+        const stream = this.redis.scanStream({ match: `ability:${serverId}:*`, count: 200 });
+        for await (const keys of stream as AsyncIterable<string[]>) {
+          if (keys.length > 0) {
+            await this.redis.del(keys);
+          }
+        }
+      },
+      undefined,
+    );
   }
 
   async invalidateMember(serverId: string, userId: string): Promise<void> {
-    await this.redis.del(AbilityFactory.cacheKey(serverId, userId));
+    await failOpen(
+      this.redis,
+      this.logger,
+      'ability-invalidate',
+      () => this.redis.del(AbilityFactory.cacheKey(serverId, userId)),
+      0,
+    );
   }
 
   private static cacheKey(serverId: string, userId: string): string {
@@ -51,7 +69,14 @@ export class AbilityFactory {
   /** Quyền hiệu lực của user trong server; ném 403 nếu không phải member. */
   async contextFor(serverId: string, userId: string): Promise<AbilityContext> {
     const key = AbilityFactory.cacheKey(serverId, userId);
-    const cached = await this.redis.get(key);
+    // Cache hỏng/chưa sẵn sàng = trượt cache: tính lại từ Postgres (nguồn sự thật).
+    const cached = await failOpen(
+      this.redis,
+      this.logger,
+      'ability-cache',
+      () => this.redis.get(key),
+      null,
+    );
     if (cached) {
       const parsed = JSON.parse(cached) as CachedContext;
       return { userId, isOwner: parsed.isOwner, permissions: BigInt(parsed.permissions) };
@@ -89,7 +114,13 @@ export class AbilityFactory {
       isOwner: context.isOwner,
       permissions: permissions.toString(),
     };
-    await this.redis.set(key, JSON.stringify(serialized), 'EX', this.ttlSeconds);
+    await failOpen(
+      this.redis,
+      this.logger,
+      'ability-cache',
+      () => this.redis.set(key, JSON.stringify(serialized), 'EX', this.ttlSeconds),
+      null,
+    );
     return context;
   }
 }

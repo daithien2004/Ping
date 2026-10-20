@@ -1,8 +1,33 @@
-import type { INestApplicationContext } from '@nestjs/common';
+import { Logger, type INestApplicationContext } from '@nestjs/common';
 import { IoAdapter } from '@nestjs/platform-socket.io';
 import { createAdapter } from '@socket.io/redis-adapter';
 import type { Redis } from 'ioredis';
 import { ServerOptions, type Server } from 'socket.io';
+import { warnRedisDown } from '../redis/redis-policy.js';
+
+/**
+ * @socket.io/redis-adapter gọi `pubClient.publish(...)` mà KHÔNG await và không bắt lỗi. Redis chết
+ * thì lệnh bị từ chối → unhandled rejection → Node thoát. Bọc `publish` để lỗi chỉ được log:
+ * event không tới instance khác (suy giảm có kiểm soát, ADR-0026), tiến trình vẫn sống.
+ */
+export function withSafePublish(client: Redis, logger: Logger): Redis {
+  return new Proxy(client, {
+    get(target, property) {
+      const value: unknown = Reflect.get(target, property, target);
+      if (typeof value !== 'function') {
+        return value;
+      }
+      if (property === 'publish') {
+        return (...args: unknown[]) =>
+          (value.apply(target, args) as Promise<number>).catch((error: unknown) => {
+            warnRedisDown(logger, 'socket-publish', error);
+            return 0;
+          });
+      }
+      return value.bind(target) as unknown;
+    },
+  });
+}
 
 /**
  * Socket.IO đa instance: pub/sub qua Redis để `emit` từ instance A đến được
@@ -16,6 +41,8 @@ import { ServerOptions, type Server } from 'socket.io';
  * decorator của gateway — decorator chạy lúc import, trước khi .env được nạp.
  */
 export class RedisIoAdapter extends IoAdapter {
+  private readonly policyLogger = new Logger(RedisIoAdapter.name);
+
   constructor(
     app: INestApplicationContext,
     private readonly pubClient: Redis,
@@ -28,7 +55,10 @@ export class RedisIoAdapter extends IoAdapter {
   createIOServer(port: number, options?: ServerOptions): Server {
     const withCors = { ...options, cors: { origin: this.corsOrigin, credentials: true } };
     const server = super.createIOServer(port, withCors as ServerOptions) as unknown as Server;
-    const adapter = createAdapter(this.pubClient, this.subClient);
+    const adapter = createAdapter(
+      withSafePublish(this.pubClient, this.policyLogger),
+      this.subClient,
+    );
     (server as unknown as { adapter: (a: unknown) => void }).adapter(adapter);
     return server;
   }
