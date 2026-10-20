@@ -252,5 +252,7 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # build trực tiếp một gói (không qua turbo) thì không tự build @ping/shared: làm tay.
+      - run: pnpm --filter @ping/shared build
       - run: pnpm --filter web build
       - run: pnpm dlx @lhci/cli@0.15.1 autorun --config=./lighthouserc.json
