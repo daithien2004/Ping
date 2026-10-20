@@ -1,5 +1,6 @@
 import { Suspense, type ReactNode } from 'react';
 import { Loading } from '@/components/loading';
+import { RailSkeleton } from '@/components/skeletons';
 import { AuthGate } from '@/features/auth/components/auth-gate';
 import { ServerRail } from '@/features/servers/components/server-rail';
 import { RealtimeProvider } from '@/features/realtime/components/realtime-provider';
@@ -17,7 +18,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           <div className="flex h-dvh flex-col">
             <ConnectionBanner />
             <div className="flex min-h-0 min-w-[960px] flex-1">
-              <Suspense fallback={<div className="w-[72px] bg-rail" />}>
+              <Suspense fallback={<RailSkeleton />}>
                 <ServerRail />
               </Suspense>
               <div className="flex min-w-0 flex-1">

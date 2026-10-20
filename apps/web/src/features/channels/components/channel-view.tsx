@@ -2,6 +2,7 @@
 
 import { Suspense, use } from 'react';
 import { useTranslations } from 'use-intl';
+import { MessageListSkeleton } from '@/components/skeletons';
 import { MessagePane } from '@/features/messages/components/message-pane';
 import { useChannels } from '../hooks';
 
@@ -33,9 +34,7 @@ export function ChannelView({
         <span className="mr-1.5 text-xl leading-none text-muted-foreground">#</span>
         {channel.name}
       </header>
-      <Suspense
-        fallback={<p className="m-auto text-sm text-muted-foreground">{t('messages.loading')}</p>}
-      >
+      <Suspense fallback={<MessageListSkeleton />}>
         {/* key: mỗi channel một trạng thái riêng (nháp, vị trí cuộn lần đầu). */}
         <MessagePane
           key={channel.id}

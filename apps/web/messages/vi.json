@@ -45,6 +45,7 @@
   },
   "servers": {
     "navLabel": "Server",
+    "loading": "Đang tải danh sách server…",
     "create": "Tạo server",
     "join": "Tham gia server",
     "joinSubmit": "Tham gia",
@@ -60,6 +61,7 @@
   },
   "channels": {
     "navLabel": "Channel",
+    "loading": "Đang tải danh sách channel…",
     "create": "Tạo channel",
     "name": "Tên channel",
     "noPermissionCreate": "Bạn không có quyền tạo channel.",
@@ -79,6 +81,7 @@
     "loadLatest": "Nạp bản mới",
     "cannotSend": "Bạn không có quyền gửi tin nhắn trong channel này.",
     "loading": "Đang tải tin nhắn…",
+    "empty": "Chưa có tin nhắn nào. Hãy gửi tin đầu tiên!",
     "loadingOlder": "Đang tải tin cũ…",
     "channelStart": "Đây là đầu kênh #{channel}.",
     "listLabel": "Tin nhắn trong #{channel}",

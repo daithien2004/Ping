@@ -145,6 +145,14 @@ export function MessagePane({
                 ? ''
                 : t('channelStart', { channel: channelName })}
           </p>
+          {messages.length === 0 && !hasNextPage && (
+            <p
+              className="absolute inset-x-0 px-4 text-sm text-muted-foreground"
+              style={{ top: HEADER_HEIGHT }}
+            >
+              {t('empty')}
+            </p>
+          )}
           {virtualizer.getVirtualItems().map((item) => {
             const message = messages[item.index];
             if (!message) return null;
