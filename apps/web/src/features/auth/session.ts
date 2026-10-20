@@ -1,6 +1,3 @@
-import { ErrorCodes } from '@ping/shared';
-import { errorMessage } from '@/lib/error-message';
-
 /**
  * Chỉ chấp nhận đường dẫn nội bộ cho `?next=` (chống open redirect: link
  * `/login?next=https://trang-gia.com` không được dẫn người vừa đăng nhập ra ngoài).
@@ -32,14 +29,4 @@ export function loginRedirectPath(currentPath: string): string {
     return '/login';
   }
   return `/login?next=${encodeURIComponent(currentPath)}`;
-}
-
-/** Câu báo lỗi cho form đăng nhập/đăng ký: câu chung của lib/error-message + câu riêng của auth. */
-export function authErrorMessage(error: unknown, action: 'login' | 'register'): string {
-  return errorMessage(
-    error,
-    action === 'login'
-      ? { [ErrorCodes.UNAUTHORIZED]: 'Email hoặc mật khẩu không đúng.' }
-      : { [ErrorCodes.CONFLICT]: 'Email hoặc tên người dùng đã được dùng.' },
-  );
 }

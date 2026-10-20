@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
+import { useTranslations } from 'use-intl';
+import { LanguageSwitcher } from '@/components/language-switcher';
 import { useLogout, useMe } from '@/features/auth/hooks';
 import { useServers } from '../hooks';
 import { serverPath } from '../navigation';
@@ -28,9 +30,13 @@ export function ServerRail() {
   const logoutMutation = useLogout();
   const [dialog, setDialog] = useState<'create' | 'join' | null>(null);
   const close = () => setDialog(null);
+  const t = useTranslations();
 
   return (
-    <nav aria-label="Server" className="flex w-[72px] flex-col items-center gap-2 bg-gray-900 py-3">
+    <nav
+      aria-label={t('servers.navLabel')}
+      className="flex w-[72px] flex-col items-center gap-2 bg-gray-900 py-3"
+    >
       {servers.map((server) => (
         <Link
           key={server.id}
@@ -45,8 +51,8 @@ export function ServerRail() {
       ))}
       <button
         type="button"
-        title="Tạo server"
-        aria-label="Tạo server"
+        title={t('servers.create')}
+        aria-label={t('servers.create')}
         onClick={() => setDialog('create')}
         className={railButton}
       >
@@ -54,8 +60,8 @@ export function ServerRail() {
       </button>
       <button
         type="button"
-        title="Tham gia server"
-        aria-label="Tham gia server"
+        title={t('servers.join')}
+        aria-label={t('servers.join')}
         onClick={() => setDialog('join')}
         className={railButton}
       >
@@ -63,6 +69,7 @@ export function ServerRail() {
       </button>
 
       <div className="mt-auto flex flex-col items-center gap-1 text-xs text-gray-300">
+        <LanguageSwitcher className="w-14" />
         <span title={me?.displayName}>{me ? initials(me.displayName) : ''}</span>
         <button
           type="button"
@@ -70,7 +77,7 @@ export function ServerRail() {
           disabled={logoutMutation.isPending}
           className="underline"
         >
-          Thoát
+          {t('auth.signOut')}
         </button>
       </div>
 

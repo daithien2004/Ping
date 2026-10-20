@@ -1,14 +1,16 @@
 'use client';
 
-import { loginSchema } from '@ping/shared';
+import { ErrorCodes, loginSchema } from '@ping/shared';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { use, useEffect, useState, type FormEvent } from 'react';
 import { browser } from 'react-dom';
+import { useTranslations } from 'use-intl';
 import { z } from 'zod';
 import { useLogin, useMe } from '../hooks';
-import { authErrorMessage, safeRedirectPath } from '../session';
+import { safeRedirectPath } from '../session';
 import { Field, FormError, SubmitButton, useClearOnHide } from '@/components/form-parts';
+import { useErrorMessage } from '@/lib/error-message';
 
 type FieldErrors = Partial<Record<'email' | 'password', string[]>>;
 
@@ -20,6 +22,8 @@ export function LoginForm() {
   const loginMutation = useLogin();
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const formRef = useClearOnHide();
+  const t = useTranslations('auth');
+  const errorMessage = useErrorMessage();
 
   // Đã đăng nhập (vừa đăng nhập xong, hoặc mở /login khi phiên còn) → vào app.
   useEffect(() => {
@@ -51,29 +55,33 @@ export function LoginForm() {
       noValidate
       className="flex w-full max-w-sm flex-col gap-4"
     >
-      <h1 className="text-2xl font-semibold">Đăng nhập</h1>
+      <h1 className="text-2xl font-semibold">{t('loginTitle')}</h1>
       <Field
-        label="Email"
+        label={t('email')}
         name="email"
         type="email"
         autoComplete="email"
         errors={fieldErrors.email}
       />
       <Field
-        label="Mật khẩu"
+        label={t('password')}
         name="password"
         type="password"
         autoComplete="current-password"
         errors={fieldErrors.password}
       />
       {loginMutation.isError && (
-        <FormError>{authErrorMessage(loginMutation.error, 'login')}</FormError>
+        <FormError>
+          {errorMessage(loginMutation.error, {
+            [ErrorCodes.UNAUTHORIZED]: t('wrongCredentials'),
+          })}
+        </FormError>
       )}
-      <SubmitButton pending={loginMutation.isPending}>Đăng nhập</SubmitButton>
+      <SubmitButton pending={loginMutation.isPending}>{t('login')}</SubmitButton>
       <p className="text-sm">
-        Chưa có tài khoản?{' '}
+        {t('noAccount')}{' '}
         <Link href={`/register?next=${encodeURIComponent(next)}`} className="underline">
-          Đăng ký
+          {t('register')}
         </Link>
       </p>
     </form>

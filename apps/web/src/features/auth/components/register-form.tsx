@@ -1,14 +1,16 @@
 'use client';
 
-import { registerSchema } from '@ping/shared';
+import { ErrorCodes, registerSchema } from '@ping/shared';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { use, useEffect, useState, type FormEvent } from 'react';
 import { browser } from 'react-dom';
+import { useTranslations } from 'use-intl';
 import { z } from 'zod';
 import { useMe, useRegister } from '../hooks';
-import { authErrorMessage, safeRedirectPath } from '../session';
+import { safeRedirectPath } from '../session';
 import { Field, FormError, SubmitButton, useClearOnHide } from '@/components/form-parts';
+import { useErrorMessage } from '@/lib/error-message';
 
 type FieldErrors = Partial<Record<'email' | 'username' | 'password' | 'displayName', string[]>>;
 
@@ -20,6 +22,8 @@ export function RegisterForm() {
   const registerMutation = useRegister();
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const formRef = useClearOnHide();
+  const t = useTranslations('auth');
+  const errorMessage = useErrorMessage();
 
   useEffect(() => {
     if (me) {
@@ -53,41 +57,45 @@ export function RegisterForm() {
       noValidate
       className="flex w-full max-w-sm flex-col gap-4"
     >
-      <h1 className="text-2xl font-semibold">Tạo tài khoản</h1>
+      <h1 className="text-2xl font-semibold">{t('registerTitle')}</h1>
       <Field
-        label="Email"
+        label={t('email')}
         name="email"
         type="email"
         autoComplete="email"
         errors={fieldErrors.email}
       />
       <Field
-        label="Tên người dùng"
+        label={t('username')}
         name="username"
         autoComplete="username"
         errors={fieldErrors.username}
       />
       <Field
-        label="Tên hiển thị (không bắt buộc)"
+        label={t('displayName')}
         name="displayName"
         autoComplete="nickname"
         errors={fieldErrors.displayName}
       />
       <Field
-        label="Mật khẩu"
+        label={t('password')}
         name="password"
         type="password"
         autoComplete="new-password"
         errors={fieldErrors.password}
       />
       {registerMutation.isError && (
-        <FormError>{authErrorMessage(registerMutation.error, 'register')}</FormError>
+        <FormError>
+          {errorMessage(registerMutation.error, {
+            [ErrorCodes.CONFLICT]: t('accountTaken'),
+          })}
+        </FormError>
       )}
-      <SubmitButton pending={registerMutation.isPending}>Tạo tài khoản</SubmitButton>
+      <SubmitButton pending={registerMutation.isPending}>{t('createAccount')}</SubmitButton>
       <p className="text-sm">
-        Đã có tài khoản?{' '}
+        {t('haveAccount')}{' '}
         <Link href={`/login?next=${encodeURIComponent(next)}`} className="underline">
-          Đăng nhập
+          {t('login')}
         </Link>
       </p>
     </form>

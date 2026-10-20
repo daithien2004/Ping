@@ -3,10 +3,11 @@
 import { ErrorCodes, joinServerSchema } from '@ping/shared';
 import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
+import { useTranslations } from 'use-intl';
 import { z } from 'zod';
 import { Dialog } from '@/components/dialog';
 import { Field, FormError, SubmitButton } from '@/components/form-parts';
-import { errorMessage } from '@/lib/error-message';
+import { useErrorMessage } from '@/lib/error-message';
 import { useJoinServer } from '../hooks';
 import { serverPath } from '../navigation';
 
@@ -14,6 +15,8 @@ export function JoinServerDialog({ open, onClose }: { open: boolean; onClose: ()
   const router = useRouter();
   const joinMutation = useJoinServer();
   const [errors, setErrors] = useState<string[] | undefined>();
+  const t = useTranslations();
+  const errorMessage = useErrorMessage();
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -35,18 +38,18 @@ export function JoinServerDialog({ open, onClose }: { open: boolean; onClose: ()
   }
 
   return (
-    <Dialog open={open} onClose={onClose} title="Tham gia server">
+    <Dialog open={open} onClose={onClose} title={t('servers.join')}>
       <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
-        <Field label="Mã mời" name="inviteCode" errors={errors} />
+        <Field label={t('servers.inviteCode')} name="inviteCode" errors={errors} />
         {joinMutation.isError && (
           <FormError>
             {errorMessage(joinMutation.error, {
-              [ErrorCodes.NOT_FOUND]: 'Mã mời không hợp lệ.',
-              [ErrorCodes.CONFLICT]: 'Bạn đã ở trong server này.',
+              [ErrorCodes.NOT_FOUND]: t('servers.invalidInvite'),
+              [ErrorCodes.CONFLICT]: t('servers.alreadyMember'),
             })}
           </FormError>
         )}
-        <SubmitButton pending={joinMutation.isPending}>Tham gia</SubmitButton>
+        <SubmitButton pending={joinMutation.isPending}>{t('servers.joinSubmit')}</SubmitButton>
       </form>
     </Dialog>
   );

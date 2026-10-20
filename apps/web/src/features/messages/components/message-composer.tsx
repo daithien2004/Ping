@@ -2,6 +2,7 @@
 
 import { createMessageSchema } from '@ping/shared';
 import { useState, type KeyboardEvent } from 'react';
+import { useTranslations } from 'use-intl';
 
 /**
  * Ô soạn tin. Giữ `draft` ở ĐÂY (không ở MessagePane): mỗi phím gõ chỉ render lại ô soạn, không
@@ -15,6 +16,8 @@ export function MessageComposer({
   onSend: (content: string, nonce: string) => void;
 }) {
   const [draft, setDraft] = useState('');
+  const t = useTranslations('messages');
+  const label = t('composerLabel', { channel: channelName });
 
   function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing) {
@@ -38,8 +41,8 @@ export function MessageComposer({
         onKeyDown={onKeyDown}
         rows={1}
         maxLength={4000}
-        placeholder={`Nhắn #${channelName}`}
-        aria-label={`Nhắn #${channelName}`}
+        placeholder={label}
+        aria-label={label}
         className="w-full resize-none rounded bg-gray-100 px-3 py-2 dark:bg-gray-800"
       />
     </div>

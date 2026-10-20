@@ -2,6 +2,7 @@
 
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslations } from 'use-intl';
 import { useMessages, useSendMessage } from '../hooks';
 import { type ClientMessage, oldestFirst } from '../message-cache';
 import { MessageComposer } from './message-composer';
@@ -28,6 +29,7 @@ export function MessagePane({
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useMessages(channelId);
   const sendMutation = useSendMessage(channelId);
   const messages = useMemo(() => oldestFirst(data), [data]);
+  const t = useTranslations('messages');
   const scrollRef = useRef<HTMLDivElement>(null);
   const didInitialScroll = useRef(false);
   // Chỉ tải tin cũ SAU khi đã xuống đáy lần đầu: ở lần render đầu danh sách còn đứng ở đầu,
@@ -110,7 +112,7 @@ export function MessagePane({
       <div
         ref={scrollRef}
         className="min-h-0 flex-1 overflow-y-auto"
-        aria-label={`Tin nhắn trong #${channelName}`}
+        aria-label={t('listLabel', { channel: channelName })}
       >
         <div className="relative w-full" style={{ height: virtualizer.getTotalSize() }}>
           <p
@@ -118,10 +120,10 @@ export function MessagePane({
             style={{ height: HEADER_HEIGHT }}
           >
             {isFetchingNextPage
-              ? 'Đang tải tin cũ…'
+              ? t('loadingOlder')
               : hasNextPage
                 ? ''
-                : `Đây là đầu kênh #${channelName}.`}
+                : t('channelStart', { channel: channelName })}
           </p>
           {virtualizer.getVirtualItems().map((item) => {
             const message = messages[item.index];

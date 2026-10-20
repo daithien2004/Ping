@@ -1,4 +1,5 @@
 import { type ReactNode, type RefObject, useEffect, useRef } from 'react';
+import { useTranslations } from 'use-intl';
 
 /**
  * Xóa form khi nó bị ẩn hoặc gỡ. <Activity> (cacheComponents) GIẤU trang đã rời chứ không gỡ:
@@ -54,13 +55,14 @@ export function FormError({ children }: { children: ReactNode }) {
 }
 
 export function SubmitButton({ pending, children }: { pending: boolean; children: ReactNode }) {
+  const t = useTranslations('common');
   return (
     <button
       type="submit"
       disabled={pending}
       className="rounded bg-indigo-600 px-3 py-2 font-medium text-white disabled:opacity-60"
     >
-      {pending ? 'Đang xử lý…' : children}
+      {pending ? t('processing') : children}
     </button>
   );
 }

@@ -4,10 +4,11 @@ import { ErrorCodes } from '@ping/shared';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { useTranslations } from 'use-intl';
 import { FormError } from '@/components/form-parts';
 import { useLeaveServer, useServer } from '@/features/servers/hooks';
 import { channelPath } from '@/features/servers/navigation';
-import { errorMessage } from '@/lib/error-message';
+import { useErrorMessage } from '@/lib/error-message';
 import { useChannels } from '../hooks';
 import { CreateChannelDialog } from './create-channel-dialog';
 
@@ -18,6 +19,8 @@ export function ChannelSidebar() {
   const { data: server } = useServer(serverId);
   const { data: channels } = useChannels(serverId);
   const leaveMutation = useLeaveServer();
+  const t = useTranslations();
+  const errorMessage = useErrorMessage();
   const [creating, setCreating] = useState(false);
 
   function leave() {
@@ -29,11 +32,11 @@ export function ChannelSidebar() {
       <header>
         <h2 className="truncate font-semibold">{server.name}</h2>
         <p className="text-xs text-gray-500">
-          Mã mời: <code className="select-all">{server.inviteCode}</code>
+          {t('servers.inviteCode')}: <code className="select-all">{server.inviteCode}</code>
         </p>
       </header>
 
-      <nav aria-label="Channel" className="flex flex-col gap-0.5">
+      <nav aria-label={t('channels.navLabel')} className="flex flex-col gap-0.5">
         {channels.map((channel) => (
           <Link
             key={channel.id}
@@ -53,7 +56,7 @@ export function ChannelSidebar() {
         onClick={() => setCreating(true)}
         className="text-left text-sm underline"
       >
-        + Tạo channel
+        + {t('channels.create')}
       </button>
 
       <div className="mt-auto flex flex-col gap-1">
@@ -61,7 +64,7 @@ export function ChannelSidebar() {
           <FormError>
             {errorMessage(leaveMutation.error, {
               // 400 duy nhất của endpoint rời server: chủ server phải xóa server hoặc chuyển quyền.
-              [ErrorCodes.BAD_REQUEST]: 'Chủ server không thể rời server của mình.',
+              [ErrorCodes.BAD_REQUEST]: t('servers.ownerCannotLeave'),
             })}
           </FormError>
         )}
@@ -71,7 +74,7 @@ export function ChannelSidebar() {
           disabled={leaveMutation.isPending}
           className="text-left text-sm text-red-600 underline"
         >
-          Rời server
+          {t('servers.leave')}
         </button>
       </div>
 

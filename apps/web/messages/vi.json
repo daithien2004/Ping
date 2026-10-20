@@ -1,0 +1,76 @@
+{
+  "common": {
+    "loading": "Đang tải…",
+    "processing": "Đang xử lý…",
+    "create": "Tạo",
+    "retry": "Thử lại",
+    "goHome": "Về trang chủ",
+    "language": "Ngôn ngữ",
+    "languages": { "vi": "Tiếng Việt", "en": "English" }
+  },
+  "auth": {
+    "loginTitle": "Đăng nhập",
+    "registerTitle": "Tạo tài khoản",
+    "email": "Email",
+    "password": "Mật khẩu",
+    "username": "Tên người dùng",
+    "displayName": "Tên hiển thị (không bắt buộc)",
+    "login": "Đăng nhập",
+    "register": "Đăng ký",
+    "createAccount": "Tạo tài khoản",
+    "noAccount": "Chưa có tài khoản?",
+    "haveAccount": "Đã có tài khoản?",
+    "wrongCredentials": "Email hoặc mật khẩu không đúng.",
+    "accountTaken": "Email hoặc tên người dùng đã được dùng.",
+    "signOut": "Thoát"
+  },
+  "app": {
+    "accessDenied": "Không truy cập được",
+    "notMember": "Bạn không phải thành viên của server này.",
+    "notFound": "Server hoặc channel không tồn tại.",
+    "invalidPath": "Đường dẫn không hợp lệ."
+  },
+  "servers": {
+    "navLabel": "Server",
+    "create": "Tạo server",
+    "join": "Tham gia server",
+    "joinSubmit": "Tham gia",
+    "name": "Tên server",
+    "inviteCode": "Mã mời",
+    "emptyTitle": "Bạn chưa ở trong server nào",
+    "emptyHint": "Tạo server của riêng bạn hoặc tham gia bằng mã mời.",
+    "enterInvite": "Nhập mã mời",
+    "invalidInvite": "Mã mời không hợp lệ.",
+    "alreadyMember": "Bạn đã ở trong server này.",
+    "leave": "Rời server",
+    "ownerCannotLeave": "Chủ server không thể rời server của mình."
+  },
+  "channels": {
+    "navLabel": "Channel",
+    "create": "Tạo channel",
+    "name": "Tên channel",
+    "noPermissionCreate": "Bạn không có quyền tạo channel.",
+    "notFound": "Channel không tồn tại.",
+    "empty": "Server chưa có channel nào."
+  },
+  "messages": {
+    "loading": "Đang tải tin nhắn…",
+    "loadingOlder": "Đang tải tin cũ…",
+    "channelStart": "Đây là đầu kênh #{channel}.",
+    "listLabel": "Tin nhắn trong #{channel}",
+    "composerLabel": "Nhắn #{channel}",
+    "edited": "(đã sửa)",
+    "failed": "Gửi thất bại"
+  },
+  "errors": {
+    "BAD_REQUEST": "Yêu cầu không hợp lệ.",
+    "UNAUTHORIZED": "Phiên đăng nhập đã hết. Đăng nhập lại.",
+    "FORBIDDEN": "Bạn không có quyền làm việc này.",
+    "NOT_FOUND": "Không tìm thấy.",
+    "CONFLICT": "Dữ liệu bị trùng.",
+    "TOO_MANY_REQUESTS": "Thử quá nhiều lần. Đợi một phút rồi thử lại.",
+    "SERVICE_UNAVAILABLE": "Không kết nối được máy chủ.",
+    "unknown": "Có lỗi xảy ra.",
+    "unknownWithId": "Có lỗi xảy ra. Mã lỗi: {requestId}"
+  }
+}

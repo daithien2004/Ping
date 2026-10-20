@@ -1,0 +1,76 @@
+{
+  "common": {
+    "loading": "Loading…",
+    "processing": "Working…",
+    "create": "Create",
+    "retry": "Retry",
+    "goHome": "Go home",
+    "language": "Language",
+    "languages": { "vi": "Tiếng Việt", "en": "English" }
+  },
+  "auth": {
+    "loginTitle": "Sign in",
+    "registerTitle": "Create an account",
+    "email": "Email",
+    "password": "Password",
+    "username": "Username",
+    "displayName": "Display name (optional)",
+    "login": "Sign in",
+    "register": "Register",
+    "createAccount": "Create account",
+    "noAccount": "No account yet?",
+    "haveAccount": "Already have an account?",
+    "wrongCredentials": "Wrong email or password.",
+    "accountTaken": "That email or username is already taken.",
+    "signOut": "Sign out"
+  },
+  "app": {
+    "accessDenied": "Can't open this page",
+    "notMember": "You are not a member of this server.",
+    "notFound": "This server or channel does not exist.",
+    "invalidPath": "Invalid link."
+  },
+  "servers": {
+    "navLabel": "Servers",
+    "create": "Create a server",
+    "join": "Join a server",
+    "joinSubmit": "Join",
+    "name": "Server name",
+    "inviteCode": "Invite code",
+    "emptyTitle": "You are not in any server yet",
+    "emptyHint": "Create your own server or join one with an invite code.",
+    "enterInvite": "Enter invite code",
+    "invalidInvite": "Invalid invite code.",
+    "alreadyMember": "You are already in this server.",
+    "leave": "Leave server",
+    "ownerCannotLeave": "The owner cannot leave their own server."
+  },
+  "channels": {
+    "navLabel": "Channels",
+    "create": "Create a channel",
+    "name": "Channel name",
+    "noPermissionCreate": "You don't have permission to create channels.",
+    "notFound": "This channel does not exist.",
+    "empty": "This server has no channels yet."
+  },
+  "messages": {
+    "loading": "Loading messages…",
+    "loadingOlder": "Loading older messages…",
+    "channelStart": "This is the start of #{channel}.",
+    "listLabel": "Messages in #{channel}",
+    "composerLabel": "Message #{channel}",
+    "edited": "(edited)",
+    "failed": "Failed to send"
+  },
+  "errors": {
+    "BAD_REQUEST": "Invalid request.",
+    "UNAUTHORIZED": "Your session has expired. Please sign in again.",
+    "FORBIDDEN": "You don't have permission to do this.",
+    "NOT_FOUND": "Not found.",
+    "CONFLICT": "This already exists.",
+    "TOO_MANY_REQUESTS": "Too many attempts. Wait a minute and try again.",
+    "SERVICE_UNAVAILABLE": "Can't reach the server.",
+    "unknown": "Something went wrong.",
+    "unknownWithId": "Something went wrong. Error ID: {requestId}"
+  }
+}
