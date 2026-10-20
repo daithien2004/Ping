@@ -1,36 +1,49 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# apps/web
 
-## Getting Started
+Next.js 16 (App Router, `cacheComponents`), React 19, TanStack Query (dữ liệu server), Zustand (trạng thái UI),
+shadcn/ui trên Radix, use-intl (tiếng Việt và tiếng Anh). Chỉ hỗ trợ desktop.
 
-First, run the development server:
+Chạy cả dự án: xem [README gốc](../../README.md). Dưới đây chỉ là những thứ riêng của web.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Cấu trúc (`src/`)
+
+```
+app/         chỉ định tuyến (page, layout, error, loading). Không logic.
+features/    theo miền: auth, servers, channels, messages, members, permissions, realtime
+             mỗi miền: api.ts, hooks.ts (nơi DUY NHẤT ghi dữ liệu server vào cache), *-cache.ts (hàm thuần có test),
+             components/
+components/  thành phần dùng chung; ui/ là shadcn
+lib/         api-client, env, query-keys, báo lỗi (reportError), Sentry (tải lười), tiện ích
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Phụ thuộc một chiều `app → features → components → lib`, ESLint chặn ngược lại. Ràng buộc chi tiết (không dùng
+`useParams()` trong page, màu chỉ qua token, chữ hiển thị qua `useTranslations`…): mục "Frontend" của
+[CLAUDE.md](../../CLAUDE.md).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Lệnh
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+pnpm --filter web dev           # chạy dev (pnpm dev ở gốc chạy cả API)
+pnpm --filter web test          # test đơn vị (Vitest)
+pnpm --filter web test:e2e      # Playwright: tự bật API + web, cần Docker; lần đầu: playwright install chromium
+pnpm --filter web check:bundle  # ngân sách JS client (sau pnpm build): tổng ≤ 450 KB gzip, mỗi chunk ≤ 100 KB
+```
 
-## Learn More
+E2E gồm cả quét accessibility (axe, sáng và tối), bàn phím, header bảo mật/CSP và hai phiên realtime.
+Đăng nhập bị giới hạn 10 lần/phút/IP nên e2e dùng `e2e/login-pace.ts` để giãn nhịp.
 
-To learn more about Next.js, take a look at the following resources:
+## Biến môi trường
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Next đọc `apps/web/.env*` (không phải `.env` ở gốc). Mẫu: [`.env.example`](.env.example). Mọi biến đi qua
+`src/lib/env.ts` (zod); chỗ khác không được đọc `process.env` (ESLint chặn).
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Biến                     | Ý nghĩa                                                                              |
+| ------------------------ | ------------------------------------------------------------------------------------ |
+| `NEXT_PUBLIC_API_URL`    | gốc của API (dev mặc định `http://localhost:4000`). **Nướng vào bundle lúc build.**  |
+| `NEXT_PUBLIC_SENTRY_DSN` | trống thì không tải SDK Sentry. Có DSN thì CSP tự mở thêm đúng origin đó (ADR-0031). |
 
-## Deploy on Vercel
+## Ghi chú
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- CSP không dùng nonce vì Next 16 yêu cầu render động cho nonce, trái với `cacheComponents` (ADR-0027). Mọi thay đổi
+  header/CSP phải chạy e2e `security-headers` trên bản build production.
+- `<Activity>` giữ trang đã rời ở dạng ẩn: state và giá trị input còn nguyên (ADR-0020).

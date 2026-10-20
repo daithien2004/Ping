@@ -1,4 +1,9 @@
+import { existsSync } from 'node:fs';
 import { defineConfig } from 'vitest/config';
+
+// Một số spec đọc thẳng process.env (ví dụ DATABASE_URL): nạp .env gốc để chạy được mà không phải
+// export biến vào shell trước. Biến đã có trong môi trường (CI) thắng giá trị trong file.
+if (existsSync('../../.env')) process.loadEnvFile('../../.env');
 
 export default defineConfig({
   resolve: { tsconfigPaths: true },

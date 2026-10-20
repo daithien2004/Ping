@@ -8,6 +8,8 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
+    "bootstrap": "node scripts/bootstrap.mjs",
+    "docs:check": "node scripts/check-doc-links.mjs",
     "db:migrate": "pnpm --filter api prisma migrate dev",
     "db:studio": "pnpm --filter api prisma studio",
     "format": "prettier --write .",

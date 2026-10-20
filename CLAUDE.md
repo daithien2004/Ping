@@ -10,11 +10,13 @@
 
 ## Lệnh
 
-- Cài đặt: `pnpm install`
+- Dựng môi trường dev từ đầu bằng một lệnh: `pnpm bootstrap` (cài, `.env`, Docker, migrate, seed; idempotent).
+  Không dùng `pnpm setup` (lệnh có sẵn của pnpm). Cài riêng: `pnpm install`
 - Dev: `pnpm dev` | Build: `pnpm build`
 - Lint/Typecheck/Test: `pnpm lint` / `pnpm typecheck` / `pnpm test`
 - E2E web (Playwright, cần Docker; dùng lại dev server nếu đang chạy): `pnpm --filter web test:e2e`
-- E2E api: `pnpm --filter api test:e2e` (cần biến môi trường từ `.env` gốc)
+- E2E api: `pnpm --filter api test:e2e` (cần Docker; tự nạp `.env` gốc)
+- Dò liên kết hỏng trong tài liệu: `pnpm docs:check` (chạy cả trong CI)
 - Format: `pnpm format` (ghi), `pnpm format:check` (chỉ kiểm tra)
 - DB: `pnpm db:migrate`, `pnpm db:studio`
 - Hạ tầng local: `docker compose up -d`
