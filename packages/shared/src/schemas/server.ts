@@ -15,10 +15,11 @@ export type JoinServerInput = z.infer<typeof joinServerSchema>;
  * GET /servers/:serverId/me/permissions — đầu vào cho defineAbilityFor ở frontend.
  * `permissions` là bitmask bigint dạng chuỗi thập phân (JSON không có bigint).
  */
-export interface MyServerPermissions {
-  isOwner: boolean;
-  permissions: string;
-}
+export const myServerPermissionsSchema = z.object({
+  isOwner: z.boolean(),
+  permissions: z.string().regex(/^\d+$/),
+});
+export type MyServerPermissions = z.infer<typeof myServerPermissionsSchema>;
 
 /** Một dòng trong GET /servers (các server của tôi). Ngày giờ là chuỗi ISO 8601 qua JSON. */
 export interface ServerSummary {
