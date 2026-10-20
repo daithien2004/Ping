@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { ErrorCode } from './errors';
 
 export const ServerEvents = {
   MessageCreated: 'message.created',
@@ -72,6 +73,7 @@ export interface PresenceUpdatedPayload {
 /** Payload client gửi lên chỉ là dữ liệu chưa tin cậy: gateway parse bằng schema này. */
 export const channelEventSchema = z.object({ channelId: z.uuid() });
 export type ChannelJoinPayload = z.infer<typeof channelEventSchema>;
+export type ChannelJoinResult = { ok: true } | { ok: false; code: ErrorCode };
 export type ChannelLeavePayload = z.infer<typeof channelEventSchema>;
 export type TypingPayload = z.infer<typeof channelEventSchema>;
 
@@ -86,7 +88,10 @@ export interface ServerToClientEvents {
 }
 
 export interface ClientToServerEvents {
-  [ClientEvents.ChannelJoin]: (payload: ChannelJoinPayload) => void;
+  [ClientEvents.ChannelJoin]: (
+    payload: ChannelJoinPayload,
+    ack: (result: ChannelJoinResult) => void,
+  ) => void;
   [ClientEvents.ChannelLeave]: (payload: ChannelLeavePayload) => void;
   [ClientEvents.Typing]: (payload: TypingPayload) => void;
 }

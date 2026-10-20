@@ -14,6 +14,8 @@ import {
   ClientEvents,
   ServerEvents,
   channelEventSchema,
+  ErrorCodes,
+  type ChannelJoinResult,
   type ServerToClientEvents,
 } from '@ping/shared';
 import { Logger } from 'nestjs-pino';
@@ -37,6 +39,8 @@ type AuthSocket = Socket & {
 // CORS được cấu hình trong RedisIoAdapter (lấy từ ConfigService), không ở đây.
 @WebSocketGateway({ namespace: '/', transports: ['websocket'] })
 export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
+  // Serialize room commands per socket. Promises must never enter serializable socket.data.
+  private readonly roomCommands = new WeakMap<AuthSocket, Promise<unknown>>();
   @WebSocketServer()
   server!: Server<ServerToClientEvents>;
 
@@ -55,6 +59,24 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
 
   afterInit(server: Server<ServerToClientEvents>): void {
     this.realtimeService.attach(server);
+    // Authenticate before the client receives `connect` and can send channel.join.
+    server.use((socket, next) => {
+      const token = this.extractToken(socket);
+      if (!token) {
+        next(new Error(ErrorCodes.UNAUTHORIZED));
+        return;
+      }
+      void this.authService.verifyAccessToken(token).then(
+        (payload) => {
+          socket.data.userId = payload.userId;
+          next();
+        },
+        () => {
+          this.logger.warn({ sid: socket.id }, 'ws: auth failed');
+          next(new Error(ErrorCodes.UNAUTHORIZED));
+        },
+      );
+    });
   }
 
   async handleConnection(@ConnectedSocket() socket: AuthSocket): Promise<void> {
@@ -66,8 +88,11 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
         return;
       }
 
-      const payload = await this.authService.verifyAccessToken(token);
-      socket.data.userId = payload.userId;
+      const userId = socket.data.userId;
+      if (!userId) {
+        socket.disconnect(true);
+        return;
+      }
       // JWT chỉ được kiểm tra lúc handshake: ngắt socket đúng lúc token hết hạn,
       // client phải refresh rồi kết nối lại với token mới.
       const exp = this.jwt.decode<{ exp?: number } | null>(token)?.exp;
@@ -78,12 +103,12 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
         );
         socket.once('disconnect', () => clearTimeout(timer));
       }
-      await socket.join(`user:${payload.userId}`);
+      await socket.join(`user:${userId}`);
 
       // Phát online ở MỌI lần kết nối: idempotent với client, và tránh đua khi hai tab
       // cùng kết nối (cả hai cùng thấy "đã có 2 socket" thì không ai báo online).
-      await this.broadcastPresence(payload.userId, 'online');
-      this.logger.debug({ sid: socket.id, userId: payload.userId }, 'ws: connected');
+      await this.broadcastPresence(userId, 'online');
+      this.logger.debug({ sid: socket.id, userId }, 'ws: connected');
     } catch (error) {
       this.logger.warn({ sid: socket.id, err: (error as Error).message }, 'ws: auth failed');
       socket.disconnect(true);
@@ -116,11 +141,16 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
   async handleChannelJoin(
     @ConnectedSocket() socket: AuthSocket,
     @MessageBody() body: unknown,
-  ): Promise<void> {
+  ): Promise<ChannelJoinResult> {
+    return this.enqueueRoomCommand(socket, () => this.joinChannel(socket, body));
+  }
+
+  private async joinChannel(socket: AuthSocket, body: unknown): Promise<ChannelJoinResult> {
+    const denied = { ok: false, code: ErrorCodes.FORBIDDEN } as const;
     const userId = socket.data.userId;
     const parsed = channelEventSchema.safeParse(body);
     if (!userId || !parsed.success) {
-      return;
+      return denied;
     }
     const { channelId } = parsed.data;
 
@@ -129,7 +159,7 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
       select: { serverId: true },
     });
     if (!channel) {
-      return;
+      return denied;
     }
 
     let canView: boolean;
@@ -142,11 +172,14 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
       }
       canView = false; // không phải member
     }
-    // Im lặng khi không có quyền: không tiết lộ channel/server có tồn tại hay không.
+    // Same denial for unknown channels and missing access: do not disclose existence.
     if (!canView) {
-      return;
+      await socket.leave(`channel:${channelId}`);
+      return denied;
     }
+    if (!socket.connected) return denied;
     await socket.join([`channel:${channelId}`, `server:${channel.serverId}`]);
+    return { ok: true };
   }
 
   @SubscribeMessage(ClientEvents.ChannelLeave)
@@ -156,8 +189,17 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
   ): Promise<void> {
     const parsed = channelEventSchema.safeParse(body);
     if (parsed.success) {
-      await socket.leave(`channel:${parsed.data.channelId}`);
+      await this.enqueueRoomCommand(socket, () => socket.leave(`channel:${parsed.data.channelId}`));
     }
+  }
+
+  private enqueueRoomCommand<T>(socket: AuthSocket, command: () => T | Promise<T>): Promise<T> {
+    const task = (this.roomCommands.get(socket) ?? Promise.resolve()).then(command);
+    this.roomCommands.set(
+      socket,
+      task.catch(() => undefined),
+    );
+    return task;
   }
 
   @SubscribeMessage(ClientEvents.Typing)
