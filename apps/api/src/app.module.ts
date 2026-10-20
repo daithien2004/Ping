@@ -14,6 +14,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter.js';
 import { HttpThrottlerGuard } from './common/guards/http-throttler.guard.js';
 import { UuidParamsGuard } from './common/guards/uuid-params.guard.js';
 import { envSchema } from './config/env.schema.js';
+import { LifecycleModule } from './infra/lifecycle/lifecycle.module.js';
 import { PrismaModule } from './infra/prisma/prisma.module.js';
 import { RedisModule, RedisProvider } from './infra/redis/redis.module.js';
 import { RedisThrottlerStorage } from './infra/throttler/redis-throttler.storage.js';
@@ -65,6 +66,7 @@ function requestIdFrom(header: string | string[] | undefined): string {
         },
       },
     }),
+    LifecycleModule,
     PrismaModule,
     RedisModule,
     ThrottlerModule.forRootAsync({

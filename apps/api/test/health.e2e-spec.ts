@@ -3,6 +3,8 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AppModule } from '../src/app.module.js';
+import { ShutdownService } from '../src/infra/lifecycle/shutdown.service.js';
+import { bootApp } from './helpers/boot.js';
 
 describe('Health endpoints (e2e)', () => {
   let app: INestApplication;
@@ -46,5 +48,30 @@ describe('Health endpoints (e2e)', () => {
       .set('X-Request-Id', 'x'.repeat(5000))
       .expect(200);
     expect(replaced.headers['x-request-id']).toMatch(uuidPattern);
+  });
+
+  it('GET /api/v1/ready → 200 "degraded" while only Redis is down (REST still works)', async () => {
+    const degraded = await bootApp({ deadRedis: true });
+    try {
+      const res = await request(degraded.getHttpServer()).get('/api/v1/ready').expect(200);
+      expect(res.body.status).toBe('degraded');
+      expect(res.body.details.database.status).toBe('up');
+      expect(res.body.details.redis.status).toBe('down');
+    } finally {
+      await degraded.close();
+    }
+  });
+
+  it('GET /api/v1/ready → 503 once the instance is draining (SIGTERM received)', async () => {
+    const draining = await bootApp();
+    try {
+      draining.get(ShutdownService).beginDrain();
+      const res = await request(draining.getHttpServer()).get('/api/v1/ready').expect(503);
+      expect(res.body.code).toBe('SERVICE_UNAVAILABLE');
+      // Liveness không đổi: process vẫn sống để xử lý nốt request đang chạy.
+      await request(draining.getHttpServer()).get('/api/v1/health').expect(200);
+    } finally {
+      await draining.close();
+    }
   });
 });

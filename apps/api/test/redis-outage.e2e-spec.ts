@@ -1,40 +1,12 @@
 import type { INestApplication } from '@nestjs/common';
-import type { ConfigService } from '@nestjs/config';
-import { Test } from '@nestjs/testing';
 import { ErrorCodes } from '@ping/shared';
-import cookieParser from 'cookie-parser';
 import { randomUUID } from 'node:crypto';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { AppModule } from '../src/app.module.js';
-import type { Env } from '../src/config/env.schema.js';
 import { PrismaService } from '../src/infra/prisma/prisma.service.js';
-import { RedisProvider } from '../src/infra/redis/redis.module.js';
+import { bootApp } from './helpers/boot.js';
 
 const runId = Date.now().toString(36);
-const DEAD_REDIS = 'redis://localhost:6390'; // không ai nghe: mô phỏng đúng một Redis đã chết
-
-/**
- * Dựng app thật. `deadRedis` thay RedisProvider bằng một provider (cùng class, cùng tùy chọn
- * timeout) trỏ vào cổng không có ai nghe: đúng đường chạy của một Redis đã chết. Postgres luôn thật.
- * (Đổi process.env không đủ: ConfigModule chụp cấu hình lúc import AppModule.)
- */
-async function boot(deadRedis = false): Promise<INestApplication> {
-  let builder = Test.createTestingModule({ imports: [AppModule] });
-  if (deadRedis) {
-    const config = {
-      getOrThrow: (key: string) => ({ REDIS_URL: DEAD_REDIS, REDIS_COMMAND_TIMEOUT_MS: 1000 })[key],
-    } as unknown as ConfigService<Env, true>;
-    builder = builder
-      .overrideProvider(RedisProvider)
-      .useFactory({ factory: () => new RedisProvider(config, { warn: () => undefined } as never) });
-  }
-  const app = (await builder.compile()).createNestApplication();
-  app.use(cookieParser());
-  app.setGlobalPrefix('api/v1');
-  await app.init();
-  return app;
-}
 
 /**
  * Chính sách khi Redis chết (ADR-0026): đọc/ghi dữ liệu vẫn chạy (fail-open), còn thao tác mà
@@ -53,8 +25,8 @@ describe('Redis outage (e2e)', () => {
     request(down.getHttpServer())[method](url).set('Authorization', `Bearer ${token}`);
 
   beforeAll(async () => {
-    healthy = await boot();
-    down = await boot(true);
+    healthy = await bootApp();
+    down = await bootApp({ deadRedis: true });
 
     // Chuẩn bị dữ liệu bằng instance khỏe; JWT là stateless nên instance "chết Redis" nhận được.
     const registered = await request(healthy.getHttpServer())

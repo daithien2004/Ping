@@ -2,7 +2,7 @@ import {
   Global,
   Injectable,
   Module,
-  type OnModuleDestroy,
+  type OnApplicationShutdown,
   type OnModuleInit,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -19,7 +19,7 @@ import type { Env } from '../../config/env.schema.js';
  * so với `useFactory` thuần thì không thể có lifecycle hook, dọn tay là dễ quên.
  */
 @Injectable()
-export class RedisProvider extends Redis implements OnModuleInit, OnModuleDestroy {
+export class RedisProvider extends Redis implements OnModuleInit, OnApplicationShutdown {
   constructor(config: ConfigService<Env, true>, logger: PinoLogger) {
     super(config.getOrThrow('REDIS_URL', { infer: true }), {
       // Lệnh quá hạn thì lỗi ngay (không treo request). Retry mỗi lệnh 1 lần: mặc định 20 lần
@@ -66,8 +66,13 @@ export class RedisProvider extends Redis implements OnModuleInit, OnModuleDestro
     });
   }
 
-  onModuleDestroy(): Promise<'OK'> {
-    return this.quit();
+  // KHÔNG đóng ở onModuleDestroy (chạy đầu tiên khi tắt): lúc đó Socket.IO còn đang ngắt socket và
+  // cần Redis để cập nhật presence (O1). onApplicationShutdown chạy sau khi server đã đóng.
+  async onApplicationShutdown(): Promise<void> {
+    if (this.status === 'end') {
+      return;
+    }
+    await this.quit().catch(() => this.disconnect());
   }
 }
 

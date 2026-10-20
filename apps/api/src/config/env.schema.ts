@@ -23,6 +23,11 @@ export const envSchema = z.object({
   // Redis: mỗi lệnh. Ngắn vì Redis chỉ giữ cache/rate limit/presence, chậm hơn mức này thì
   // bỏ qua (fail-open) còn rẻ hơn chờ.
   REDIS_COMMAND_TIMEOUT_MS: z.coerce.number().int().min(50).default(1_000),
+  // Tắt êm khi nhận SIGTERM (ADR-0026). GRACE: thời gian `/ready` đã trả 503 nhưng server vẫn nhận
+  // request, để load balancer kịp loại instance (production nên ≥ 2 lần chu kỳ health check của LB;
+  // dev để 0). TIMEOUT: trần cho cả quá trình tắt, quá hạn thì buộc thoát (< terminationGracePeriod).
+  SHUTDOWN_GRACE_MS: z.coerce.number().int().min(0).default(0),
+  SHUTDOWN_TIMEOUT_MS: z.coerce.number().int().min(1_000).default(25_000),
 });
 
 export type Env = z.infer<typeof envSchema>;

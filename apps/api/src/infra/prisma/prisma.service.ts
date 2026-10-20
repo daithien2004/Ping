@@ -1,11 +1,11 @@
-import { type BeforeApplicationShutdown, Injectable, type OnModuleInit } from '@nestjs/common';
+import { type OnApplicationShutdown, Injectable, type OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaPg } from '@prisma/adapter-pg';
 import type { Env } from '../../config/env.schema.js';
 import { PrismaClient } from '../../generated/prisma/client.js';
 
 @Injectable()
-export class PrismaService extends PrismaClient implements OnModuleInit, BeforeApplicationShutdown {
+export class PrismaService extends PrismaClient implements OnModuleInit, OnApplicationShutdown {
   constructor(config: ConfigService<Env, true>) {
     // Prisma 7 bắt buộc driver adapter: kết nối do thư viện `pg` đảm nhận,
     // không còn query engine Rust đọc DATABASE_URL phía sau nữa.
@@ -27,7 +27,8 @@ export class PrismaService extends PrismaClient implements OnModuleInit, BeforeA
     await this.$connect();
   }
 
-  async beforeApplicationShutdown(): Promise<void> {
+  // Sau khi HTTP/Socket.IO đã đóng: request đang chạy vẫn còn DB để chạy nốt (ADR-0026).
+  async onApplicationShutdown(): Promise<void> {
     await this.$disconnect();
   }
 }
