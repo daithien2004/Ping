@@ -214,7 +214,7 @@ describe('abuse limits (e2e)', () => {
       const user = await registerUser('evt');
       const socket = await connect(user.token);
       const channelId = randomUUID();
-      for (let count = 0; count < 300; count += 1) socket.emit('typing', { channelId });
+      for (let count = 0; count < 300; count += 1) socket.emit('typing.start', { channelId });
       expect(await disconnected(socket)).toBe(true);
     });
 
@@ -222,7 +222,7 @@ describe('abuse limits (e2e)', () => {
       await redis.flushdb();
       const user = await registerUser('big');
       const socket = await connect(user.token);
-      socket.emit('typing', { channelId: 'x'.repeat(20_000) });
+      socket.emit('typing.start', { channelId: 'x'.repeat(20_000) });
       expect(await disconnected(socket)).toBe(true);
     });
 
@@ -230,7 +230,7 @@ describe('abuse limits (e2e)', () => {
       await redis.flushdb();
       const user = await registerUser('ok');
       const socket = await connect(user.token);
-      socket.emit('typing', { channelId: randomUUID() });
+      socket.emit('typing.start', { channelId: randomUUID() });
       await new Promise((resolve) => setTimeout(resolve, 500));
       expect(socket.connected).toBe(true);
     });

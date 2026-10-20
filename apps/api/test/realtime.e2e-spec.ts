@@ -300,14 +300,14 @@ describe('Realtime across two instances (e2e)', () => {
     await settle();
 
     const received = waitEvent<{ channelId: string; userId: string }>(clientA, 'typing.started');
-    clientB.emit('typing', { channelId });
+    clientB.emit('typing.start', { channelId });
 
     const payload = await received;
     expect(payload.channelId).toBe(channelId);
     expect(payload.userId).toBe(member.id);
 
     // Gõ dồn dập: event thứ hai ngay sau đó bị nuốt (giới hạn tần suất theo socket).
-    clientB.emit('typing', { channelId });
+    clientB.emit('typing.start', { channelId });
     await assertNoEvent(clientA, 'typing.started', 500);
     clientA.disconnect();
     clientB.disconnect();
@@ -319,7 +319,7 @@ describe('Realtime across two instances (e2e)', () => {
     const outsiderSocket = await connectClient(portB, outsider.token);
     await settle();
 
-    outsiderSocket.emit('typing', { channelId });
+    outsiderSocket.emit('typing.start', { channelId });
     await assertNoEvent(watcher, 'typing.started');
     watcher.disconnect();
     outsiderSocket.disconnect();
@@ -328,7 +328,7 @@ describe('Realtime across two instances (e2e)', () => {
   it('payload sai định dạng bị bỏ qua, không làm sập gateway', async () => {
     const socket = await connectClient(portA, member.token);
     socket.emit('channel.join', { channelId: 'khong-phai-uuid' });
-    socket.emit('typing', null);
+    socket.emit('typing.start', null);
     await settle();
     expect(socket.connected).toBe(true);
     socket.disconnect();
