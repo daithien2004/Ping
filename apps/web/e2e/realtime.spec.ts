@@ -1,6 +1,6 @@
 import { createHmac, randomUUID } from 'node:crypto';
 import { expect, test, type WebSocketRoute } from '@playwright/test';
-import type { AuthResponse, ChannelDto, MessageDto, ServerDetail } from '@ping/shared';
+import type { AuthResponse, ChannelDto, MemberPage, MessageDto, ServerDetail } from '@ping/shared';
 
 const API = 'http://localhost:4000/api/v1';
 
@@ -216,8 +216,8 @@ test('two isolated sessions: messages, typing, missed events, edits, deletes and
 
     const members = (await (
       await a.request.get(`${API}/servers/${serverId}/members`, { headers: auth })
-    ).json()) as { id: string; userId: string }[];
-    const memberId = members.find((m) => m.userId === member.user.id)!.id;
+    ).json()) as MemberPage;
+    const memberId = members.members.find((m) => m.userId === member.user.id)!.id;
     expect(
       (
         await a.request.delete(`${API}/servers/${serverId}/members/${memberId}`, { headers: auth })
@@ -244,8 +244,8 @@ test('two isolated sessions: messages, typing, missed events, edits, deletes and
     });
     const rejoined = (await (
       await a.request.get(`${API}/servers/${serverId}/members`, { headers: auth })
-    ).json()) as { id: string; userId: string }[];
-    const rejoinedId = rejoined.find((m) => m.userId === member.user.id)!.id;
+    ).json()) as MemberPage;
+    const rejoinedId = rejoined.members.find((m) => m.userId === member.user.id)!.id;
     expect(
       (
         await a.request.delete(`${API}/servers/${serverId}/members/${rejoinedId}`, {
