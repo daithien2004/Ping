@@ -1,0 +1,31 @@
+# Người phải review thay đổi ở các vùng nhạy cảm (xem CONTRIBUTING.md). Dòng sau thắng dòng trước.
+# Hiện chỉ có một chủ repo; thêm người vào đây khi nhóm lớn hơn.
+
+# Xác thực và phiên đăng nhập
+/apps/api/src/modules/auth/                @daithien2004
+/apps/api/src/common/guards/               @daithien2004
+
+# Phân quyền (quy tắc dùng chung API + web, runtime, role)
+/packages/shared/src/permissions*          @daithien2004
+/apps/api/src/modules/ability/             @daithien2004
+/apps/api/src/modules/roles/               @daithien2004
+
+# Schema và migration (không sửa migration đã merge)
+/apps/api/prisma/                          @daithien2004
+
+# Realtime: kiểm quyền lúc join room, presence
+/apps/api/src/modules/realtime/            @daithien2004
+
+# Hạ tầng, CI, container, cảnh báo
+/.github/                                  @daithien2004
+/apps/api/Dockerfile                       @daithien2004
+/apps/web/Dockerfile                       @daithien2004
+/docker-compose*.yml                       @daithien2004
+/ops/                                      @daithien2004
+
+# Header bảo mật và CSP của web
+/apps/web/next.config.ts                   @daithien2004
+
+# Bảo mật và quy tắc của dự án
+/docs/security/                            @daithien2004
+/CLAUDE.md                                 @daithien2004
