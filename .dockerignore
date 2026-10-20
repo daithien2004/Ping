@@ -1,0 +1,17 @@
+# Không đưa vào build context: bí mật, thứ sinh ra khi build, thứ chỉ dành cho máy dev.
+.git
+.env
+.env.*
+!.env.example
+**/node_modules
+**/dist
+**/.next
+**/.turbo
+**/*.tsbuildinfo
+**/test-results
+**/playwright-report
+.pnpm-store
+.claude
+docs
+ops
+**/*.md

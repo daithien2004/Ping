@@ -56,6 +56,9 @@
 21. Quan sát (ADR-0031): metrics chỉ ở cổng `METRICS_PORT`, nhãn là mẫu route chứ không phải URL thật;
     lỗi gửi Sentry phải đi qua `scrubEvent`/`scrubBrowserEvent` (không body, cookie, header, nội dung tin
     nhắn) và kèm tag `requestId`. Tính năng mới có hạ tầng phụ thuộc thì thêm vào `dependency_up`.
+22. CI/container (ADR-0032): đổi schema thì thêm migration (job `migrations` bắt lệch); đổi Dockerfile hoặc
+    compose mẫu thì dựng lại stack và chạy `apps/api/test/smoke/prod-stack.mjs`. Migration chạy bằng target
+    `migrate`, không chạy lúc API khởi động. Chạy stack mẫu ở local với `-p pingprod`.
 
 ## Cấu trúc code
 
