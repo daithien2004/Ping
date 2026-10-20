@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import type { NextConfig } from 'next';
 
 const isProduction = process.env.NODE_ENV === 'production';
@@ -45,7 +46,18 @@ const securityHeaders = [
     : []),
 ];
 
+// Chỉ khi build image (apps/web/Dockerfile đặt NEXT_OUTPUT=standalone): bản chạy gọn cho container.
+// Ở local để mặc định để `next start` còn dùng được. Gốc truy vết là gốc monorepo vì web import @ping/shared.
+const standalone =
+  process.env.NEXT_OUTPUT === 'standalone'
+    ? {
+        output: 'standalone' as const,
+        outputFileTracingRoot: fileURLToPath(new URL('../..', import.meta.url)),
+      }
+    : {};
+
 const nextConfig: NextConfig = {
+  ...standalone,
   /* config options here */
   cacheComponents: true,
   partialPrefetching: true,

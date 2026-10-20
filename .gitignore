@@ -13,3 +13,6 @@ playwright-report/
 # Claude Code: cấu hình riêng của máy
 .claude/launch.json
 .claude/settings.local.json
+
+# Biến môi trường production (ADR-0032)
+.env.prod
