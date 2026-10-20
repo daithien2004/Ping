@@ -280,4 +280,5 @@ jobs:
           code=${PIPESTATUS[0]}
           # Đưa dòng lỗi lên annotation: log đầy đủ của job cần đăng nhập mới đọc được.
           grep -iE 'error|fail|assert|✘|❌|expected|found|audit|score' lhci.log | head -24 | while IFS= read -r line; do echo "::warning::lhci: ${line}"; done
+          node scripts/lhci-failures.mjs
           exit "$code"
