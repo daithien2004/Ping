@@ -20,7 +20,9 @@
     "test:cov": "vitest run --coverage",
     "test:debug": "vitest --inspect-brk --no-file-parallelism",
     "test:e2e": "pnpm --filter @ping/shared build && vitest run --config ./vitest.config.e2e.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "drill:redis": "tsx test/drill/redis-outage.drill.ts",
+    "drill:postgres": "tsx test/drill/postgres-outage.drill.ts"
   },
   "dependencies": {
     "@casl/ability": "7.0.2",

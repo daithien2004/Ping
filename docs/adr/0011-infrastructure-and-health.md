@@ -31,5 +31,7 @@ with more than one instance (rule 1).
 
 ## Consequences
 
-While Redis is down, rate limiting and the ability cache fail, so most requests error until it
-returns; `/ready` makes the instance leave the load balancer meanwhile.
+Superseded by [ADR-0026](0026-failure-modes-and-graceful-shutdown.md): a Redis outage now degrades
+the service instead of failing most requests, and `/ready` reports `degraded` rather than removing
+the instance from the load balancer. (Original text: while Redis is down, rate limiting and the
+ability cache fail, so most requests error until it returns.)

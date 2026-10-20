@@ -42,6 +42,9 @@
 14. Mã lỗi lấy từ danh mục `ErrorCodes` trong packages/shared, không viết chuỗi lỗi tự do.
 15. Mỗi quyết định kiến trúc mới hoặc đổi quyết định cũ phải kèm một file trong docs/adr/.
 16. Mọi query/endpoint có tham số ID phải có test IDOR (user khác không truy cập được).
+17. Mọi chỗ gọi Redis trên đường request phải có chính sách khi Redis chết: `failOpen()` hoặc
+    ném `redisUnavailable()` (infra/redis/redis-policy.ts, ADR-0026). Lời gọi Postgres/Redis đã có
+    timeout; lỗi hạ tầng trả 503, không 500.
 
 ## Cấu trúc code
 
