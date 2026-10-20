@@ -12,12 +12,25 @@ import type { Request, Response } from 'express';
 import { Logger } from 'nestjs-pino';
 import type { Env } from '../../config/env.schema.js';
 import { isDatabaseUnavailable } from '../db-unavailable.js';
+import { TooManyRequestsError } from '../too-many-requests.error.js';
 
 /**
  * Single filter that turns every thrown exception into the uniform error
  * shape `{ code, message, details?, requestId }`. Stacks and internal
  * messages never reach the client in production.
  */
+/** Lỗi theo quy ước `http-errors`: có `status` 4xx và `expose: true` (an toàn để báo cho client). */
+function isExposedClientError(error: unknown): error is Error & { status: number } {
+  const { status, expose } = (error ?? {}) as { status?: unknown; expose?: unknown };
+  return (
+    error instanceof Error &&
+    expose === true &&
+    typeof status === 'number' &&
+    status >= 400 &&
+    status < 500
+  );
+}
+
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
   constructor(
@@ -41,6 +54,9 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     if (exception instanceof HttpException) {
       status = exception.getStatus();
+      if (exception instanceof TooManyRequestsError) {
+        response.setHeader('Retry-After', String(exception.retryAfterSeconds));
+      }
       const body = exception.getResponse();
 
       if (typeof body === 'string') {
@@ -72,6 +88,11 @@ export class AllExceptionsFilter implements ExceptionFilter {
       status = HttpStatus.FORBIDDEN;
       code = ErrorCodes.FORBIDDEN;
       message = exception.message;
+    } else if (isExposedClientError(exception)) {
+      // Lỗi 4xx do middleware Express ném ra trước khi tới controller (body-parser: body quá lớn,
+      // JSON hỏng). Không phải HttpException của Nest nên trước đây rơi xuống nhánh 500.
+      status = exception.status;
+      message = status === 413 ? 'Payload too large' : 'Bad request';
     } else if (isDatabaseUnavailable(exception)) {
       // Hạ tầng hỏng, không phải bug của request: 503 + requestId, không stack, không lộ chi tiết
       // driver (host, port…). Chỉ log tên lỗi để biết nguồn.

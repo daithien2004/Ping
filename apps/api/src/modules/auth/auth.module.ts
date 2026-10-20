@@ -5,6 +5,7 @@ import type { Env } from '../../config/env.schema.js';
 import { ACCESS_TOKEN_TTL } from './auth.constants.js';
 import { AuthController } from './auth.controller.js';
 import { AuthService } from './auth.service.js';
+import { LoginAttemptsService } from './login-attempts.service.js';
 
 @Module({
   imports: [
@@ -20,7 +21,7 @@ import { AuthService } from './auth.service.js';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService],
-  exports: [AuthService],
+  providers: [AuthService, LoginAttemptsService],
+  exports: [AuthService, LoginAttemptsService],
 })
 export class AuthModule {}

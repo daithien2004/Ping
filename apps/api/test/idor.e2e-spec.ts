@@ -1,0 +1,374 @@
+import type { INestApplication } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
+import request from 'supertest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { PrismaService } from '../src/infra/prisma/prisma.service.js';
+import { RedisProvider } from '../src/infra/redis/redis.module.js';
+import { bootApp } from './helpers/boot.js';
+
+/**
+ * Bộ test IDOR (hướng dẫn 16.5, quy tắc 16): mọi endpoint nhận ID phải từ chối người không có
+ * quyền DÙ ID ĐÚNG. 19 endpoint x các kiểu kẻ tấn công:
+ *  - outsider: user không thuộc server nào;
+ *  - rival: chủ của một server KHÁC (dùng ID của server A, hoặc trộn ID chéo server);
+ *  - member: thành viên thường của server A (chỉ có @everyone), gọi thao tác cần quyền cao hơn.
+ * Mỗi lần tấn công kiểm ba điều: status 403/404, body không lộ dữ liệu của server A, và DB không đổi.
+ */
+const runId = Date.now().toString(36);
+
+interface Actor {
+  id: string;
+  token: string;
+  email: string;
+}
+
+describe('IDOR (e2e)', () => {
+  let app: INestApplication;
+  let prisma: PrismaService;
+  const emails: string[] = [];
+
+  let alice: Actor; // chủ server A
+  let carol: Actor; // thành viên thường của A
+  let bob: Actor; // chủ server B (đối thủ)
+  let dan: Actor; // người ngoài
+  let serverA = '';
+  let serverB = '';
+  let channelA = '';
+  let roleA = '';
+  let aliceMemberA = '';
+  let carolMemberA = '';
+  let bobMemberB = '';
+  let aliceMessage = '';
+  let carolMessage = '';
+
+  const SECRET = `secret-${runId}`; // xuất hiện trong dữ liệu của server A; không được rò ra
+  const http = () => request(app.getHttpServer());
+
+  async function register(label: string): Promise<Actor> {
+    const email = `idor-${label}-${runId}@ping.dev`;
+    emails.push(email);
+    const res = await http()
+      .post('/api/v1/auth/register')
+      .send({ email, username: `i${label}${runId}`.slice(0, 32), password: 'password123' })
+      .expect(201);
+    return { id: res.body.user.id, token: res.body.accessToken, email };
+  }
+  const as = (
+    actor: Actor | undefined,
+    method: 'get' | 'post' | 'patch' | 'put' | 'delete',
+    url: string,
+  ) => {
+    const call = http()[method](`/api/v1${url}`);
+    return actor ? call.set('Authorization', `Bearer ${actor.token}`) : call;
+  };
+
+  /** Ảnh chụp DB phần thuộc server A: nếu cuộc tấn công làm đổi gì thì so sánh sẽ lệch. */
+  async function snapshotA() {
+    const [server, members, roles, channels, messages, memberRoles, carolSessions] =
+      await Promise.all([
+        prisma.server.findUnique({ where: { id: serverA } }),
+        prisma.member.findMany({ where: { serverId: serverA }, orderBy: { id: 'asc' } }),
+        prisma.role.findMany({ where: { serverId: serverA }, orderBy: { id: 'asc' } }),
+        prisma.channel.findMany({ where: { serverId: serverA }, orderBy: { id: 'asc' } }),
+        prisma.message.findMany({
+          where: { channel: { serverId: serverA } },
+          orderBy: { id: 'asc' },
+        }),
+        prisma.memberRole.findMany({
+          where: { member: { serverId: serverA } },
+          orderBy: [{ memberId: 'asc' }, { roleId: 'asc' }],
+        }),
+        prisma.member.count({ where: { userId: bob.id } }),
+      ]);
+    return JSON.parse(
+      JSON.stringify(
+        { server, members, roles, channels, messages, memberRoles, carolSessions },
+        (_k, v) => (typeof v === 'bigint' ? v.toString() : v),
+      ),
+    );
+  }
+
+  beforeAll(async () => {
+    app = await bootApp();
+    prisma = app.get(PrismaService);
+    await app.get(RedisProvider).flushdb(); // reset rate limit giữa các lần chạy (Redis DB riêng của e2e)
+    [alice, carol, bob, dan] = await Promise.all([
+      register('a'),
+      register('c'),
+      register('b'),
+      register('d'),
+    ]);
+
+    const a = await as(alice, 'post', '/servers').send({ name: SECRET }).expect(201);
+    serverA = a.body.id;
+    channelA = a.body.channels[0].id;
+    roleA = (
+      await as(alice, 'post', `/servers/${serverA}/roles`)
+        .send({ name: `role-${SECRET}`, permissions: '2' })
+        .expect(201)
+    ).body.id;
+    await as(carol, 'post', '/servers/join').send({ inviteCode: a.body.inviteCode }).expect(201);
+
+    const b = await as(bob, 'post', '/servers')
+      .send({ name: `other-${runId}` })
+      .expect(201);
+    serverB = b.body.id;
+
+    const membersA = (await as(alice, 'get', `/servers/${serverA}/members`).expect(200))
+      .body as Array<{ id: string; userId: string }>;
+    aliceMemberA = membersA.find((m) => m.userId === alice.id)!.id;
+    carolMemberA = membersA.find((m) => m.userId === carol.id)!.id;
+    const membersB = (await as(bob, 'get', `/servers/${serverB}/members`).expect(200))
+      .body as Array<{ id: string; userId: string }>;
+    bobMemberB = membersB.find((m) => m.userId === bob.id)!.id;
+
+    aliceMessage = (
+      await as(alice, 'post', `/channels/${channelA}/messages`)
+        .send({ content: `alice ${SECRET}`, nonce: randomUUID() })
+        .expect(201)
+    ).body.id;
+    carolMessage = (
+      await as(carol, 'post', `/channels/${channelA}/messages`)
+        .send({ content: `carol ${SECRET}`, nonce: randomUUID() })
+        .expect(201)
+    ).body.id;
+  });
+
+  afterAll(async () => {
+    const users = await prisma.user.findMany({
+      where: { email: { in: emails } },
+      select: { id: true },
+    });
+    const ids = users.map((user) => user.id);
+    await prisma.message.deleteMany({ where: { authorId: { in: ids } } });
+    await prisma.server.deleteMany({ where: { ownerId: { in: ids } } });
+    await prisma.user.deleteMany({ where: { id: { in: ids } } });
+    await app.close();
+  });
+
+  type Verb = 'get' | 'post' | 'patch' | 'put' | 'delete';
+  interface Attack {
+    name: string;
+    by: () => Actor;
+    verb: Verb;
+    url: () => string;
+    body?: () => unknown;
+    /** Status chấp nhận là "bị từ chối". Mặc định 403/404; 400 chỉ cho ca ID chéo bị validate. */
+    accept: number[];
+  }
+
+  /** Các lần tấn công vào tài nguyên server A. Chạy theo bảng để thêm endpoint thì thêm một dòng. */
+  const attacks = (): Attack[] => {
+    const out: Attack[] = [];
+    const add = (
+      name: string,
+      verb: Verb,
+      url: () => string,
+      who: Array<() => Actor>,
+      body?: () => unknown,
+      accept: number[] = [403, 404],
+    ) => who.forEach((by) => out.push({ name, by, verb, url, body, accept }));
+    const outsider = [() => dan, () => bob]; // người ngoài + chủ server khác
+    const lowPriv = [() => dan, () => bob, () => carol]; // + thành viên thiếu quyền
+
+    add('GET /servers/:serverId', 'get', () => `/servers/${serverA}`, outsider);
+    add(
+      'GET /servers/:serverId/me/permissions',
+      'get',
+      () => `/servers/${serverA}/me/permissions`,
+      outsider,
+    );
+    add('GET /servers/:serverId/members', 'get', () => `/servers/${serverA}/members`, outsider);
+    add('POST /servers/:serverId/leave', 'post', () => `/servers/${serverA}/leave`, outsider);
+    add(
+      'DELETE /servers/:serverId/members/:memberId',
+      'delete',
+      () => `/servers/${serverA}/members/${aliceMemberA}`,
+      lowPriv,
+    );
+    add('DELETE /servers/:serverId', 'delete', () => `/servers/${serverA}`, lowPriv);
+    add('GET /servers/:serverId/channels', 'get', () => `/servers/${serverA}/channels`, outsider);
+    add(
+      'POST /servers/:serverId/channels',
+      'post',
+      () => `/servers/${serverA}/channels`,
+      lowPriv,
+      () => ({ name: `x-${SECRET}` }),
+    );
+    add(
+      'PATCH /channels/:channelId',
+      'patch',
+      () => `/channels/${channelA}`,
+      lowPriv,
+      () => ({ name: 'hacked' }),
+    );
+    add('DELETE /channels/:channelId', 'delete', () => `/channels/${channelA}`, lowPriv);
+    add('GET /servers/:serverId/roles', 'get', () => `/servers/${serverA}/roles`, lowPriv);
+    add(
+      'POST /servers/:serverId/roles',
+      'post',
+      () => `/servers/${serverA}/roles`,
+      lowPriv,
+      () => ({ name: 'evil', permissions: '64' }),
+    );
+    add(
+      'PUT /servers/:serverId/members/:memberId/roles',
+      'put',
+      () => `/servers/${serverA}/members/${carolMemberA}/roles`,
+      lowPriv,
+      () => ({ roleIds: [roleA] }),
+    );
+    add(
+      'PATCH /roles/:roleId',
+      'patch',
+      () => `/roles/${roleA}`,
+      lowPriv,
+      () => ({ permissions: '64' }),
+    );
+    add('DELETE /roles/:roleId', 'delete', () => `/roles/${roleA}`, lowPriv);
+    add(
+      'GET /channels/:channelId/messages',
+      'get',
+      () => `/channels/${channelA}/messages`,
+      outsider,
+    );
+    add(
+      'POST /channels/:channelId/messages',
+      'post',
+      () => `/channels/${channelA}/messages`,
+      outsider,
+      () => ({ content: 'intruder', nonce: randomUUID() }),
+    );
+    add(
+      'PATCH /messages/:messageId (của người khác)',
+      'patch',
+      () => `/messages/${aliceMessage}`,
+      [...outsider, () => carol],
+      () => ({ content: 'hacked' }),
+    );
+    add(
+      'DELETE /messages/:messageId (của người khác)',
+      'delete',
+      () => `/messages/${aliceMessage}`,
+      [...outsider, () => carol],
+    );
+    add(
+      'PATCH /messages/:messageId (tin của carol, người ngoài)',
+      'patch',
+      () => `/messages/${carolMessage}`,
+      outsider,
+      () => ({ content: 'hacked' }),
+    );
+    add(
+      'DELETE /messages/:messageId (tin của carol, người ngoài)',
+      'delete',
+      () => `/messages/${carolMessage}`,
+      outsider,
+    );
+
+    // Trộn ID chéo server: bob là chủ B, dùng serverId của MÌNH nhưng ID tài nguyên của server A.
+    add(
+      'chéo: DELETE /servers/B/members/<member của A>',
+      'delete',
+      () => `/servers/${serverB}/members/${carolMemberA}`,
+      [() => bob],
+    );
+    add(
+      'chéo: PUT /servers/B/members/<member của A>/roles',
+      'put',
+      () => `/servers/${serverB}/members/${carolMemberA}/roles`,
+      [() => bob],
+      () => ({ roleIds: [] }),
+    );
+    add(
+      'chéo: PUT /servers/B/members/<bob>/roles với role của A',
+      'put',
+      () => `/servers/${serverB}/members/${bobMemberB}/roles`,
+      [() => bob],
+      () => ({ roleIds: [roleA] }),
+      [400, 403, 404], // role của A không thuộc server B: bị validate là 400, vẫn là từ chối
+    );
+    add(
+      'chéo: PATCH /roles/<role của A> bởi chủ B',
+      'patch',
+      () => `/roles/${roleA}`,
+      [() => bob],
+      () => ({ name: 'taken' }),
+    );
+    add(
+      'chéo: DELETE /channels/<channel của A> bởi chủ B',
+      'delete',
+      () => `/channels/${channelA}`,
+      [() => bob],
+    );
+    add(
+      'chéo: POST message vào channel của A bởi chủ B',
+      'post',
+      () => `/channels/${channelA}/messages`,
+      [() => bob],
+      () => ({ content: 'from B', nonce: randomUUID() }),
+    );
+    return out;
+  };
+
+  it('every attack is rejected with 403/404, leaks nothing, and changes nothing in server A', async () => {
+    const before = await snapshotA();
+    const failures: string[] = [];
+    for (const attack of attacks()) {
+      const actor = attack.by();
+      const call = as(actor, attack.verb, attack.url());
+      const res = attack.body ? await call.send(attack.body() as object) : await call;
+      const label = `${attack.name} bởi ${actor.email.split('-')[1]}`;
+      if (!attack.accept.includes(res.status)) failures.push(`${label}: status ${res.status}`);
+      if (JSON.stringify(res.body).includes(SECRET))
+        failures.push(`${label}: body lộ dữ liệu của server A`);
+    }
+    expect(failures).toEqual([]);
+    expect(await snapshotA()).toEqual(before);
+  });
+
+  it('a plain member cannot read what they were never granted (controls: allowed paths still work)', async () => {
+    // Đối chứng: chính các endpoint này CHO PHÉP thành viên hợp lệ, để test trên không "xanh vì hỏng hết".
+    await as(carol, 'get', `/servers/${serverA}`).expect(200);
+    await as(carol, 'get', `/channels/${channelA}/messages`).expect(200);
+    await as(carol, 'patch', `/messages/${carolMessage}`)
+      .send({ content: 'carol edits her own' })
+      .expect(200);
+    await as(alice, 'get', `/servers/${serverA}/roles`).expect(200);
+  });
+
+  it('no token → 401 on every endpoint that takes an id', async () => {
+    const uuid = randomUUID();
+    const routes: Array<[Verb, string]> = [
+      ['get', `/servers/${uuid}`],
+      ['get', `/servers/${uuid}/me/permissions`],
+      ['get', `/servers/${uuid}/members`],
+      ['post', `/servers/${uuid}/leave`],
+      ['delete', `/servers/${uuid}/members/${uuid}`],
+      ['delete', `/servers/${uuid}`],
+      ['get', `/servers/${uuid}/channels`],
+      ['post', `/servers/${uuid}/channels`],
+      ['patch', `/channels/${uuid}`],
+      ['delete', `/channels/${uuid}`],
+      ['get', `/servers/${uuid}/roles`],
+      ['post', `/servers/${uuid}/roles`],
+      ['put', `/servers/${uuid}/members/${uuid}/roles`],
+      ['patch', `/roles/${uuid}`],
+      ['delete', `/roles/${uuid}`],
+      ['get', `/channels/${uuid}/messages`],
+      ['post', `/channels/${uuid}/messages`],
+      ['patch', `/messages/${uuid}`],
+      ['delete', `/messages/${uuid}`],
+    ];
+    expect(routes).toHaveLength(19);
+    for (const [verb, url] of routes) {
+      const res = await as(undefined, verb, url).send({});
+      expect(res.status, `${verb.toUpperCase()} ${url}`).toBe(401);
+    }
+  });
+
+  it('a malformed id is a 400, never reaches the database', async () => {
+    await as(alice, 'get', '/servers/not-a-uuid').expect(400);
+    await as(alice, 'patch', '/messages/123').send({ content: 'x' }).expect(400);
+  });
+});

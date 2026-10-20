@@ -87,7 +87,7 @@
     "FORBIDDEN": "You don't have permission to do this.",
     "NOT_FOUND": "Not found.",
     "CONFLICT": "This already exists.",
-    "TOO_MANY_REQUESTS": "Too many attempts. Wait a minute and try again.",
+    "TOO_MANY_REQUESTS": "Too many attempts. Wait a while and try again.",
     "SERVICE_UNAVAILABLE": "Can't reach the server.",
     "unknown": "Something went wrong.",
     "unknownWithId": "Something went wrong. Error ID: {requestId}"

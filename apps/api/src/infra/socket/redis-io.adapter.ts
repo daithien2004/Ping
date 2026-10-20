@@ -53,7 +53,13 @@ export class RedisIoAdapter extends IoAdapter {
   }
 
   createIOServer(port: number, options?: ServerOptions): Server {
-    const withCors = { ...options, cors: { origin: this.corsOrigin, credentials: true } };
+    const withCors = {
+      ...options,
+      cors: { origin: this.corsOrigin, credentials: true },
+      // Socket chỉ mang gói rất nhỏ (join/leave/typing, ack); tin nhắn đi qua REST. 16 KB đủ rộng
+      // và chặn kẻ gửi gói khổng lồ (mặc định của Socket.IO là 1 MB). Vượt thì Socket.IO tự đóng kết nối.
+      maxHttpBufferSize: 16 * 1024,
+    };
     const server = super.createIOServer(port, withCors as ServerOptions) as unknown as Server;
     const adapter = createAdapter(
       withSafePublish(this.pubClient, this.policyLogger),

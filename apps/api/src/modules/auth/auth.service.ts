@@ -13,6 +13,7 @@ import { PrismaService } from '../../infra/prisma/prisma.service.js';
 import { isUniqueConstraintError } from '../../common/utils/prisma-errors.js';
 import { REFRESH_REUSE_GRACE_MS, REFRESH_TOKEN_TTL_MS } from './auth.constants.js';
 import type { AuthenticatedUser } from './current-user.decorator.js';
+import { LoginAttemptsService } from './login-attempts.service.js';
 
 /** Chỉ các trường an toàn với client — passwordHash không bao giờ leave service này. */
 const userPublicSelect = {
@@ -55,6 +56,7 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
+    private readonly loginAttempts: LoginAttemptsService,
     logger: PinoLogger,
   ) {
     this.logger = logger;
@@ -98,6 +100,8 @@ export class AuthService {
   }
 
   async login(input: LoginInput, ctx: AuthRequestContext) {
+    const ip = ctx.ip ?? 'unknown';
+    await this.loginAttempts.assertAllowed(input.email, ip);
     const found = await this.prisma.user.findUnique({
       where: { email: input.email },
       select: { ...userPublicSelect, passwordHash: true },
@@ -110,10 +114,12 @@ export class AuthService {
       : await this.burnVerify(input.password);
 
     if (!found || !passwordValid) {
+      await this.loginAttempts.recordFailure(input.email, ip);
       // Một message duy nhất cho mọi kiểu sai — không phân biệt "sai mật khẩu" hay "không có user".
       throw new UnauthorizedException('Invalid email or password');
     }
 
+    await this.loginAttempts.reset(input.email, ip);
     const publicUser = {
       id: found.id,
       email: found.email,

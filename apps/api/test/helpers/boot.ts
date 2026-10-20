@@ -1,11 +1,13 @@
 import type { INestApplication } from '@nestjs/common';
-import type { ConfigService } from '@nestjs/config';
+import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
-import cookieParser from 'cookie-parser';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from '../../src/app.module.js';
+import { configureApp } from '../../src/app.setup.js';
 import type { Env } from '../../src/config/env.schema.js';
 import { ShutdownService } from '../../src/infra/lifecycle/shutdown.service.js';
 import { RedisProvider } from '../../src/infra/redis/redis.module.js';
+import { RedisIoAdapter } from '../../src/infra/socket/redis-io.adapter.js';
 
 export const DEAD_REDIS = 'redis://localhost:6390'; // không ai nghe: mô phỏng đúng một Redis đã chết
 
@@ -15,7 +17,12 @@ export const DEAD_REDIS = 'redis://localhost:6390'; // không ai nghe: mô phỏ
  * (Đổi process.env không đủ: ConfigModule chụp cấu hình lúc import AppModule.)
  */
 export async function bootApp(
-  options: { deadRedis?: boolean; shutdown?: { graceMs: number; timeoutMs: number } } = {},
+  options: {
+    deadRedis?: boolean;
+    shutdown?: { graceMs: number; timeoutMs: number };
+    /** Gắn RedisIoAdapter như main.ts và lắng nghe cổng ngẫu nhiên để test socket thật. */
+    websocket?: boolean;
+  } = {},
 ): Promise<INestApplication> {
   let builder = Test.createTestingModule({ imports: [AppModule] });
   if (options.deadRedis) {
@@ -36,9 +43,15 @@ export async function bootApp(
       .overrideProvider(ShutdownService)
       .useFactory({ factory: () => new ShutdownService(config) });
   }
-  const app = (await builder.compile()).createNestApplication();
-  app.use(cookieParser());
-  app.setGlobalPrefix('api/v1');
+  const app = (await builder.compile()).createNestApplication<NestExpressApplication>();
+  configureApp(app);
+  if (options.websocket) {
+    const redis = app.get(RedisProvider);
+    const webOrigin = app.get(ConfigService<Env, true>).getOrThrow('WEB_ORIGIN', { infer: true });
+    app.useWebSocketAdapter(new RedisIoAdapter(app, redis, redis.duplicate(), webOrigin));
+    await app.listen(0);
+    return app;
+  }
   await app.init();
   return app;
 }

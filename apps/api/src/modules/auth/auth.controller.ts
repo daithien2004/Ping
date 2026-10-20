@@ -1,9 +1,10 @@
-import { Body, Controller, HttpCode, Post, Req, Res, UsePipes } from '@nestjs/common';
+import { Body, Controller, HttpCode, Post, Req, Res, UseGuards, UsePipes } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Throttle } from '@nestjs/throttler';
 import { loginSchema, registerSchema, type LoginInput, type RegisterInput } from '@ping/shared';
 import type { Request, Response } from 'express';
 import { RateLimitFailClosed } from '../../common/decorators.js';
+import { CsrfGuard } from '../../common/guards/csrf.guard.js';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe.js';
 import type { Env } from '../../config/env.schema.js';
 import { REFRESH_COOKIE_NAME, REFRESH_COOKIE_PATH } from './auth.constants.js';
@@ -58,6 +59,7 @@ export class AuthController {
 
   /** Không cần JwtAuthGuard: tự xác thực hoàn toàn bằng cookie httpOnly. */
   @Post('refresh')
+  @UseGuards(CsrfGuard)
   @RateLimitFailClosed()
   @HttpCode(200)
   async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
@@ -70,6 +72,7 @@ export class AuthController {
   }
 
   @Post('logout')
+  @UseGuards(CsrfGuard)
   @HttpCode(204)
   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     await this.authService.logout(this.refreshCookie(req));
