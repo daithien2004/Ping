@@ -82,6 +82,7 @@
     "cannotSend": "You do not have permission to send messages in this channel.",
     "loading": "Loading messages…",
     "empty": "No messages yet. Send the first one!",
+    "newMessage": "New message from {author}: {content}",
     "loadingOlder": "Loading older messages…",
     "channelStart": "This is the start of #{channel}.",
     "listLabel": "Messages in #{channel}",

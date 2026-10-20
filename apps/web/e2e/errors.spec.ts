@@ -1,9 +1,11 @@
 import { expect, type Page, test } from '@playwright/test';
+import { paceLogin } from './login-pace';
 
 // H4 (hướng dẫn 16.8): trang lỗi hiển thị mã lỗi để báo lại. API được ép lỗi bằng page.route.
 const REQUEST_ID = '0b7c6e0e-5d4f-4c53-8a3e-6f5d8c1a9e42';
 
 async function signIn(page: Page) {
+  await paceLogin();
   await page.goto('/login');
   await page.getByLabel('Email').filter({ visible: true }).fill(process.env.E2E_EMAIL!);
   await page.getByLabel('Mật khẩu').filter({ visible: true }).fill(process.env.E2E_PASSWORD!);

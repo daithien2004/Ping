@@ -68,5 +68,27 @@ export default defineConfig([
       ],
     },
   },
+  {
+    // Accessibility (ADR-0029): bộ luật jsx-a11y mà eslint-config-next chưa bật (Next chỉ bật 6 luật
+    // cơ bản). Dùng plugin Next đã đăng ký nên không cần thêm dependency.
+    files: ['src/**/*.tsx'],
+    rules: {
+      'jsx-a11y/anchor-is-valid': 'error',
+      'jsx-a11y/click-events-have-key-events': 'error',
+      'jsx-a11y/heading-has-content': 'error',
+      'jsx-a11y/html-has-lang': 'error',
+      'jsx-a11y/iframe-has-title': 'error',
+      'jsx-a11y/img-redundant-alt': 'error',
+      'jsx-a11y/interactive-supports-focus': 'error',
+      'jsx-a11y/label-has-associated-control': ['error', { assert: 'either' }],
+      'jsx-a11y/mouse-events-have-key-events': 'error',
+      'jsx-a11y/no-autofocus': 'error',
+      'jsx-a11y/no-noninteractive-element-interactions': 'error',
+      'jsx-a11y/no-noninteractive-tabindex': 'error',
+      'jsx-a11y/no-redundant-roles': 'error',
+      'jsx-a11y/no-static-element-interactions': 'error',
+      'jsx-a11y/tabindex-no-positive': 'error',
+    },
+  },
   globalIgnores(['.next/**', 'out/**', 'build/**', 'next-env.d.ts', 'node_modules/**']),
 ]);

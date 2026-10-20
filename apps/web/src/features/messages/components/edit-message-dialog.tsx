@@ -60,30 +60,29 @@ export function EditMessageDialog({
 
   return (
     <Dialog open onClose={onClose} title={t('editTitle')}>
-      <form
-        onSubmit={submit}
-        className="flex flex-col gap-3"
-        onKeyDown={(event) => {
-          if (
-            event.key === 'Enter' &&
-            (event.ctrlKey || event.metaKey) &&
-            !event.nativeEvent.isComposing
-          ) {
-            event.preventDefault();
-            event.currentTarget.requestSubmit();
-          }
-        }}
-      >
+      <form onSubmit={submit} className="flex flex-col gap-3">
         <Label htmlFor={id}>{t('editContent')}</Label>
         <Textarea
           id={id}
           value={form.draft}
           onChange={(event) => setForm({ ...form, draft: event.target.value })}
+          // Ctrl/Cmd+Enter gửi form. Đặt ở ô nhập (nơi phím được gõ), không ở <form>: phần tử không
+          // tương tác không nên nhận sự kiện bàn phím (jsx-a11y).
+          onKeyDown={(event) => {
+            if (
+              event.key === 'Enter' &&
+              (event.ctrlKey || event.metaKey) &&
+              !event.nativeEvent.isComposing
+            ) {
+              event.preventDefault();
+              event.currentTarget.form?.requestSubmit();
+            }
+          }}
           maxLength={4000}
           rows={4}
+          // Radix Dialog tự focus phần tử tabbable đầu tiên khi mở (chính ô này), không cần autoFocus.
           // field-sizing-content cho textarea cao theo nội dung: tin dài thì đẩy nút Lưu ra ngoài màn hình.
           className="max-h-64 min-h-24 overflow-y-auto"
-          autoFocus
           disabled={mutation.isPending}
           aria-invalid={!parsed.success}
         />

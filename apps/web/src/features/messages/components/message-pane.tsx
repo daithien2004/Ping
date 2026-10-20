@@ -5,6 +5,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'use-intl';
 import { useChannelRealtime } from '@/features/realtime/hooks';
 import { TypingIndicator } from '@/features/realtime/components/typing-indicator';
+import { useMe } from '@/features/auth/hooks';
+import { incomingMessage } from '../announce';
 import { useMessages, useSendMessage } from '../hooks';
 import { type ClientMessage, oldestFirst } from '../message-cache';
 import { MessageComposer } from './message-composer';
@@ -40,6 +42,17 @@ export function MessagePane({
   const { ability, ready } = useServerAbility();
   const messages = useMemo(() => oldestFirst(data), [data]);
   const t = useTranslations('messages');
+  const { data: me } = useMe();
+  // Vùng aria-live: đọc tin mới của người khác (xem announce.ts). Tính ngay trong lúc render theo mẫu
+  // "state dẫn xuất" của React: so tin cuối với lần render trước, không cần effect.
+  const tail = messages.at(-1);
+  const [seenTailId, setSeenTailId] = useState<string | null>(tail?.id ?? null);
+  const [announcement, setAnnouncement] = useState('');
+  if ((tail?.id ?? null) !== seenTailId) {
+    setSeenTailId(tail?.id ?? null);
+    const incoming = incomingMessage(seenTailId, tail, me?.id);
+    if (incoming) setAnnouncement(t('newMessage', incoming));
+  }
   const errors = useTranslations('errors');
   const scrollRef = useRef<HTMLDivElement>(null);
   const didInitialScroll = useRef(false);
@@ -172,6 +185,9 @@ export function MessagePane({
       </div>
 
       <TypingIndicator channelId={channelId} />
+      <div aria-live="polite" aria-atomic="true" className="sr-only">
+        {announcement}
+      </div>
       <MessageComposer channelId={channelId} channelName={channelName} onSend={sendOwn} />
       <MessageDialogs
         selection={selection}

@@ -30,6 +30,7 @@
     "zustand": "5.0.8"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
     "@ping/eslint-config": "workspace:*",
     "@ping/tsconfig": "workspace:*",
     "@playwright/test": "1.63.0",

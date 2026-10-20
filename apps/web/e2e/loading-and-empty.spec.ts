@@ -1,11 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import { expect, type Page, test } from '@playwright/test';
 import type { AuthResponse, ChannelDto } from '@ping/shared';
+import { paceLogin } from './login-pace';
 
 // H4 (hướng dẫn 16.8): mọi danh sách có trạng thái loading (skeleton), rỗng và lỗi.
 const API = 'http://localhost:4000/api/v1';
 
 async function signIn(page: Page) {
+  await paceLogin();
   await page.goto('/login');
   await page.getByLabel('Email').filter({ visible: true }).fill(process.env.E2E_EMAIL!);
   await page.getByLabel('Mật khẩu').filter({ visible: true }).fill(process.env.E2E_PASSWORD!);

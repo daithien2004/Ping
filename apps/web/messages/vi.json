@@ -82,6 +82,7 @@
     "cannotSend": "Bạn không có quyền gửi tin nhắn trong channel này.",
     "loading": "Đang tải tin nhắn…",
     "empty": "Chưa có tin nhắn nào. Hãy gửi tin đầu tiên!",
+    "newMessage": "Tin nhắn mới từ {author}: {content}",
     "loadingOlder": "Đang tải tin cũ…",
     "channelStart": "Đây là đầu kênh #{channel}.",
     "listLabel": "Tin nhắn trong #{channel}",
