@@ -1,1 +1,3 @@
 pnpm exec lint-staged
+# lint-staged chỉ lo ESLint + Prettier trên file đã stage; typecheck cả repo (turbo cache, ~5s).
+pnpm typecheck
