@@ -53,6 +53,9 @@
     (checklist ở mục 9); `test/api-conventions.e2e-spec.ts` phải xanh.
 20. Trang lỗi của web gọi `reportError()` và hiện mã tham chiếu (`errorReference`); thay đổi UI phải qua
     `e2e/a11y.spec.ts` (axe) và `pnpm --filter web check:bundle` (ngân sách bundle) — ADR-0029.
+21. Quan sát (ADR-0031): metrics chỉ ở cổng `METRICS_PORT`, nhãn là mẫu route chứ không phải URL thật;
+    lỗi gửi Sentry phải đi qua `scrubEvent`/`scrubBrowserEvent` (không body, cookie, header, nội dung tin
+    nhắn) và kèm tag `requestId`. Tính năng mới có hạ tầng phụ thuộc thì thêm vào `dependency_up`.
 
 ## Cấu trúc code
 

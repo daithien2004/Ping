@@ -6,6 +6,8 @@ import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module.js';
 import { configureApp } from './app.setup.js';
 import type { Env } from './config/env.schema.js';
+import { MetricsService } from './infra/metrics/metrics.service.js';
+import { initSentry } from './infra/sentry/sentry.js';
 import { RedisProvider } from './infra/redis/redis.module.js';
 import { RedisIoAdapter } from './infra/socket/redis-io.adapter.js';
 
@@ -19,6 +21,7 @@ async function bootstrap() {
   const port = config.getOrThrow('PORT', { infer: true });
   const webOrigin = config.getOrThrow('WEB_ORIGIN', { infer: true });
 
+  initSentry(config.get('SENTRY_DSN', { infer: true }));
   configureApp(app);
   app.enableShutdownHooks();
 
@@ -38,6 +41,10 @@ async function bootstrap() {
     SwaggerModule.setup('docs', app, document);
   }
 
+  const metricsPort = config.get('METRICS_PORT', { infer: true });
+  if (metricsPort) {
+    await app.get(MetricsService).listen(metricsPort);
+  }
   await app.listen(port);
 }
 await bootstrap();

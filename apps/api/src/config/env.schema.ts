@@ -28,6 +28,13 @@ export const envSchema = z.object({
   // dev để 0). TIMEOUT: trần cho cả quá trình tắt, quá hạn thì buộc thoát (< terminationGracePeriod).
   SHUTDOWN_GRACE_MS: z.coerce.number().int().min(0).default(0),
   SHUTDOWN_TIMEOUT_MS: z.coerce.number().int().min(1_000).default(25_000),
+  // Cổng riêng cho GET /metrics (ADR-0031). Bỏ trống = không mở cổng metrics. Chỉ cho mạng nội bộ.
+  METRICS_PORT: z.preprocess(
+    (value) => (value === '' ? undefined : value),
+    z.coerce.number().int().min(1).max(65535).optional(),
+  ),
+  // Sentry (ADR-0031). Bỏ trống = tắt hẳn, không gửi gì, không khởi tạo SDK.
+  SENTRY_DSN: z.preprocess((value) => (value === '' ? undefined : value), z.url().optional()),
 });
 
 export type Env = z.infer<typeof envSchema>;

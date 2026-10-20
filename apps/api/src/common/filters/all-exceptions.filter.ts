@@ -11,6 +11,7 @@ import {
 import type { Request, Response } from 'express';
 import { Logger } from 'nestjs-pino';
 import type { Env } from '../../config/env.schema.js';
+import { captureServerError } from '../../infra/sentry/sentry.js';
 import { isDatabaseUnavailable } from '../db-unavailable.js';
 import { TooManyRequestsError } from '../too-many-requests.error.js';
 
@@ -41,7 +42,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
-    const request = ctx.getRequest<Request & { id?: string }>();
+    const request = ctx.getRequest<Request & { id?: string; user?: { userId?: string } }>();
     const requestId = request.id ?? 'unknown';
     const isProduction = this.config.get('NODE_ENV') === 'production';
 
@@ -116,6 +117,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
         { requestId, status, code, path: request.url, stack },
         'unhandled exception',
       );
+      // Chỉ lỗi bất ngờ (bug) lên Sentry; 503 do hạ tầng đã có metrics và cảnh báo.
+      captureServerError(exception, { requestId, userId: request.user?.userId });
     } else if (status >= 500) {
       // Deliberate 5xx (e.g. readiness probe while a dependency is down):
       // error-level because it matters, but no stack — nothing was unhandled.
