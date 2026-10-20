@@ -1,26 +1,162 @@
 @import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
 
+/*
+ * TOKEN MÀU — chỗ DUY NHẤT định nghĩa màu của web (ADR-0023). Component chỉ dùng class theo
+ * nghĩa (bg-muted, text-muted-foreground, bg-rail…); class màu thô (bg-gray-800) bị ESLint chặn.
+ *
+ *   1. Bảng màu gốc   --palette-*      chỉ dùng trong file này
+ *   2. Token theo nghĩa (sáng / tối)   shadcn + riêng của app (--rail)
+ *   3. Nối vào Tailwind (@theme)       sinh ra class bg-*, text-*, border-*
+ *
+ * Chế độ tối theo hệ điều hành (prefers-color-scheme), không dùng class `.dark`.
+ */
+@custom-variant dark (@media (prefers-color-scheme: dark));
+
+/* ---------- 1. Bảng màu gốc (xám ánh lam + màu nhấn tím của ping) ---------- */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --palette-ink-950: oklch(0.18 0.012 275);
+  --palette-ink-900: oklch(0.215 0.012 275);
+  --palette-ink-850: oklch(0.245 0.012 275);
+  --palette-ink-800: oklch(0.275 0.012 275);
+  --palette-ink-700: oklch(0.32 0.012 275);
+  --palette-ink-500: oklch(0.5 0.012 275);
+  --palette-ink-400: oklch(0.7 0.01 275);
+  --palette-ink-200: oklch(0.9 0.006 275);
+  --palette-ink-150: oklch(0.93 0.005 275);
+  --palette-ink-100: oklch(0.955 0.004 275);
+  --palette-ink-50: oklch(0.985 0.002 275);
+  --palette-white: oklch(1 0 0);
+  --palette-violet-600: oklch(0.55 0.2 282);
+  --palette-violet-500: oklch(0.62 0.19 282);
+  --palette-red-600: oklch(0.577 0.22 27);
+  --palette-red-400: oklch(0.68 0.19 25);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* ---------- 2. Token theo nghĩa: nền sáng ---------- */
+:root {
+  --radius: 0.5rem;
+
+  --background: var(--palette-white); /* vùng chat */
+  --foreground: var(--palette-ink-950);
+  --card: var(--palette-white);
+  --card-foreground: var(--palette-ink-950);
+  --popover: var(--palette-white);
+  --popover-foreground: var(--palette-ink-950);
+  --primary: var(--palette-violet-600);
+  --primary-foreground: var(--palette-white);
+  --secondary: var(--palette-ink-150);
+  --secondary-foreground: var(--palette-ink-950);
+  --muted: var(--palette-ink-100);
+  --muted-foreground: var(--palette-ink-500);
+  --accent: var(--palette-ink-150); /* nền khi rê chuột */
+  --accent-foreground: var(--palette-ink-950);
+  --destructive: var(--palette-red-600);
+  --border: var(--palette-ink-200);
+  --input: var(--palette-ink-200);
+  --ring: var(--palette-violet-500);
+
+  /* Ba tầng nền kiểu chat: rail (server) đậm nhất → sidebar (channel) → vùng chat. */
+  --rail: var(--palette-ink-200);
+  --rail-foreground: var(--palette-ink-950);
+  --sidebar: var(--palette-ink-100);
+  --sidebar-foreground: var(--palette-ink-950);
+  --sidebar-primary: var(--palette-violet-600);
+  --sidebar-primary-foreground: var(--palette-white);
+  --sidebar-accent: var(--palette-ink-200);
+  --sidebar-accent-foreground: var(--palette-ink-950);
+  --sidebar-border: var(--palette-ink-200);
+  --sidebar-ring: var(--palette-violet-500);
 }
 
+/* ---------- 2. Token theo nghĩa: nền tối ---------- */
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: var(--palette-ink-850);
+    --foreground: var(--palette-ink-150);
+    --card: var(--palette-ink-900);
+    --card-foreground: var(--palette-ink-150);
+    --popover: var(--palette-ink-950);
+    --popover-foreground: var(--palette-ink-150);
+    --primary: var(--palette-violet-500);
+    --primary-foreground: var(--palette-white);
+    --secondary: var(--palette-ink-700);
+    --secondary-foreground: var(--palette-ink-150);
+    --muted: var(--palette-ink-800);
+    --muted-foreground: var(--palette-ink-400);
+    --accent: var(--palette-ink-800);
+    --accent-foreground: var(--palette-ink-50);
+    --destructive: var(--palette-red-400);
+    --border: oklch(1 0 0 / 8%);
+    --input: oklch(1 0 0 / 12%);
+    --ring: var(--palette-violet-500);
+
+    --rail: var(--palette-ink-950);
+    --rail-foreground: var(--palette-ink-150);
+    --sidebar: var(--palette-ink-900);
+    --sidebar-foreground: var(--palette-ink-150);
+    --sidebar-primary: var(--palette-violet-500);
+    --sidebar-primary-foreground: var(--palette-white);
+    --sidebar-accent: var(--palette-ink-800);
+    --sidebar-accent-foreground: var(--palette-ink-50);
+    --sidebar-border: oklch(1 0 0 / 8%);
+    --sidebar-ring: var(--palette-violet-500);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ---------- 3. Nối token vào Tailwind ---------- */
+@theme inline {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-geist-sans);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-rail: var(--rail);
+  --color-rail-foreground: var(--rail-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
 }

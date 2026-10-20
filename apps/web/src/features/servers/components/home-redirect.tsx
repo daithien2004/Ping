@@ -2,6 +2,8 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'use-intl';
+import { Button } from '@/components/ui/button';
 import { useServers } from '../hooks';
 import { homePath } from '../navigation';
 import { CreateServerDialog } from './create-server-dialog';
@@ -13,6 +15,7 @@ export function HomeRedirect() {
   const { data: servers } = useServers();
   const target = homePath(servers);
   const [dialog, setDialog] = useState<'create' | 'join' | null>(null);
+  const t = useTranslations('servers');
 
   useEffect(() => {
     if (target) router.replace(target);
@@ -22,23 +25,13 @@ export function HomeRedirect() {
 
   return (
     <div className="m-auto flex flex-col items-center gap-4 text-center">
-      <h1 className="text-xl font-semibold">Bạn chưa ở trong server nào</h1>
-      <p className="text-sm text-gray-500">Tạo server của riêng bạn hoặc tham gia bằng mã mời.</p>
+      <h1 className="text-xl font-semibold">{t('emptyTitle')}</h1>
+      <p className="text-sm text-muted-foreground">{t('emptyHint')}</p>
       <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={() => setDialog('create')}
-          className="rounded bg-indigo-600 px-3 py-2 text-sm font-medium text-white"
-        >
-          Tạo server
-        </button>
-        <button
-          type="button"
-          onClick={() => setDialog('join')}
-          className="rounded border border-gray-300 px-3 py-2 text-sm dark:border-gray-600"
-        >
-          Nhập mã mời
-        </button>
+        <Button onClick={() => setDialog('create')}>{t('create')}</Button>
+        <Button variant="outline" onClick={() => setDialog('join')}>
+          {t('enterInvite')}
+        </Button>
       </div>
       <CreateServerDialog open={dialog === 'create'} onClose={() => setDialog(null)} />
       <JoinServerDialog open={dialog === 'join'} onClose={() => setDialog(null)} />

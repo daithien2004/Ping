@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense, use } from 'react';
+import { useTranslations } from 'use-intl';
 import { MessagePane } from '@/features/messages/components/message-pane';
 import { useChannels } from '../hooks';
 
@@ -20,17 +21,21 @@ export function ChannelView({
   const { serverId, channelId } = use(params);
   const { data: channels } = useChannels(serverId);
   const channel = channels.find((item) => item.id === channelId);
+  const t = useTranslations();
 
   if (!channel) {
-    return <p className="m-auto text-sm text-gray-500">Channel không tồn tại.</p>;
+    return <p className="m-auto text-sm text-muted-foreground">{t('channels.notFound')}</p>;
   }
 
   return (
     <section className="flex min-h-0 flex-1 flex-col">
-      <header className="border-b border-gray-200 px-4 py-3 font-semibold dark:border-gray-700">
-        # {channel.name}
+      <header className="flex h-12 shrink-0 items-center border-b px-4 font-semibold shadow-xs">
+        <span className="mr-1.5 text-xl leading-none text-muted-foreground">#</span>
+        {channel.name}
       </header>
-      <Suspense fallback={<p className="m-auto text-sm text-gray-500">Đang tải tin nhắn…</p>}>
+      <Suspense
+        fallback={<p className="m-auto text-sm text-muted-foreground">{t('messages.loading')}</p>}
+      >
         {/* key: mỗi channel một trạng thái riêng (nháp, vị trí cuộn lần đầu). */}
         <MessagePane key={channel.id} channelId={channel.id} channelName={channel.name} />
       </Suspense>

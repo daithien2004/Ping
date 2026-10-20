@@ -68,6 +68,10 @@
 - Dữ liệu server chỉ ghi vào cache trong `features/<domain>/hooks.ts`; logic biến đổi cache là hàm
   thuần trong `*-cache.ts` có test. Component không gọi `queryClient` trực tiếp.
 - `useEffect` chỉ để đồng bộ với bên ngoài (cuộn, socket, DOM), không để tính dữ liệu.
+- Màu chỉ qua token trong `apps/web/src/app/globals.css` (bg-muted, text-muted-foreground, bg-rail…);
+  class màu thô bị ESLint chặn. Component nền tảng dùng shadcn trong `components/ui/`. Chỉ desktop.
+- Chữ hiển thị (cả `aria-label`) đi qua `useTranslations`, key thêm vào CẢ `messages/vi.json` và
+  `en.json` (test bắt thiếu key). Lỗi: `useErrorMessage()`, không hiện `message` của server.
 - Thay đổi UI: thêm/cập nhật kịch bản Playwright trong `apps/web/e2e/`.
 
 ## Cách làm việc

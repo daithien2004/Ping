@@ -18,6 +18,13 @@ const noFeatures = {
   message: 'components/ và lib/ không phụ thuộc features/ (phụ thuộc một chiều).',
 };
 
+const palette =
+  'slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose|white|black';
+// Selector esquery dạng regex; `\\b` vì trong template literal `\b` là ký tự backspace.
+const rawColor = `/\\b(bg|text|border|ring|outline|fill|stroke|from|via|to|divide|placeholder|decoration|shadow|accent|caret)-(${palette})\\b/`;
+const rawColorMessage =
+  'Dùng token theo nghĩa (bg-muted, text-muted-foreground, bg-rail…) trong globals.css, không dùng màu thô.';
+
 export default defineConfig([
   // The shared config already registers the TypeScript parser and plugin.
   ...nextVitals.filter((config) => config.name !== 'next/typescript'),
@@ -47,6 +54,19 @@ export default defineConfig([
       'src/features/channels/components/channel-redirect.tsx',
     ],
     rules: { 'no-restricted-imports': ['error', { patterns: [noApp] }] },
+  },
+  {
+    // Màu chỉ đi qua token trong globals.css (ADR-0023): cấm class màu thô của Tailwind.
+    // components/ui là code shadcn sinh ra, đã dùng token.
+    files: ['src/**/*.tsx'],
+    ignores: ['src/components/ui/**'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        { selector: `Literal[value=${rawColor}]`, message: rawColorMessage },
+        { selector: `TemplateElement[value.raw=${rawColor}]`, message: rawColorMessage },
+      ],
+    },
   },
   globalIgnores(['.next/**', 'out/**', 'build/**', 'next-env.d.ts', 'node_modules/**']),
 ]);

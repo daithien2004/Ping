@@ -1,34 +1,56 @@
 import { ErrorCodes, type ErrorCode } from '@ping/shared';
+import { useTranslations } from 'use-intl';
 import { ApiError } from './api-client';
 
-const DEFAULT_MESSAGES: Partial<Record<ErrorCode, string>> = {
-  [ErrorCodes.BAD_REQUEST]: 'Yêu cầu không hợp lệ.',
-  [ErrorCodes.UNAUTHORIZED]: 'Phiên đăng nhập đã hết. Đăng nhập lại.',
-  [ErrorCodes.FORBIDDEN]: 'Bạn không có quyền làm việc này.',
-  [ErrorCodes.NOT_FOUND]: 'Không tìm thấy.',
-  [ErrorCodes.CONFLICT]: 'Dữ liệu bị trùng.',
-  [ErrorCodes.TOO_MANY_REQUESTS]: 'Thử quá nhiều lần. Đợi một phút rồi thử lại.',
-  [ErrorCodes.SERVICE_UNAVAILABLE]: 'Không kết nối được máy chủ.',
-};
+/** Code có câu chung trong `errors.*` của messages/*.json. */
+const KNOWN = [
+  ErrorCodes.BAD_REQUEST,
+  ErrorCodes.UNAUTHORIZED,
+  ErrorCodes.FORBIDDEN,
+  ErrorCodes.NOT_FOUND,
+  ErrorCodes.CONFLICT,
+  ErrorCodes.TOO_MANY_REQUESTS,
+  ErrorCodes.SERVICE_UNAVAILABLE,
+] as const;
+type KnownCode = (typeof KNOWN)[number];
+
+/** Câu override do nơi gọi đã dịch, theo code ("Không có quyền tạo channel"…). */
+export type ErrorOverrides = Partial<Record<ErrorCode, string>>;
+
+export type ErrorDescription =
+  { text: string } | { key: KnownCode | 'unknown' } | { key: 'unknownWithId'; requestId: string };
 
 /**
- * Câu báo lỗi cho người dùng, chọn theo `ApiError.code` (hợp đồng), không theo `message` của
- * server (hướng dẫn 16.7): câu của server là tiếng Anh và có thể đổi. `overrides` cho câu riêng
- * theo ngữ cảnh ("Không có quyền tạo channel", "Chủ server không thể rời server").
- * Lỗi không lường trước kèm requestId để người dùng báo lại.
+ * Chọn câu báo lỗi theo `ApiError.code` (hợp đồng), không theo `message` của server (hướng dẫn
+ * 16.7): câu server là tiếng Anh và có thể đổi. Lỗi không lường trước kèm requestId để báo lại.
+ * Hàm thuần (dễ test); `useErrorMessage` lo phần dịch.
  */
-export function errorMessage(
-  error: unknown,
-  overrides: Partial<Record<ErrorCode, string>> = {},
-): string {
+export function describeError(error: unknown, overrides: ErrorOverrides = {}): ErrorDescription {
   if (error instanceof ApiError) {
-    const known = overrides[error.code] ?? DEFAULT_MESSAGES[error.code];
+    const override = overrides[error.code];
+    if (override) {
+      return { text: override };
+    }
+    const known = KNOWN.find((code) => code === error.code);
     if (known) {
-      return known;
+      return { key: known };
     }
     if (error.requestId) {
-      return `Có lỗi xảy ra. Mã lỗi: ${error.requestId}`;
+      return { key: 'unknownWithId', requestId: error.requestId };
     }
   }
-  return 'Có lỗi xảy ra.';
+  return { key: 'unknown' };
+}
+
+/** `const errorMessage = useErrorMessage(); errorMessage(error, { FORBIDDEN: t('…') })`. */
+export function useErrorMessage() {
+  const t = useTranslations('errors');
+  return (error: unknown, overrides?: ErrorOverrides): string => {
+    const described = describeError(error, overrides);
+    if ('text' in described) return described.text;
+    if (described.key === 'unknownWithId') {
+      return t('unknownWithId', { requestId: described.requestId });
+    }
+    return t(described.key);
+  };
 }
