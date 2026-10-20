@@ -1,4 +1,9 @@
 {
+  "realtime": {
+    "connecting": "Connecting…",
+    "disconnected": "Connection lost. Reconnecting…",
+    "typing": "{count, plural, one {Someone is typing…} other {# people are typing…}}"
+  },
   "common": {
     "loading": "Loading…",
     "processing": "Working…",

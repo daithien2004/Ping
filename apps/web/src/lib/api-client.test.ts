@@ -33,6 +33,51 @@ afterEach(() => {
 const authHeader = (init: RequestInit) => new Headers(init.headers).get('Authorization');
 
 describe('api-client', () => {
+  it('a stale 401 from a previous session cannot sign out the newly logged-in user', async () => {
+    const { api, setAccessToken, getAccessToken, setUnauthenticatedHandler } = await load();
+    const expired = vi.fn();
+    setUnauthenticatedHandler(expired);
+    setAccessToken('old');
+    let complete!: (value: Response) => void;
+    fetchMock.mockReturnValue(
+      new Promise<Response>((resolve) => {
+        complete = resolve;
+      }),
+    );
+    const request = api.get('/users/me');
+    setAccessToken('new-session');
+    complete(json(401, { code: 'UNAUTHORIZED' }));
+    await expect(request).rejects.toMatchObject({ status: 401 });
+    expect(getAccessToken()).toBe('new-session');
+    expect(expired).not.toHaveBeenCalled();
+  });
+  it('temporary refresh network failure keeps token and session', async () => {
+    const { refreshAccessToken, setAccessToken, getAccessToken, setUnauthenticatedHandler } =
+      await load();
+    const expired = vi.fn();
+    setUnauthenticatedHandler(expired);
+    setAccessToken('old');
+    fetchMock.mockRejectedValue(new TypeError('offline'));
+    await expect(refreshAccessToken()).rejects.toMatchObject({ status: 0 });
+    expect(getAccessToken()).toBe('old');
+    expect(expired).not.toHaveBeenCalled();
+  });
+
+  it('logout invalidates an in-flight refresh so it cannot restore the old token', async () => {
+    const { refreshAccessToken, setAccessToken, getAccessToken } = await load();
+    let complete!: (value: Response) => void;
+    fetchMock.mockReturnValue(
+      new Promise<Response>((resolve) => {
+        complete = resolve;
+      }),
+    );
+    setAccessToken('old');
+    const pending = refreshAccessToken();
+    setAccessToken(null);
+    complete(json(200, { accessToken: 'stale' }));
+    await pending;
+    expect(getAccessToken()).toBeNull();
+  });
   it('gắn Bearer token và gửi kèm cookie (credentials: include)', async () => {
     const { api, setAccessToken } = await load();
     setAccessToken('tok-1');

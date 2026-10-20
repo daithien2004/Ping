@@ -1,0 +1,36 @@
+'use client';
+import { ServerEvents, type TypingStartedPayload } from '@ping/shared';
+import { useEffect, useState, type ReactNode } from 'react';
+import { useMe } from '@/features/auth/hooks';
+import { useMessageEvents } from '@/features/messages/hooks';
+import { useServerEvents } from '@/features/servers/hooks';
+import { RealtimeContext } from '../context';
+import { RealtimeSession } from '../session';
+import { createSocket } from '../socket';
+
+export function RealtimeProvider({ children }: { children: ReactNode }) {
+  const { data: me } = useMe();
+  return me ? (
+    <SignedInRealtime key={me.id} userId={me.id}>
+      {children}
+    </SignedInRealtime>
+  ) : null;
+}
+
+function SignedInRealtime({ userId, children }: { userId: string; children: ReactNode }) {
+  const [session] = useState(() => new RealtimeSession(createSocket()));
+  useMessageEvents(session);
+  useServerEvents(session);
+  useEffect(() => {
+    const typing = (event: TypingStartedPayload) => {
+      if (event.userId !== userId) session.store.getState().type(event.channelId, event.userId);
+    };
+    session.socket.on(ServerEvents.TypingStarted, typing);
+    session.start();
+    return () => {
+      session.socket.off(ServerEvents.TypingStarted, typing);
+      session.stop();
+    };
+  }, [session, userId]);
+  return <RealtimeContext value={session}>{children}</RealtimeContext>;
+}
