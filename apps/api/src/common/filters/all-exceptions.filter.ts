@@ -1,27 +1,16 @@
 import { ForbiddenError } from '@casl/ability';
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ErrorCodes, isErrorCode, type ApiErrorBody, type ErrorCode } from '@ping/shared';
+import {
+  ErrorCodes,
+  errorCodeForStatus,
+  isErrorCode,
+  type ApiErrorBody,
+  type ErrorCode,
+} from '@ping/shared';
 import type { Request, Response } from 'express';
 import { Logger } from 'nestjs-pino';
 import type { Env } from '../../config/env.schema.js';
-
-const STATUS_CODES: Partial<Record<number, ErrorCode>> = {
-  [HttpStatus.BAD_REQUEST]: ErrorCodes.BAD_REQUEST,
-  [HttpStatus.UNAUTHORIZED]: ErrorCodes.UNAUTHORIZED,
-  [HttpStatus.FORBIDDEN]: ErrorCodes.FORBIDDEN,
-  [HttpStatus.NOT_FOUND]: ErrorCodes.NOT_FOUND,
-  [HttpStatus.CONFLICT]: ErrorCodes.CONFLICT,
-  [HttpStatus.TOO_MANY_REQUESTS]: ErrorCodes.TOO_MANY_REQUESTS,
-  [HttpStatus.SERVICE_UNAVAILABLE]: ErrorCodes.SERVICE_UNAVAILABLE,
-};
-
-/** Mã lỗi cho một status không có code riêng: luôn nằm trong danh mục ErrorCodes. */
-function codeForStatus(status: number): ErrorCode {
-  return (
-    STATUS_CODES[status] ?? (status >= 500 ? ErrorCodes.INTERNAL_ERROR : ErrorCodes.BAD_REQUEST)
-  );
-}
 
 /**
  * Single filter that turns every thrown exception into the uniform error
@@ -89,7 +78,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       }
     }
 
-    code ??= codeForStatus(status);
+    code ??= errorCodeForStatus(status);
 
     if (stack !== undefined) {
       // Not an HttpException: something crashed unexpectedly — keep the stack.
