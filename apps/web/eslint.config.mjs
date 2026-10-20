@@ -22,6 +22,10 @@ const palette =
   'slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose|white|black';
 // Selector esquery dạng regex; `\\b` vì trong template literal `\b` là ký tự backspace.
 const rawColor = `/\\b(bg|text|border|ring|outline|fill|stroke|from|via|to|divide|placeholder|decoration|shadow|accent|caret)-(${palette})\\b/`;
+const noProcessEnv = {
+  selector: "MemberExpression[object.name='process'][property.name='env']",
+  message: 'Đọc biến môi trường qua src/lib/env.ts (một chỗ, có kiểm tra), không dùng process.env.',
+};
 const rawColorMessage =
   'Dùng token theo nghĩa (bg-muted, text-muted-foreground, bg-rail…) trong globals.css, không dùng màu thô.';
 
@@ -65,8 +69,15 @@ export default defineConfig([
         'error',
         { selector: `Literal[value=${rawColor}]`, message: rawColorMessage },
         { selector: `TemplateElement[value.raw=${rawColor}]`, message: rawColorMessage },
+        noProcessEnv,
       ],
     },
+  },
+  {
+    // File .ts cũng không được đọc process.env trực tiếp (khối trên chỉ phủ .tsx).
+    files: ['src/**/*.ts'],
+    ignores: ['src/lib/env.ts', 'src/**/*.test.ts'],
+    rules: { 'no-restricted-syntax': ['error', noProcessEnv] },
   },
   {
     // Accessibility (ADR-0029): bộ luật jsx-a11y mà eslint-config-next chưa bật (Next chỉ bật 6 luật
