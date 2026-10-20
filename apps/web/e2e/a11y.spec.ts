@@ -10,7 +10,22 @@ const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];
 
 // `only`: vùng cần quét. Menu modal của Radix đặt aria-hidden lên phần còn lại của trang nhưng phần
 // đó vẫn focusable trên DOM (focus bị bẫy bên trong menu) → axe báo aria-hidden-focus; chỉ quét menu.
+// axe đọc màu tính toán tại thời điểm quét: ngay sau khi đổi nền sáng/tối hoặc mở menu/hộp thoại, các chuyển động CSS
+// (transition màu, animate-in) còn chạy dở nên màu ở giữa chừng làm contrast "đỏ" lúc có lúc không (đã gặp trên CI).
+// Đợi hết chuyển động hữu hạn rồi mới quét.
+async function settleAnimations(page: Page) {
+  await page.waitForFunction(
+    () =>
+      document
+        .getAnimations()
+        .every((animation) => animation.effect?.getComputedTiming().iterations === Infinity),
+    undefined,
+    { timeout: 5000 },
+  );
+}
+
 async function scan(page: Page, what: string, only?: string) {
+  await settleAnimations(page);
   const builder = new AxeBuilder({ page }).withTags(TAGS);
   const { violations } = await (only ? builder.include(only) : builder).analyze();
   const summary = violations.map(

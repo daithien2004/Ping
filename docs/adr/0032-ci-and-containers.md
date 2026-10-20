@@ -54,3 +54,12 @@ pingprod`): the default project name `ping` is the dev compose and would share i
   run locally (promtool, `migrate diff`, gitleaks, `pnpm audit`, the compose stack), except the Lighthouse job
   and the Trivy scan, which were not run here. Expect small first-run differences (versions of the
   Lighthouse CLI and Trivy are pinned from memory).
+
+## Update (2026-10-21): first runs on GitHub
+
+The workflows did run on push and the first runs were red; the causes (Prisma client and Next route types not generated on
+a clean checkout, a production build without `NEXT_PUBLIC_API_URL`, axe scanning mid-transition, Lighthouse measuring the
+fatal-error page because no API was running) are listed in `docs/acceptance/v0.1.0.md`. All fixed; all eight jobs are green.
+Also added: the `migrations` job now upgrades from the previous version (`scripts/check-migration-upgrade.sh`) and forbids
+editing merged migrations, work branches run CI on push, and Playwright/Lighthouse failures are surfaced as annotations
+because the full job log needs a login to read.

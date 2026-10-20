@@ -1,3 +1,4 @@
+import AxeBuilder from '@axe-core/playwright';
 import { expect, type Page, test } from '@playwright/test';
 import { paceLogin } from './login-pace';
 
@@ -69,6 +70,15 @@ test('an error in the root area (server list) falls to global-error with the id 
   await expect(page.getByRole('heading', { name: 'Đã xảy ra lỗi nghiêm trọng' })).toBeVisible();
   await expect(page.getByText(`Mã lỗi: ${REQUEST_ID}`)).toBeVisible();
   await expect(page.getByRole('button', { name: 'Thử lại' })).toBeVisible();
+
+  // Trang lỗi nghiêm trọng thay cả root layout nên không dính test a11y của app: quét riêng (Lighthouse trên CI từng
+  // báo thiếu <title>, role không hợp lệ trên <main> và nút thiếu tương phản).
+  const { violations } = await new AxeBuilder({ page })
+    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'best-practice'])
+    .analyze();
+  expect(
+    violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(' | ')}`),
+  ).toEqual([]);
 });
 
 test('an unknown URL shows the localized 404 with a way home', async ({ page }) => {

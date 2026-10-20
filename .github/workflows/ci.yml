@@ -4,8 +4,9 @@ name: CI
 
 on:
   pull_request:
+  # Nhánh làm việc cũng chạy khi được đẩy lên (không cần mở PR mới thấy kết quả); main luôn chạy.
   push:
-    branches: [main]
+    branches: [main, 'feat/**', 'fix/**', 'chore/**', 'docs/**', 'ci/**']
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -26,6 +27,9 @@ jobs:
     name: verify
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      # Bản build production của web bắt buộc có biến này (src/lib/env.ts).
+      NEXT_PUBLIC_API_URL: http://localhost:4000
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -39,6 +43,10 @@ jobs:
           key: turbo-${{ runner.os }}-${{ github.sha }}
           restore-keys: turbo-${{ runner.os }}-
       - run: pnpm install --frozen-lockfile
+      # Prisma client nằm ở src/generated (git bỏ qua): phải sinh trước lint và typecheck, nếu không
+      # PrismaService thiếu các model và typecheck đỏ (chỉ lộ ra trên máy sạch như CI).
+      - run: cp .env.example .env
+      - run: pnpm --filter api exec prisma generate
       - run: pnpm format:check
       - run: pnpm docs:check
       - run: pnpm lint
@@ -128,6 +136,8 @@ jobs:
           --health-cmd "pg_isready -U ping" --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # cần lịch sử để so với phiên bản trước
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
@@ -139,6 +149,23 @@ jobs:
       # Schema trong code phải khớp đúng kết quả của các migration: bắt quên tạo migration
       # (exit 2 = có khác biệt). Quy tắc 7: thay đổi DB chỉ qua migration.
       - run: pnpm --filter api exec prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code
+      # Nâng cấp thật: DB mang schema của phiên bản trước (migration của BASE), rồi áp migration của bản này.
+      # Cũng bắt việc sửa/xóa migration đã merge (quy tắc 7).
+      - name: Upgrade from the previous version
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+          elif [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            BASE="${{ github.event.before }}"
+          else
+            BASE="$(git merge-base origin/main HEAD)"
+          fi
+          # Push đầu tiên của nhánh có `before` toàn số 0; commit không còn trong lịch sử cũng vậy.
+          if [ -z "$BASE" ] || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            BASE="$(git rev-parse HEAD~1 2>/dev/null || git rev-parse HEAD)"
+          fi
+          PGPASSWORD=ping psql -h localhost -U ping -d postgres -c "CREATE DATABASE upgrade_check"
+          BASE="$BASE" DATABASE_URL=postgresql://ping:ping@localhost:5432/upgrade_check bash scripts/check-migration-upgrade.sh
 
   drills:
     name: drills
@@ -232,6 +259,21 @@ jobs:
     name: lighthouse
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      NEXT_PUBLIC_API_URL: http://localhost:4000
+    # Cần API chạy thật: không có API thì /login rơi vào trang lỗi nghiêm trọng và Lighthouse đo nhầm trang đó.
+    services:
+      postgres:
+        image: postgres:17
+        env: { POSTGRES_USER: ping, POSTGRES_PASSWORD: ping, POSTGRES_DB: ping }
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U ping" --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 5s --health-retries 10
     # Báo cáo, chưa chặn merge (quyết định B): ngưỡng cần vài lần chạy để ổn định.
     continue-on-error: true
     steps:
@@ -242,5 +284,21 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # build trực tiếp một gói (không qua turbo) thì không tự build @ping/shared: làm tay.
+      - run: cp .env.example .env
+      - run: pnpm --filter @ping/shared build
+      - run: pnpm --filter api exec prisma migrate deploy
+      - run: pnpm --filter api build
+      - name: Start the API
+        run: |
+          (cd apps/api && node dist/main.js > ../../api.log 2>&1 &)
+          for _ in $(seq 1 30); do curl -sf http://localhost:4000/api/v1/health > /dev/null && exit 0; sleep 1; done
+          cat api.log; exit 1
       - run: pnpm --filter web build
-      - run: pnpm dlx @lhci/cli@0.15.1 autorun --config=./lighthouserc.json
+      - name: Lighthouse CI
+        run: |
+          pnpm dlx @lhci/cli@0.15.1 autorun --config=./lighthouserc.json 2>&1 | tee lhci.log
+          code=${PIPESTATUS[0]}
+          # Log đầy đủ của job cần đăng nhập mới đọc được: đưa các kiểm tra chưa đạt lên annotation (xem công khai).
+          node scripts/lhci-failures.mjs
+          exit "$code"

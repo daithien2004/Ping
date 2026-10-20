@@ -1,4 +1,6 @@
-import type { INestApplication } from '@nestjs/common';
+import { RequestMethod, type INestApplication } from '@nestjs/common';
+import { METHOD_METADATA, PATH_METADATA } from '@nestjs/common/constants.js';
+import { ModulesContainer } from '@nestjs/core';
 import { randomUUID } from 'node:crypto';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -15,6 +17,56 @@ import { bootApp } from './helpers/boot.js';
  * Mỗi lần tấn công kiểm ba điều: status 403/404, body không lộ dữ liệu của server A, và DB không đổi.
  */
 const runId = Date.now().toString(36);
+
+type Verb = 'get' | 'post' | 'patch' | 'put' | 'delete';
+
+/** Mọi endpoint nhận ID (path đã chuẩn hóa: `:id` thay cho `:serverId`, `:channelId`…). Nguồn của test 401 và test phủ route. */
+const ID_ROUTES: Array<[Verb, string]> = [
+  ['get', '/servers/:id'],
+  ['get', '/servers/:id/me/permissions'],
+  ['get', '/servers/:id/members'],
+  ['post', '/servers/:id/leave'],
+  ['delete', '/servers/:id/members/:id'],
+  ['delete', '/servers/:id'],
+  ['get', '/servers/:id/channels'],
+  ['post', '/servers/:id/channels'],
+  ['patch', '/channels/:id'],
+  ['delete', '/channels/:id'],
+  ['get', '/servers/:id/roles'],
+  ['post', '/servers/:id/roles'],
+  ['put', '/servers/:id/members/:id/roles'],
+  ['patch', '/roles/:id'],
+  ['delete', '/roles/:id'],
+  ['get', '/channels/:id/messages'],
+  ['post', '/channels/:id/messages'],
+  ['patch', '/messages/:id'],
+  ['delete', '/messages/:id'],
+];
+
+/** Quét controller của app qua metadata của Nest: các route có tham số `:...Id`, dạng `verb /path/:id`, đã sắp xếp. */
+function discoverIdRoutes(app: INestApplication): string[] {
+  const found: string[] = [];
+  for (const module of app.get(ModulesContainer).values()) {
+    for (const wrapper of module.controllers.values()) {
+      const controller = wrapper.metatype as (new (...args: never[]) => object) | null;
+      if (!controller) continue;
+      const base = Reflect.getMetadata(PATH_METADATA, controller) as string | string[] | undefined;
+      for (const name of Object.getOwnPropertyNames(controller.prototype)) {
+        const handler = (controller.prototype as Record<string, unknown>)[name];
+        if (typeof handler !== 'function') continue;
+        const method = Reflect.getMetadata(METHOD_METADATA, handler) as RequestMethod | undefined;
+        if (method === undefined) continue;
+        const path = Reflect.getMetadata(PATH_METADATA, handler) as string | string[] | undefined;
+        const full = `/${[base, path].flat().filter(Boolean).join('/')}`.replace(/\/+/g, '/');
+        const normalized = full.replace(/:[A-Za-z]*Id/g, ':id');
+        if (normalized.includes(':id')) {
+          found.push(`${RequestMethod[method]!.toLowerCase()} ${normalized}`);
+        }
+      }
+    }
+  }
+  return found.sort();
+}
 
 interface Actor {
   id: string;
@@ -146,7 +198,6 @@ describe('IDOR (e2e)', () => {
     await app.close();
   });
 
-  type Verb = 'get' | 'post' | 'patch' | 'put' | 'delete';
   interface Attack {
     name: string;
     by: () => Actor;
@@ -339,32 +390,18 @@ describe('IDOR (e2e)', () => {
 
   it('no token → 401 on every endpoint that takes an id', async () => {
     const uuid = randomUUID();
-    const routes: Array<[Verb, string]> = [
-      ['get', `/servers/${uuid}`],
-      ['get', `/servers/${uuid}/me/permissions`],
-      ['get', `/servers/${uuid}/members`],
-      ['post', `/servers/${uuid}/leave`],
-      ['delete', `/servers/${uuid}/members/${uuid}`],
-      ['delete', `/servers/${uuid}`],
-      ['get', `/servers/${uuid}/channels`],
-      ['post', `/servers/${uuid}/channels`],
-      ['patch', `/channels/${uuid}`],
-      ['delete', `/channels/${uuid}`],
-      ['get', `/servers/${uuid}/roles`],
-      ['post', `/servers/${uuid}/roles`],
-      ['put', `/servers/${uuid}/members/${uuid}/roles`],
-      ['patch', `/roles/${uuid}`],
-      ['delete', `/roles/${uuid}`],
-      ['get', `/channels/${uuid}/messages`],
-      ['post', `/channels/${uuid}/messages`],
-      ['patch', `/messages/${uuid}`],
-      ['delete', `/messages/${uuid}`],
-    ];
-    expect(routes).toHaveLength(19);
-    for (const [verb, url] of routes) {
+    expect(ID_ROUTES).toHaveLength(19);
+    for (const [verb, template] of ID_ROUTES) {
+      const url = template.replaceAll(':id', uuid);
       const res = await as(undefined, verb, url).send({});
       expect(res.status, `${verb.toUpperCase()} ${url}`).toBe(401);
     }
+  });
+
+  it('ID_ROUTES lists every endpoint of the app that takes an id (a new one fails here until it is added)', () => {
+    expect(discoverIdRoutes(app)).toEqual(
+      ID_ROUTES.map(([verb, path]) => `${verb} ${path}`).sort(),
+    );
   });
 
   it('a malformed id is a 400, never reaches the database', async () => {
