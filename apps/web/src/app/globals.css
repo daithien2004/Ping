@@ -30,8 +30,9 @@
   --palette-white: oklch(1 0 0);
   --palette-violet-600: oklch(0.55 0.2 282);
   --palette-violet-500: oklch(0.62 0.19 282);
-  --palette-red-600: oklch(0.577 0.22 27);
-  --palette-red-400: oklch(0.68 0.19 25);
+  --palette-violet-300: oklch(0.76 0.14 282);
+  --palette-red-600: oklch(0.5 0.22 27);
+  --palette-red-400: oklch(0.76 0.16 25);
 }
 
 /* ---------- 2. Token theo nghĩa: nền sáng ---------- */
@@ -45,6 +46,7 @@
   --popover: var(--palette-white);
   --popover-foreground: var(--palette-ink-950);
   --primary: var(--palette-violet-600);
+  --link: var(--palette-violet-600); /* chữ liên kết: nền tối cần sáng hơn nền nút */
   --primary-foreground: var(--palette-white);
   --secondary: var(--palette-ink-150);
   --secondary-foreground: var(--palette-ink-950);
@@ -79,7 +81,8 @@
     --card-foreground: var(--palette-ink-150);
     --popover: var(--palette-ink-950);
     --popover-foreground: var(--palette-ink-150);
-    --primary: var(--palette-violet-500);
+    --primary: var(--palette-violet-600); /* chữ trắng trên nút ≥ 4.5:1 */
+    --link: var(--palette-violet-300);
     --primary-foreground: var(--palette-white);
     --secondary: var(--palette-ink-700);
     --secondary-foreground: var(--palette-ink-150);
@@ -118,6 +121,7 @@
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
+  --color-link: var(--link);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);

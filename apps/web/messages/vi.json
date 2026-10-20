@@ -36,10 +36,16 @@
     "accessDenied": "Không truy cập được",
     "notMember": "Bạn không phải thành viên của server này.",
     "notFound": "Server hoặc channel không tồn tại.",
-    "invalidPath": "Đường dẫn không hợp lệ."
+    "invalidPath": "Đường dẫn không hợp lệ.",
+    "errorId": "Mã lỗi: {id}",
+    "fatalTitle": "Đã xảy ra lỗi nghiêm trọng",
+    "fatalHint": "Ứng dụng không thể hiển thị. Thử tải lại; nếu vẫn lỗi, hãy gửi mã lỗi cho người quản trị.",
+    "notFoundTitle": "Không tìm thấy trang",
+    "notFoundHint": "Đường dẫn này không tồn tại hoặc đã bị xóa."
   },
   "servers": {
     "navLabel": "Server",
+    "loading": "Đang tải danh sách server…",
     "create": "Tạo server",
     "join": "Tham gia server",
     "joinSubmit": "Tham gia",
@@ -55,6 +61,7 @@
   },
   "channels": {
     "navLabel": "Channel",
+    "loading": "Đang tải danh sách channel…",
     "create": "Tạo channel",
     "name": "Tên channel",
     "noPermissionCreate": "Bạn không có quyền tạo channel.",
@@ -74,6 +81,8 @@
     "loadLatest": "Nạp bản mới",
     "cannotSend": "Bạn không có quyền gửi tin nhắn trong channel này.",
     "loading": "Đang tải tin nhắn…",
+    "empty": "Chưa có tin nhắn nào. Hãy gửi tin đầu tiên!",
+    "newMessage": "Tin nhắn mới từ {author}: {content}",
     "loadingOlder": "Đang tải tin cũ…",
     "channelStart": "Đây là đầu kênh #{channel}.",
     "listLabel": "Tin nhắn trong #{channel}",
@@ -91,6 +100,7 @@
     "TOO_MANY_REQUESTS": "Thử quá nhiều lần. Đợi một lúc rồi thử lại.",
     "SERVICE_UNAVAILABLE": "Không kết nối được máy chủ.",
     "unknown": "Có lỗi xảy ra.",
-    "unknownWithId": "Có lỗi xảy ra. Mã lỗi: {requestId}"
+    "unknownWithId": "Có lỗi xảy ra. Mã lỗi: {requestId}",
+    "withReference": "{message} Mã lỗi: {requestId}"
   }
 }

@@ -96,7 +96,7 @@ export function RegisterForm() {
         {t('haveAccount')}{' '}
         <Link
           href={`/login?next=${encodeURIComponent(next)}`}
-          className="font-medium text-primary underline-offset-4 hover:underline"
+          className="font-medium text-link underline-offset-4 hover:underline"
         >
           {t('login')}
         </Link>

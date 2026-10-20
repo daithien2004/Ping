@@ -10,6 +10,9 @@ export function ChannelNavigation({ serverId, activeId }: { serverId: string; ac
   const t = useTranslations('channels');
   return (
     <nav aria-label={t('navLabel')} className="flex flex-col gap-0.5 p-2">
+      {channels.length === 0 && (
+        <p className="px-2 py-1.5 text-sm text-muted-foreground">{t('empty')}</p>
+      )}
       {channels.map((channel) => (
         <Link
           key={channel.id}

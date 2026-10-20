@@ -51,6 +51,8 @@
     phải chạy e2e `security-headers` trên bản build production.
 19. Hình dạng response, lỗi, phân trang, trần số lượng và tên event theo `docs/api-conventions.md`
     (checklist ở mục 9); `test/api-conventions.e2e-spec.ts` phải xanh.
+20. Trang lỗi của web gọi `reportError()` và hiện mã tham chiếu (`errorReference`); thay đổi UI phải qua
+    `e2e/a11y.spec.ts` (axe) và `pnpm --filter web check:bundle` (ngân sách bundle) — ADR-0029.
 
 ## Cấu trúc code
 

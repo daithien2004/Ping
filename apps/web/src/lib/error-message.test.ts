@@ -29,6 +29,17 @@ describe('describeError', () => {
     expect(describeError(apiError(404, 'NOT_FOUND'), overrides)).toEqual({ key: 'NOT_FOUND' });
   });
 
+  it('lỗi 5xx kèm requestId để người dùng báo lại; lỗi 4xx và lỗi mất kết nối thì không', () => {
+    expect(describeError(apiError(503, 'SERVICE_UNAVAILABLE', 'req-9'))).toEqual({
+      key: 'SERVICE_UNAVAILABLE',
+      requestId: 'req-9',
+    });
+    expect(describeError(apiError(403, 'FORBIDDEN', 'req-9'))).toEqual({ key: 'FORBIDDEN' });
+    expect(describeError(apiError(0, 'SERVICE_UNAVAILABLE'))).toEqual({
+      key: 'SERVICE_UNAVAILABLE',
+    });
+  });
+
   it('lỗi không lường trước kèm requestId; không có requestId hay không phải ApiError → chung', () => {
     expect(describeError(apiError(500, 'INTERNAL_ERROR', 'req-1'))).toEqual({
       key: 'unknownWithId',

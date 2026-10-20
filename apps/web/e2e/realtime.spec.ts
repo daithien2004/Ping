@@ -120,6 +120,10 @@ test('two isolated sessions: messages, typing, missed events, edits, deletes and
     await expect(pb.locator('article:visible', { hasText: content })).toHaveCount(1);
     await expect(pa.locator('article:visible', { hasText: content })).toHaveCount(1);
 
+    // Trình đọc màn hình: tin của người khác được đọc qua vùng aria-live, tin của chính mình thì không.
+    await expect(pb.locator('[aria-live="polite"]').filter({ hasText: content })).toHaveCount(1);
+    await expect(pa.locator('[aria-live="polite"]').filter({ hasText: content })).toHaveCount(0);
+
     const retryContent = `retry ${suffix}`;
     let nonce = '';
     await pa.route('**/channels/*/messages', async (route) => {

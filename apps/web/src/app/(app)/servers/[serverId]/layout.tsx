@@ -1,5 +1,6 @@
 import { Suspense, type ReactNode } from 'react';
 import { Loading } from '@/components/loading';
+import { SidebarSkeleton } from '@/components/skeletons';
 import { ChannelSidebar } from '@/features/channels/components/channel-sidebar';
 import {
   ServerAbilityProvider,
@@ -16,7 +17,7 @@ export default function ServerLayout({
   return (
     <Suspense fallback={<Loading />}>
       <ServerAbilityProvider params={params}>
-        <Suspense fallback={<aside className="w-60 bg-sidebar" />}>
+        <Suspense fallback={<SidebarSkeleton />}>
           <ChannelSidebar />
         </Suspense>
         <ServerViewBoundary>
