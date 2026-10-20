@@ -1,12 +1,16 @@
 import { useFormatter, useTranslations } from 'use-intl';
 import type { ClientMessage } from '../message-cache';
+import { useServerAbility } from '@/features/permissions/context';
+import { MessageActions, type MessageSelection } from './message-actions';
 
 interface Props {
   message: ClientMessage;
   onRetry: (message: ClientMessage) => void;
+  onAction: (selection: MessageSelection) => void;
 }
 
-export function MessageItem({ message, onRetry }: Props) {
+export function MessageItem({ message, onRetry, onAction }: Props) {
+  const { ability, ready } = useServerAbility();
   const t = useTranslations();
   // Theo ngôn ngữ và múi giờ của trình duyệt (LocaleProvider), không viết cứng 'vi'.
   const format = useFormatter();
@@ -28,13 +32,19 @@ export function MessageItem({ message, onRetry }: Props) {
         {message.editedAt && (
           <span className="text-xs text-muted-foreground">{t('messages.edited')}</span>
         )}
+        <MessageActions message={message} onAction={onAction} />
       </header>
       {/* Văn bản thuần: React tự escape nên an toàn XSS; không bao giờ dangerouslySetInnerHTML. */}
       <p className="break-words whitespace-pre-wrap">{message.content}</p>
       {message.status === 'failed' && (
         <p className="text-xs text-destructive">
           {t('messages.failed')} ·{' '}
-          <button type="button" onClick={() => onRetry(message)} className="font-medium underline">
+          <button
+            type="button"
+            disabled={!ready || !ability.can('create', 'Message')}
+            onClick={() => onRetry(message)}
+            className="font-medium underline disabled:opacity-50"
+          >
             {t('common.retry')}
           </button>
         </p>

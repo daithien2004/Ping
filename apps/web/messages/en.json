@@ -5,6 +5,8 @@
     "typing": "{count, plural, one {Someone is typing…} other {# people are typing…}}"
   },
   "common": {
+    "cancel": "Cancel",
+    "save": "Save",
     "loading": "Loading…",
     "processing": "Working…",
     "create": "Create",
@@ -60,6 +62,17 @@
     "empty": "This server has no channels yet."
   },
   "messages": {
+    "actions": "Message actions",
+    "edit": "Edit",
+    "delete": "Delete",
+    "editTitle": "Edit message",
+    "editContent": "Message content",
+    "deleteTitle": "Delete message",
+    "deleteConfirm": "Delete this message? This action cannot be undone.",
+    "invalidContent": "Content must contain between 1 and 4,000 characters.",
+    "changedElsewhere": "This message was edited elsewhere. Load the latest version before saving.",
+    "loadLatest": "Load latest version",
+    "cannotSend": "You do not have permission to send messages in this channel.",
     "loading": "Loading messages…",
     "loadingOlder": "Loading older messages…",
     "channelStart": "This is the start of #{channel}.",

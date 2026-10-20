@@ -1,29 +1,25 @@
 'use client';
 
 import { ErrorCodes } from '@ping/shared';
-import { LogOut, Plus } from 'lucide-react';
-import Link from 'next/link';
+import { LogOut } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
-import { useState } from 'react';
 import { useTranslations } from 'use-intl';
 import { FormError } from '@/components/form-parts';
 import { Button } from '@/components/ui/button';
 import { useLeaveServer, useServer } from '@/features/servers/hooks';
-import { channelPath } from '@/features/servers/navigation';
+import { useServerAbility } from '@/features/permissions/context';
 import { useErrorMessage } from '@/lib/error-message';
-import { useChannels } from '../hooks';
-import { CreateChannelDialog } from './create-channel-dialog';
+import { ChannelNavigation } from './channel-navigation';
 
 /** Cột giữa: tên server, mã mời, danh sách channel, rời server. */
 export function ChannelSidebar() {
   const { serverId, channelId } = useParams<{ serverId: string; channelId?: string }>();
   const router = useRouter();
   const { data: server } = useServer(serverId);
-  const { data: channels } = useChannels(serverId);
+  const { ability } = useServerAbility();
   const leaveMutation = useLeaveServer();
   const t = useTranslations();
   const errorMessage = useErrorMessage();
-  const [creating, setCreating] = useState(false);
 
   function leave() {
     leaveMutation.mutate(serverId, { onSuccess: () => router.replace('/') });
@@ -38,34 +34,9 @@ export function ChannelSidebar() {
         </p>
       </header>
 
-      <nav aria-label={t('channels.navLabel')} className="flex flex-col gap-0.5 p-2">
-        {channels.map((channel) => {
-          const active = channel.id === channelId;
-          return (
-            <Link
-              key={channel.id}
-              href={channelPath(serverId, channel.id)}
-              aria-current={active ? 'page' : undefined}
-              className={`flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
-                active
-                  ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
-                  : 'text-muted-foreground'
-              }`}
-            >
-              {/* "#" là chữ (không phải icon aria-hidden): tên link đọc ra "# general". */}
-              <span className="text-lg leading-none text-muted-foreground">#</span> {channel.name}
-            </Link>
-          );
-        })}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setCreating(true)}
-          className="justify-start text-muted-foreground"
-        >
-          <Plus /> {t('channels.create')}
-        </Button>
-      </nav>
+      {ability.can('view', 'Channel') && (
+        <ChannelNavigation serverId={serverId} activeId={channelId} />
+      )}
 
       <div className="mt-auto flex flex-col gap-1 border-t border-sidebar-border p-2">
         {leaveMutation.isError && (
@@ -86,8 +57,6 @@ export function ChannelSidebar() {
           <LogOut /> {t('servers.leave')}
         </Button>
       </div>
-
-      <CreateChannelDialog serverId={serverId} open={creating} onClose={() => setCreating(false)} />
     </aside>
   );
 }

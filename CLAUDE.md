@@ -72,6 +72,8 @@
   class màu thô bị ESLint chặn. Component nền tảng dùng shadcn trong `components/ui/`. Chỉ desktop.
 - Chữ hiển thị (cả `aria-label`) đi qua `useTranslations`, key thêm vào CẢ `messages/vi.json` và
   `en.json` (test bắt thiếu key). Lỗi: `useErrorMessage()`, không hiện `message` của server.
+- Quyền ở UI: chỉ qua ability dựng từ `defineAbilityFor` (`useServerAbility`, `<Can>`); thiếu dữ liệu
+  quyền = không cấp gì (ADR-0025). Thao tác bị khóa khi `ready` = false nhưng không gỡ UI/nháp.
 - Thay đổi UI: thêm/cập nhật kịch bản Playwright trong `apps/web/e2e/`.
 
 ## Cách làm việc

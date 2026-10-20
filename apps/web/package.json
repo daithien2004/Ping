@@ -12,6 +12,8 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@casl/ability": "7.0.2",
+    "@casl/react": "7.0.1",
     "@ping/shared": "workspace:*",
     "@tanstack/react-query": "5.104.4",
     "@tanstack/react-virtual": "3.14.21",

@@ -9,6 +9,9 @@ import { useMessages, useSendMessage } from '../hooks';
 import { type ClientMessage, oldestFirst } from '../message-cache';
 import { MessageComposer } from './message-composer';
 import { MessageItem } from './message-item';
+import type { MessageSelection } from './message-actions';
+import { MessageDialogs } from './message-dialogs';
+import { useServerAbility } from '@/features/permissions/context';
 
 /** Chiều cao phần đầu danh sách ("Đây là đầu channel" / "Đang tải tin cũ…"). */
 const HEADER_HEIGHT = 48;
@@ -33,6 +36,8 @@ export function MessagePane({
   const roomDenied = useChannelRealtime(serverId, channelId);
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useMessages(channelId);
   const sendMutation = useSendMessage(channelId);
+  const [selection, setSelection] = useState<MessageSelection | null>(null);
+  const { ability, ready } = useServerAbility();
   const messages = useMemo(() => oldestFirst(data), [data]);
   const t = useTranslations('messages');
   const errors = useTranslations('errors');
@@ -90,6 +95,7 @@ export function MessagePane({
   }, [loadOlderEnabled, firstVisible, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   function send(content: string, nonce: string) {
+    if (!ready || !ability.can('create', 'Message')) return;
     sendMutation.mutate({ content, nonce });
   }
 
@@ -150,7 +156,7 @@ export function MessagePane({
                 className="absolute inset-x-0 top-0"
                 style={{ transform: `translateY(${item.start}px)` }}
               >
-                <MessageItem message={message} onRetry={retry} />
+                <MessageItem message={message} onRetry={retry} onAction={setSelection} />
               </div>
             );
           })}
@@ -159,6 +165,12 @@ export function MessagePane({
 
       <TypingIndicator channelId={channelId} />
       <MessageComposer channelId={channelId} channelName={channelName} onSend={sendOwn} />
+      <MessageDialogs
+        selection={selection}
+        message={messages.find((message) => message.id === selection?.messageId)}
+        channelId={channelId}
+        onClose={() => setSelection((current) => (current === selection ? null : current))}
+      />
     </div>
   );
 }

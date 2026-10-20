@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useEffect, useEffectEvent, type ReactNode } from 'react';
 import { useTranslations } from 'use-intl';
 import {
   Dialog as DialogRoot,
@@ -22,6 +22,18 @@ interface DialogProps {
  * <dialog> gốc trước đây), nên form trong hộp thoại luôn mở ra trống.
  */
 export function Dialog({ open, onClose, title, children }: DialogProps) {
+  const closeOnHide = useEffectEvent(onClose);
+  useEffect(() => {
+    if (!open) return;
+    let visible = false;
+    const frame = requestAnimationFrame(() => {
+      visible = true;
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+      if (visible) closeOnHide();
+    };
+  }, [open]);
   const t = useTranslations('common');
   return (
     <DialogRoot open={open} onOpenChange={(next) => !next && onClose()}>

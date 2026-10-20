@@ -5,6 +5,7 @@ import { useState, type KeyboardEvent } from 'react';
 import { useTranslations } from 'use-intl';
 import { Textarea } from '@/components/ui/textarea';
 import { useRealtime } from '@/features/realtime/context';
+import { useServerAbility } from '@/features/permissions/context';
 
 /**
  * Ô soạn tin. Giữ `draft` ở ĐÂY (không ở MessagePane): mỗi phím gõ chỉ render lại ô soạn, không
@@ -20,11 +21,14 @@ export function MessageComposer({
   onSend: (content: string, nonce: string) => void;
 }) {
   const realtime = useRealtime();
+  const { ability, ready } = useServerAbility();
+  const canSend = ability.can('create', 'Message');
   const [draft, setDraft] = useState('');
   const t = useTranslations('messages');
   const label = t('composerLabel', { channel: channelName });
 
   function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (!ready || !canSend) return;
     if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing) {
       return; // Shift+Enter xuống dòng; đang gõ dấu (IME) thì Enter là chọn chữ, không phải gửi.
     }
@@ -40,19 +44,26 @@ export function MessageComposer({
 
   return (
     <div className="shrink-0 px-4 pb-4">
-      <Textarea
-        value={draft}
-        onChange={(event) => {
-          setDraft(event.target.value);
-          if (event.target.value.trim()) realtime.type(channelId);
-        }}
-        onKeyDown={onKeyDown}
-        rows={1}
-        maxLength={4000}
-        placeholder={label}
-        aria-label={label}
-        className="max-h-48 min-h-11 resize-none rounded-lg border-0 bg-muted px-4 py-3 shadow-none dark:bg-muted"
-      />
+      {canSend ? (
+        <Textarea
+          disabled={!ready}
+          value={draft}
+          onChange={(event) => {
+            setDraft(event.target.value);
+            if (ready && event.target.value.trim()) realtime.type(channelId);
+          }}
+          onKeyDown={onKeyDown}
+          rows={1}
+          maxLength={4000}
+          placeholder={label}
+          aria-label={label}
+          className="max-h-48 min-h-11 resize-none rounded-lg border-0 bg-muted px-4 py-3 shadow-none dark:bg-muted"
+        />
+      ) : (
+        <p role="status" className="rounded-lg bg-muted p-3 text-sm text-muted-foreground">
+          {t('cannotSend')}
+        </p>
+      )}
     </div>
   );
 }
