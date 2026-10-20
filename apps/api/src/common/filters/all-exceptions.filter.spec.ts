@@ -8,9 +8,12 @@ import {
 import type { ConfigService } from '@nestjs/config';
 import { ErrorCodes } from '@ping/shared';
 import type { Logger } from 'nestjs-pino';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Env } from '../../config/env.schema.js';
+import { captureServerError } from '../../infra/sentry/sentry.js';
 import { AllExceptionsFilter } from './all-exceptions.filter.js';
+
+vi.mock('../../infra/sentry/sentry.js', () => ({ captureServerError: vi.fn() }));
 
 function run(exception: unknown) {
   const sent: { status?: number; body?: Record<string, unknown> } = {};
@@ -26,7 +29,7 @@ function run(exception: unknown) {
   const host = {
     switchToHttp: () => ({
       getResponse: () => response,
-      getRequest: () => ({ id: 'req-1', url: '/x' }),
+      getRequest: () => ({ id: 'req-1', url: '/x', user: { userId: 'u-9', username: 'x' } }),
     }),
   } as unknown as ArgumentsHost;
   const logger = { warn: () => undefined, error: () => undefined } as unknown as Logger;
@@ -35,6 +38,22 @@ function run(exception: unknown) {
   new AllExceptionsFilter(logger, config).catch(exception, host);
   return sent;
 }
+
+describe('AllExceptionsFilter → Sentry', () => {
+  beforeEach(() => vi.mocked(captureServerError).mockClear());
+
+  it('reports an unexpected error with the requestId and userId', () => {
+    const error = new Error('bug');
+    run(error);
+    expect(captureServerError).toHaveBeenCalledWith(error, { requestId: 'req-1', userId: 'u-9' });
+  });
+
+  it('does not report 4xx or deliberate 5xx (outages are for metrics and alerts)', () => {
+    run(new BadRequestException('x'));
+    run(new HttpException('down', HttpStatus.SERVICE_UNAVAILABLE));
+    expect(captureServerError).not.toHaveBeenCalled();
+  });
+});
 
 describe('AllExceptionsFilter', () => {
   it('keeps a code from the ErrorCodes catalog', () => {

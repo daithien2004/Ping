@@ -20,6 +20,7 @@ import {
 } from '@ping/shared';
 import { Logger } from 'nestjs-pino';
 import { Server, Socket } from 'socket.io';
+import { MetricsService } from '../../infra/metrics/metrics.service.js';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
 import { AbilityFactory } from '../ability/ability.factory.js';
 import { AuthService } from '../auth/auth.service.js';
@@ -64,6 +65,7 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
     private readonly prisma: PrismaService,
     private readonly abilityFactory: AbilityFactory,
     private readonly realtimeService: RealtimeService,
+    private readonly metrics: MetricsService,
     logger: Logger,
   ) {
     this.logger = logger;
@@ -92,6 +94,7 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
   }
 
   async handleConnection(@ConnectedSocket() socket: AuthSocket): Promise<void> {
+    this.metrics.socketOpened(); // cặp với socketClosed() ở handleDisconnect: mọi socket đều qua cả hai
     try {
       const token = this.extractToken(socket);
       if (!token) {
@@ -133,6 +136,7 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
   }
 
   async handleDisconnect(@ConnectedSocket() socket: AuthSocket): Promise<void> {
+    this.metrics.socketClosed();
     const userId = socket.data.userId;
     if (!userId) {
       return;

@@ -4,6 +4,7 @@ import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { randomUUID } from 'node:crypto';
 import { ClsModule } from 'nestjs-cls';
+import { MetricsModule } from './infra/metrics/metrics.module.js';
 import { LoggerModule } from 'nestjs-pino';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
@@ -61,6 +62,7 @@ import { UsersModule } from './modules/users/users.module.js';
       },
     }),
     LifecycleModule,
+    MetricsModule,
     PrismaModule,
     RedisModule,
     ThrottlerModule.forRootAsync({

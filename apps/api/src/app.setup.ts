@@ -3,6 +3,7 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { assignRequestId } from './common/request-id.js';
+import { MetricsService } from './infra/metrics/metrics.service.js';
 import type { Env } from './config/env.schema.js';
 
 /**
@@ -15,6 +16,7 @@ export function configureApp(app: NestExpressApplication): void {
 
   app.set('trust proxy', config.getOrThrow('TRUST_PROXY', { infer: true }));
   app.use(assignRequestId);
+  app.use(app.get(MetricsService).middleware);
   app.use(helmet());
   // Tin nhắn tối đa 4000 ký tự; 32 KB đủ cho mọi body hợp lệ và chặn body khổng lồ ngay ở parser.
   app.useBodyParser('json', { limit: '32kb' });
