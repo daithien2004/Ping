@@ -21,3 +21,19 @@ export const loginSchema = z.object({
   password: z.string().min(1).max(128),
 });
 export type LoginInput = z.infer<typeof loginSchema>;
+
+/** User trả về cho client (không bao giờ có passwordHash). Ngày giờ là chuỗi ISO 8601 qua JSON. */
+export interface PublicUser {
+  id: string;
+  email: string;
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+  createdAt: string;
+}
+
+/** Response của POST /auth/register và /auth/login. Refresh token đi riêng qua cookie httpOnly. */
+export interface AuthResponse {
+  user: PublicUser;
+  accessToken: string;
+}
