@@ -6,11 +6,12 @@ const dir = '.lighthouseci';
 if (!existsSync(dir)) process.exit(0);
 
 const seen = new Set();
+const lines = [];
 for (const file of readdirSync(dir).filter((f) => /^lhr-.*\.json$/.test(f))) {
   const lhr = JSON.parse(readFileSync(`${dir}/${file}`, 'utf8'));
   for (const [category, data] of Object.entries(lhr.categories)) {
     if (data.score === null || data.score >= 0.95) continue;
-    console.log(`::warning::lhci ${category} = ${data.score}`);
+    lines.push(`${category} = ${data.score}`);
     for (const ref of data.auditRefs) {
       const audit = lhr.audits[ref.id];
       if (audit.scoreDisplayMode !== 'binary' && audit.scoreDisplayMode !== 'numeric') continue;
@@ -26,9 +27,10 @@ for (const file of readdirSync(dir).filter((f) => /^lhr-.*\.json$/.test(f))) {
       const explanation = (audit.explanation ?? audit.displayValue ?? '')
         .replace(/\s+/g, ' ')
         .slice(0, 160);
-      console.log(
-        `::warning::lhci ${category}/${ref.id} score=${audit.score} ${explanation} ${items}`,
-      );
+      lines.push(`${category}/${ref.id} score=${audit.score} ${explanation} ${items}`);
     }
   }
 }
+
+// GitHub giới hạn 10 annotation mỗi loại cho mỗi bước: gộp thành MỘT annotation nhiều dòng (%0A).
+if (lines.length) console.log(`::warning title=Lighthouse::${lines.join('%0A')}`);
