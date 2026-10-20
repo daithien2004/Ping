@@ -1,4 +1,11 @@
-import { ErrorCodes, errorCodeForStatus, isErrorCode, type ErrorCode } from '@ping/shared';
+import {
+  CLIENT_HEADER,
+  CLIENT_HEADER_VALUE,
+  ErrorCodes,
+  errorCodeForStatus,
+  isErrorCode,
+  type ErrorCode,
+} from '@ping/shared';
 import type { ZodType } from 'zod';
 import { apiBaseUrl } from './env';
 
@@ -53,6 +60,10 @@ async function send(method: Method, path: string, body?: unknown): Promise<Respo
   }
   if (body !== undefined) {
     headers.set('Content-Type', 'application/json');
+  }
+  // Endpoint dùng cookie (refresh, logout) đòi header này để chống CSRF (ADR-0027).
+  if (path === '/auth/refresh' || path === '/auth/logout') {
+    headers.set(CLIENT_HEADER, CLIENT_HEADER_VALUE);
   }
   try {
     return await fetch(`${apiBaseUrl}${path}`, {

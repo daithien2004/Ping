@@ -104,6 +104,19 @@ describe('api-client', () => {
     expect(new Headers(init.headers).get('Content-Type')).toBe('application/json');
   });
 
+  it('gửi X-Ping-Client chỉ cho refresh và logout (chống CSRF, ADR-0027)', async () => {
+    const { api, refreshAccessToken } = await load();
+    fetchMock.mockImplementation(() => json(200, { accessToken: 't' }));
+    await refreshAccessToken();
+    await api.post('/auth/logout');
+    await api.get('/users/me');
+    const headerOf = (call: number) =>
+      new Headers(fetchMock.mock.calls[call]![1].headers).get('X-Ping-Client');
+    expect(headerOf(0)).toBe('web');
+    expect(headerOf(1)).toBe('web');
+    expect(headerOf(2)).toBeNull();
+  });
+
   it('401 → refresh rồi thử lại request với token mới', async () => {
     const { api, setAccessToken, getAccessToken } = await load();
     setAccessToken('old');

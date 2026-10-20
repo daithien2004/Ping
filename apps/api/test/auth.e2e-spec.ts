@@ -43,6 +43,12 @@ function cookieHeaderLines(setCookie: string[] | string | undefined): string[] {
   return Array.isArray(setCookie) ? setCookie : [setCookie];
 }
 
+/** Header mà web gửi cho endpoint dùng cookie (refresh/logout): chống CSRF, ADR-0027. */
+const WEB = {
+  Origin: process.env.WEB_ORIGIN ?? 'http://localhost:3000',
+  'X-Ping-Client': 'web',
+};
+
 describe('Auth (e2e)', () => {
   let app: INestApplication;
   const emails: string[] = [];
@@ -146,6 +152,7 @@ describe('Auth (e2e)', () => {
     // Rotation: response mang cookie mới, khác hẳn cookie cũ.
     const rotated = await request(app.getHttpServer())
       .post('/api/v1/auth/refresh')
+      .set(WEB)
       .set('Cookie', cookie1)
       .expect(200);
     const cookie2 = refreshCookieOf(rotated.headers['set-cookie']);
@@ -161,6 +168,7 @@ describe('Auth (e2e)', () => {
     // Reuse: đưa lại cookie đã bị xoay vòng → 401...
     const reused = await request(app.getHttpServer())
       .post('/api/v1/auth/refresh')
+      .set(WEB)
       .set('Cookie', cookie1)
       .expect(401);
     expect(reused.body.code).toBe('UNAUTHORIZED');
@@ -168,6 +176,7 @@ describe('Auth (e2e)', () => {
     // ...và session MỚI cũng chết theo policy revoke-all.
     await request(app.getHttpServer())
       .post('/api/v1/auth/refresh')
+      .set(WEB)
       .set('Cookie', cookie2)
       .expect(401);
   });
@@ -183,7 +192,7 @@ describe('Auth (e2e)', () => {
 
     // Hai tab cùng hết hạn access token và cùng refresh bằng một cookie.
     const refresh = (cookie: string) =>
-      request(app.getHttpServer()).post('/api/v1/auth/refresh').set('Cookie', cookie);
+      request(app.getHttpServer()).post('/api/v1/auth/refresh').set(WEB).set('Cookie', cookie);
     const results = await Promise.all([refresh(cookie1), refresh(cookie1)]);
     expect(results.map((res) => res.status).sort()).toEqual([200, 401]);
 
@@ -201,6 +210,7 @@ describe('Auth (e2e)', () => {
 
     const logoutRes = await request(app.getHttpServer())
       .post('/api/v1/auth/logout')
+      .set(WEB)
       .set('Cookie', cookie)
       .expect(204);
     expect(cookieHeaderLines(logoutRes.headers['set-cookie']).join(' ')).toContain(
@@ -209,6 +219,7 @@ describe('Auth (e2e)', () => {
 
     await request(app.getHttpServer())
       .post('/api/v1/auth/refresh')
+      .set(WEB)
       .set('Cookie', cookie)
       .expect(401);
   });
@@ -225,5 +236,47 @@ describe('Auth (e2e)', () => {
       }
     }
     expect(sawTooManyRequests).toBe(true);
+  });
+
+  describe('CSRF: refresh và logout chỉ nhận request từ web của ping', () => {
+    const attempt = async (headers: Record<string, string>, route = 'refresh') => {
+      await app.get(RedisProvider).flushdb(); // register tối đa 5 lần/phút: mỗi ca cần ngân sách mới
+      const { email, username } = trackUser();
+      await register(email, username).expect(201);
+      const loginRes = await login(email, 'password123').expect(200);
+      const cookie = refreshCookieOf(loginRes.headers['set-cookie']);
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/auth/${route}`)
+        .set('Cookie', cookie)
+        .set(headers);
+      return { res, email, cookie };
+    };
+
+    it.each([
+      ['không có Origin và header', {}],
+      ['Origin lạ', { ...WEB, Origin: 'https://evil.example' }],
+      ['thiếu header X-Ping-Client', { Origin: WEB.Origin }],
+    ])('refresh bị từ chối 403 khi %s, và cookie KHÔNG bị xoay vòng', async (_name, headers) => {
+      const { res, cookie } = await attempt(headers);
+      expect(res.status).toBe(403);
+      expect(res.body).toMatchObject({ code: 'FORBIDDEN' });
+      expect(res.headers['set-cookie']).toBeUndefined();
+      // Cookie vẫn dùng được: request bị chặn trước khi chạm vào session.
+      await request(app.getHttpServer())
+        .post('/api/v1/auth/refresh')
+        .set('Cookie', cookie)
+        .set(WEB)
+        .expect(200);
+    });
+
+    it('logout bị từ chối 403 khi thiếu header, và session vẫn sống', async () => {
+      const { res, cookie } = await attempt({ Origin: WEB.Origin }, 'logout');
+      expect(res.status).toBe(403);
+      await request(app.getHttpServer())
+        .post('/api/v1/auth/refresh')
+        .set('Cookie', cookie)
+        .set(WEB)
+        .expect(200);
+    });
   });
 });

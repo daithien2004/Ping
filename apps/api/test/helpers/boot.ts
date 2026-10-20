@@ -1,8 +1,9 @@
 import type { INestApplication } from '@nestjs/common';
 import type { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
-import cookieParser from 'cookie-parser';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from '../../src/app.module.js';
+import { configureApp } from '../../src/app.setup.js';
 import type { Env } from '../../src/config/env.schema.js';
 import { ShutdownService } from '../../src/infra/lifecycle/shutdown.service.js';
 import { RedisProvider } from '../../src/infra/redis/redis.module.js';
@@ -36,9 +37,8 @@ export async function bootApp(
       .overrideProvider(ShutdownService)
       .useFactory({ factory: () => new ShutdownService(config) });
   }
-  const app = (await builder.compile()).createNestApplication();
-  app.use(cookieParser());
-  app.setGlobalPrefix('api/v1');
+  const app = (await builder.compile()).createNestApplication<NestExpressApplication>();
+  configureApp(app);
   await app.init();
   return app;
 }

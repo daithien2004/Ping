@@ -2,10 +2,9 @@ import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import helmet from 'helmet';
 import { Logger } from 'nestjs-pino';
-import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module.js';
+import { configureApp } from './app.setup.js';
 import type { Env } from './config/env.schema.js';
 import { RedisProvider } from './infra/redis/redis.module.js';
 import { RedisIoAdapter } from './infra/socket/redis-io.adapter.js';
@@ -20,15 +19,7 @@ async function bootstrap() {
   const port = config.getOrThrow('PORT', { infer: true });
   const webOrigin = config.getOrThrow('WEB_ORIGIN', { infer: true });
 
-  app.set('trust proxy', config.getOrThrow('TRUST_PROXY', { infer: true }));
-
-  app.use(helmet());
-  // Đọc cookie httpOnly (refresh token) — req.cookies do cookie-parser gắn vào.
-  app.use(cookieParser());
-  // exposedHeaders: trình duyệt chỉ cho JS đọc header X-Request-Id của response khác origin
-  // khi API khai báo rõ — web cần nó để hiển thị "Mã lỗi" (hướng dẫn 15.1.1).
-  app.enableCors({ origin: webOrigin, credentials: true, exposedHeaders: ['X-Request-Id'] });
-  app.setGlobalPrefix('api/v1');
+  configureApp(app);
   app.enableShutdownHooks();
 
   // Redis adapter cho Socket.IO (cluster/multi-instance) — dùng pub/sub cùng Redis.

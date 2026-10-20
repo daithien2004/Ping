@@ -56,6 +56,30 @@ describe('AllExceptionsFilter', () => {
     expect(run(new MethodNotAllowedException()).body?.code).toBe(ErrorCodes.BAD_REQUEST);
   });
 
+  it('maps Express middleware client errors (body too large, malformed JSON) to their 4xx', () => {
+    const tooLarge = Object.assign(new Error('request entity too large'), {
+      status: 413,
+      expose: true,
+      type: 'entity.too.large',
+    });
+    expect(run(tooLarge)).toMatchObject({
+      status: 413,
+      body: { code: ErrorCodes.BAD_REQUEST, message: 'Payload too large', requestId: 'req-1' },
+    });
+    const malformed = Object.assign(new SyntaxError('Unexpected token } in JSON'), {
+      status: 400,
+      expose: true,
+      type: 'entity.parse.failed',
+    });
+    const sent = run(malformed);
+    expect(sent).toMatchObject({ status: 400, body: { code: ErrorCodes.BAD_REQUEST } });
+    expect(JSON.stringify(sent.body)).not.toContain('Unexpected token'); // không lộ chi tiết parser
+  });
+
+  it('does not trust an error that only has a status field (no expose flag)', () => {
+    expect(run(Object.assign(new Error('boom'), { status: 413 }))).toMatchObject({ status: 500 });
+  });
+
   it('maps a database outage to 503 SERVICE_UNAVAILABLE without leaking driver details', () => {
     const outage = Object.assign(new Error('connect ECONNREFUSED 127.0.0.1:5432'), {
       name: 'PrismaClientKnownRequestError',

@@ -13,6 +13,7 @@ import './common/bigint-json.js';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter.js';
 import { HttpThrottlerGuard } from './common/guards/http-throttler.guard.js';
 import { UuidParamsGuard } from './common/guards/uuid-params.guard.js';
+import { LOG_REDACT_PATHS } from './common/log-redaction.js';
 import { envSchema } from './config/env.schema.js';
 import { LifecycleModule } from './infra/lifecycle/lifecycle.module.js';
 import { PrismaModule } from './infra/prisma/prisma.module.js';
@@ -51,7 +52,7 @@ function requestIdFrom(header: string | string[] | undefined): string {
       pinoHttp: {
         level: 'info',
         genReqId: (req) => requestIdFrom(req.headers['x-request-id']),
-        redact: ['req.headers.authorization', 'req.headers.cookie'],
+        redact: LOG_REDACT_PATHS,
         customProps: (req) => ({ requestId: (req as { id?: string }).id }),
       },
     }),
