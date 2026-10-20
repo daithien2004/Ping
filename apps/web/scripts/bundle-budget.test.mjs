@@ -18,4 +18,9 @@ describe('evaluate', () => {
       expect.stringContaining('tổng'),
     ]);
   });
+  it('keeps lazy chunks out of the initial total, with their own cap', () => {
+    const limits = { totalKb: 100, chunkKb: 100, lazyKb: 160 };
+    expect(evaluate({ a: kb(50), 'lazy:s': kb(150) }, limits)).toEqual([]);
+    expect(evaluate({ 'lazy:s': kb(170) }, limits)).toEqual([expect.stringContaining('lazy')]);
+  });
 });

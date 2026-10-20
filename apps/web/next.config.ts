@@ -4,6 +4,10 @@ const isProduction = process.env.NODE_ENV === 'production';
 // Cùng mặc định với src/lib/env.ts. REST và Socket.IO dùng chung origin này (http→ws, https→wss).
 const apiOrigin = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
 const wsOrigin = apiOrigin.replace(/^http/, 'ws');
+// Sentry (ADR-0031): chỉ khi có DSN mới mở CSP cho máy chủ nhận lỗi, và chỉ đúng origin đó.
+const sentryOrigin = process.env.NEXT_PUBLIC_SENTRY_DSN
+  ? ` ${new URL(process.env.NEXT_PUBLIC_SENTRY_DSN).origin}`
+  : '';
 
 /**
  * CSP không dùng nonce (ADR-0027). Nonce cần render động theo từng request, còn app dùng
@@ -18,7 +22,7 @@ const csp = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' blob: data:",
   "font-src 'self'",
-  `connect-src 'self' ${apiOrigin} ${wsOrigin}`,
+  `connect-src 'self' ${apiOrigin} ${wsOrigin}${sentryOrigin}`,
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
