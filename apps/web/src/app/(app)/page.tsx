@@ -1,6 +1,5 @@
-import { Welcome } from '@/features/auth/components/welcome';
+import { HomeRedirect } from '@/features/servers/components/home-redirect';
 
-// Trang tạm cho tới F3 (F3 thay bằng sidebar server/channel).
 export default function HomePage() {
-  return <Welcome />;
+  return <HomeRedirect />;
 }

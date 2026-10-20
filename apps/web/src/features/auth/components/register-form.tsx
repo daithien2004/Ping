@@ -8,7 +8,7 @@ import { browser } from 'react-dom';
 import { z } from 'zod';
 import { useMe, useRegister } from '../hooks';
 import { authErrorMessage, safeRedirectPath } from '../session';
-import { Field, FormError, SubmitButton } from './form-parts';
+import { Field, FormError, SubmitButton } from '@/components/form-parts';
 
 type FieldErrors = Partial<Record<'email' | 'username' | 'password' | 'displayName', string[]>>;
 
