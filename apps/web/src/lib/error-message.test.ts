@@ -17,6 +17,10 @@ describe('describeError', () => {
     });
   });
 
+  it('lỗi validate (kể cả vượt trần số lượng) có câu riêng', () => {
+    expect(describeError(apiError(400, 'VALIDATION_ERROR'))).toEqual({ key: 'VALIDATION_ERROR' });
+  });
+
   it('override theo ngữ cảnh thắng câu chung, chỉ cho đúng code đó', () => {
     const overrides = { FORBIDDEN: 'Bạn không có quyền tạo channel.' };
     expect(describeError(apiError(403, 'FORBIDDEN'), overrides)).toEqual({

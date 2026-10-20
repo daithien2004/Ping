@@ -8,11 +8,13 @@ import {
 } from '@nestjs/common';
 import {
   canKickMember,
+  Limits,
   Permissions,
   type ListMembersQuery,
   type MyServerPermissions,
 } from '@ping/shared';
 import { randomBytes } from 'node:crypto';
+import { limitReached } from '../../common/limit-reached.js';
 import { isUniqueConstraintError } from '../../common/utils/prisma-errors.js';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
 import { AbilityFactory } from '../ability/ability.factory.js';
@@ -33,7 +35,15 @@ export class ServersService {
     private readonly audit: AuditService,
   ) {}
 
+  /** Trần mềm số server mỗi user tham gia (tính cả server tự tạo). */
+  private async assertCanJoinAnotherServer(userId: string): Promise<void> {
+    if ((await this.prisma.member.count({ where: { userId } })) >= Limits.MAX_SERVERS_PER_USER) {
+      throw limitReached('servers', Limits.MAX_SERVERS_PER_USER);
+    }
+  }
+
   async create(userId: string, name: string) {
+    await this.assertCanJoinAnotherServer(userId);
     const inviteCode = await this.generateUniqueInviteCode();
 
     // Transaction: server + role @everyone + channel general + owner là member
@@ -143,6 +153,7 @@ export class ServersService {
     if (existing) {
       throw new ConflictException('You are already a member of this server');
     }
+    await this.assertCanJoinAnotherServer(userId);
 
     const everyone = await this.prisma.role.findFirst({
       where: { serverId: server.id, isDefault: true },

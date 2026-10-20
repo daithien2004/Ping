@@ -4,6 +4,7 @@ import { ApiError } from './api-client';
 
 /** Code có câu chung trong `errors.*` của messages/*.json. */
 const KNOWN = [
+  ErrorCodes.VALIDATION_ERROR,
   ErrorCodes.BAD_REQUEST,
   ErrorCodes.UNAUTHORIZED,
   ErrorCodes.FORBIDDEN,

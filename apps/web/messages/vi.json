@@ -82,6 +82,7 @@
     "failed": "Gửi thất bại"
   },
   "errors": {
+    "VALIDATION_ERROR": "Dữ liệu không hợp lệ hoặc đã vượt giới hạn cho phép.",
     "BAD_REQUEST": "Yêu cầu không hợp lệ.",
     "UNAUTHORIZED": "Phiên đăng nhập đã hết. Đăng nhập lại.",
     "FORBIDDEN": "Bạn không có quyền làm việc này.",
