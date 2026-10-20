@@ -255,4 +255,10 @@ jobs:
       # build trực tiếp một gói (không qua turbo) thì không tự build @ping/shared: làm tay.
       - run: pnpm --filter @ping/shared build
       - run: pnpm --filter web build
-      - run: pnpm dlx @lhci/cli@0.15.1 autorun --config=./lighthouserc.json
+      - name: Lighthouse CI
+        run: |
+          pnpm dlx @lhci/cli@0.15.1 autorun --config=./lighthouserc.json 2>&1 | tee lhci.log
+          code=${PIPESTATUS[0]}
+          # Đưa dòng lỗi lên annotation: log đầy đủ của job cần đăng nhập mới đọc được.
+          grep -iE 'error|fail|assert|✘|❌' lhci.log | head -8 | while IFS= read -r line; do echo "::warning::lhci: ${line}"; done
+          exit "$code"
