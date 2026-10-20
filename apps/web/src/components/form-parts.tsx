@@ -1,4 +1,18 @@
-import type { ReactNode } from 'react';
+import { type ReactNode, type RefObject, useEffect, useRef } from 'react';
+
+/**
+ * Xóa form khi nó bị ẩn hoặc gỡ. <Activity> (cacheComponents) GIẤU trang đã rời chứ không gỡ:
+ * form đăng nhập/đăng ký ẩn vẫn giữ mật khẩu trong DOM (e2e đã bắt được). Ẩn = cleanup của effect
+ * chạy, nên reset ở cleanup bao cả hai ca: đăng nhập xong và gõ dở rồi chuyển trang.
+ */
+export function useClearOnHide(): RefObject<HTMLFormElement | null> {
+  const ref = useRef<HTMLFormElement>(null);
+  useEffect(() => {
+    const form = ref.current;
+    return () => form?.reset();
+  }, []);
+  return ref;
+}
 
 interface FieldProps {
   label: string;

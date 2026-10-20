@@ -8,7 +8,7 @@ import { browser } from 'react-dom';
 import { z } from 'zod';
 import { useLogin, useMe } from '../hooks';
 import { authErrorMessage, safeRedirectPath } from '../session';
-import { Field, FormError, SubmitButton } from '@/components/form-parts';
+import { Field, FormError, SubmitButton, useClearOnHide } from '@/components/form-parts';
 
 type FieldErrors = Partial<Record<'email' | 'password', string[]>>;
 
@@ -19,6 +19,7 @@ export function LoginForm() {
   const { data: me } = useMe();
   const loginMutation = useLogin();
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const formRef = useClearOnHide();
 
   // Đã đăng nhập (vừa đăng nhập xong, hoặc mở /login khi phiên còn) → vào app.
   useEffect(() => {
@@ -44,7 +45,12 @@ export function LoginForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} noValidate className="flex w-full max-w-sm flex-col gap-4">
+    <form
+      ref={formRef}
+      onSubmit={onSubmit}
+      noValidate
+      className="flex w-full max-w-sm flex-col gap-4"
+    >
       <h1 className="text-2xl font-semibold">Đăng nhập</h1>
       <Field
         label="Email"
