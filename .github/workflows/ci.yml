@@ -261,6 +261,19 @@ jobs:
     timeout-minutes: 15
     env:
       NEXT_PUBLIC_API_URL: http://localhost:4000
+    # Cần API chạy thật: không có API thì /login rơi vào trang lỗi nghiêm trọng và Lighthouse đo nhầm trang đó.
+    services:
+      postgres:
+        image: postgres:17
+        env: { POSTGRES_USER: ping, POSTGRES_PASSWORD: ping, POSTGRES_DB: ping }
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U ping" --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 5s --health-retries 10
     # Báo cáo, chưa chặn merge (quyết định B): ngưỡng cần vài lần chạy để ổn định.
     continue-on-error: true
     steps:
@@ -272,7 +285,15 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       # build trực tiếp một gói (không qua turbo) thì không tự build @ping/shared: làm tay.
+      - run: cp .env.example .env
       - run: pnpm --filter @ping/shared build
+      - run: pnpm --filter api exec prisma migrate deploy
+      - run: pnpm --filter api build
+      - name: Start the API
+        run: |
+          (cd apps/api && node dist/main.js > ../../api.log 2>&1 &)
+          for _ in $(seq 1 30); do curl -sf http://localhost:4000/api/v1/health > /dev/null && exit 0; sleep 1; done
+          cat api.log; exit 1
       - run: pnpm --filter web build
       - name: Lighthouse CI
         run: |
