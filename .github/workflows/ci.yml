@@ -136,6 +136,8 @@ jobs:
           --health-cmd "pg_isready -U ping" --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # cần lịch sử để so với phiên bản trước
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
@@ -147,6 +149,23 @@ jobs:
       # Schema trong code phải khớp đúng kết quả của các migration: bắt quên tạo migration
       # (exit 2 = có khác biệt). Quy tắc 7: thay đổi DB chỉ qua migration.
       - run: pnpm --filter api exec prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code
+      # Nâng cấp thật: DB mang schema của phiên bản trước (migration của BASE), rồi áp migration của bản này.
+      # Cũng bắt việc sửa/xóa migration đã merge (quy tắc 7).
+      - name: Upgrade from the previous version
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+          elif [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            BASE="${{ github.event.before }}"
+          else
+            BASE="$(git merge-base origin/main HEAD)"
+          fi
+          # Push đầu tiên của nhánh có `before` toàn số 0; commit không còn trong lịch sử cũng vậy.
+          if [ -z "$BASE" ] || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            BASE="$(git rev-parse HEAD~1 2>/dev/null || git rev-parse HEAD)"
+          fi
+          PGPASSWORD=ping psql -h localhost -U ping -d postgres -c "CREATE DATABASE upgrade_check"
+          BASE="$BASE" DATABASE_URL=postgresql://ping:ping@localhost:5432/upgrade_check bash scripts/check-migration-upgrade.sh
 
   drills:
     name: drills
