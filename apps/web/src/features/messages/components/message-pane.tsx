@@ -1,10 +1,10 @@
 'use client';
 
-import { createMessageSchema } from '@ping/shared';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMessages, useSendMessage } from '../hooks';
 import { type ClientMessage, oldestFirst } from '../message-cache';
+import { MessageComposer } from './message-composer';
 import { MessageItem } from './message-item';
 
 /** Chiều cao phần đầu danh sách ("Đây là đầu channel" / "Đang tải tin cũ…"). */
@@ -33,7 +33,6 @@ export function MessagePane({
   // Chỉ tải tin cũ SAU khi đã xuống đáy lần đầu: ở lần render đầu danh sách còn đứng ở đầu,
   // tin index 0 "đang hiện" → nếu không chặn sẽ tải ngay trang cũ, neo kéo vị trí lên giữa.
   const [loadOlderEnabled, setLoadOlderEnabled] = useState(false);
-  const [draft, setDraft] = useState('');
 
   // useVirtualizer trả về hàm đổi theo state nội bộ nên React Compiler không memo được component
   // này (giới hạn đã biết của thư viện): component chỉ không được tự tối ưu, vẫn chạy đúng.
@@ -86,21 +85,21 @@ export function MessagePane({
     sendMutation.mutate({ content, nonce });
   }
 
-  function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
-    if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing) {
-      return; // Shift+Enter xuống dòng; đang gõ dấu (IME) thì Enter là chọn chữ, không phải gửi.
-    }
-    event.preventDefault();
-    // nonce sinh MỘT lần cho mỗi tin; gửi lại dùng đúng nonce này (server chặn trùng).
-    const parsed = createMessageSchema.safeParse({ content: draft, nonce: crypto.randomUUID() });
-    if (!parsed.success) {
-      return; // rỗng hoặc toàn khoảng trắng: không gửi
-    }
-    send(parsed.data.content, parsed.data.nonce);
-    setDraft('');
-    // Tin của chính mình: luôn xuống đáy để thấy nó, kể cả khi đang đọc tin cũ.
-    requestAnimationFrame(() => virtualizer.scrollToIndex(messages.length, { align: 'end' }));
+  // Tin của chính mình: luôn xuống đáy để thấy nó, kể cả khi đang đọc tin cũ. KHÔNG cuộn ngay:
+  // tin optimistic chỉ vào cache sau `await cancelQueries()` trong onMutate, cuộn sớm thì dừng ở
+  // tin cuối CŨ (e2e bắt được: lệch đúng một tin, chập chờn). Đánh dấu, cuộn khi danh sách dài ra.
+  const scrollOnAppend = useRef(false);
+  function sendOwn(content: string, nonce: string) {
+    scrollOnAppend.current = true;
+    send(content, nonce);
   }
+  useEffect(() => {
+    if (!scrollOnAppend.current) {
+      return;
+    }
+    scrollOnAppend.current = false;
+    virtualizer.scrollToIndex(messages.length - 1, { align: 'end' });
+  }, [messages.length, virtualizer]);
 
   const retry = (message: ClientMessage) => {
     if (message.nonce) send(message.content, message.nonce);
@@ -142,18 +141,7 @@ export function MessagePane({
         </div>
       </div>
 
-      <div className="border-t border-gray-200 p-3 dark:border-gray-700">
-        <textarea
-          value={draft}
-          onChange={(event) => setDraft(event.target.value)}
-          onKeyDown={onKeyDown}
-          rows={1}
-          maxLength={4000}
-          placeholder={`Nhắn #${channelName}`}
-          aria-label={`Nhắn #${channelName}`}
-          className="w-full resize-none rounded bg-gray-100 px-3 py-2 dark:bg-gray-800"
-        />
-      </div>
+      <MessageComposer channelName={channelName} onSend={sendOwn} />
     </div>
   );
 }
