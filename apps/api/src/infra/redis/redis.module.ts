@@ -1,4 +1,10 @@
-import { Global, Injectable, Module, type OnModuleDestroy } from '@nestjs/common';
+import {
+  Global,
+  Injectable,
+  Module,
+  type OnModuleDestroy,
+  type OnModuleInit,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 // Named import: under nodenext the default import of this CJS package gets
 // typed as the module namespace (not a constructor), while `Redis` is a
@@ -13,7 +19,7 @@ import type { Env } from '../../config/env.schema.js';
  * so với `useFactory` thuần thì không thể có lifecycle hook, dọn tay là dễ quên.
  */
 @Injectable()
-export class RedisProvider extends Redis implements OnModuleDestroy {
+export class RedisProvider extends Redis implements OnModuleInit, OnModuleDestroy {
   constructor(config: ConfigService<Env, true>, logger: PinoLogger) {
     super(config.getOrThrow('REDIS_URL', { infer: true }), {
       // Lệnh quá hạn thì lỗi ngay (không treo request). Retry mỗi lệnh 1 lần: mặc định 20 lần
@@ -36,6 +42,28 @@ export class RedisProvider extends Redis implements OnModuleDestroy {
    */
   get isUp(): boolean {
     return this.status === 'ready';
+  }
+
+  /**
+   * Chờ kết nối đầu tiên (tối đa 2 giây) trước khi app nhận request: nếu không, vài request đầu
+   * sau khi khởi động thấy Redis "chưa sẵn sàng" và bị từ chối oan ở các endpoint fail-closed.
+   * Không fail-fast (ADR-0011): Redis chết lúc khởi động thì app vẫn lên, chạy suy giảm.
+   */
+  async onModuleInit(): Promise<void> {
+    if (this.isUp) {
+      return;
+    }
+    await new Promise<void>((resolve) => {
+      const done = () => {
+        clearTimeout(timer);
+        this.off('ready', done);
+        this.off('error', done);
+        resolve();
+      };
+      const timer = setTimeout(done, 2_000);
+      this.once('ready', done);
+      this.once('error', done); // từ chối ngay (ECONNREFUSED): không cần chờ hết 2 giây
+    });
   }
 
   onModuleDestroy(): Promise<'OK'> {
