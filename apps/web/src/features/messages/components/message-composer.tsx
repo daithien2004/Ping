@@ -3,6 +3,7 @@
 import { createMessageSchema } from '@ping/shared';
 import { useState, type KeyboardEvent } from 'react';
 import { useTranslations } from 'use-intl';
+import { Textarea } from '@/components/ui/textarea';
 
 /**
  * Ô soạn tin. Giữ `draft` ở ĐÂY (không ở MessagePane): mỗi phím gõ chỉ render lại ô soạn, không
@@ -34,8 +35,8 @@ export function MessageComposer({
   }
 
   return (
-    <div className="border-t border-gray-200 p-3 dark:border-gray-700">
-      <textarea
+    <div className="shrink-0 px-4 pb-4">
+      <Textarea
         value={draft}
         onChange={(event) => setDraft(event.target.value)}
         onKeyDown={onKeyDown}
@@ -43,7 +44,7 @@ export function MessageComposer({
         maxLength={4000}
         placeholder={label}
         aria-label={label}
-        className="w-full resize-none rounded bg-gray-100 px-3 py-2 dark:bg-gray-800"
+        className="max-h-48 min-h-11 resize-none rounded-lg border-0 bg-muted px-4 py-3 shadow-none dark:bg-muted"
       />
     </div>
   );

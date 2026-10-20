@@ -1,10 +1,14 @@
 'use client';
 
+import { LogIn, LogOut, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useTranslations } from 'use-intl';
 import { LanguageSwitcher } from '@/components/language-switcher';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useLogout, useMe } from '@/features/auth/hooks';
 import { useServers } from '../hooks';
 import { serverPath } from '../navigation';
@@ -19,8 +23,34 @@ const initials = (name: string) =>
     .slice(0, 2)
     .toUpperCase();
 
-const railButton =
-  'flex h-12 w-12 items-center justify-center rounded-2xl bg-gray-700 text-sm font-semibold text-white hover:rounded-xl hover:bg-indigo-600';
+/** Một mục trên rail: tooltip bên phải + thanh chỉ báo bên trái khi đang chọn (kiểu app chat). */
+function RailItem({
+  label,
+  active,
+  children,
+}: {
+  label: string;
+  active?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <div className="group relative flex w-full justify-center">
+      <span
+        aria-hidden
+        className={`absolute left-0 top-1/2 w-1 -translate-y-1/2 rounded-r-full bg-rail-foreground transition-all ${
+          active ? 'h-10' : 'h-0 group-hover:h-5'
+        }`}
+      />
+      <Tooltip>
+        <TooltipTrigger asChild>{children}</TooltipTrigger>
+        <TooltipContent side="right">{label}</TooltipContent>
+      </Tooltip>
+    </div>
+  );
+}
+
+const railIcon =
+  'size-12 rounded-3xl bg-background text-foreground transition-all hover:rounded-2xl hover:bg-primary hover:text-primary-foreground';
 
 /** Cột trái: các server của tôi, tạo/tham gia server, tài khoản. */
 export function ServerRail() {
@@ -35,50 +65,74 @@ export function ServerRail() {
   return (
     <nav
       aria-label={t('servers.navLabel')}
-      className="flex w-[72px] flex-col items-center gap-2 bg-gray-900 py-3"
+      className="flex w-[72px] shrink-0 flex-col items-center gap-2 bg-rail py-3 text-rail-foreground"
     >
-      {servers.map((server) => (
-        <Link
-          key={server.id}
-          href={serverPath(server.id)}
-          title={server.name}
-          aria-label={server.name}
-          aria-current={server.id === serverId ? 'page' : undefined}
-          className={`${railButton} ${server.id === serverId ? 'rounded-xl bg-indigo-600' : ''}`}
-        >
-          {initials(server.name)}
-        </Link>
-      ))}
-      <button
-        type="button"
-        title={t('servers.create')}
-        aria-label={t('servers.create')}
-        onClick={() => setDialog('create')}
-        className={railButton}
-      >
-        +
-      </button>
-      <button
-        type="button"
-        title={t('servers.join')}
-        aria-label={t('servers.join')}
-        onClick={() => setDialog('join')}
-        className={railButton}
-      >
-        ⇥
-      </button>
+      {servers.map((server) => {
+        const active = server.id === serverId;
+        return (
+          <RailItem key={server.id} label={server.name} active={active}>
+            <Link
+              href={serverPath(server.id)}
+              aria-label={server.name}
+              aria-current={active ? 'page' : undefined}
+            >
+              <Avatar
+                className={`size-12 transition-all ${active ? 'rounded-2xl' : 'rounded-3xl hover:rounded-2xl'}`}
+              >
+                <AvatarFallback
+                  className={`rounded-[inherit] text-sm font-semibold ${
+                    active ? 'bg-primary text-primary-foreground' : 'bg-background'
+                  }`}
+                >
+                  {initials(server.name)}
+                </AvatarFallback>
+              </Avatar>
+            </Link>
+          </RailItem>
+        );
+      })}
 
-      <div className="mt-auto flex flex-col items-center gap-1 text-xs text-gray-300">
-        <LanguageSwitcher className="w-14" />
-        <span title={me?.displayName}>{me ? initials(me.displayName) : ''}</span>
-        <button
-          type="button"
-          onClick={() => logoutMutation.mutate()}
-          disabled={logoutMutation.isPending}
-          className="underline"
+      <div aria-hidden className="h-px w-8 bg-border" />
+
+      <RailItem label={t('servers.create')}>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label={t('servers.create')}
+          onClick={() => setDialog('create')}
+          className={railIcon}
         >
-          {t('auth.signOut')}
-        </button>
+          <Plus className="size-5" />
+        </Button>
+      </RailItem>
+      <RailItem label={t('servers.join')}>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label={t('servers.join')}
+          onClick={() => setDialog('join')}
+          className={railIcon}
+        >
+          <LogIn className="size-5" />
+        </Button>
+      </RailItem>
+
+      <div className="mt-auto flex flex-col items-center gap-2">
+        <LanguageSwitcher compact />
+        <Avatar className="size-9" title={me?.displayName}>
+          <AvatarFallback className="text-xs">{me ? initials(me.displayName) : ''}</AvatarFallback>
+        </Avatar>
+        <RailItem label={t('auth.signOut')}>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={t('auth.signOut')}
+            onClick={() => logoutMutation.mutate()}
+            disabled={logoutMutation.isPending}
+          >
+            <LogOut />
+          </Button>
+        </RailItem>
       </div>
 
       <CreateServerDialog open={dialog === 'create'} onClose={close} />

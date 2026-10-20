@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense, type ReactNode } from 'react';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { LocaleProvider } from '@/i18n/locale-provider';
 import { QueryProvider } from './query-provider';
 
@@ -11,7 +12,9 @@ export function Providers({ children }: { children: ReactNode }) {
   return (
     <Suspense fallback={null}>
       <LocaleProvider>
-        <QueryProvider>{children}</QueryProvider>
+        <QueryProvider>
+          <TooltipProvider>{children}</TooltipProvider>
+        </QueryProvider>
       </LocaleProvider>
     </Suspense>
   );

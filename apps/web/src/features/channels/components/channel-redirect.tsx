@@ -18,5 +18,5 @@ export function ChannelRedirect() {
     if (first) router.replace(channelPath(serverId, first.id));
   }, [first, serverId, router]);
 
-  return first ? null : <p className="m-auto text-sm text-gray-500">{t('empty')}</p>;
+  return first ? null : <p className="m-auto text-sm text-muted-foreground">{t('empty')}</p>;
 }

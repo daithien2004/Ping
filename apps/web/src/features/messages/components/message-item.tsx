@@ -12,12 +12,12 @@ export function MessageItem({ message, onRetry }: Props) {
   const format = useFormatter();
   return (
     <article
-      className={`px-4 py-1.5 ${message.status === 'sending' ? 'opacity-60' : ''}`}
+      className={`px-4 py-1.5 transition-colors hover:bg-accent/50 ${message.status === 'sending' ? 'opacity-60' : ''}`}
       aria-busy={message.status === 'sending' || undefined}
     >
       <header className="flex items-baseline gap-2">
         <span className="font-semibold">{message.author.displayName}</span>
-        <time dateTime={message.createdAt} className="text-xs text-gray-500">
+        <time dateTime={message.createdAt} className="text-xs text-muted-foreground">
           {format.dateTime(new Date(message.createdAt), {
             day: '2-digit',
             month: '2-digit',
@@ -25,14 +25,16 @@ export function MessageItem({ message, onRetry }: Props) {
             minute: '2-digit',
           })}
         </time>
-        {message.editedAt && <span className="text-xs text-gray-500">{t('messages.edited')}</span>}
+        {message.editedAt && (
+          <span className="text-xs text-muted-foreground">{t('messages.edited')}</span>
+        )}
       </header>
       {/* Văn bản thuần: React tự escape nên an toàn XSS; không bao giờ dangerouslySetInnerHTML. */}
       <p className="break-words whitespace-pre-wrap">{message.content}</p>
       {message.status === 'failed' && (
-        <p className="text-xs text-red-600">
+        <p className="text-xs text-destructive">
           {t('messages.failed')} ·{' '}
-          <button type="button" onClick={() => onRetry(message)} className="underline">
+          <button type="button" onClick={() => onRetry(message)} className="font-medium underline">
             {t('common.retry')}
           </button>
         </p>

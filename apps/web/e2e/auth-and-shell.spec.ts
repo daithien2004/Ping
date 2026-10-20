@@ -32,7 +32,7 @@ test('register, sign out without ?next=, sign in, create server and channel', as
   });
 
   await test.step('tạo channel → vào channel mới', async () => {
-    await page.getByRole('button', { name: '+ Tạo channel' }).click();
+    await page.getByRole('button', { name: 'Tạo channel' }).click();
     await field(page, 'Tên channel').fill('ui-test');
     await page.getByRole('button', { name: 'Tạo', exact: true }).click();
     await expect(page.getByRole('link', { name: '# ui-test' })).toHaveAttribute(

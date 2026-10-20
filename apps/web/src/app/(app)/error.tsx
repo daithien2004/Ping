@@ -4,6 +4,7 @@ import { ErrorCodes } from '@ping/shared';
 import { useQueryErrorResetBoundary } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useTranslations } from 'use-intl';
+import { Button } from '@/components/ui/button';
 import { useErrorMessage } from '@/lib/error-message';
 
 /**
@@ -21,7 +22,7 @@ export default function AppError({ error, retry }: { error: Error; retry: () => 
   return (
     <div role="alert" className="m-auto flex flex-col items-center gap-3 text-center">
       <h2 className="text-lg font-semibold">{t('app.accessDenied')}</h2>
-      <p className="text-sm text-gray-500">
+      <p className="text-sm text-muted-foreground">
         {errorMessage(error, {
           [ErrorCodes.FORBIDDEN]: t('app.notMember'),
           [ErrorCodes.NOT_FOUND]: t('app.notFound'),
@@ -29,19 +30,18 @@ export default function AppError({ error, retry }: { error: Error; retry: () => 
         })}
       </p>
       <div className="flex gap-2">
-        <button
-          type="button"
+        <Button
+          variant="outline"
           onClick={() => {
             reset();
             retry();
           }}
-          className="rounded border border-gray-300 px-3 py-1 text-sm dark:border-gray-600"
         >
           {t('common.retry')}
-        </button>
-        <Link href="/" className="rounded bg-indigo-600 px-3 py-1 text-sm text-white">
-          {t('common.goHome')}
-        </Link>
+        </Button>
+        <Button asChild>
+          <Link href="/">{t('common.goHome')}</Link>
+        </Button>
       </div>
     </div>
   );

@@ -1,5 +1,8 @@
-import { type ReactNode, type RefObject, useEffect, useRef } from 'react';
+import { type ReactNode, type RefObject, useEffect, useId, useRef } from 'react';
 import { useTranslations } from 'use-intl';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 /**
  * Xóa form khi nó bị ẩn hoặc gỡ. <Activity> (cacheComponents) GIẤU trang đã rời chứ không gỡ:
@@ -25,30 +28,31 @@ interface FieldProps {
 
 /** Ô nhập có nhãn và lỗi gắn bằng aria-describedby để trình đọc màn hình đọc được lỗi. */
 export function Field({ label, name, type = 'text', autoComplete, errors }: FieldProps) {
-  const errorId = `${name}-error`;
+  const id = useId();
+  const errorId = `${id}-error`;
   return (
-    <label className="flex flex-col gap-1 text-sm">
-      <span className="font-medium">{label}</span>
-      <input
+    <div className="flex flex-col gap-1.5">
+      <Label htmlFor={id}>{label}</Label>
+      <Input
+        id={id}
         name={name}
         type={type}
         autoComplete={autoComplete}
         aria-invalid={errors ? true : undefined}
         aria-describedby={errors ? errorId : undefined}
-        className="rounded border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-transparent"
       />
       {errors && (
-        <span id={errorId} className="text-red-600">
+        <span id={errorId} className="text-sm text-destructive">
           {errors[0]}
         </span>
       )}
-    </label>
+    </div>
   );
 }
 
 export function FormError({ children }: { children: ReactNode }) {
   return (
-    <p role="alert" className="text-sm text-red-600">
+    <p role="alert" className="text-sm text-destructive">
       {children}
     </p>
   );
@@ -57,12 +61,8 @@ export function FormError({ children }: { children: ReactNode }) {
 export function SubmitButton({ pending, children }: { pending: boolean; children: ReactNode }) {
   const t = useTranslations('common');
   return (
-    <button
-      type="submit"
-      disabled={pending}
-      className="rounded bg-indigo-600 px-3 py-2 font-medium text-white disabled:opacity-60"
-    >
+    <Button type="submit" size="lg" disabled={pending}>
       {pending ? t('processing') : children}
-    </button>
+    </Button>
   );
 }

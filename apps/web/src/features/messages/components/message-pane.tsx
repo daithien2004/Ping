@@ -116,7 +116,7 @@ export function MessagePane({
       >
         <div className="relative w-full" style={{ height: virtualizer.getTotalSize() }}>
           <p
-            className="absolute inset-x-0 top-0 flex items-end px-4 pb-2 text-sm text-gray-500"
+            className="absolute inset-x-0 top-0 flex items-end px-4 pb-2 text-sm text-muted-foreground"
             style={{ height: HEADER_HEIGHT }}
           >
             {isFetchingNextPage

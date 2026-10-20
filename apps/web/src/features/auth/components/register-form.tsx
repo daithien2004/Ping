@@ -94,7 +94,10 @@ export function RegisterForm() {
       <SubmitButton pending={registerMutation.isPending}>{t('createAccount')}</SubmitButton>
       <p className="text-sm">
         {t('haveAccount')}{' '}
-        <Link href={`/login?next=${encodeURIComponent(next)}`} className="underline">
+        <Link
+          href={`/login?next=${encodeURIComponent(next)}`}
+          className="font-medium text-primary underline-offset-4 hover:underline"
+        >
           {t('login')}
         </Link>
       </p>

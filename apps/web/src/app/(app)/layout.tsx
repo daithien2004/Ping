@@ -11,8 +11,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   return (
     <Suspense fallback={<Loading />}>
       <AuthGate>
-        <div className="flex h-dvh">
-          <Suspense fallback={<div className="w-[72px] bg-gray-900" />}>
+        <div className="flex h-dvh min-w-[960px]">
+          <Suspense fallback={<div className="w-[72px] bg-rail" />}>
             <ServerRail />
           </Suspense>
           <div className="flex min-w-0 flex-1">

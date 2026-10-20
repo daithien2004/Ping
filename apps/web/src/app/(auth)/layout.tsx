@@ -6,8 +6,10 @@ import { Loading } from '@/components/loading';
 export default function AuthLayout({ children }: { children: ReactNode }) {
   return (
     <main className="relative flex flex-1 items-center justify-center p-6">
-      <LanguageSwitcher className="absolute top-4 right-4" />
-      <Suspense fallback={<Loading className="text-sm text-gray-500" />}>{children}</Suspense>
+      <LanguageSwitcher className="absolute top-4 left-4" />
+      <Suspense fallback={<Loading className="text-sm text-muted-foreground" />}>
+        {children}
+      </Suspense>
     </main>
   );
 }
