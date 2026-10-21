@@ -1,0 +1,8 @@
+# Thêm sau compose mẫu + TLS. Tag cố định cho API/web/migrate để luyện rollback (ADR-0036).
+services:
+  api:
+    image: ping-local-api:${PING_RELEASE:?Dat PING_RELEASE thanh tag phien ban local}
+  web:
+    image: ping-local-web:${PING_RELEASE:?Dat PING_RELEASE thanh tag phien ban local}
+  migrate:
+    image: ping-local-migrate:${PING_RELEASE:?Dat PING_RELEASE thanh tag phien ban local}
