@@ -83,7 +83,7 @@ apps/api/            NestJS: src/modules/<miền>/{controller,service,module}, p
 apps/web/            Next.js: src/{app (chỉ định tuyến), features/<miền>, components, lib}, e2e/ (Playwright)
 packages/shared/     @ping/shared: hợp đồng giữa API và web
 docs/                architecture.md, adr/ (33+ quyết định), runbook/, perf/, security/, api-conventions.md
-ops/                 Caddyfile, quy tắc cảnh báo Prometheus
+ops/                 cấu hình Nginx, quy tắc cảnh báo Prometheus
 tools/loadtest/      kịch bản k6 (xem docs/perf/README.md)
 ```
 
@@ -97,8 +97,9 @@ tools/loadtest/      kịch bản k6 (xem docs/perf/README.md)
 
 ## Triển khai
 
-Có sẵn Dockerfile cho api và web, stack production mẫu (`docker-compose.prod.example.yml`: Caddy, api, web, Postgres,
-Redis, migration chạy riêng) và CI ([ADR-0032](docs/adr/0032-ci-and-containers.md)). Chọn nơi chạy cụ thể và runbook
+Có sẵn Dockerfile cho api và web, stack production mẫu (`docker-compose.prod.example.yml`: Nginx, api, web, Postgres,
+Redis, migration chạy riêng), [cấu hình HTTP/HTTPS](ops/nginx/README.md) và CI
+([ADR-0035](docs/adr/0035-nginx-reverse-proxy.md)). Chọn nơi chạy cụ thể và runbook
 triển khai sẽ làm trước phiên bản `v0.1.0`.
 
 ## Phiên bản công cụ

@@ -195,36 +195,49 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      # Dựng stack production mẫu, chạy kiểm tra khói qua Caddy (gồm WebSocket), rồi kiểm tra SIGTERM thật:
+      # Dựng stack production qua Nginx HTTPS (CA tự ký riêng cho CI), WebSocket và SIGTERM thật.
       # dừng api phải thoát mã 0 (tắt êm), không bị SIGKILL (137).
       - name: Prepare env
         run: |
           {
             echo "POSTGRES_PASSWORD=ci-password-ci-password"
             echo "JWT_ACCESS_SECRET=ci-only-secret-ci-only-secret-ci-only-0123456789"
-            echo "PUBLIC_URL=http://localhost:8080"
-            echo "SITE_ADDRESS=:80"
+            echo "PUBLIC_URL=https://localhost:8443"
+            echo "BIND_ADDRESS=127.0.0.1"
             echo "HTTP_PORT=8080"
             echo "HTTPS_PORT=8443"
+            echo "TLS_CERT_DIR=$RUNNER_TEMP/ping-certs"
           } > .env.prod
+          mkdir -p "$RUNNER_TEMP/ping-certs"
+          openssl req -x509 -newkey rsa:2048 -nodes -days 1 \
+            -keyout "$RUNNER_TEMP/ping-certs/privkey.pem" -out "$RUNNER_TEMP/ping-certs/fullchain.pem" \
+            -subj '/CN=localhost' -addext 'subjectAltName=DNS:localhost,IP:127.0.0.1'
+          chmod 600 "$RUNNER_TEMP/ping-certs/privkey.pem"
       - name: Build and start the stack
-        run: docker compose -p pingprod -f docker-compose.prod.example.yml --env-file .env.prod up -d --build --wait --wait-timeout 180
+        run: docker compose -p pingprod -f docker-compose.prod.example.yml -f docker-compose.prod.tls.yml --env-file .env.prod up -d --build --wait --wait-timeout 180
+      - name: Validate Nginx configuration
+        run: docker compose -p pingprod -f docker-compose.prod.example.yml -f docker-compose.prod.tls.yml --env-file .env.prod exec -T nginx nginx -t
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: BASE_URL=http://localhost:8080 node apps/api/test/smoke/prod-stack.mjs
+      - name: HTTPS, redirect, auth and WebSocket through Nginx
+        env:
+          BASE_URL: https://localhost:8443
+          HTTP_URL: http://localhost:8080
+          NODE_EXTRA_CA_CERTS: ${{ runner.temp }}/ping-certs/fullchain.pem
+        run: node apps/api/test/smoke/prod-stack.mjs
       - name: Graceful shutdown on SIGTERM
         run: |
-          docker compose -p pingprod stop api
+          docker compose -p pingprod -f docker-compose.prod.example.yml -f docker-compose.prod.tls.yml --env-file .env.prod stop api
           code=$(docker inspect pingprod-api-1 --format '{{.State.ExitCode}}')
           echo "api exit code: $code"
           test "$code" = "0"
       - name: Logs on failure
         if: failure()
-        run: docker compose -p pingprod logs --tail 100
+        run: docker compose -p pingprod -f docker-compose.prod.example.yml -f docker-compose.prod.tls.yml --env-file .env.prod logs --tail 100
       - name: Vulnerability scan (high and critical)
         # Báo cáo, chưa bắt buộc (quyết định C trong kế hoạch H6): bỏ continue-on-error khi muốn chặn.
         continue-on-error: true

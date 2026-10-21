@@ -1,0 +1,16 @@
+server {
+    listen 80;
+    server_name _;
+    # PUBLIC_URL gồm scheme, host và port HTTPS (nếu không phải 443).
+    return 308 ${PUBLIC_URL}$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    server_name _;
+    ssl_certificate /etc/nginx/certs/fullchain.pem;
+    ssl_certificate_key /etc/nginx/certs/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_session_tickets off;
+    include /etc/nginx/ping/routes.conf;
+}
