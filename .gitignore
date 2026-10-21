@@ -19,3 +19,7 @@ playwright-report/
 
 # Lighthouse CI (local)
 .lighthouseci/
+
+# Ghi chú làm việc local: phiếu bàn giao và danh sách lỗi chưa sửa (không commit)
+docs/HANDOFF.md
+docs/known-issues.md

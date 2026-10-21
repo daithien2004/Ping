@@ -5,7 +5,9 @@ Date: 2026-10-20
 
 Current status (2026-10-21): the original Caddy proxy decision below is superseded by
 [ADR-0035](0035-nginx-reverse-proxy.md). GitHub CI did run before that change; the Nginx workflow has
-only been validated locally and has not been pushed. Deployment and staging acceptance remain open.
+been validated locally and `main` is now pushed with CI green at `41e8fd4`, with branch protection on.
+The deployment work listed in the last section is **moved to v0.2.0** by
+[ADR-0037](0037-release-scope-v0.1.0.md); v0.1.0 is scoped to local-only evidence.
 
 ## Decision
 

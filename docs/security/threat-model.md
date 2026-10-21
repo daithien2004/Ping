@@ -55,6 +55,6 @@ Tài liệu ngắn theo hướng dẫn mục 16.5. Mỗi kịch bản trỏ tớ
 
 ## 5. Việc còn lại liên quan
 
-- CI đã có `gitleaks`, `pnpm audit` và Trivy; Trivy hiện chỉ báo cáo. Kết quả CI H9 là lịch sử; workflow Nginx mới chưa push/chưa chạy GitHub.
-- Sentry thật API/web đã kiểm local ngày 2026-10-21; còn chờ đối chiếu toàn tuyến và metrics/cảnh báo trên staging. OpenTelemetry vẫn được hoãn theo ADR-0031.
+- CI đã có `gitleaks`, `pnpm audit` và Trivy; Trivy hiện chỉ báo cáo. `main` đã push và CI xanh tại `41e8fd4`; branch protection đã bật.
+- Sentry thật API/web đã kiểm local ngày 2026-10-21; đối chiếu toàn tuyến và metrics/cảnh báo trên staging **chuyển v0.2.0** ([ADR-0037](../adr/0037-release-scope-v0.1.0.md)). OpenTelemetry vẫn được hoãn theo ADR-0031.
 - Rà lại tài liệu này mỗi khi thêm tính năng có dữ liệu hoặc quyền mới.
