@@ -12,7 +12,16 @@ phần Frontend); file này là quy trình làm việc quanh chúng.
    `feat(api):`). Pre-commit tự chạy lint-staged (ESLint + Prettier) và `pnpm typecheck`; **không** chạy test: tự chạy.
 5. **Quyết định kiến trúc mới, hoặc đổi quyết định cũ → một file trong `docs/adr/`** (đánh số tiếp theo; mẫu: xem các
    ADR gần nhất: Decision, Reason, Alternatives, Consequences).
-6. **Mở PR** (template tự điền checklist), chờ CI xanh, xin review. Merge bằng merge commit hoặc squash tùy PR; dọn nhánh.
+6. **Kiểm trong trình duyệt thật** và thêm/cập nhật kịch bản Playwright trong `apps/web/e2e/` khi đổi UI, trước khi
+   coi việc là xong.
+7. **Chạy đủ kiểm tra ở local** (xem mục dưới) trên bản build thật, không chỉ đọc code.
+8. **Giải thích thay đổi cho chủ dự án theo vai người triển khai**: từng bước, file nào, vì sao, kiểm thế nào, lỗi gặp
+   và cách sửa (tiếng Việt).
+9. **Hỏi trước khi merge.** Nếu đồng ý: merge **ở local** bằng `git merge --no-ff`, **không push** khi chưa được bảo,
+   rồi xoá nhánh. (Với repo có branch protection: xem mục "Bảo vệ nhánh `main`".)
+10. **Lỗ hổng phát hiện mà chưa sửa → ghi vào `docs/known-issues.md`** (ghi chú local, không commit). Nợ đã công bố
+    nằm ở [tech-debt](docs/tech-debt.md).
+11. **Mở PR** (template tự điền checklist), chờ CI xanh, xin review. Merge bằng merge commit hoặc squash tùy PR; dọn nhánh.
 
 ## Trước khi mở PR: chạy gì
 
@@ -55,7 +64,9 @@ mất dữ liệu, sập khi deploy).
 
 Trên GitHub: Settings → Branches (hoặc Rules → Rulesets) → thêm quy tắc cho `main` (tên menu thay đổi theo phiên bản):
 
-1. **Require a pull request before merging.**
+1. **Require a pull request before merging** (tuỳ chọn): bật nếu muốn mọi thay đổi đi qua PR. Repo một chủ có thể **bỏ**
+   mục này và vẫn merge local `--no-ff` rồi push, miễn là CI xanh (xem mục Quy trình bước 9). Đã bật hay chưa thì ghi rõ
+   trong [acceptance](docs/acceptance/v0.1.0.md).
 2. **Require status checks to pass** và chọn các job: `verify`, `api-e2e`, `web-e2e`, `migrations`, `security`
    (`lighthouse` và bước quét Trivy chỉ báo cáo, chưa bắt buộc: [ADR-0032](docs/adr/0032-ci-and-containers.md)).
 3. **Require branches to be up to date before merging.**
