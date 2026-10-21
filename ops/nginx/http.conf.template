@@ -1,0 +1,6 @@
+# Local/CI: chỉ HTTP. Bật compose TLS bổ sung trước khi dùng qua mạng công khai.
+server {
+    listen 80;
+    server_name _;
+    include /etc/nginx/ping/routes.conf;
+}

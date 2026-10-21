@@ -1,0 +1,14 @@
+# Docker Compose >= 2.24.4 (ports !override). Dùng cùng compose mẫu, xem ops/nginx/README.md.
+services:
+  nginx:
+    ports: !override
+      - '${BIND_ADDRESS:-127.0.0.1}:${HTTP_PORT:-8080}:80'
+      - '${BIND_ADDRESS:-127.0.0.1}:${HTTPS_PORT:-8443}:443'
+    volumes:
+      - ./ops/nginx/tls.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - type: bind
+        source: ${TLS_CERT_DIR:?Dat TLS_CERT_DIR toi thu muc chua fullchain.pem va privkey.pem}
+        target: /etc/nginx/certs
+        read_only: true
+        bind:
+          create_host_path: false

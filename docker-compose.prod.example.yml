@@ -1,7 +1,7 @@
-# Stack production mẫu (ADR-0032): caddy → web + api → postgres + redis, migration là service chạy MỘT LẦN.
+# Stack production mẫu (ADR-0035): nginx → web + api → postgres + redis, migration là service chạy MỘT LẦN.
 # Dùng:  cp .env.prod.example .env.prod  (điền giá trị thật)
 #        docker compose -f docker-compose.prod.example.yml --env-file .env.prod up -d --build
-# Một domain duy nhất: Caddy đưa /api và /socket.io về api, còn lại về web. Cùng origin nên cookie refresh
+# Một domain duy nhất: Nginx đưa /api và /socket.io về api, còn lại về web. Cùng origin nên cookie refresh
 # và CSP (connect-src 'self') chạy đúng, không cần CORS hay tên miền phụ.
 services:
   postgres:
@@ -43,7 +43,7 @@ services:
       REDIS_URL: redis://redis:6379
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
       WEB_ORIGIN: ${PUBLIC_URL}
-      TRUST_PROXY: 1 # một proxy (Caddy) đứng trước: req.ip là IP thật, rate limit theo IP đúng
+      TRUST_PROXY: 1 # một proxy (Nginx) đứng trước: req.ip là IP thật, rate limit theo IP đúng
       SHUTDOWN_GRACE_MS: 10000
       SHUTDOWN_TIMEOUT_MS: 25000
       SENTRY_DSN: ${SENTRY_DSN:-}
@@ -59,21 +59,22 @@ services:
       context: .
       dockerfile: apps/web/Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: ${PUBLIC_URL} # cùng origin với web (Caddy định tuyến /api)
+        NEXT_PUBLIC_API_URL: ${PUBLIC_URL} # cùng origin với web (Nginx định tuyến /api)
         NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN:-}
     restart: unless-stopped
 
-  caddy:
-    image: caddy:2
-    ports: ['${HTTP_PORT:-80}:80', '${HTTPS_PORT:-443}:443']
+  nginx:
+    image: nginx:1.30.6
+    ports: ['${BIND_ADDRESS:-127.0.0.1}:${HTTP_PORT:-8080}:80']
     environment:
-      SITE_ADDRESS: ${SITE_ADDRESS}
+      PUBLIC_URL: ${PUBLIC_URL}
+      NGINX_ENVSUBST_FILTER: '^PUBLIC_URL$$'
     volumes:
-      - ./ops/Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
+      - ./ops/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ops/nginx:/etc/nginx/ping:ro
+      - ./ops/nginx/http.conf.template:/etc/nginx/templates/default.conf.template:ro
     depends_on: [api, web]
     restart: unless-stopped
 
 volumes:
   pgdata:
-  caddy_data:

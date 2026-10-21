@@ -137,6 +137,8 @@ Mọi lời gọi Postgres/Redis đều có timeout; mọi chỗ gọi Redis tr�
 
 ## 10. Triển khai
 
-Dockerfile multi-stage cho api và web, migration là một bước riêng chạy trước khi rollout, stack mẫu với Caddy một
-origin (`docker-compose.prod.example.yml`); CI nhiều job ([ADR-0032](adr/0032-ci-and-containers.md)). Hiệu năng đo
+Dockerfile multi-stage cho api và web, migration là một bước riêng chạy trước khi rollout, stack mẫu với Nginx một
+origin (`docker-compose.prod.example.yml`); HTTPS qua `docker-compose.prod.tls.yml` với chứng chỉ cấp bên ngoài
+([ADR-0035](adr/0035-nginx-reverse-proxy.md), [hướng dẫn proxy](../ops/nginx/README.md)).
+CI nhiều job ([ADR-0032](adr/0032-ci-and-containers.md)). Hiệu năng đo
 được và các điểm nghẽn đã biết: [perf/](perf/README.md).
