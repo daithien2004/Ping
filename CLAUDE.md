@@ -77,6 +77,14 @@
 - Pre-commit chạy lint-staged (ESLint + Prettier) và `pnpm typecheck`; KHÔNG chạy test/e2e —
   tự chạy `pnpm test` (và e2e khi đổi UI) trước khi commit.
 
+## Bẫy đã gặp (đừng lặp lại)
+
+- **Flat config ESLint**: khối sau GHI ĐÈ cùng rule của khối trước, không cộng dồn. Khi thêm rule,
+  kiểm lại khối trước có bị nuốt không.
+- Trong template literal, `\b` là ký tự backspace chứ không phải biên từ — viết `\\b` khi cần regex.
+- Rate limit API 100 req/phút/IP: e2e chạy nối tiếp trên một trang nên phải đặt `workers: 1`.
+- Windows: đường dẫn có thể chứa dấu nháy đơn (`THIEN'PC`); lint-staged có thể báo CRLF.
+
 ## Frontend (apps/web)
 
 - Phụ thuộc một chiều: `app → features → components → lib` (ESLint chặn). `app/` chỉ định tuyến.
