@@ -26,6 +26,7 @@ ADR ghi quyết định, lý do, phương án đã loại và hệ quả; số t
 | Realtime, độ bền, bảo mật và thành viên  | 0024–0030: [realtime](adr/0024-web-realtime.md), [sự cố hạ tầng](adr/0026-failure-modes-and-graceful-shutdown.md), [bảo mật](adr/0027-web-and-api-hardening.md), [presence](adr/0030-member-presence.md) |
 | Quan sát, CI, hiệu năng và tài liệu      | [0031](adr/0031-observability.md), [0032](adr/0032-ci-and-containers.md), [0033](adr/0033-load-testing.md), [0034](adr/0034-developer-experience-and-docs.md)                                            |
 | Proxy hiện tại                           | [0035 — Nginx](adr/0035-nginx-reverse-proxy.md), thay lựa chọn Caddy trong ADR-0032                                                                                                                      |
+| Triển khai và phạm vi phát hành          | [0036 — luyện deploy local](adr/0036-local-deployment.md), [0037 — phạm vi v0.1.0 là local-only, staging sang v0.2.0](adr/0037-release-scope-v0.1.0.md)                                                  |
 
 ## Cách đọc trạng thái và bằng chứng
 
