@@ -19,6 +19,6 @@ Sửa: `handleConnection` không còn ngắt socket khi phát presence thất b�
 - Server vẫn ghi nhiều "presence update skipped" (1.785 dòng ở lần chạy đầu): pool Postgres vẫn cạn khi 2.000 người nối cùng lúc, nhưng giờ đó
   chỉ làm mất một thông báo presence thay vì mất cả kết nối.
 - Còn khoảng 1.700–2.500 lần "socket không mở được" mà server không log lỗi nào. Chưa rõ nguyên nhân (nghi backlog
-  chấp nhận kết nối hoặc event loop bão hòa trên máy đo); ghi trong `docs/known-issues.md`. Kịch bản đã tách
+  chấp nhận kết nối hoặc event loop bão hòa trên máy đo); được theo dõi trong [nợ kỹ thuật](../tech-debt.md). Kịch bản đã tách
   `connect_failed` và `join_failed` để lần sau thấy rõ.
 - Mỗi cấu hình đo hai lần, chưa đủ để có khoảng tin cậy; đây là laptop (xem báo cáo baseline).

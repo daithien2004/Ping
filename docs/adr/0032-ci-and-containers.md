@@ -3,6 +3,10 @@
 Status: accepted
 Date: 2026-10-20
 
+Current status (2026-10-21): the original Caddy proxy decision below is superseded by
+[ADR-0035](0035-nginx-reverse-proxy.md). GitHub CI did run before that change; the Nginx workflow has
+only been validated locally and has not been pushed. Deployment and staging acceptance remain open.
+
 ## Decision
 
 - **CI (`.github/workflows/ci.yml`)** runs on every PR and push to `main`. Jobs: `verify` (format, lint,
@@ -43,14 +47,17 @@ Date: 2026-10-20
   after logging "shutdown started: draining". Run the compose stack under its own project name (`-p
 pingprod`): the default project name `ping` is the dev compose and would share its Postgres volume.
 
-## Not done (deliberately deferred to just before v0.1.0)
+## Deployment work remaining before v0.1.0
 
 - **Where it runs.** No host, domain, registry or Cloudflare setup yet; the CI builds images but does not push
   them. Before tagging v0.1.0 (gate H9): choose a host (a VPS with this compose file, or a container service),
   buy a domain, decide the registry (`ghcr.io` needs no extra account), add a push step for `main`/`v*` tags,
   write `docs/runbook/deploy.md` (build → migrate → roll out → check `/ready`, rollback, Postgres backups),
   and open the metrics port only on the internal network.
-- **The workflows have not run on GitHub.** Syntax is checked with `actionlint`, and each job's commands were
+
+## Historical CI status at the original decision (2026-10-20)
+
+- **At that time, the workflows had not run on GitHub.** Syntax was checked with `actionlint`, and each job's commands were
   run locally (promtool, `migrate diff`, gitleaks, `pnpm audit`, the compose stack), except the Lighthouse job
   and the Trivy scan, which were not run here. Expect small first-run differences (versions of the
   Lighthouse CLI and Trivy are pinned from memory).
@@ -63,3 +70,14 @@ fatal-error page because no API was running) are listed in `docs/acceptance/v0.1
 Also added: the `migrations` job now upgrades from the previous version (`scripts/check-migration-upgrade.sh`) and forbids
 editing merged migrations, work branches run CI on push, and Playwright/Lighthouse failures are surfaced as annotations
 because the full job log needs a login to read.
+
+## Update (2026-10-21): Nginx and release checklist alignment
+
+The proxy is now Nginx with explicit externally provisioned TLS, not Caddy automatic TLS. The
+original Caddy verification above remains historical; [ADR-0035](0035-nginx-reverse-proxy.md) records
+the new HTTP/HTTPS, WebSocket, container recreation and shutdown verification.
+
+The deployment runbook and backup requirements listed above and in ADR-0034 still apply before
+v0.1.0. The [acceptance checklist](../acceptance/v0.1.0.md) now includes them explicitly; its previous
+wording that the gate did not require `deploy.md` was inconsistent. The hosting environment has not
+been selected, and local Docker checks alone do not complete the staging criterion.

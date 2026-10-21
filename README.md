@@ -89,6 +89,8 @@ tools/loadtest/      kịch bản k6 (xem docs/perf/README.md)
 
 ## Tài liệu
 
+- **Mục lục và cách đọc:** [docs/README.md](docs/README.md).
+- **Tiến độ phát hành:** [nghiệm thu v0.1.0](docs/acceptance/v0.1.0.md), [nợ kỹ thuật](docs/tech-debt.md), [hướng dẫn tự review](docs/review/reading-guide.md).
 - **Bắt đầu đóng góp:** [CONTRIBUTING.md](CONTRIBUTING.md) — quy trình, kiểm tra trước khi mở PR, quy tắc bắt buộc ([CLAUDE.md](CLAUDE.md)).
 - **Kiến trúc:** [docs/architecture.md](docs/architecture.md) và các [ADR](docs/adr/).
 - **Vận hành:** [docs/runbook/](docs/runbook/README.md) — tra lỗi bằng `requestId`, migration, backup, rollback, sự cố hạ tầng, cảnh báo.
