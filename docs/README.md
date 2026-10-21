@@ -36,11 +36,12 @@ ADR ghi quyết định, lý do, phương án đã loại và hệ quả; số t
   minh commit mới đã xanh; luôn đối chiếu commit trước khi gắn tag.
 - ADR và báo cáo hiệu năng là bản ghi có ngày. Một quyết định có thể được ADR sau thay thế. Số đo qua
   Caddy trước đây không trở thành số đo Nginx; số đo laptop không phải sức tải production.
-- Phân biệt local dev, stack production chạy local và staging. Việc chọn môi trường staging và phạm
-  vi nghiệm thu vẫn còn chờ; kiểm tra Docker local chưa tự đóng mục staging.
-- Chủ dự án đã xác nhận review bốn vùng nhạy cảm. Duyệt threat model là mục riêng, còn chờ xác nhận.
-- `HANDOFF.md` và `known-issues.md` là ghi chú local không commit. Tài liệu được version hóa không
-  phụ thuộc vào việc hai file này có tồn tại trên máy người đọc; nợ đã công bố nằm ở `tech-debt.md`.
+- Phân biệt local dev, stack production chạy local và staging. `v0.1.0` là bản **local-only**; việc chọn
+  môi trường staging và phạm vi nghiệm thu tương ứng **chuyển sang `v0.2.0`** ([ADR-0037](adr/0037-release-scope-v0.1.0.md)).
+  Kiểm tra Docker local chưa tự đóng mục staging.
+- Chủ dự án đã xác nhận review bốn vùng nhạy cảm và **duyệt threat model** (2026-10-21).
+- `known-issues.md` là ghi chú local, không được git theo dõi và không commit. Tài liệu được version hóa
+  không phụ thuộc vào việc file này có tồn tại trên máy người đọc; nợ đã công bố nằm ở `tech-debt.md`.
 
 ## Duy trì tài liệu
 
