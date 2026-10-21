@@ -50,4 +50,6 @@ Lỗi ở phía trình duyệt (không qua API) thì mã là `digest` của Next
 
 Gây một lỗi 500 có chủ đích, lấy mã lỗi từ giao diện, tìm ra log của request và lỗi tương ứng trên Sentry. Test
 `apps/api/test/error-tracking.e2e-spec.ts` đã chứng minh mã ở response, header và báo cáo Sentry là một id; phần
-còn lại (log gom, Sentry thật) chỉ kiểm được trên môi trường thật.
+còn lại là đối chiếu mã hiển thị trên UI, log và Sentry trên staging. Sentry thật của API và web đã
+được kiểm tại local ngày 2026-10-21 (xem [nghiệm thu](../acceptance/v0.1.0.md)); điều đó chưa thay thế
+kiểm tra toàn tuyến trên staging hoặc việc cấu hình gom log.

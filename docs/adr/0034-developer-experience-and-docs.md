@@ -34,3 +34,14 @@ Date: 2026-10-20
 - `docs/runbook/deploy.md` and scheduled backups: they depend on where it runs; to be written before `v0.1.0`
   ([ADR-0032](0032-ci-and-containers.md)).
 - A `new-module` slash command: there is only one domain pattern worth extracting once a second module exists.
+
+## Update (2026-10-21): documentation navigation and current evidence
+
+- [Documentation index](../README.md) links architecture, API conventions, ADRs, operations,
+  performance, self-review, acceptance and technical debt, and distinguishes historical evidence
+  from current state.
+- The owner confirmed completing the four-area code review; threat-model approval remains separate.
+- Real API/browser Sentry projects were checked locally, but staging correlation and hosted alert
+  rules remain open. Nginx has replaced Caddy in the stack example (ADR-0035).
+- `deploy.md` and scheduled backups remain pre-release work, now explicitly included in acceptance.
+  No staging environment is selected by these documentation updates.

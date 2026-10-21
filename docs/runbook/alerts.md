@@ -10,7 +10,7 @@ Hơn 2% request trả 5xx trong 5 phút. Nghĩa là có bug hoặc hạ tầng h
 
 1. Mở Sentry: lỗi mới nhất theo thời gian, xem có đúng một nguyên nhân gốc không.
 2. Xem `dependency_up`: nếu Postgres/Redis down thì xử lý theo hai mục dưới, đừng tìm bug.
-3. Vừa deploy? Rollback theo `docs/runbook/failure-modes.md` (migration expand/contract cho phép chạy lại bản trước).
+3. Vừa deploy? Xem [rollback](rollback.md) (migration expand/contract cho phép chạy lại bản trước).
 
 ## PingPostgresDown
 
@@ -38,3 +38,7 @@ Không scrape được `/metrics` của một instance: process chết hoặc c�
 
 Gây một lỗi 500 có chủ đích, lấy mã lỗi từ giao diện, tìm ra log của request và lỗi tương ứng trên Sentry.
 `test/error-tracking.e2e-spec.ts` đã chứng minh mã trên response, header và báo cáo Sentry là cùng một id.
+
+Sentry thật của API/web đã được kiểm tại local ngày 2026-10-21; chưa đối chiếu đủ mã hiển thị trên UI
+với Sentry ở staging. Prometheus/Alertmanager cũng chưa được dựng để nạp quy tắc; xem
+[nghiệm thu](../acceptance/v0.1.0.md) và [nợ kỹ thuật](../tech-debt.md).
