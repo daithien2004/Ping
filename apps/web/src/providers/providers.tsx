@@ -4,16 +4,17 @@ import { Suspense, type ReactNode } from 'react';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { LocaleProvider } from '@/i18n/locale-provider';
 import { QueryProvider } from './query-provider';
+import { ThemeProvider } from './theme-provider';
 
-/** Mọi provider dùng chung của app, gắn một lần ở root layout. */
+/** Moi provider dung chung cua app, gan mot lan o root layout. */
 export function Providers({ children }: { children: ReactNode }) {
-  // LocaleProvider chỉ chạy trong trình duyệt (đọc cookie): khi prerender nó treo, fallback rỗng.
-  // Mọi chữ của app vì vậy chỉ render ở client, cùng một ngôn ngữ, không lệch khi hydrate.
   return (
     <Suspense fallback={null}>
       <LocaleProvider>
         <QueryProvider>
-          <TooltipProvider>{children}</TooltipProvider>
+          <ThemeProvider>
+            <TooltipProvider>{children}</TooltipProvider>
+          </ThemeProvider>
         </QueryProvider>
       </LocaleProvider>
     </Suspense>

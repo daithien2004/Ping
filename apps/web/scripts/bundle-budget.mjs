@@ -4,7 +4,9 @@ import { gzipSync } from 'node:zlib';
 
 // Ngân sách JS phía client (H4, ADR-0029): tổng gzip và chunk lớn nhất. Số đo ban đầu: 371 KB tổng,
 // chunk lớn nhất 70 KB; trần chừa ~20% dư địa. Muốn biết CÁI GÌ làm phình bundle: `pnpm exec next experimental-analyze`.
-export const LIMITS = { totalKb: 450, chunkKb: 100, lazyKb: 160 };
+// ADR-0050/TF.15: ngân sách tăng từ 450 lên 550 KB sau khi thêm Ant Design (bộ Ping*) cho UI v0.2.0.
+// Số đo: build có antd, JS client ban đầu 525.8 KB gzip. Điều chỉnh kèm bằng chứng, không tắt check.
+export const LIMITS = { totalKb: 550, chunkKb: 100, lazyKb: 160 };
 
 // Chunk tải theo yêu cầu, chỉ khi bật tính năng tương ứng (Sentry khi có DSN, ADR-0031): không tính vào
 // JS tải ban đầu, có trần riêng. Nhận ra bằng chuỗi đặc trưng trong nội dung chunk.
