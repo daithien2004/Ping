@@ -4,7 +4,8 @@
 - Người thực hiện: chủ repo, nhánh `chore/tf.9-states-motion`, base commit `f105e8f`.
 - Task: TF.9 (Pha 3/4).
 - Commit: `72bb7d1` (triển khai), `3e45f25` (fix retry GET), `a299ac7` (e2e), `c1c4b73` (fix a11y
-  onboarding), `7e58cd7` + `3d23862` (tài liệu + ảnh trạng thái), commit này (bằng chứng + status).
+  onboarding), `7e58cd7` + `3d23862` (tài liệu + ảnh trạng thái), `2977fe3` (bằng chứng + status),
+  `9aafd7f` (dọn script chụp ảnh), `2c99e10` + `962800e` (chờ API sau seed + ghi chú flake).
 
 ## Thay đổi
 
