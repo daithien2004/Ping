@@ -3,6 +3,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { ServerEvents, type AppAbility, type CreateMessageInput } from '@ping/shared';
 import { isUniqueConstraintError } from '../../common/utils/prisma-errors.js';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
+import { OutboxService } from '../../infra/events/outbox.service.js';
 import { AuditService } from '../audit/audit.module.js';
 import { RealtimeService } from '../realtime/realtime.service.js';
 import { MessageRateLimiter } from './message-rate-limiter.js';
@@ -26,6 +27,7 @@ export class MessagesService {
     private readonly realtime: RealtimeService,
     private readonly audit: AuditService,
     private readonly rateLimiter: MessageRateLimiter,
+    private readonly outbox: OutboxService,
   ) {}
 
   /**
@@ -53,9 +55,26 @@ export class MessagesService {
   async create(channelId: string, authorId: string, input: CreateMessageInput) {
     await this.rateLimiter.consume(authorId, channelId);
     try {
-      const message = await this.prisma.message.create({
-        data: { channelId, authorId, content: input.content, nonce: input.nonce },
-        select: messageWithAuthor,
+      const message = await this.prisma.$transaction(async (tx) => {
+        const created = await tx.message.create({
+          data: { channelId, authorId, content: input.content, nonce: input.nonce },
+          select: messageWithAuthor,
+        });
+        await this.outbox.write(tx, {
+          aggregateType: 'Message',
+          aggregateId: created.id,
+          type: ServerEvents.MessageCreated,
+          payload: {
+            id: created.id,
+            channelId,
+            authorId,
+            author: created.author,
+            content: created.content,
+            createdAt: created.createdAt.toISOString(),
+            nonce: created.nonce,
+          },
+        });
+        return created;
       });
       this.realtime.emitToChannel(channelId, ServerEvents.MessageCreated, {
         id: message.id,

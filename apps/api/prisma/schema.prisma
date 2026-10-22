@@ -162,6 +162,23 @@ model AuditLog {
   @@index([serverId, id(sort: Desc)])
 }
 
+/// Outbox cho sự kiện realtime (ADR-0033, T1.3): ghi cùng transaction với thay đổi dữ liệu,
+/// relay worker phát lên Redis Stream sau đó. Consumer phải idempotent theo `id`.
+model OutboxEvent {
+  id            String    @id @default(uuid(7)) @db.Uuid
+  aggregateType String
+  aggregateId   String?   @db.Uuid
+  type          String
+  payload       Json
+  publishedAt   DateTime?
+  attempts      Int       @default(0)
+  nextRetryAt   DateTime  @default(now())
+  createdAt     DateTime  @default(now())
+
+  // Quét relay: WHERE publishedAt IS NULL AND nextRetryAt <= now() ORDER BY createdAt.
+  @@index([publishedAt, nextRetryAt, createdAt])
+}
+
 enum AuditAction {
   ROLE_CREATE
   ROLE_UPDATE
