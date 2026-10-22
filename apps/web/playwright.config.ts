@@ -25,12 +25,15 @@ export default defineConfig({
       url: 'http://localhost:4000/api/v1/health',
       reuseExistingServer: true,
       timeout: 120_000,
+      // Windows: SIGTERM cho process tree (Playwright tự kill cây tiến trình) thay vì kill theo tên node.exe.
+      gracefulShutdown: { signal: 'SIGTERM', timeout: 5_000 },
     },
     {
       command: 'pnpm --filter web dev',
       url: 'http://localhost:3000',
       reuseExistingServer: true,
       timeout: 120_000,
+      gracefulShutdown: { signal: 'SIGTERM', timeout: 5_000 },
     },
   ],
 });
