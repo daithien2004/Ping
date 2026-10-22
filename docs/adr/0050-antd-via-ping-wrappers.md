@@ -1,6 +1,6 @@
 # ADR-0050: Áp dụng Ant Design qua bộ wrapper `Ping*`
 
-Status: proposed — chờ OWNER duyệt
+Status: accepted — OWNER duyệt ngày 2026-10-22
 Date: 2026-10-22
 
 ## Context
