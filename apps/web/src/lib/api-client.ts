@@ -53,6 +53,13 @@ export function setUnauthenticatedHandler(handler?: () => void): void {
 
 type Method = 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
 
+/** Chờ giữa hai lần thử khi lỗi mạng (ms). */
+const NETWORK_RETRY_DELAY_MS = 300;
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function send(method: Method, path: string, body?: unknown): Promise<Response> {
   const headers = new Headers();
   if (accessToken) {
@@ -65,16 +72,30 @@ async function send(method: Method, path: string, body?: unknown): Promise<Respo
   if (path === '/auth/refresh' || path === '/auth/logout') {
     headers.set(CLIENT_HEADER, CLIENT_HEADER_VALUE);
   }
-  try {
-    return await fetch(`${apiBaseUrl}${path}`, {
+  const request = () =>
+    fetch(`${apiBaseUrl}${path}`, {
       method,
       headers,
       // Gửi kèm cookie refresh (httpOnly) cho /auth/*; API bật CORS credentials cho WEB_ORIGIN.
       credentials: 'include',
       body: body === undefined ? undefined : JSON.stringify(body),
     });
+  try {
+    return await request();
   } catch {
     // fetch chỉ reject khi không tới được server (mất mạng, API tắt, CORS chặn).
+    // Thử lại một lần cho GET: sau khi API khởi động lại, trình duyệt vẫn còn socket keep-alive
+    // cũ (Chrome giữ tới ~4 phút) nên request có thể rơi vào socket đã chết. Lần thử sau mở
+    // kết nối khác nên thường thành công. GET là idempotent nên thử lại không đổi trạng thái;
+    // POST (đăng nhập, refresh) không thử lại vì API xoay vòng refresh token (ADR-0007).
+    if (method === 'GET') {
+      await delay(NETWORK_RETRY_DELAY_MS);
+      try {
+        return await request();
+      } catch {
+        // Vẫn không tới được server: báo lỗi mạng như bên dưới.
+      }
+    }
     throw new ApiError(0, ErrorCodes.SERVICE_UNAVAILABLE, 'Network error');
   }
 }
