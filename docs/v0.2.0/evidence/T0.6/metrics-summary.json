@@ -1,0 +1,33 @@
+{
+  "rest": {
+    "elapsedSeconds": 52.567,
+    "maxSocketsObserved": 0,
+    "maxEventLoopP99Ms": 25.9,
+    "maxApiRssTotalMb": 1137,
+    "maxCumulativeHttp5xx": 0,
+    "exitCode": 0
+  },
+  "fanout": {
+    "elapsedSeconds": 91.135,
+    "maxSocketsObserved": 500,
+    "maxEventLoopP99Ms": 356.8,
+    "maxApiRssTotalMb": 1274,
+    "maxCumulativeHttp5xx": 0,
+    "exitCode": 0
+  },
+  "reconnect": {
+    "elapsedSeconds": 71.212,
+    "maxSocketsObserved": 500,
+    "maxEventLoopP99Ms": 778.6,
+    "maxApiRssTotalMb": 1294,
+    "maxCumulativeHttp5xx": 0,
+    "exitCode": 0
+  },
+  "logsSinceBenchmarkStart": {
+    "records": 6685,
+    "errorLevelRecords": 0,
+    "presenceWarnings": 0,
+    "poolTimeouts": 0,
+    "redisTimeouts": 0
+  }
+}
