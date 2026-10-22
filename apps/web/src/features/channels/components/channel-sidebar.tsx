@@ -1,11 +1,12 @@
 'use client';
 
 import { ErrorCodes } from '@ping/shared';
-import { LogOut } from 'lucide-react';
+import { Copy, LogOut } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
 import { useTranslations } from 'use-intl';
 import { FormError } from '@/components/form-parts';
 import { Button } from '@/components/ui/button';
+import { pingToast } from '@/components/ui/ping-toast';
 import { useLeaveServer, useServer } from '@/features/servers/hooks';
 import { useServerAbility } from '@/features/permissions/context';
 import { useErrorMessage } from '@/lib/error-message';
@@ -22,16 +23,36 @@ export function ChannelSidebar() {
   const errorMessage = useErrorMessage();
 
   function leave() {
-    leaveMutation.mutate(serverId, { onSuccess: () => router.replace('/') });
+    leaveMutation.mutate(serverId, { onSuccess: () => router.replace('/servers') });
+  }
+
+  // Sao chép mã mời: hành động ngầm, thành công thì báo bằng toast (quy ước TF.9).
+  async function copyInvite() {
+    try {
+      await navigator.clipboard.writeText(server.inviteCode);
+      pingToast.success(t('servers.inviteCopied'));
+    } catch {
+      pingToast.error(t('servers.copyFailed'));
+    }
   }
 
   return (
     <aside className="flex w-60 shrink-0 flex-col bg-sidebar text-sidebar-foreground">
       <header className="flex h-12 shrink-0 flex-col justify-center border-b border-sidebar-border px-4 shadow-xs">
         <h2 className="truncate font-semibold">{server.name}</h2>
-        <p className="truncate text-xs text-muted-foreground">
-          {t('servers.inviteCode')}: <code className="select-all">{server.inviteCode}</code>
-        </p>
+        <div className="flex items-center gap-1">
+          <p className="truncate text-xs text-muted-foreground">
+            {t('servers.inviteCode')}: <code className="select-all">{server.inviteCode}</code>
+          </p>
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            aria-label={t('servers.copyInvite')}
+            onClick={() => void copyInvite()}
+          >
+            <Copy />
+          </Button>
+        </div>
       </header>
 
       {ability.can('view', 'Channel') && (

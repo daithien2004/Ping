@@ -2,8 +2,10 @@
 
 import { PingModal } from '@/components/ui/ping-modal';
 import { PingInput } from '@/components/ui/ping-input';
+import { PingEmpty, PING_EMPTY_IMAGE_SIMPLE } from '@/components/ui/ping-empty';
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'use-intl';
 
 /**
  * Quick switcher (TF.5): mở bằng Ctrl/Cmd+K, tìm server/channel, Enter để đi.
@@ -24,6 +26,7 @@ export function QuickSwitcher({ items }: QuickSwitcherProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const router = useRouter();
+  const t = useTranslations('common');
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -91,7 +94,9 @@ export function QuickSwitcher({ items }: QuickSwitcherProps) {
             </li>
           ))}
           {filtered.length === 0 ? (
-            <li style={{ padding: 8, opacity: 0.6 }}>Không tìm thấy</li>
+            <li>
+              <PingEmpty description={t('noResults')} image={PING_EMPTY_IMAGE_SIMPLE} />
+            </li>
           ) : null}
         </ul>
       </PingModal>

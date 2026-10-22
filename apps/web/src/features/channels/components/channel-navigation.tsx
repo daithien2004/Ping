@@ -2,15 +2,19 @@
 import Link from 'next/link';
 import { useTranslations } from 'use-intl';
 import { channelPath } from '@/features/servers/navigation';
+import { useServerAbility } from '@/features/permissions/context';
 import { useChannels } from '../hooks';
 import { CreateChannelAction } from './create-channel-action';
 
 export function ChannelNavigation({ serverId, activeId }: { serverId: string; activeId?: string }) {
   const { data: channels } = useChannels(serverId);
+  const { ability } = useServerAbility();
   const t = useTranslations('channels');
+  const canCreate = ability.can('create', 'Channel');
+  const channelSidebarEmpty = channels.length === 0 && !canCreate;
   return (
     <nav aria-label={t('navLabel')} className="flex flex-col gap-0.5 p-2">
-      {channels.length === 0 && (
+      {channelSidebarEmpty && (
         <p className="px-2 py-1.5 text-sm text-muted-foreground">{t('empty')}</p>
       )}
       {channels.map((channel) => (

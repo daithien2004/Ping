@@ -2,6 +2,7 @@
 
 import { ConfigProvider, App as AntdApp } from 'antd';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { PingToastHost } from '@/components/ui/ping-toast';
 import { buildAntdTheme, cssVariables, type ThemeMode } from '@/lib/theme';
 
 function detectMode(): ThemeMode {
@@ -25,6 +26,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   return (
     <ConfigProvider theme={theme}>
       <AntdApp>
+        <PingToastHost />
         <div style={vars as React.CSSProperties} data-theme={mode}>
           {children}
         </div>

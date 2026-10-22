@@ -4,6 +4,8 @@ import type { MemberDto } from '@ping/shared';
 import { useTranslations } from 'use-intl';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { errorReference } from '@/lib/error-reference';
 import { useErrorMessage } from '@/lib/error-message';
 import { initials } from '@/lib/initials';
 import { groupByPresence } from '../member-cache';
@@ -52,10 +54,14 @@ function Group({ label, members }: { label: string; members: MemberDto[] }) {
 /** Danh sách thành viên của server, online trước. Hiện bên phải khung chat (ẩn/hiện bằng nút ở tiêu đề). */
 export function MemberPanel({ serverId }: { serverId: string }) {
   const t = useTranslations('members');
+  const ta = useTranslations('app');
+  const tc = useTranslations('common');
   const errorMessage = useErrorMessage();
   const query = useMembers(serverId);
   const members = query.data?.pages.flatMap((page) => page.members) ?? [];
   const { online, offline } = groupByPresence(members);
+  const message = query.isError ? errorMessage(query.error) : '';
+  const reference = query.isError ? errorReference(query.error) : undefined;
 
   return (
     <aside
@@ -63,14 +69,45 @@ export function MemberPanel({ serverId }: { serverId: string }) {
       className="flex w-60 shrink-0 flex-col overflow-y-auto bg-sidebar p-2"
     >
       {query.isPending && (
-        <p role="status" className="p-2 text-sm text-muted-foreground">
-          {t('loading')}
-        </p>
+        <div
+          role="status"
+          aria-busy="true"
+          aria-label={t('loading')}
+          className="flex flex-col gap-2 p-2"
+        >
+          <Skeleton className="h-5 w-16" />
+          {[0, 1, 2, 3].map((index) => (
+            <div key={index} className="flex items-center gap-2 px-1 py-1.5">
+              <Skeleton className="size-8 rounded-full" />
+              <Skeleton className="h-4 w-20" />
+            </div>
+          ))}
+          <Skeleton className="mt-2 h-5 w-16" />
+          {[0, 1].map((index) => (
+            <div key={index} className="flex items-center gap-2 px-1 py-1.5">
+              <Skeleton className="size-8 rounded-full" />
+              <Skeleton className="h-4 w-16" />
+            </div>
+          ))}
+        </div>
       )}
       {query.isError && (
-        <p role="alert" className="p-2 text-sm text-destructive">
-          {errorMessage(query.error)}
-        </p>
+        <div role="alert" className="flex flex-col items-start gap-2 p-2 text-sm text-destructive">
+          <p>{message}</p>
+          {reference && !message.includes(reference) && (
+            <p className="text-xs text-muted-foreground">
+              <code className="select-all">{ta('errorId', { id: reference })}</code>
+            </p>
+          )}
+          <Button
+            variant="outline"
+            size="xs"
+            disabled={query.isFetching}
+            onClick={() => void query.refetch()}
+          >
+            {tc('retry')}
+          </Button>
+        </div>
       )}
       <Group label={t('online', { count: online.length })} members={online} />
       <Group label={t('offline', { count: offline.length })} members={offline} />

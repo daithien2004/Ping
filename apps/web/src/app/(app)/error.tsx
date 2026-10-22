@@ -52,7 +52,7 @@ export default function AppError({ error, retry }: { error: Error; retry: () => 
           {t('common.retry')}
         </Button>
         <Button asChild>
-          <Link href="/">{t('common.goHome')}</Link>
+          <Link href="/servers">{t('common.goHome')}</Link>
         </Button>
       </div>
     </div>

@@ -12,7 +12,7 @@ export default function NotFound() {
       <h1 className="text-xl font-semibold">{t('app.notFoundTitle')}</h1>
       <p className="text-sm text-muted-foreground">{t('app.notFoundHint')}</p>
       <Button asChild>
-        <Link href="/">{t('common.goHome')}</Link>
+        <Link href="/servers">{t('common.goHome')}</Link>
       </Button>
     </main>
   );

@@ -3,6 +3,7 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'use-intl';
+import { Button } from '@/components/ui/button';
 import { useChannelRealtime } from '@/features/realtime/hooks';
 import { TypingIndicator } from '@/features/realtime/components/typing-indicator';
 import { useMe } from '@/features/auth/hooks';
@@ -55,6 +56,9 @@ export function MessagePane({
   }
   const errors = useTranslations('errors');
   const scrollRef = useRef<HTMLDivElement>(null);
+  // Ô soạn: empty state bấm "Gửi tin đầu tiên" để đưa con trỏ về ô nhập (TF.9).
+  const composerRef = useRef<HTMLTextAreaElement>(null);
+  const canSend = ability.can('create', 'Message');
   const didInitialScroll = useRef(false);
   // Chỉ tải tin cũ SAU khi đã xuống đáy lần đầu: ở lần render đầu danh sách còn đứng ở đầu,
   // tin index 0 "đang hiện" → nếu không chặn sẽ tải ngay trang cũ, neo kéo vị trí lên giữa.
@@ -159,12 +163,17 @@ export function MessagePane({
                 : t('channelStart', { channel: channelName })}
           </p>
           {messages.length === 0 && !hasNextPage && (
-            <p
-              className="absolute inset-x-0 px-4 text-sm text-muted-foreground"
+            <div
+              className="absolute inset-x-0 flex flex-col items-center gap-3 px-4 pt-10 text-center"
               style={{ top: HEADER_HEIGHT }}
             >
-              {t('empty')}
-            </p>
+              <p className="text-sm text-muted-foreground">{t('empty')}</p>
+              {canSend && (
+                <Button size="sm" variant="outline" onClick={() => composerRef.current?.focus()}>
+                  {t('emptyAction')}
+                </Button>
+              )}
+            </div>
           )}
           {virtualizer.getVirtualItems().map((item) => {
             const message = messages[item.index];
@@ -188,7 +197,12 @@ export function MessagePane({
       <div aria-live="polite" aria-atomic="true" className="sr-only">
         {announcement}
       </div>
-      <MessageComposer channelId={channelId} channelName={channelName} onSend={sendOwn} />
+      <MessageComposer
+        channelId={channelId}
+        channelName={channelName}
+        onSend={sendOwn}
+        textareaRef={composerRef}
+      />
       <MessageDialogs
         selection={selection}
         message={messages.find((message) => message.id === selection?.messageId)}

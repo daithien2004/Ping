@@ -14,7 +14,8 @@
     "retry": "Retry",
     "goHome": "Go home",
     "language": "Language",
-    "languages": { "vi": "Tiếng Việt", "en": "English" }
+    "languages": { "vi": "Tiếng Việt", "en": "English" },
+    "noResults": "No results"
   },
   "auth": {
     "loginTitle": "Sign in",
@@ -41,7 +42,9 @@
     "fatalTitle": "A fatal error occurred",
     "fatalHint": "The app could not be displayed. Try reloading; if it keeps failing, send the error ID to an administrator.",
     "notFoundTitle": "Page not found",
-    "notFoundHint": "This link does not exist or has been removed."
+    "notFoundHint": "This link does not exist or has been removed.",
+    "authErrorTitle": "Can't verify your session",
+    "authErrorHint": "The server may be temporarily unavailable. Try again in a few seconds."
   },
   "servers": {
     "navLabel": "Servers",
@@ -66,7 +69,10 @@
       "chooseJoin": "Join with an invite code",
       "continue": "Continue",
       "back": "Back"
-    }
+    },
+    "copyInvite": "Copy invite code",
+    "inviteCopied": "Invite code copied.",
+    "copyFailed": "Could not copy the invite code."
   },
   "channels": {
     "navLabel": "Channels",
@@ -86,7 +92,8 @@
     "offline": "Offline — {count}",
     "statusOnline": "Online",
     "statusOffline": "Offline",
-    "loadMore": "Load more"
+    "loadMore": "Load more",
+    "empty": "No members yet."
   },
   "messages": {
     "actions": "Message actions",
@@ -108,7 +115,8 @@
     "listLabel": "Messages in #{channel}",
     "composerLabel": "Message #{channel}",
     "edited": "(edited)",
-    "failed": "Failed to send"
+    "failed": "Failed to send",
+    "emptyAction": "Send the first message"
   },
   "landing": {
     "eyebrow": "Realtime chat for small teams",

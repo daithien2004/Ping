@@ -14,7 +14,8 @@
     "retry": "Thử lại",
     "goHome": "Về trang chủ",
     "language": "Ngôn ngữ",
-    "languages": { "vi": "Tiếng Việt", "en": "English" }
+    "languages": { "vi": "Tiếng Việt", "en": "English" },
+    "noResults": "Không tìm thấy"
   },
   "auth": {
     "loginTitle": "Đăng nhập",
@@ -41,7 +42,9 @@
     "fatalTitle": "Đã xảy ra lỗi nghiêm trọng",
     "fatalHint": "Ứng dụng không thể hiển thị. Thử tải lại; nếu vẫn lỗi, hãy gửi mã lỗi cho người quản trị.",
     "notFoundTitle": "Không tìm thấy trang",
-    "notFoundHint": "Đường dẫn này không tồn tại hoặc đã bị xóa."
+    "notFoundHint": "Đường dẫn này không tồn tại hoặc đã bị xóa.",
+    "authErrorTitle": "Không kiểm tra được phiên đăng nhập",
+    "authErrorHint": "Máy chủ có thể đang tạm không phản hồi. Thử lại sau ít giây."
   },
   "servers": {
     "navLabel": "Server",
@@ -66,7 +69,10 @@
       "chooseJoin": "Tham gia bằng mã mời",
       "continue": "Tiếp tục",
       "back": "Quay lại"
-    }
+    },
+    "copyInvite": "Sao chép mã mời",
+    "inviteCopied": "Đã sao chép mã mời.",
+    "copyFailed": "Không sao chép được mã mời."
   },
   "channels": {
     "navLabel": "Channel",
@@ -86,7 +92,8 @@
     "offline": "Offline — {count}",
     "statusOnline": "Đang online",
     "statusOffline": "Offline",
-    "loadMore": "Xem thêm"
+    "loadMore": "Xem thêm",
+    "empty": "Chưa có thành viên nào."
   },
   "messages": {
     "actions": "Thao tác tin nhắn",
@@ -108,7 +115,8 @@
     "listLabel": "Tin nhắn trong #{channel}",
     "composerLabel": "Nhắn #{channel}",
     "edited": "(đã sửa)",
-    "failed": "Gửi thất bại"
+    "failed": "Gửi thất bại",
+    "emptyAction": "Gửi tin đầu tiên"
   },
   "landing": {
     "eyebrow": "Chat realtime cho nhóm nhỏ",
