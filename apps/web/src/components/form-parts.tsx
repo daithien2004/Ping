@@ -1,22 +1,8 @@
-import { type ReactNode, type RefObject, useEffect, useId, useRef } from 'react';
+import { type ReactNode, useId } from 'react';
 import { useTranslations } from 'use-intl';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-
-/**
- * Xóa form khi nó bị ẩn hoặc gỡ. <Activity> (cacheComponents) GIẤU trang đã rời chứ không gỡ:
- * form đăng nhập/đăng ký ẩn vẫn giữ mật khẩu trong DOM (e2e đã bắt được). Ẩn = cleanup của effect
- * chạy, nên reset ở cleanup bao cả hai ca: đăng nhập xong và gõ dở rồi chuyển trang.
- */
-export function useClearOnHide(): RefObject<HTMLFormElement | null> {
-  const ref = useRef<HTMLFormElement>(null);
-  useEffect(() => {
-    const form = ref.current;
-    return () => form?.reset();
-  }, []);
-  return ref;
-}
 
 interface FieldProps {
   label: string;
@@ -26,7 +12,7 @@ interface FieldProps {
   errors?: string[];
 }
 
-/** Ô nhập có nhãn và lỗi gắn bằng aria-describedby để trình đọc màn hình đọc được lỗi. */
+/** Ô nhập có nhãn liên kết bằng aria-describedby để trình đọc màn hình đọc lỗi. */
 export function Field({ label, name, type = 'text', autoComplete, errors }: FieldProps) {
   const id = useId();
   const errorId = `${id}-error`;

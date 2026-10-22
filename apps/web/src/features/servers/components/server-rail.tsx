@@ -13,8 +13,7 @@ import { useLogout, useMe } from '@/features/auth/hooks';
 import { initials } from '@/lib/initials';
 import { useServers } from '../hooks';
 import { serverPath } from '../navigation';
-import { CreateServerDialog } from './create-server-dialog';
-import { JoinServerDialog } from './join-server-dialog';
+import { OnboardingWizard, type OnboardingMode } from './onboarding-wizard';
 
 /** Một mục trên rail: tooltip bên phải + thanh chỉ báo bên trái khi đang chọn (kiểu app chat). */
 function RailItem({
@@ -51,8 +50,7 @@ export function ServerRail() {
   const { data: servers } = useServers();
   const { data: me } = useMe();
   const logoutMutation = useLogout();
-  const [dialog, setDialog] = useState<'create' | 'join' | null>(null);
-  const close = () => setDialog(null);
+  const [wizard, setWizard] = useState<OnboardingMode | null>(null);
   const t = useTranslations();
 
   return (
@@ -92,7 +90,7 @@ export function ServerRail() {
           variant="ghost"
           size="icon"
           aria-label={t('servers.create')}
-          onClick={() => setDialog('create')}
+          onClick={() => setWizard('create')}
           className={railIcon}
         >
           <Plus className="size-5" />
@@ -103,7 +101,7 @@ export function ServerRail() {
           variant="ghost"
           size="icon"
           aria-label={t('servers.join')}
-          onClick={() => setDialog('join')}
+          onClick={() => setWizard('join')}
           className={railIcon}
         >
           <LogIn className="size-5" />
@@ -128,8 +126,11 @@ export function ServerRail() {
         </RailItem>
       </div>
 
-      <CreateServerDialog open={dialog === 'create'} onClose={close} />
-      <JoinServerDialog open={dialog === 'join'} onClose={close} />
+      <OnboardingWizard
+        open={wizard !== null}
+        initialMode={wizard ?? undefined}
+        onClose={() => setWizard(null)}
+      />
     </nav>
   );
 }

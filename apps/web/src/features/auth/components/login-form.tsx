@@ -1,18 +1,24 @@
 'use client';
 
-import { ErrorCodes, loginSchema } from '@ping/shared';
+import { ErrorCodes, loginSchema, type LoginInput } from '@ping/shared';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { use, useEffect, useState, type FormEvent } from 'react';
+import { use, useEffect } from 'react';
 import { browser } from 'react-dom';
 import { useTranslations } from 'use-intl';
-import { z } from 'zod';
-import { useLogin, useMe } from '../hooks';
+import { PingButton } from '@/components/ui/ping-button';
+import {
+  PingForm,
+  PingFormItem,
+  usePingForm,
+  useResetOnHide,
+  zodFormRules,
+} from '@/components/ui/ping-form';
+import { PingInput } from '@/components/ui/ping-input';
+import { PingPasswordInput } from '@/components/ui/ping-password-input';
+import { useMe, useLogin } from '../hooks';
 import { safeRedirectPath } from '../session';
-import { Field, FormError, SubmitButton, useClearOnHide } from '@/components/form-parts';
 import { useErrorMessage } from '@/lib/error-message';
-
-type FieldErrors = Partial<Record<'email' | 'password', string[]>>;
 
 export function LoginForm() {
   use(browser('Kiểm tra phiên đăng nhập hiện có trong trình duyệt.'));
@@ -20,10 +26,12 @@ export function LoginForm() {
   const next = safeRedirectPath(useSearchParams().get('next'));
   const { data: me } = useMe();
   const loginMutation = useLogin();
-  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
-  const formRef = useClearOnHide();
+  const [form] = usePingForm<LoginInput>();
+  useResetOnHide(form);
   const t = useTranslations('auth');
   const errorMessage = useErrorMessage();
+  // Cùng schema với API (packages/shared): lỗi định dạng báo ngay, không tốn một request.
+  const rules = zodFormRules(loginSchema, () => form.getFieldsValue());
 
   // Đã đăng nhập (vừa đăng nhập xong, hoặc mở /login khi phiên còn) → vào app.
   useEffect(() => {
@@ -32,53 +40,36 @@ export function LoginForm() {
     }
   }, [me, next, router]);
 
-  function onSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    // Cùng schema với API (packages/shared): lỗi định dạng báo ngay, không tốn một request.
-    const parsed = loginSchema.safeParse({
-      email: form.get('email'),
-      password: form.get('password'),
-    });
-    if (!parsed.success) {
-      setFieldErrors(z.flattenError(parsed.error).fieldErrors);
-      return;
-    }
-    setFieldErrors({});
-    loginMutation.mutate(parsed.data);
-  }
-
   return (
-    <form
-      ref={formRef}
-      onSubmit={onSubmit}
+    <PingForm
+      form={form}
+      layout="vertical"
       noValidate
-      className="flex w-full max-w-sm flex-col gap-4"
+      className="flex w-full max-w-sm flex-col"
+      onFinish={(values) => {
+        const parsed = loginSchema.safeParse(values);
+        if (!parsed.success) return;
+        loginMutation.mutate(parsed.data);
+      }}
     >
-      <h1 className="text-2xl font-semibold">{t('loginTitle')}</h1>
-      <Field
-        label={t('email')}
-        name="email"
-        type="email"
-        autoComplete="email"
-        errors={fieldErrors.email}
-      />
-      <Field
-        label={t('password')}
-        name="password"
-        type="password"
-        autoComplete="current-password"
-        errors={fieldErrors.password}
-      />
+      <h1 className="mb-2 text-2xl font-semibold">{t('loginTitle')}</h1>
+      <PingFormItem label={t('email')} name="email" rules={rules.email}>
+        <PingInput type="email" autoComplete="email" />
+      </PingFormItem>
+      <PingFormItem label={t('password')} name="password" rules={rules.password}>
+        <PingPasswordInput autoComplete="current-password" />
+      </PingFormItem>
       {loginMutation.isError && (
-        <FormError>
+        <p role="alert" className="text-sm text-destructive">
           {errorMessage(loginMutation.error, {
             [ErrorCodes.UNAUTHORIZED]: t('wrongCredentials'),
           })}
-        </FormError>
+        </p>
       )}
-      <SubmitButton pending={loginMutation.isPending}>{t('login')}</SubmitButton>
-      <p className="text-sm">
+      <PingButton htmlType="submit" size="lg" block loading={loginMutation.isPending}>
+        {t('login')}
+      </PingButton>
+      <p className="mt-2 text-sm">
         {t('noAccount')}{' '}
         <Link
           href={`/register?next=${encodeURIComponent(next)}`}
@@ -87,6 +78,6 @@ export function LoginForm() {
           {t('register')}
         </Link>
       </p>
-    </form>
+    </PingForm>
   );
 }

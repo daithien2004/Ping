@@ -77,7 +77,7 @@ export function useServerEvents(session: RealtimeSession) {
       old?.filter((server) => server.id !== serverId),
     );
     if (pathname === `/servers/${serverId}` || pathname.startsWith(`/servers/${serverId}/`))
-      router.replace('/');
+      router.replace('/servers');
     void queryClient.invalidateQueries({ queryKey: qk.servers, exact: true });
   });
   useEffect(() => {

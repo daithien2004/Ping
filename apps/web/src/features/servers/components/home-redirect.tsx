@@ -3,18 +3,17 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'use-intl';
-import { Button } from '@/components/ui/button';
+import { PingButton } from '@/components/ui/ping-button';
 import { useServers } from '../hooks';
 import { homePath } from '../navigation';
-import { CreateServerDialog } from './create-server-dialog';
-import { JoinServerDialog } from './join-server-dialog';
+import { OnboardingWizard, type OnboardingMode } from './onboarding-wizard';
 
-/** "/": có server thì vào server đầu tiên, chưa có thì mời tạo hoặc tham gia. */
+/** "/servers": vào server đầu tiên; chưa có server thì mở wizard tạo/tham gia. */
 export function HomeRedirect() {
   const router = useRouter();
   const { data: servers } = useServers();
   const target = homePath(servers);
-  const [dialog, setDialog] = useState<'create' | 'join' | null>(null);
+  const [wizard, setWizard] = useState<OnboardingMode | null>(null);
   const t = useTranslations('servers');
 
   useEffect(() => {
@@ -28,13 +27,16 @@ export function HomeRedirect() {
       <h1 className="text-xl font-semibold">{t('emptyTitle')}</h1>
       <p className="text-sm text-muted-foreground">{t('emptyHint')}</p>
       <div className="flex gap-2">
-        <Button onClick={() => setDialog('create')}>{t('create')}</Button>
-        <Button variant="outline" onClick={() => setDialog('join')}>
+        <PingButton onClick={() => setWizard('create')}>{t('create')}</PingButton>
+        <PingButton variant="secondary" onClick={() => setWizard('join')}>
           {t('enterInvite')}
-        </Button>
+        </PingButton>
       </div>
-      <CreateServerDialog open={dialog === 'create'} onClose={() => setDialog(null)} />
-      <JoinServerDialog open={dialog === 'join'} onClose={() => setDialog(null)} />
+      <OnboardingWizard
+        open={wizard !== null}
+        initialMode={wizard ?? undefined}
+        onClose={() => setWizard(null)}
+      />
     </div>
   );
 }

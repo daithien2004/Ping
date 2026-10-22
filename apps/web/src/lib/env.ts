@@ -25,3 +25,9 @@ export const env = envSchema.parse({
 
 /** Gốc của REST API (prefix /api/v1 cố định phía server). */
 export const apiBaseUrl = `${env.NEXT_PUBLIC_API_URL}/api/v1`;
+
+/**
+ * True khi build production. Next thay sẵn `process.env.NODE_ENV` lúc build nên chỉ có
+ * `lib/env.ts` được đọc biến môi trường (lint chặn `process.env` ở nơi khác).
+ */
+export const isProduction = process.env.NODE_ENV === 'production';

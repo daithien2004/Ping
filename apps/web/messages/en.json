@@ -57,7 +57,16 @@
     "invalidInvite": "Invalid invite code.",
     "alreadyMember": "You are already in this server.",
     "leave": "Leave server",
-    "ownerCannotLeave": "The owner cannot leave their own server."
+    "ownerCannotLeave": "The owner cannot leave their own server.",
+    "wizard": {
+      "title": "Get started with Ping",
+      "chooseStep": "How to start",
+      "detailStep": "Details",
+      "chooseCreate": "Create a new server",
+      "chooseJoin": "Join with an invite code",
+      "continue": "Continue",
+      "back": "Back"
+    }
   },
   "channels": {
     "navLabel": "Channels",
@@ -100,6 +109,33 @@
     "composerLabel": "Message #{channel}",
     "edited": "(edited)",
     "failed": "Failed to send"
+  },
+  "landing": {
+    "eyebrow": "Realtime chat for small teams",
+    "title": "Ping — where your team talks",
+    "tagline": "Instant messages, clear servers and channels, transparent permissions and an AI helper that summarises right inside the channel.",
+    "ctaLogin": "Sign in",
+    "ctaRegister": "Create a free account",
+    "featuresTitle": "Why Ping",
+    "featureRealtimeTitle": "Instant messages",
+    "featureRealtimeText": "Send and receive over WebSocket, see who is typing, and reconnect automatically on flaky networks.",
+    "featureServerTitle": "Servers and channels",
+    "featureServerText": "Split groups into servers, each with its own channels, members and roles.",
+    "featurePermissionTitle": "Transparent permissions",
+    "featurePermissionText": "Every action is checked against the member's permissions and written to an audit log.",
+    "featureAiTitle": "AI helper",
+    "featureAiText": "Ask inside the channel and get a summary with citations back to the original messages.",
+    "demoTitle": "Any channel, still tidy",
+    "demoText": "The chat frame groups consecutive messages, adds date dividers, quote chips and clear delivery states.",
+    "demoChannel": "general",
+    "demoTag": "Public channel",
+    "demoAuthor1": "Lan",
+    "demoMessage1": "Today's build is green: typecheck and e2e both pass.",
+    "demoAuthor2": "Minh",
+    "demoMessage2": "Great, I'll fold the permissions work into the next release.",
+    "demoComposer": "Message #general…",
+    "finalTitle": "Ready to start?",
+    "finalText": "Create an account, spin up your first server and invite your team — it takes less than a minute."
   },
   "errors": {
     "VALIDATION_ERROR": "Invalid data, or a limit has been reached.",

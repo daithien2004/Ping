@@ -57,7 +57,16 @@
     "invalidInvite": "Mã mời không hợp lệ.",
     "alreadyMember": "Bạn đã ở trong server này.",
     "leave": "Rời server",
-    "ownerCannotLeave": "Chủ server không thể rời server của mình."
+    "ownerCannotLeave": "Chủ server không thể rời server của mình.",
+    "wizard": {
+      "title": "Bắt đầu với Ping",
+      "chooseStep": "Cách bắt đầu",
+      "detailStep": "Chi tiết",
+      "chooseCreate": "Tạo server mới",
+      "chooseJoin": "Tham gia bằng mã mời",
+      "continue": "Tiếp tục",
+      "back": "Quay lại"
+    }
   },
   "channels": {
     "navLabel": "Channel",
@@ -100,6 +109,33 @@
     "composerLabel": "Nhắn #{channel}",
     "edited": "(đã sửa)",
     "failed": "Gửi thất bại"
+  },
+  "landing": {
+    "eyebrow": "Chat realtime cho nhóm nhỏ",
+    "title": "Ping — nơi đội ngũ của bạn nói chuyện",
+    "tagline": "Tin nhắn tức thì, server và channel rõ ràng, quyền minh bạch và trợ lý AI tóm tắt ngay trong kênh.",
+    "ctaLogin": "Đăng nhập",
+    "ctaRegister": "Tạo tài khoản miễn phí",
+    "featuresTitle": "Vì sao chọn Ping",
+    "featureRealtimeTitle": "Tin nhắn tức thì",
+    "featureRealtimeText": "Gửi và nhận tin qua WebSocket, thấy ngay khi người khác đang gõ, tự nối lại khi mạng chập chờn.",
+    "featureServerTitle": "Server và channel",
+    "featureServerText": "Chia nhóm theo server, mỗi server có channel riêng, thành viên và vai trò rõ ràng.",
+    "featurePermissionTitle": "Quyền minh bạch",
+    "featurePermissionText": "Mỗi hành động được kiểm tra theo quyền của thành viên, ghi nhật ký để tra lại.",
+    "featureAiTitle": "Trợ lý AI",
+    "featureAiText": "Hỏi ngay trong kênh, nhận tóm tắt kèm trích dẫn tới đúng tin nhắn gốc.",
+    "demoTitle": "Một kênh bất kỳ, cũng đủ gọn",
+    "demoText": "Khung chat gom tin liên tiếp của cùng một người, có vạch ngày, thẻ trích dẫn và trạng thái gửi rõ ràng.",
+    "demoChannel": "general",
+    "demoTag": "Kênh công khai",
+    "demoAuthor1": "Lan",
+    "demoMessage1": "Bản build hôm nay đã xanh cả typecheck lẫn test e2e.",
+    "demoAuthor2": "Minh",
+    "demoMessage2": "Tốt, tôi sẽ ghép nối phần đặt quyền vào bản phát hành tiếp theo.",
+    "demoComposer": "Nhắn #general…",
+    "finalTitle": "Sẵn sàng bắt đầu?",
+    "finalText": "Tạo tài khoản, tạo server đầu tiên và mời nhóm của bạn vào — mất chưa tới một phút."
   },
   "errors": {
     "VALIDATION_ERROR": "Dữ liệu không hợp lệ hoặc đã vượt giới hạn cho phép.",

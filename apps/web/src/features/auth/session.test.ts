@@ -15,8 +15,8 @@ describe('safeRedirectPath', () => {
     ['servers'],
     [''],
     [null],
-  ])('từ chối %j (open redirect) → "/"', (next) => {
-    expect(safeRedirectPath(next)).toBe('/');
+  ])('từ chối %j (open redirect) → "/servers"', (next) => {
+    expect(safeRedirectPath(next)).toBe('/servers');
   });
 });
 

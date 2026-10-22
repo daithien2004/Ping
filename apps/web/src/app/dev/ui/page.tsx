@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import { isProduction } from '@/lib/env';
 import { PingButton } from '@/components/ui/ping-button';
 import { PingInput } from '@/components/ui/ping-input';
 import { PingTag } from '@/components/ui/ping-tag';
@@ -12,8 +13,7 @@ import { PingKbd } from '@/components/ui/ping-kbd';
 import { PingDivider } from '@/components/ui/ping-divider';
 
 export default function DevUiPage() {
-   
-  if (process.env.NODE_ENV === 'production') notFound();
+  if (isProduction) notFound();
   return (
     <main style={{ padding: 24, display: 'grid', gap: 16 }}>
       <h1>UI inventory (dev only)</h1>
