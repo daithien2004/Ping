@@ -1,0 +1,142 @@
+
+> ping@ test D:\discord\Ping
+> turbo run test
+
+
+   • turbo 2.11.9
+   • Packages in scope: @ping/eslint-config, @ping/shared, @ping/tsconfig, api, web
+   • Running test in 5 packages
+   • Remote caching disabled
+
+@ping/shared:build: cache hit, replaying logs 72197aeefb440c26
+@ping/shared:build: 
+@ping/shared:build: > @ping/shared@0.0.0 build D:\discord\Ping\packages\shared
+@ping/shared:build: > tsup
+@ping/shared:build: 
+@ping/shared:build: CLI Building entry: src/index.ts
+@ping/shared:build: CLI Using tsconfig: tsconfig.json
+@ping/shared:build: CLI tsup v9.0.0
+@ping/shared:build: CLI Using tsup config: D:\discord\Ping\packages\shared\tsup.config.ts
+@ping/shared:build: CLI Target: es2023
+@ping/shared:build: CLI Cleaning output folder
+@ping/shared:build: CJS Build start
+@ping/shared:build: ESM Build start
+@ping/shared:build: CJS dist\index.cjs 7.98 KB
+@ping/shared:build: CJS ⚡️ Build success in 16ms
+@ping/shared:build: ESM dist\index.js 5.68 KB
+@ping/shared:build: ESM ⚡️ Build success in 16ms
+@ping/shared:build: DTS Build start
+@ping/shared:build: DTS ⚡️ Build success in 673ms
+@ping/shared:build: DTS dist\index.d.cts 12.61 KB
+@ping/shared:build: DTS dist\index.d.ts  12.61 KB
+@ping/shared:test: cache hit, replaying logs 3447e9a6802ee88c
+@ping/shared:test: 
+@ping/shared:test: > @ping/shared@0.0.0 test D:\discord\Ping\packages\shared
+@ping/shared:test: > vitest run
+@ping/shared:test: 
+@ping/shared:test: 
+@ping/shared:test:  RUN  v4.1.12 D:/discord/Ping/packages/shared
+@ping/shared:test: 
+@ping/shared:test:  ✓ src/permissions.spec.ts (7 tests) 7ms
+@ping/shared:test:  ✓ src/ability.spec.ts (18 tests) 14ms
+@ping/shared:test:  ✓ src/schemas/message.spec.ts (2 tests) 10ms
+@ping/shared:test: 
+@ping/shared:test:  Test Files  3 passed (3)
+@ping/shared:test:       Tests  27 passed (27)
+@ping/shared:test:    Start at  11:32:35
+@ping/shared:test:    Duration  4.00s (transform 763ms, setup 0ms, import 3.57s, tests 30ms, environment 1ms)
+@ping/shared:test: 
+api:test: cache hit, replaying logs 84ea3ca85dbf30b2
+web:test: cache hit, replaying logs 0a2bac1c68145a49
+api:test: 
+api:test: > api@0.0.1 test D:\discord\Ping\apps\api
+api:test: > vitest run
+api:test: 
+api:test: 
+api:test:  RUN  v4.1.12 D:/discord/Ping/apps/api
+api:test: 
+api:test:  ✓ src/common/db-unavailable.spec.ts (6 tests) 14ms
+api:test:  ✓ src/common/log-redaction.spec.ts (1 test) 144ms
+api:test:  ✓ src/common/pipes/zod-validation.pipe.spec.ts (2 tests) 8ms
+api:test: [Nest] 6872  - 10/22/2026, 11:32:44 AM     LOG [ShutdownService] Object(3) {
+api:test:   signal: 'SIGTERM',
+api:test:   graceMs: 120,
+api:test:   timeoutMs: 25000
+api:test: }
+api:test: [Nest] 6872  - 10/22/2026, 11:32:44 AM     LOG [ShutdownService] shutdown started: draining
+api:test: [Nest] 6872  - 10/22/2026, 11:32:44 AM     LOG [ShutdownService] Object(3) {
+api:test:   signal: 'SIGTERM',
+api:test:   graceMs: 0,
+api:test:   timeoutMs: 60
+api:test: }
+api:test: [Nest] 6872  - 10/22/2026, 11:32:44 AM     LOG [ShutdownService] shutdown started: draining
+api:test:  ✓ src/common/guards/csrf.guard.spec.ts (8 tests) 5ms
+api:test: [Nest] 6872  - 10/22/2026, 11:32:44 AM   ERROR [ShutdownService] Object(1) {
+api:test:   timeoutMs: 60
+api:test: }
+api:test: shutdown timed out, forcing exit
+api:test: [Nest] 6872  - 10/22/2026, 11:32:44 AM     LOG [ShutdownService] Object(3) {
+api:test:   signal: 'SIGTERM',
+api:test:   graceMs: 0,
+api:test:   timeoutMs: 60
+api:test: }
+api:test: [Nest] 6872  - 10/22/2026, 11:32:44 AM     LOG [ShutdownService] shutdown started: draining
+api:test:  ✓ src/infra/lifecycle/shutdown.service.spec.ts (4 tests) 393ms
+api:test:  ✓ src/common/filters/all-exceptions.filter.spec.ts (9 tests) 13ms
+api:test: [Nest] 12404  - 10/22/2026, 11:32:45 AM    WARN [test] Object(3) {
+api:test:   dependency: 'redis',
+api:test:   policy: 'socket-publish',
+api:test:   cause: 'Error'
+api:test: }
+api:test: [Nest] 12404  - 10/22/2026, 11:32:45 AM    WARN [test] redis unavailable, continuing without it
+api:test:  ✓ src/infra/socket/redis-io.adapter.spec.ts (2 tests) 7ms
+api:test:  ✓ src/modules/realtime/realtime.service.spec.ts (2 tests) 5ms
+api:test:  ✓ src/app.controller.spec.ts (1 test) 2809ms
+api:test:        ✓ should return "Hello World!"  2807ms
+api:test:  ✓ src/infra/sentry/sentry.spec.ts (3 tests) 5ms
+api:test: 
+api:test:  Test Files  10 passed (10)
+api:test:       Tests  38 passed (38)
+api:test:    Start at  11:32:35
+api:test:    Duration  11.95s (transform 2.08s, setup 0ms, import 64.96s, tests 3.40s, environment 2ms)
+api:test: 
+web:test: 
+web:test: > web@0.1.0 test D:\discord\Ping\apps\web
+web:test: > vitest run
+web:test: 
+web:test: (!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+web:test:   - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+web:test: Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+web:test: 
+web:test:  RUN  v4.1.12 D:/discord/Ping/apps/web
+web:test: 
+web:test:  ✓ src/features/messages/message-cache.test.ts (14 tests) 16ms
+web:test:  ✓ src/features/members/member-cache.test.ts (4 tests) 9ms
+web:test:  ✓ src/features/auth/session.test.ts (10 tests) 8ms
+web:test:  ✓ src/i18n/messages.test.ts (4 tests) 8ms
+web:test:  ✓ src/components/global-error-view.test.ts (3 tests) 24ms
+web:test:  ✓ scripts/bundle-budget.test.mjs (4 tests) 8ms
+web:test:  ✓ src/features/realtime/typing-state.test.ts (1 test) 7ms
+web:test:  ✓ src/features/messages/announce.test.ts (6 tests) 9ms
+web:test:  ✓ src/features/servers/navigation.test.ts (2 tests) 5ms
+web:test:  ✓ scripts/local-certificates.test.mjs (5 tests) 1128ms
+web:test:  ✓ src/features/permissions/ability.test.ts (3 tests) 9ms
+web:test:  ✓ src/lib/sentry.test.ts (3 tests) 10ms
+web:test:  ✓ src/lib/error-reference.test.ts (3 tests) 6ms
+web:test:  ✓ src/features/realtime/session.test.ts (6 tests) 23ms
+web:test:  ✓ src/lib/api-client.test.ts (13 tests) 161ms
+web:test:  ✓ src/features/auth/api.test.ts (5 tests) 2670ms
+web:test:      ✓ chưa có token, refresh thất bại → null (chưa đăng nhập), không gọi /users/me  2644ms
+web:test:  ✓ src/features/messages/message-actions.test.ts (5 tests) 12ms
+web:test:  ✓ src/lib/error-message.test.ts (5 tests) 4ms
+web:test: 
+web:test:  Test Files  18 passed (18)
+web:test:       Tests  96 passed (96)
+web:test:    Start at  11:32:35
+web:test:    Duration  4.32s (transform 4.00s, setup 0ms, import 19.58s, tests 4.12s, environment 3ms)
+web:test: 
+
+ Tasks:    4 successful, 4 total
+Cached:    4 cached, 4 total
+  Time:    35ms >>> FULL TURBO
+

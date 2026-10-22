@@ -1,7 +1,8 @@
 # Sao lưu và khôi phục Postgres
 
-Postgres là nguồn sự thật duy nhất (Redis chỉ giữ cache, bộ đếm, pub/sub: mất Redis không mất dữ liệu). Chỉ cần sao
-lưu Postgres.
+Trong v0.1.0, dữ liệu bền nằm ở Postgres (Redis chỉ giữ cache, bộ đếm, pub/sub: mất Redis không
+mất dữ liệu bền). Runbook này mô tả sao lưu Postgres; khi v0.2.0 có tệp đính kèm, backup phải
+bao phủ cả tệp theo [phạm vi đã duyệt](../adr/0038-release-scope-v0.2.0.md).
 
 Các lệnh dưới đây **đã được chạy thật** trên CSDL dev (561 user, 146 server, 27.860 tin): sao lưu rồi khôi phục vào một
 CSDL mới cho ra số hàng giống hệt (kể cả `_prisma_migrations`). Tên container là của compose dev (`ping-postgres-1`); với
@@ -53,5 +54,11 @@ khôi phục và gọi `/api/v1/ready` (phải 200). Dọn bản thử: `DROP DA
 
 ## Chưa làm
 
-Chưa có lịch sao lưu tự động nào trong repo (phụ thuộc nơi chạy: sẽ thêm cùng `deploy.md` trước `v0.1.0`), và chưa
-thử khôi phục trên bản dữ liệu hàng chục GB.
+Chưa có lịch sao lưu tự động cho staging, retention hay bản sao ngoài máy đã được kiểm chứng.
+Các việc này thuộc v0.2.0 ([ADR-0037](../adr/0037-release-scope-v0.1.0.md)); runbook staging và
+chính sách backup riêng sẽ được chốt theo môi trường thực tế. Mục tiêu đã duyệt là RPO ≤ 24 giờ,
+RTO ≤ 60 phút, backup mã hóa ngoài máy và một lần restore có đối chiếu; đây chưa phải số đo đạt.
+
+Đã diễn tập thêm trên stack production chạy local `pingprod`: so số hàng và fingerprint 10 bảng,
+xem [ADR-0036](../adr/0036-local-deployment.md) và [runbook local](deploy.md). Bằng chứng đó không
+thay thế lần restore trên staging. Chưa thử khôi phục trên bản dữ liệu hàng chục GB.
