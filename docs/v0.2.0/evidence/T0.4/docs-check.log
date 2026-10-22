@@ -1,0 +1,5 @@
+
+> ping@ docs:check D:\discord\Ping
+> node scripts/check-doc-links.mjs
+
+Liên kết tài liệu: không có liên kết tương đối nào hỏng.

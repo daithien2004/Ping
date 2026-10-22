@@ -7,7 +7,8 @@ Claude Code thật. Không ghi hoạt động fixture/temp trong test thành s�
 - Review bằng subagent Claude thực tế: chưa chạy; số phát hiện: chưa đo.
 - ADR mới tới hết T0.2: 1 (ADR-0038 đã được OWNER duyệt).
 - PR remote/thời gian task → PR: chưa có PR, chưa đo.
-- Smoke `/plan-feature`: chưa chạy bằng Claude Code, đang chờ runtime.
+- Smoke `/plan-feature`: chưa chạy bằng Claude Code, OWNER cho hoãn ngày 2026-10-22 vì hiện chỉ
+  yêu cầu triển khai, chưa có tài khoản/gói sử dụng. Không ghi thành một lần smoke đã đạt.
 
 ## Hook block thực tế
 

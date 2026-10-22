@@ -2,7 +2,7 @@
 
 - Ngày: 2026-10-22 (Asia/Saigon); Windows, Node `v24.22.0`, pnpm `10.26.0`.
 - Base commit: `dc28d10` (T0.2), nhánh `chore/t0.3-claude-workflow`.
-- Worktree đang triển khai, chưa commit/merge/push và chưa chạy CI remote.
+- Kết quả thu trên worktree trước commit `765ca79`; chưa merge/push và chưa chạy CI remote.
 - Đầu ra: [hướng dẫn workflow](../../../claude-workflow/README.md), package CLAUDE.md,
   9 skills, 6 agent definitions, 4 commands mới, settings/hooks và mẫu MCP chưa có server.
 
@@ -34,12 +34,16 @@ trên Windows, import Node globals cho lint và an toàn đường dẫn metrics
 Không đổi code app/UI/schema/container nên không chạy lại e2e hay smoke stack. Chưa chạy
 review bằng subagent Claude; [bản nháp PR](pr.md) ghi phần còn chờ và rủi ro.
 
-## Phần còn chờ để hoàn thành
+## Điều chỉnh của OWNER và kiểm chứng hoãn
 
 Chưa tìm thấy `claude` trên PATH của phiên. Cần CLI/runtime hợp lệ để kiểm settings/subagents,
 chạy `/plan-feature DEMO-WORKFLOW` và lưu log thật theo [checklist](../../../claude-workflow/examples.md).
 Không tự cài dịch vụ, dùng key cá nhân hay gọi model trả phí. Chưa kết nối MCP/GitHub AI review,
 không mô tả cấu hình rỗng như kết nối đã chạy.
 
+Ngày 2026-10-22, OWNER xác nhận chưa có kinh phí đăng ký Claude và yêu cầu tạm thời chỉ triển
+khai. Theo điều chỉnh trực tiếp này, T0.3 hoàn thành phần triển khai và kiểm thử local; yêu cầu
+smoke bằng Claude thật được hoãn, không ghi đã đạt tiêu chí runtime gốc. Cần chạy checklist
+khi có runtime/tài khoản hợp lệ. Không gọi model trả phí hoặc mua dịch vụ trong task này.
+
 UI lint tương lai được triển khai ở TF.1–TF.3 cùng ADR UI; không đổi shadcn/token hiện tại ở T0.3.
-Không đánh dấu T0.3 done chỉ vì tests hoặc file cấu hình đã tồn tại.

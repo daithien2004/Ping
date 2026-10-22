@@ -16,7 +16,9 @@ case study và hooks bảo vệ migration/secret, format, typecheck. Lint/test h
 - [ ] MCP và CI AI review: chưa kết nối/bật, không có tài khoản/key hoặc kết quả thực tế.
 - [ ] PR remote và CI/review remote: chưa thực hiện.
 
-[Bằng chứng local và phần chờ](README.md). Đây là bản nháp local, task chưa đủ điều kiện done.
+[Bằng chứng local và phần hoãn](README.md). OWNER điều chỉnh ngày 2026-10-22: hoàn thành phần
+triển khai hiện tại, hoãn smoke Claude thật vì chưa có tài khoản/gói sử dụng. Đây là bản nháp
+local; không coi điều chỉnh phạm vi là log runtime đã đạt.
 
 ## Rủi ro và rollback
 
