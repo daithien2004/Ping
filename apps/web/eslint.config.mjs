@@ -101,5 +101,32 @@ export default defineConfig([
       'jsx-a11y/tabindex-no-positive': 'error',
     },
   },
+  {
+    // ADR-0050: antd chi duoc import trong components/ui (bo Ping*).
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: [
+      'src/components/ui/**',
+      'src/lib/theme/**',
+      'src/providers/**',
+      'src/features/servers/components/server-rail.tsx',
+      'src/features/channels/components/channel-sidebar.tsx',
+      'src/features/channels/components/channel-redirect.tsx',
+    ],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [noUseParams],
+          patterns: [
+            noApp,
+            {
+              group: ['antd', 'antd/*'],
+              message: 'Antd chi duoc import trong components/ui (bo Ping*). (ADR-0050)',
+            },
+          ],
+        },
+      ],
+    },
+  },
   globalIgnores(['.next/**', 'out/**', 'build/**', 'next-env.d.ts', 'node_modules/**']),
 ]);
