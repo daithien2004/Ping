@@ -40,7 +40,6 @@ async function api(pathname, { method = 'POST', body, token } = {}) {
   return res.status === 204 ? undefined : res.json();
 }
 
-const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const captured = [];
 const failed = [];
 
