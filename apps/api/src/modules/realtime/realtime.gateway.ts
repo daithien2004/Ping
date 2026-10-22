@@ -18,6 +18,7 @@ import {
   type ChannelJoinResult,
   type ServerToClientEvents,
 } from '@ping/shared';
+import { ConfigService } from '@nestjs/config';
 import { Logger } from 'nestjs-pino';
 import { Server, Socket } from 'socket.io';
 import { MetricsService } from '../../infra/metrics/metrics.service.js';
@@ -54,6 +55,9 @@ type AuthSocket = Socket & {
 export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
   // Serialize room commands per socket. Promises must never enter serializable socket.data.
   private readonly roomCommands = new WeakMap<AuthSocket, Promise<unknown>>();
+  // Presence batching (ADR-0039): gộp thay đổi presence theo server trong cửa sổ batch.
+  private readonly presencePending = new Map<string, Map<string, 'online' | 'offline'>>();
+  private readonly presenceTimers = new Map<string, NodeJS.Timeout>();
   @WebSocketServer()
   server!: Server<ServerToClientEvents>;
 
@@ -66,6 +70,7 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
     private readonly abilityFactory: AbilityFactory,
     private readonly realtimeService: RealtimeService,
     private readonly metrics: MetricsService,
+    private readonly config: ConfigService,
     logger: Logger,
   ) {
     this.logger = logger;
@@ -315,8 +320,40 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
       where: { userId },
       select: { serverId: true },
     });
+    const batchMs = this.config.get('PRESENCE_BATCH_MS', { infer: true }) ?? 1000;
+    if (batchMs === 0) {
+      for (const membership of memberships) {
+        this.server.to(`server:${membership.serverId}`).emit(ServerEvents.PresenceUpdated, {
+          userId,
+          status,
+        });
+      }
+      return;
+    }
     for (const membership of memberships) {
-      this.server.to(`server:${membership.serverId}`).emit(ServerEvents.PresenceUpdated, {
+      const serverId = membership.serverId;
+      let pending = this.presencePending.get(serverId);
+      if (!pending) {
+        pending = new Map();
+        this.presencePending.set(serverId, pending);
+      }
+      pending.set(userId, status);
+      if (!this.presenceTimers.has(serverId)) {
+        const timer = setTimeout(() => this.flushPresence(serverId), batchMs);
+        this.presenceTimers.set(serverId, timer);
+      }
+    }
+  }
+
+  private flushPresence(serverId: string): void {
+    const pending = this.presencePending.get(serverId);
+    this.presencePending.delete(serverId);
+    const timer = this.presenceTimers.get(serverId);
+    if (timer) clearTimeout(timer);
+    this.presenceTimers.delete(serverId);
+    if (!pending) return;
+    for (const [userId, status] of pending) {
+      this.server.to(`server:${serverId}`).emit(ServerEvents.PresenceUpdated, {
         userId,
         status,
       });
