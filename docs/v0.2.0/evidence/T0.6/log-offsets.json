@@ -1,0 +1,17 @@
+{
+  "sourceCommit": "1bcdcdd",
+  "files": [
+    {
+      "file": "tools/loadtest/data/api-0.log",
+      "initialBytes": 1545929
+    },
+    {
+      "file": "tools/loadtest/data/api-1.log",
+      "initialBytes": 1668868
+    },
+    {
+      "file": "tools/loadtest/data/api-2.log",
+      "initialBytes": 1676910
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+[
+  {
+    "name": "rest",
+    "startedUtc": "2026-10-22T04:58:46.7804878+00:00",
+    "endedUtc": "2026-10-22T04:59:39.3475252+00:00",
+    "exitCode": 0,
+    "script": "tools/loadtest/rest-history.js",
+    "arguments": ["-e", "PORTS=4001,4002,4003", "-e", "RATE=20", "-e", "DURATION=40s"]
+  },
+  {
+    "name": "fanout",
+    "startedUtc": "2026-10-22T04:59:39.5077846+00:00",
+    "endedUtc": "2026-10-22T05:01:10.6424380+00:00",
+    "exitCode": 0,
+    "script": "tools/loadtest/socket-fanout.js",
+    "arguments": [
+      "-e",
+      "PORTS=4001,4002,4003",
+      "-e",
+      "LISTENERS=500",
+      "-e",
+      "SEND_RATE=20",
+      "-e",
+      "SENDERS=500",
+      "-e",
+      "DURATION=60s"
+    ]
+  },
+  {
+    "name": "reconnect",
+    "startedUtc": "2026-10-22T05:01:10.6565619+00:00",
+    "endedUtc": "2026-10-22T05:02:21.8688715+00:00",
+    "exitCode": 0,
+    "script": "tools/loadtest/reconnect-storm.js",
+    "arguments": [
+      "-e",
+      "PORTS=4001,4002,4003",
+      "-e",
+      "SOCKETS=500",
+      "-e",
+      "ROUNDS=3",
+      "-e",
+      "HOLD_S=15"
+    ]
+  }
+]
