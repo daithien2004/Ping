@@ -29,7 +29,9 @@ Không gọi headless/model hoặc cài dịch vụ trả phí khi chưa có tà
 
 Ví dụ prompt và tiêu chí smoke: [examples.md](examples.md).
 Theo dõi phần đã kiểm và phần còn chờ trong [evidence T0.3](../v0.2.0/evidence/T0.3/README.md).
-Chưa có log thật của Claude Code thì T0.3 chưa done, dù test Node đã xanh.
+OWNER đã điều chỉnh phạm vi ngày 2026-10-22: hiện chỉ triển khai và kiểm thử local, hoãn smoke
+Claude thật vì chưa có tài khoản/gói sử dụng. T0.3 được đóng cho phần triển khai theo điều chỉnh
+này; smoke vẫn chưa chạy và phải thực hiện trước khi tuyên bố tương thích runtime Claude.
 
 ## Hook và giới hạn
 

@@ -1,5 +1,7 @@
 # Tài liệu Ping
 
+v0.2.0: [điểm vào công việc](v0.2.0/plan.md), [trạng thái](v0.2.0/status.md).
+
 ## Đọc theo nhu cầu
 
 | Bạn muốn                             | Bắt đầu ở đâu                                                                               |
