@@ -12,6 +12,8 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnAppli
     super({
       adapter: new PrismaPg({
         connectionString: config.getOrThrow('DATABASE_URL', { infer: true }),
+        // Kích thước pool cho instance này (T1.1): instance × pool <= max_connections + dự phòng.
+        max: config.getOrThrow('PG_POOL_MAX', { infer: true }),
         // Chờ lấy kết nối từ pool / thiết lập kết nối tối đa 5s, rồi báo lỗi (→ 503) thay vì treo.
         connectionTimeoutMillis: 5_000,
         // statement_timeout: Postgres tự hủy câu lệnh; query_timeout: client bỏ chờ nếu mạng

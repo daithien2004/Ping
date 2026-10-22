@@ -20,6 +20,9 @@ export const envSchema = z.object({
   // Giới hạn thời gian cho lời gọi hạ tầng (ADR-0026): không request nào được treo vô hạn.
   // Postgres: áp cho statement_timeout (phía server) và query_timeout (phía client pg).
   PG_QUERY_TIMEOUT_MS: z.coerce.number().int().min(100).default(10_000),
+  // S��` k���t n��`i t��?i �`a trong pool c��a `pg` cho m��Tt instance API (ADR-0033/T1.1).
+  // Ngân sA�ch: instance A- pool <= max_connections c��a Postgres + d��� phA�ng; m��cc �`��<nh 10.
+  PG_POOL_MAX: z.coerce.number().int().min(1).max(100).default(10),
   // Redis: mỗi lệnh. Ngắn vì Redis chỉ giữ cache/rate limit/presence, chậm hơn mức này thì
   // bỏ qua (fail-open) còn rẻ hơn chờ.
   REDIS_COMMAND_TIMEOUT_MS: z.coerce.number().int().min(50).default(1_000),
