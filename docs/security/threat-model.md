@@ -4,7 +4,10 @@ Tài liệu ngắn theo hướng dẫn mục 16.5. Mỗi kịch bản trỏ tớ
 được) và rủi ro còn lại. Quyết định chi tiết: [ADR-0027](../adr/0027-web-and-api-hardening.md),
 [ADR-0026](../adr/0026-failure-modes-and-graceful-shutdown.md), [ADR-0007](../adr/0007-auth-token-model.md).
 
-> Trạng thái: bản nháp chờ chủ dự án đọc và duyệt (tiêu chí hoàn thành của 16.5).
+> Trạng thái: chủ dự án đã xác nhận duyệt ngày 2026-10-21, theo
+> [nghiệm thu v0.1.0](../acceptance/v0.1.0.md). Đây là xác nhận của chủ dự án, không phải audit
+> độc lập. Phạm vi này phản ánh v0.1.0; các bề mặt mới của v0.2.0 phải được bổ sung và kiểm chứng
+> khi triển khai, không mặc nhiên được bao phủ bởi lần duyệt cũ.
 
 ## 1. Tài sản cần bảo vệ
 

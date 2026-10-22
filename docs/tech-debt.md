@@ -2,7 +2,10 @@
 
 Những gì đã biết và **cố ý chưa làm**, kèm bằng chứng và điều kiện nên làm. Ưu tiên: **P1** làm trước khi có tải thật hoặc
 trước lần triển khai đầu; **P2** khi có số đo hoặc sự cố cho thấy cần; **P3** dọn dẹp, làm khi tiện.
-Cập nhật trạng thái: 2026-10-21, sau pha Nginx (ADR-0035). P1 là việc cần xử lý hoặc đánh giá theo phạm vi tải trước triển khai; không phải tất cả đã được giải quyết bởi kiểm tra local.
+Cập nhật tài liệu: 2026-10-22 (T0.2), đối chiếu nghiệm thu v0.1.0 và phạm vi
+[v0.2.0](adr/0038-release-scope-v0.2.0.md). Số đo hiệu năng vẫn là các lần kiểm lịch sử, không
+phải kết quả chạy lại trong task tài liệu này. P1 là việc cần xử lý hoặc đánh giá theo phạm vi
+tải trước triển khai; không phải tất cả đã được giải quyết bởi kiểm tra local.
 
 Nguồn số liệu: [báo cáo hiệu năng](perf/2026-10-20-baseline.md) và [bản đo lại sau sửa presence](perf/2026-10-20-presence-fix.md).
 
@@ -14,7 +17,13 @@ Nguồn số liệu: [báo cáo hiệu năng](perf/2026-10-20-baseline.md) và [
 | **Pool Postgres cố định 10 kết nối/instance**                                  | Cạn pool lúc nhiều người nối cùng lúc: "timeout exceeded when trying to connect" (4.902 lần), 503 khi một instance quá tải                                                                                                                                                                                                                    | Biến `PG_POOL_MAX`; nhớ `số instance × pool < max_connections`; PgBouncer hoặc pool của managed DB khi nhiều instance                              | Không (cấu hình) |
 | **Chưa có runbook/backup cho nơi chạy thật (staging)**                         | Đã có `docs/runbook/deploy.md` cho stack local ([ADR-0036](adr/0036-local-deployment.md)); còn thiếu bản cho staging: chọn nơi chạy, tên miền, registry (`ghcr.io`), bước push image trong CI, cron `pg_dump` ra ngoài máy; mở cổng `METRICS_PORT` chỉ trong mạng nội bộ. **Chuyển v0.2.0** theo [ADR-0037](adr/0037-release-scope-v0.1.0.md) | Chọn nơi chạy, tên miền, registry (`ghcr.io`), bước push image trong CI, cron `pg_dump` ra ngoài máy; mở cổng `METRICS_PORT` chỉ trong mạng nội bộ | Có (khi chọn)    |
 | **Kiểm Sentry ở staging và dựng Prometheus/Alertmanager nạp `ops/alerts.yml`** | Sentry thật API/web đã kiểm tại local ngày 2026-10-21; chưa đối chiếu mã UI trên staging; Prometheus/Alertmanager và nơi nhận cảnh báo chưa dựng. **Chuyển v0.2.0** (ADR-0037)                                                                                                                                                                | Cấu hình DSN của staging, gây lỗi 500 và kiểm nơi nhận cảnh báo; đóng tiêu chí "requestId → log → Sentry"                                          | Không            |
-| **Bật branch protection** (CI bắt buộc, danh sách job ở `CONTRIBUTING.md`)     | Chỉ chủ repo làm được                                                                                                                                                                                                                                                                                                                         | Settings → Branches/Rules trên GitHub                                                                                                              | Không            |
+
+## Đã xác nhận
+
+Branch protection của `main` đã bật theo [nghiệm thu v0.1.0](acceptance/v0.1.0.md), ghi nhận
+ngày 2026-10-21. Không còn là việc P1 “bật lần đầu”. T0.2 chỉ đồng bộ tài liệu, chưa truy vấn
+lại GitHub Settings và không thay quy tắc; khi đổi cấu hình, OWNER đối chiếu các check bắt buộc
+trong [CONTRIBUTING](../CONTRIBUTING.md).
 
 ## P2
 

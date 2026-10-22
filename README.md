@@ -102,7 +102,13 @@ tools/loadtest/      kịch bản k6 (xem docs/perf/README.md)
 Có sẵn Dockerfile cho api và web, stack production mẫu (`docker-compose.prod.example.yml`: Nginx, api, web, Postgres,
 Redis, migration chạy riêng), [cấu hình HTTP/HTTPS](ops/nginx/README.md) và CI
 ([ADR-0035](docs/adr/0035-nginx-reverse-proxy.md)). Chọn nơi chạy cụ thể và runbook
-triển khai sẽ làm trước phiên bản `v0.1.0`.
+triển khai staging thuộc phiên bản `v0.2.0`, theo
+[ADR-0037](docs/adr/0037-release-scope-v0.1.0.md) và
+[phạm vi v0.2.0 đã duyệt](docs/adr/0038-release-scope-v0.2.0.md).
+
+`v0.1.0` là cột mốc **local-only**, đã có diễn tập deploy/backup/restore trên Docker local
+([ADR-0036](docs/adr/0036-local-deployment.md)); đây chưa phải bằng chứng staging công khai.
+Theo dõi công việc và bằng chứng mới tại [trạng thái v0.2.0](docs/v0.2.0/status.md).
 
 ## Phiên bản công cụ
 
