@@ -97,6 +97,11 @@ mời, tìm nhanh không kết quả, 404, bản sáng).
   trình duyệt dùng lại socket keep-alive đã chết → `fetch` reject → `ApiError(0, SERVICE_UNAVAILABLE)`
   ném ra khỏi `useMe()` (suspense query) → rơi vào màn `global-error`. Đã sửa theo ba lớp: retry GET
   một lần, thêm ranh giới lỗi `(auth)`, và e2e chờ health endpoint trước khi chạy.
+- **API restart giữa lúc chạy e2e** (`ECONNREFUSED ::1:4000` ở test gọi API trực tiếp): script seed
+  của `global-setup` có thể chạm file mà API đang watch → API restart → test gặp connection refused.
+  Đã thêm lần chờ health **sau khi seed** trong `global-setup.ts`. Ngoài ra nên bật API xong chờ
+  ≥ 60–75 giây rồi mới chạy e2e, và không chạy `turbo typecheck/build` giữa lúc bật API và lúc
+  chạy test (build lại `packages/shared/dist` cũng làm API restart).
 - **Hook pre-commit lint yếu hơn `pnpm --filter web lint`**: lint-staged chạy
   `eslint --config apps/web/eslint.config.mjs --fix` **từ thư mục gốc**, nên các khối rule giới hạn
   theo `files: ['src/**/*.tsx']` không khớp (basePath lệch) → `jsx-a11y/no-autofocus` không bật, và
