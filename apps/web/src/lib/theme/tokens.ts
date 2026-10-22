@@ -26,10 +26,14 @@ export const radius = {
   full: 9999,
 } as const;
 
+/**
+ * Thời lượng chuyển động (ms). Trần 200 ms cho hiệu ứng vào/ra của vi tương tác (TF.9): antd dùng
+ * `slow` cho modal/drawer, nên đặt bằng `normal` thay vì để 320 ms như mặc định.
+ */
 export const motion = {
   fast: 120,
   normal: 200,
-  slow: 320,
+  slow: 200,
 } as const;
 
 export const zIndex = {

@@ -1,7 +1,7 @@
 'use client';
 
 import { createMessageSchema } from '@ping/shared';
-import { useState, type KeyboardEvent } from 'react';
+import { useState, type KeyboardEvent, type RefObject } from 'react';
 import { useTranslations } from 'use-intl';
 import { PingTextArea } from '@/components/ui/ping-textarea';
 import { useRealtime } from '@/features/realtime/context';
@@ -15,10 +15,13 @@ export function MessageComposer({
   channelId,
   channelName,
   onSend,
+  textareaRef,
 }: {
   channelId: string;
   channelName: string;
   onSend: (content: string, nonce: string) => void;
+  /** Ô nhập để empty state bấm "Gửi tin đầu tiên" đưa con trỏ về đây (TF.9). */
+  textareaRef?: RefObject<HTMLTextAreaElement | null>;
 }) {
   const realtime = useRealtime();
   const { ability, ready } = useServerAbility();
@@ -48,6 +51,7 @@ export function MessageComposer({
       {canSend ? (
         <>
           <PingTextArea
+            ref={textareaRef}
             disabled={!ready}
             value={draft}
             onChange={(event) => {

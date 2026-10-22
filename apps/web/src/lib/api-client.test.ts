@@ -209,4 +209,32 @@ describe('api-client', () => {
     fetchMock.mockRejectedValue(new TypeError('Failed to fetch'));
     await expect(api.get('/health')).rejects.toMatchObject({ status: 0 });
   });
+
+  it('GET lỗi mạng thì thử lại một lần (socket keep-alive cũ sau khi API restart)', async () => {
+    const { api } = await load();
+    fetchMock
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockResolvedValueOnce(json(200, { ok: true }));
+
+    await expect(api.get('/users/me')).resolves.toEqual({ ok: true });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('GET lỗi mạng hai lần thì báo lỗi mạng, không thử lần ba', async () => {
+    const { api } = await load();
+    fetchMock.mockRejectedValue(new TypeError('Failed to fetch'));
+
+    await expect(api.get('/users/me')).rejects.toMatchObject({ status: 0 });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('POST không thử lại khi lỗi mạng (refresh token xoay vòng, login không lặp lại)', async () => {
+    const { api } = await load();
+    fetchMock.mockRejectedValue(new TypeError('Failed to fetch'));
+
+    await expect(api.post('/auth/login', { email: 'a', password: 'b' })).rejects.toMatchObject({
+      status: 0,
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
 });

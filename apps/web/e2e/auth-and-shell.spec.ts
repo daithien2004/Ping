@@ -43,6 +43,12 @@ test('register, sign out without ?next=, sign in, create server and channel', as
     );
   });
 
+  await test.step('sao chép mã mời → toast xác nhận (quy ước toast của TF.9)', async () => {
+    await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+    await page.getByRole('button', { name: 'Sao chép mã mời' }).click();
+    await expect(page.getByText('Đã sao chép mã mời.')).toBeVisible();
+  });
+
   await test.step('tự đăng xuất → /login KHÔNG kèm ?next= (ADR-0019)', async () => {
     await page.getByRole('button', { name: 'Thoát' }).click();
     await expect(page).toHaveURL(/\/login$/);

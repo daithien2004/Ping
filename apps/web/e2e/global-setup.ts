@@ -4,8 +4,32 @@ import path from 'node:path';
 import type { AuthResponse, ChannelDto, ServerDetail } from '@ping/shared';
 
 export const API = 'http://localhost:4000/api/v1';
+const HEALTH = 'http://localhost:4000/api/v1/health';
 // apps/web là CommonJS: Playwright biên dịch file này sang CJS nên có __dirname, không có import.meta.
 const repoRoot = path.resolve(__dirname, '../../..');
+
+/**
+ * Chờ API sẵn sàng trước khi seed. API chạy ở chế độ watch nên có thể đang khởi động lại
+ * (sửa mã nguồn → nest watch restart) lúc bắt đầu run; không chờ thì test fail với lỗi mạng
+ * khó hiểu thay vì thông báo rõ ràng.
+ */
+async function waitForApi(timeoutMs = 30_000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  let lastError = 'chưa phản hồi';
+  while (Date.now() < deadline) {
+    try {
+      const response = await fetch(HEALTH);
+      if (response.ok) return;
+      lastError = `HTTP ${response.status}`;
+    } catch (error) {
+      lastError = error instanceof Error ? error.message : String(error);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+  throw new Error(
+    `API chưa sẵn sàng tại ${HEALTH} (${lastError}). Hãy bật API (pnpm --filter api dev) rồi chạy lại.`,
+  );
+}
 
 /**
  * Dữ liệu riêng cho mỗi lần chạy (không đụng dữ liệu dev): một user mới, một server, channel
@@ -13,6 +37,8 @@ const repoRoot = path.resolve(__dirname, '../../..');
  * worker).
  */
 export default async function globalSetup() {
+  await waitForApi();
+
   const id = randomUUID().slice(0, 8);
   const email = `e2e-${id}@example.test`;
   const password = 'e2e-password';
@@ -36,6 +62,10 @@ export default async function globalSetup() {
   if (seed.status !== 0) {
     throw new Error('seed-messages failed');
   }
+
+  // Script seed có thể chạm vào file mà API đang watch (ví dụ sinh lại Prisma client) → nest
+  // restart API giữa chừng, test gặp ECONNREFUSED. Chờ API sẵn sàng lại trước khi chạy test.
+  await waitForApi(60_000);
 
   process.env.E2E_EMAIL = email;
   process.env.E2E_PASSWORD = password;

@@ -8,7 +8,7 @@ import {
   type JoinServerInput,
 } from '@ping/shared';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'use-intl';
 import { PingButton } from '@/components/ui/ping-button';
 import { PingForm, PingFormItem, usePingForm, zodFormRules } from '@/components/ui/ping-form';
@@ -67,6 +67,14 @@ function OnboardingContent({
   const [joinForm] = usePingForm<JoinServerInput>();
   const createRules = zodFormRules(createServerSchema, () => createForm.getFieldsValue());
   const joinRules = zodFormRules(joinServerSchema, () => joinForm.getFieldsValue());
+  // Ô nhập đầu tiên của bước chi tiết (chỉ một trong hai nhánh được render).
+  const firstFieldRef = useRef<HTMLInputElement>(null);
+
+  // Bước chi tiết mới sinh ra ô nhập nên phải tự đưa con trỏ vào (dialog đã mở ở bước 1).
+  // Dùng focus() thay cho autoFocus để không vi phạm jsx-a11y/no-autofocus (ADR-0029).
+  useEffect(() => {
+    if (step === 1) firstFieldRef.current?.focus();
+  }, [step, mode]);
 
   function close() {
     createMutation.reset();
@@ -119,8 +127,7 @@ function OnboardingContent({
           }}
         >
           <PingFormItem label={t('name')} name="name" rules={createRules.name}>
-            { }
-            <PingInput autoComplete="off" autoFocus />
+            <PingInput ref={firstFieldRef} autoComplete="off" />
           </PingFormItem>
           {createMutation.isError && (
             <p role="alert" className="text-sm text-destructive">
@@ -152,8 +159,7 @@ function OnboardingContent({
           }}
         >
           <PingFormItem label={t('inviteCode')} name="inviteCode" rules={joinRules.inviteCode}>
-            { }
-            <PingInput autoComplete="off" autoFocus />
+            <PingInput ref={firstFieldRef} autoComplete="off" />
           </PingFormItem>
           {joinMutation.isError && (
             <p role="alert" className="text-sm text-destructive">
