@@ -106,6 +106,10 @@
 
 ## Cách làm việc
 
+- Workflow Claude Code: [hướng dẫn và giới hạn](docs/claude-workflow/README.md).
+  Đọc thêm `apps/api/CLAUDE.md` hoặc `apps/web/CLAUDE.md` khi làm trong package tương ứng.
+  Trạng thái task ở `docs/v0.2.0/status.md`; chỉ cập nhật cùng evidence sau task theo plan.
+
 - Với thay đổi lớn: đề xuất kế hoạch ngắn trước, chờ xác nhận rồi mới code.
 - Trước khi dùng API của thư viện (Prisma, Next.js, NestJS, TanStack Query),
   kiểm tra docs đúng version đang cài trong package.json.

@@ -1,0 +1,35 @@
+✔ ordinary project source remains writable without querying main (3.1047ms)
+✔ protected write is denied: .env (1.2227ms)
+✔ protected write is denied: .env.example (1.0198ms)
+✔ protected write is denied: apps/web/.env.local (1.1993ms)
+✔ protected write is denied: ops/server.pem (1.002ms)
+✔ protected write is denied: ops/SERVER.KEY (0.8672ms)
+✔ protected write is denied: .ssh/id_ed25519 (1.5873ms)
+✔ protected write is denied: ../outside.ts (0.9471ms)
+✔ protected write is denied: C:\Users\THIEN'PC\AppData\Local\Temp\outside.ts (0.905ms)
+✔ every file in a migration directory committed on main is immutable (3.129ms)
+✔ new migration and expand/contract migration remain writable (1.1593ms)
+✔ migration write fails closed if main cannot be inspected (1.1702ms)
+✔ migration lock committed on main cannot be edited (1.0663ms)
+✔ junction/symlink cannot redirect a write outside the workspace (2.9026ms)
+✔ a sensitive file reached through an alias stays protected (2.2293ms)
+✔ invalid or missing tool file paths fail closed (0.1152ms)
+✔ test-only agent can write test directories but cannot edit source (3.0925ms)
+✔ doc-only agent cannot edit files outside docs (2.0284ms)
+✔ Stop selects affected packages and shared dependents (1.0502ms)
+✔ existing source file content never needs to be read by the policy (1.6328ms)
+✔ CLI returns deny JSON and records only a reason, without tool content (61.6549ms)
+✔ CLI allowed edit leaves the normal permission system in control (55.4794ms)
+✔ CLI invalid JSON fails closed without echoing input (58.2775ms)
+✔ Stop recursion guard does not run Git or block again (54.0107ms)
+✔ PostToolUse formats the changed file through local Prettier (213.2174ms)
+✔ Stop runs typecheck for the affected package (exit 0) (448.785ms)
+✔ Stop runs typecheck for the affected package (exit 1) (284.0361ms)
+ℹ tests 27
+ℹ suites 0
+ℹ pass 27
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1305.3676
