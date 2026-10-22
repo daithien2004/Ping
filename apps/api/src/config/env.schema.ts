@@ -23,6 +23,8 @@ export const envSchema = z.object({
   // S��` k���t n��`i t��?i �`a trong pool c��a `pg` cho m��Tt instance API (ADR-0033/T1.1).
   // Ngân sA�ch: instance A- pool <= max_connections c��a Postgres + d��� phA�ng; m��cc �`��<nh 10.
   PG_POOL_MAX: z.coerce.number().int().min(1).max(100).default(10),
+  // Cửa sổ gộp presence (ms) (ADR-0039, T1.2). 0 = phát ngay (không gộp).
+  PRESENCE_BATCH_MS: z.coerce.number().int().min(0).max(5_000).default(1_000),
   // Redis: mỗi lệnh. Ngắn vì Redis chỉ giữ cache/rate limit/presence, chậm hơn mức này thì
   // bỏ qua (fail-open) còn rẻ hơn chờ.
   REDIS_COMMAND_TIMEOUT_MS: z.coerce.number().int().min(50).default(1_000),
