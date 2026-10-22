@@ -31,6 +31,16 @@ export class MetricsService implements OnModuleDestroy {
     registers: [this.registry],
   });
   private server: Server | undefined;
+  readonly outboxPending = new Gauge({
+    name: 'outbox_pending',
+    help: 'So event outbox chua phat',
+    registers: [this.registry],
+  });
+  readonly outboxLagSeconds = new Gauge({
+    name: 'outbox_lag_seconds',
+    help: 'Do tre cua event outbox cu nhat (giay)',
+    registers: [this.registry],
+  });
 
   constructor(
     private readonly prisma: PrismaService,
