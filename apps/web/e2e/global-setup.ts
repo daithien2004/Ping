@@ -63,6 +63,10 @@ export default async function globalSetup() {
     throw new Error('seed-messages failed');
   }
 
+  // Script seed có thể chạm vào file mà API đang watch (ví dụ sinh lại Prisma client) → nest
+  // restart API giữa chừng, test gặp ECONNREFUSED. Chờ API sẵn sàng lại trước khi chạy test.
+  await waitForApi(60_000);
+
   process.env.E2E_EMAIL = email;
   process.env.E2E_PASSWORD = password;
   process.env.E2E_SERVER_ID = server.id;
