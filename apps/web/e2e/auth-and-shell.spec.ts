@@ -23,8 +23,10 @@ test('register, sign out without ?next=, sign in, create server and channel', as
 
   await test.step('tạo server → vào #general', async () => {
     await page.getByRole('button', { name: 'Tạo server' }).first().click();
+    // Wizard onboarding: nút mở wizard và nút gửi trong wizard trùng tên → bám theo dialog.
+    const wizard = page.getByRole('dialog');
     await field(page, 'Tên server').fill(`UI ${id}`);
-    await page.getByRole('button', { name: 'Tạo', exact: true }).click();
+    await wizard.getByRole('button', { name: 'Tạo server' }).click();
     await expect(page.getByRole('link', { name: '# general' })).toHaveAttribute(
       'aria-current',
       'page',

@@ -119,7 +119,8 @@ function OnboardingContent({
           }}
         >
           <PingFormItem label={t('name')} name="name" rules={createRules.name}>
-            <PingInput autoComplete="off" />
+            { }
+            <PingInput autoComplete="off" autoFocus />
           </PingFormItem>
           {createMutation.isError && (
             <p role="alert" className="text-sm text-destructive">
@@ -151,7 +152,8 @@ function OnboardingContent({
           }}
         >
           <PingFormItem label={t('inviteCode')} name="inviteCode" rules={joinRules.inviteCode}>
-            <PingInput autoComplete="off" />
+            { }
+            <PingInput autoComplete="off" autoFocus />
           </PingFormItem>
           {joinMutation.isError && (
             <p role="alert" className="text-sm text-destructive">

@@ -20,6 +20,9 @@ import { useMe, useLogin } from '../hooks';
 import { safeRedirectPath } from '../session';
 import { useErrorMessage } from '@/lib/error-message';
 
+/** Tên trường cố định của form (dùng khi xoá lúc trang bị ẩn). */
+const LOGIN_FIELDS = ['email', 'password'] as const;
+
 export function LoginForm() {
   use(browser('Kiểm tra phiên đăng nhập hiện có trong trình duyệt.'));
   const router = useRouter();
@@ -27,7 +30,7 @@ export function LoginForm() {
   const { data: me } = useMe();
   const loginMutation = useLogin();
   const [form] = usePingForm<LoginInput>();
-  useResetOnHide(form);
+  const containerRef = useResetOnHide(form, LOGIN_FIELDS);
   const t = useTranslations('auth');
   const errorMessage = useErrorMessage();
   // Cùng schema với API (packages/shared): lỗi định dạng báo ngay, không tốn một request.
@@ -41,43 +44,45 @@ export function LoginForm() {
   }, [me, next, router]);
 
   return (
-    <PingForm
-      form={form}
-      layout="vertical"
-      noValidate
-      className="flex w-full max-w-sm flex-col"
-      onFinish={(values) => {
-        const parsed = loginSchema.safeParse(values);
-        if (!parsed.success) return;
-        loginMutation.mutate(parsed.data);
-      }}
-    >
-      <h1 className="mb-2 text-2xl font-semibold">{t('loginTitle')}</h1>
-      <PingFormItem label={t('email')} name="email" rules={rules.email}>
-        <PingInput type="email" autoComplete="email" />
-      </PingFormItem>
-      <PingFormItem label={t('password')} name="password" rules={rules.password}>
-        <PingPasswordInput autoComplete="current-password" />
-      </PingFormItem>
-      {loginMutation.isError && (
-        <p role="alert" className="text-sm text-destructive">
-          {errorMessage(loginMutation.error, {
-            [ErrorCodes.UNAUTHORIZED]: t('wrongCredentials'),
-          })}
+    <div ref={containerRef} className="flex w-full max-w-sm flex-col">
+      <PingForm
+        form={form}
+        layout="vertical"
+        noValidate
+        className="flex flex-col"
+        onFinish={(values) => {
+          const parsed = loginSchema.safeParse(values);
+          if (!parsed.success) return;
+          loginMutation.mutate(parsed.data);
+        }}
+      >
+        <h1 className="mb-2 text-2xl font-semibold">{t('loginTitle')}</h1>
+        <PingFormItem label={t('email')} name="email" rules={rules.email}>
+          <PingInput type="email" autoComplete="email" />
+        </PingFormItem>
+        <PingFormItem label={t('password')} name="password" rules={rules.password}>
+          <PingPasswordInput autoComplete="current-password" />
+        </PingFormItem>
+        {loginMutation.isError && (
+          <p role="alert" className="text-sm text-destructive">
+            {errorMessage(loginMutation.error, {
+              [ErrorCodes.UNAUTHORIZED]: t('wrongCredentials'),
+            })}
+          </p>
+        )}
+        <PingButton htmlType="submit" size="lg" block loading={loginMutation.isPending}>
+          {t('login')}
+        </PingButton>
+        <p className="mt-2 text-sm">
+          {t('noAccount')}{' '}
+          <Link
+            href={`/register?next=${encodeURIComponent(next)}`}
+            className="font-medium text-link underline-offset-4 hover:underline"
+          >
+            {t('register')}
+          </Link>
         </p>
-      )}
-      <PingButton htmlType="submit" size="lg" block loading={loginMutation.isPending}>
-        {t('login')}
-      </PingButton>
-      <p className="mt-2 text-sm">
-        {t('noAccount')}{' '}
-        <Link
-          href={`/register?next=${encodeURIComponent(next)}`}
-          className="font-medium text-link underline-offset-4 hover:underline"
-        >
-          {t('register')}
-        </Link>
-      </p>
-    </PingForm>
+      </PingForm>
+    </div>
   );
 }

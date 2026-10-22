@@ -87,7 +87,7 @@ test('app shell with a channel, the message menu and the create-server dialog, l
     await page.keyboard.press('Escape');
 
     await page.getByRole('button', { name: 'Tạo server' }).click();
-    await expect(page.getByRole('dialog', { name: 'Tạo server' })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Bắt đầu với Ping' })).toBeVisible();
     await scan(page, `create-server dialog ${colorScheme}`);
     await page.keyboard.press('Escape');
     await expect(page.getByRole('dialog')).toHaveCount(0);

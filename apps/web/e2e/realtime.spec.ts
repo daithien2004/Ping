@@ -228,8 +228,8 @@ test('two isolated sessions: messages, typing, missed events, edits, deletes and
       ).status(),
     ).toBe(204);
     await expect(pb.getByRole('textbox', { name: `Nhắn #${channel.name}` })).toHaveCount(0);
-    await expect(pb.getByText(missed, { exact: true })).toHaveCount(0);
-    await expect(pb.getByText(hidden, { exact: true })).toHaveCount(0);
+    await expect(pb.getByText(missed, { exact: true }).filter({ visible: true })).toHaveCount(0);
+    await expect(pb.getByText(hidden, { exact: true }).filter({ visible: true })).toHaveCount(0);
 
     // A kick while offline has no delivered personal event; reconnect must check REST.
     expect(

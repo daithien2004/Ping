@@ -19,7 +19,7 @@ test('keyboard: dialog focus in and back, message menu', async ({ page }) => {
   await createButton.focus();
   await page.keyboard.press('Enter');
 
-  const dialog = page.getByRole('dialog', { name: 'Tạo server' });
+  const dialog = page.getByRole('dialog', { name: 'Bắt đầu với Ping' });
   await expect(dialog).toBeVisible();
   await expect(dialog.getByRole('textbox')).toBeFocused();
 

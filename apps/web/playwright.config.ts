@@ -5,6 +5,9 @@ import { defineConfig, devices } from '@playwright/test';
  * Đang có dev server thì dùng lại, chưa có thì Playwright tự bật (cùng lệnh .claude/launch.json).
  * KHÔNG nằm trong `pnpm test` vì cần hạ tầng.
  */
+/** Cổng web: mặc định 3000, đổi bằng WEB_PORT khi máy đang bận cổng 3000 (app khác). */
+const webPort = Number(process.env.WEB_PORT ?? 3000);
+
 export default defineConfig({
   testDir: './e2e',
   globalSetup: './e2e/global-setup.ts',
@@ -15,7 +18,7 @@ export default defineConfig({
   // Trên CI thêm reporter `github`: test hỏng hiện thành annotation đọc được ngay trên trang chạy.
   reporter: process.env.CI ? [['list'], ['github']] : 'list',
   use: {
-    baseURL: 'http://localhost:3000',
+    baseURL: `http://localhost:${webPort}`,
     trace: 'retain-on-failure',
     ...devices['Desktop Chrome'],
   },
@@ -30,9 +33,11 @@ export default defineConfig({
     },
     {
       command: 'pnpm --filter web dev',
-      url: 'http://localhost:3000',
+      url: `http://localhost:${webPort}`,
       reuseExistingServer: true,
       timeout: 120_000,
+      // `next dev` đọc PORT; truyền kèm để không đụng cổng của app khác trên máy.
+      env: { ...process.env, PORT: String(webPort) },
       gracefulShutdown: { signal: 'SIGTERM', timeout: 5_000 },
     },
   ],
