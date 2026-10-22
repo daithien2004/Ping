@@ -5,9 +5,11 @@
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",
-    "lint": "turbo run lint",
+    "lint": "pnpm lint:workflow && turbo run lint",
+    "lint:workflow": "eslint --config packages/eslint-config/base.js .claude/hooks/*.mjs",
     "typecheck": "turbo run typecheck",
-    "test": "turbo run test",
+    "test": "pnpm test:workflow && turbo run test",
+    "test:workflow": "node --test .claude/hooks/workflow.test.mjs",
     "bootstrap": "node scripts/bootstrap.mjs",
     "docs:check": "node scripts/check-doc-links.mjs",
     "db:migrate": "pnpm --filter api prisma migrate dev",

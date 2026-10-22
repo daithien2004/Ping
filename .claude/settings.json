@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(pnpm format:check)",
+      "Bash(pnpm docs:check)",
+      "Bash(pnpm lint)",
+      "Bash(pnpm typecheck)",
+      "Bash(pnpm test)",
+      "Bash(pnpm test:workflow)",
+      "Bash(pnpm build)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.prod)",
+      "Read(./apps/**/.env.local)",
+      "Read(./**/*.pem)",
+      "Read(./**/*.key)",
+      "Edit(./**/.env*)",
+      "Write(./**/.env*)",
+      "Edit(./**/*.pem)",
+      "Write(./**/*.pem)",
+      "Edit(./**/*.key)",
+      "Write(./**/*.key)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/workflow.mjs\" pre",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/workflow.mjs\" post",
+            "timeout": 40
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/workflow.mjs\" stop",
+            "timeout": 120
+          }
+        ]
+      }
+    ]
+  }
+}
