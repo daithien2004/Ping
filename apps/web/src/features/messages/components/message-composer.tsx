@@ -3,13 +3,13 @@
 import { createMessageSchema } from '@ping/shared';
 import { useState, type KeyboardEvent } from 'react';
 import { useTranslations } from 'use-intl';
-import { Textarea } from '@/components/ui/textarea';
+import { PingTextArea } from '@/components/ui/ping-textarea';
 import { useRealtime } from '@/features/realtime/context';
 import { useServerAbility } from '@/features/permissions/context';
 
 /**
- * Ô soạn tin. Giữ `draft` ở ĐÂY (không ở MessagePane): mỗi phím gõ chỉ render lại ô soạn, không
- * render lại cả danh sách tin ảo hóa. <Activity> vẫn giữ nháp khi chuyển channel.
+ * Ô soạn tin. Giữ `draft` ở đây (không ở MessagePane): mỗi phần chỉ render lại ô soạn, không
+ * render lại cả danh sách tin nhắn. <Activity> vẫn giữ nháp khi chuyển channel.
  */
 export function MessageComposer({
   channelId,
@@ -26,6 +26,7 @@ export function MessageComposer({
   const [draft, setDraft] = useState('');
   const t = useTranslations('messages');
   const label = t('composerLabel', { channel: channelName });
+  const nearLimit = draft.length >= 3600;
 
   function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (!ready || !canSend) return;
@@ -45,20 +46,27 @@ export function MessageComposer({
   return (
     <div className="shrink-0 px-4 pb-4">
       {canSend ? (
-        <Textarea
-          disabled={!ready}
-          value={draft}
-          onChange={(event) => {
-            setDraft(event.target.value);
-            if (ready && event.target.value.trim()) realtime.type(channelId);
-          }}
-          onKeyDown={onKeyDown}
-          rows={1}
-          maxLength={4000}
-          placeholder={label}
-          aria-label={label}
-          className="max-h-48 min-h-11 resize-none rounded-lg border-0 bg-muted px-4 py-3 shadow-none dark:bg-muted"
-        />
+        <>
+          <PingTextArea
+            disabled={!ready}
+            value={draft}
+            onChange={(event) => {
+              setDraft(event.target.value);
+              if (ready && event.target.value.trim()) realtime.type(channelId);
+            }}
+            onKeyDown={onKeyDown}
+            autoSize={{ minRows: 1, maxRows: 8 }}
+            maxLength={4000}
+            placeholder={label}
+            aria-label={label}
+            data-testid="message-composer"
+          />
+          {nearLimit ? (
+            <p role="status" className="mt-1 text-xs text-muted-foreground">
+              {draft.length}/4000
+            </p>
+          ) : null}
+        </>
       ) : (
         <p role="status" className="rounded-lg bg-muted p-3 text-sm text-muted-foreground">
           {t('cannotSend')}
