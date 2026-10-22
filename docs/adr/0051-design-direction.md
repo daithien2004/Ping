@@ -1,6 +1,6 @@
 # ADR-0051: Hướng thiết kế và design token
 
-Status: proposed — chờ OWNER duyệt
+Status: accepted — OWNER duyệt ngày 2026-10-22
 Date: 2026-10-22
 
 ## Decision
