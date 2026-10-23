@@ -21,10 +21,34 @@ export interface VectorPoint {
   payload: VectorPayload;
 }
 
+export interface VectorSearchOptions {
+  /** Bắt buộc: không bao giờ tìm xuyên server. */
+  serverId: string;
+  /** Thu hẹp trong một channel; quyền channel vẫn được kiểm lại ở tầng hydrate. */
+  channelId?: string;
+  limit: number;
+}
+
+export interface VectorSearchHit {
+  /** Id point = id tin neo của chunk. */
+  id: string;
+  score: number;
+  payload: VectorPayload;
+}
+
 export interface VectorStore {
   ensureCollection(collection: string, dimensions: number): Promise<void>;
   upsert(collection: string, points: readonly VectorPoint[]): Promise<void>;
   deleteByMessageIds(collection: string, messageIds: readonly string[]): Promise<void>;
+  /**
+   * Tìm point gần nhất, luôn lọc theo `serverId`. Chỉ trả payload đã được kiểm
+   * hình dạng; point hỏng bị bỏ qua thay vì đưa lên tầng RAG.
+   */
+  search(
+    collection: string,
+    vector: readonly number[],
+    options: VectorSearchOptions,
+  ): Promise<VectorSearchHit[]>;
   count(collection: string): Promise<number>;
   deleteCollection(collection: string): Promise<void>;
   health(): Promise<boolean>;

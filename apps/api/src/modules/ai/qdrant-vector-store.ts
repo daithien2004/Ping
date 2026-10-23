@@ -1,9 +1,57 @@
-import { type VectorPoint, type VectorStore, VectorStoreError } from './vector-store.port.js';
+import {
+  type VectorPayload,
+  type VectorPoint,
+  type VectorSearchHit,
+  type VectorSearchOptions,
+  type VectorStore,
+  VectorStoreError,
+} from './vector-store.port.js';
 
 const BATCH_SIZE = 64;
 
 interface QdrantCountResponse {
   result?: { count?: number };
+}
+
+interface QdrantSearchResponse {
+  result?: unknown;
+}
+
+function nonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0;
+}
+
+/**
+ * Payload do Qdrant trả về là JSON không tin cậy (có thể do index cũ/hỏng hoặc
+ * người vận hành sửa tay). Chỉ nhận đúng hình dạng tối thiểu; point hỏng bị bỏ
+ * qua để không bao giờ đi tiếp vào prompt với dữ liệu nửa vời.
+ */
+function parsePayload(value: unknown): VectorPayload | undefined {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+    return undefined;
+  }
+  const payload = value as Record<string, unknown>;
+  if (
+    !nonEmptyString(payload.serverId) ||
+    !nonEmptyString(payload.channelId) ||
+    !nonEmptyString(payload.authorId) ||
+    !nonEmptyString(payload.createdAt) ||
+    !nonEmptyString(payload.modelVersion) ||
+    !Array.isArray(payload.messageIds) ||
+    payload.messageIds.length === 0 ||
+    !payload.messageIds.every((id) => nonEmptyString(id))
+  ) {
+    return undefined;
+  }
+
+  return {
+    serverId: payload.serverId,
+    channelId: payload.channelId,
+    authorId: payload.authorId,
+    createdAt: payload.createdAt,
+    messageIds: payload.messageIds,
+    modelVersion: payload.modelVersion,
+  };
 }
 
 /**
@@ -60,6 +108,62 @@ export class QdrantVectorStore implements VectorStore {
       method: 'POST',
       body: JSON.stringify({ points: [...messageIds] }),
     });
+  }
+
+  async search(
+    collection: string,
+    vector: readonly number[],
+    options: VectorSearchOptions,
+  ): Promise<VectorSearchHit[]> {
+    if (vector.length === 0) {
+      throw new VectorStoreError('Vector truy vấn rỗng');
+    }
+    if (!Number.isInteger(options.limit) || options.limit <= 0) {
+      throw new VectorStoreError('Số lượng kết quả không hợp lệ');
+    }
+
+    // Lọc server ngay trong Qdrant: kể cả khi payload bị sửa, tầng hydrate vẫn
+    // kiểm lại server/channel từ Postgres. `channelId` chỉ là tối ưu phạm vi.
+    const must: Record<string, unknown>[] = [
+      { key: 'serverId', match: { value: options.serverId } },
+    ];
+    if (options.channelId) {
+      must.push({ key: 'channelId', match: { value: options.channelId } });
+    }
+
+    const response = await this.request(
+      `/collections/${encodeURIComponent(collection)}/points/search`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          vector: [...vector],
+          limit: options.limit,
+          with_payload: true,
+          with_vector: false,
+          filter: { must },
+        }),
+      },
+    );
+    const body = (await response.json()) as QdrantSearchResponse;
+    if (!Array.isArray(body.result)) {
+      throw new VectorStoreError('Qdrant trả về kết quả tìm kiếm không hợp lệ');
+    }
+
+    const hits: VectorSearchHit[] = [];
+    for (const item of body.result) {
+      if (item === null || typeof item !== 'object' || Array.isArray(item)) continue;
+      const raw = item as { id?: unknown; score?: unknown; payload?: unknown };
+      if (!nonEmptyString(raw.id) || typeof raw.score !== 'number' || !Number.isFinite(raw.score)) {
+        continue;
+      }
+      const payload = parsePayload(raw.payload);
+      if (!payload) continue;
+      // Qdrant đã lọc, nhưng kiểm lại để một bản ghi lỗi không vượt qua ranh giới server.
+      if (payload.serverId !== options.serverId) continue;
+      if (options.channelId && payload.channelId !== options.channelId) continue;
+      hits.push({ id: raw.id, score: raw.score, payload });
+    }
+    return hits;
   }
 
   async count(collection: string): Promise<number> {

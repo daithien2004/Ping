@@ -1,7 +1,7 @@
 import type { PrismaClient } from '../../../generated/prisma/client.js';
 import { describe, expect, it, vi } from 'vitest';
 import type { Embedder, EmbeddingBatch, EmbeddingRole } from '../embedder.port.js';
-import type { VectorPoint, VectorStore } from '../vector-store.port.js';
+import type { VectorPoint, VectorSearchHit, VectorStore } from '../vector-store.port.js';
 import { MessageIndexerCore } from './message-indexer.core.js';
 
 interface FakeMessage {
@@ -42,6 +42,9 @@ class RecordingStore implements VectorStore {
   }
   async deleteByMessageIds(collection: string, ids: readonly string[]): Promise<void> {
     this.deletes.push({ collection, ids });
+  }
+  async search(): Promise<VectorSearchHit[]> {
+    return [];
   }
   async count(): Promise<number> {
     return 0;
