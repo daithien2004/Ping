@@ -39,6 +39,10 @@
   "admin": {
     "title": "Cài đặt server",
     "hint": "Quản lý vai trò, thành viên và nhật ký hành động của server.",
+    "serverSection": "Thông tin server",
+    "serverName": "Tên server",
+    "serverNameHint": "Tên này hiển thị với mọi thành viên.",
+    "serverNameSaved": "Đã đổi tên server.",
     "noAccess": "Bạn không có quyền quản trị server này.",
     "open": "Cài đặt",
     "roles": "Vai trò",
@@ -114,7 +118,8 @@
       "messageDelete": "Xoá tin nhắn",
       "channelDelete": "Xoá channel",
       "serverDelete": "Xoá server",
-      "unknown": "Hành động khác"
+      "unknown": "Hành động khác",
+      "serverUpdate": "Đổi tên server"
     }
   },
   "app": {

@@ -5,6 +5,7 @@ import {
   Get,
   HttpCode,
   Param,
+  Patch,
   Post,
   Query,
   UseGuards,
@@ -14,9 +15,11 @@ import {
   createServerSchema,
   joinServerSchema,
   listMembersQuerySchema,
+  updateServerSchema,
   type CreateServerInput,
   type JoinServerInput,
   type ListMembersQuery,
+  type UpdateServerInput,
 } from '@ping/shared';
 import { IdempotencyInterceptor } from '../../common/interceptors/idempotency.interceptor.js';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe.js';
@@ -58,6 +61,17 @@ export class ServersController {
   @CheckAbility(['view', 'Server'])
   detail(@Param('serverId') serverId: string) {
     return this.serversService.detail(serverId);
+  }
+
+  /** Đổi tên server: cần `update Server` (MANAGE_SERVER); service ghi audit trong transaction. */
+  @Patch(':serverId')
+  @CheckAbility(['update', 'Server'])
+  update(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('serverId') serverId: string,
+    @Body(new ZodValidationPipe(updateServerSchema)) body: UpdateServerInput,
+  ) {
+    return this.serversService.update(serverId, user.userId, body.name);
   }
 
   /** Quyền hiệu lực của chính người gọi: frontend dựng CASL ability từ đây để ẩn/hiện nút. */

@@ -150,7 +150,40 @@ describe('Servers, channels & roles (e2e)', () => {
       .expect(404);
   });
 
-  it('AbilityGuard chặn sớm — người không phải member không thấy gì của server (403)', async () => {
+  it('PATCH /servers/:id - đổi tên cần MANAGE_SERVER, tên hợp lệ, và ghi audit SERVER_UPDATE', async () => {
+    // Thành viên thường và người ngoài đều không có `update Server`.
+    await api('patch', `/api/v1/servers/${serverId}`, plain.token)
+      .send({ name: 'hack' })
+      .expect(403);
+    await api('patch', `/api/v1/servers/${serverId}`, outsider.token)
+      .send({ name: 'hack' })
+      .expect(403);
+
+    // Cùng schema zod với lúc tạo server: tên rỗng (sau trim) bị chặn.
+    await api('patch', `/api/v1/servers/${serverId}`, owner.token)
+      .send({ name: '   ' })
+      .expect(400);
+
+    const updated = await api('patch', `/api/v1/servers/${serverId}`, owner.token)
+      .send({ name: 'Ping Đổi Tên' })
+      .expect(200);
+    expect(updated.body).toEqual({ id: serverId, name: 'Ping Đổi Tên' });
+
+    const detail = await api('get', `/api/v1/servers/${serverId}`, plain.token).expect(200);
+    expect(detail.body.name).toBe('Ping Đổi Tên');
+
+    // Audit ghi trong cùng transaction, kèm tên trước/sau để đối chiếu.
+    const audit = await api('get', `/api/v1/servers/${serverId}/audit-log`, owner.token).expect(
+      200,
+    );
+    expect(audit.body.entries[0]).toMatchObject({
+      action: 'SERVER_UPDATE',
+      targetId: serverId,
+      metadata: { from: 'Ping Test Server', to: 'Ping Đổi Tên' },
+    });
+  });
+
+  it('AbilityGuard chặn sớm - người không phải member không thấy gì của server (403)', async () => {
     await api('get', `/api/v1/servers/${serverId}`, outsider.token).expect(403);
     await api('get', `/api/v1/servers/${serverId}/channels`, outsider.token).expect(403);
     await api('get', `/api/v1/servers/${serverId}/members`, outsider.token).expect(403);

@@ -116,6 +116,40 @@ export class ServersService {
     return { ...server, memberCount: _count.members };
   }
 
+  /**
+   * Đổi tên server (T3.1). Guard đã xác nhận `update Server`; ở đây chỉ đọc tên cũ để
+   * audit có before/after, rồi cập nhật và ghi audit trong cùng một transaction.
+   */
+  async update(
+    serverId: string,
+    actorId: string,
+    name: string,
+  ): Promise<{ id: string; name: string }> {
+    const current = await this.prisma.server.findUnique({
+      where: { id: serverId },
+      select: { name: true },
+    });
+    if (!current) {
+      throw new NotFoundException('Server not found');
+    }
+
+    const [server] = await this.prisma.$transaction([
+      this.prisma.server.update({
+        where: { id: serverId },
+        data: { name },
+        select: { id: true, name: true },
+      }),
+      this.audit.record({
+        serverId,
+        actorId,
+        action: 'SERVER_UPDATE',
+        targetId: serverId,
+        metadata: { from: current.name, to: name },
+      }),
+    ]);
+    return server;
+  }
+
   /** Dùng lại AbilityFactory (có cache, đã cộng @everyone): một nơi duy nhất tính quyền. */
   async myPermissions(serverId: string, userId: string): Promise<MyServerPermissions> {
     const { isOwner, permissions } = await this.abilityFactory.contextFor(serverId, userId);
