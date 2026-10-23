@@ -82,6 +82,7 @@ nhất quán token; e2e theo quyền; lint cấm import antd ngoài `components/
 | TF.10         | **243.5 KB** (8)   | **74.4 KB**            | 609.1 KB (43)    | **97.8 KB** (bảng admin)    | 714.8 KB → fail             |
 
 Chi tiết quyết định và phương án bị loại: [ADR-0058](../../../adr/0058-bundle-budget-initial-js.md).
+OWNER duyệt cách đo này ngày 2026-10-23 (ADR chuyển `accepted`); số đo trong bảng không đổi.
 
 ### E2E theo quyền (`apps/web/e2e/admin-surface.spec.ts`)
 
