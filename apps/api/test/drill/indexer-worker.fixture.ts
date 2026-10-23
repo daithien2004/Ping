@@ -40,6 +40,7 @@ const slowStore: VectorStore = {
     await new Promise((resolve) => setTimeout(resolve, delayMs));
   },
   deleteByMessageIds: (collection, ids) => qdrant.deleteByMessageIds(collection, ids),
+  search: (collection, vector, options) => qdrant.search(collection, vector, options),
   count: (collection) => qdrant.count(collection),
   deleteCollection: (collection) => qdrant.deleteCollection(collection),
   health: () => qdrant.health(),

@@ -8,6 +8,7 @@ import { EMBEDDER, LLM_CLIENT, VECTOR_STORE } from './ai.tokens.js';
 import { MessageIndexerService } from './indexer/message-indexer.service.js';
 import { OnnxEmbedder } from './onnx-embedder.js';
 import { QdrantVectorStore } from './qdrant-vector-store.js';
+import { RetrievalService } from './retrieval/retrieval.service.js';
 import type { VectorStore } from './vector-store.port.js';
 
 export { EMBEDDER, LLM_CLIENT, VECTOR_STORE } from './ai.tokens.js';
@@ -40,7 +41,8 @@ export { EMBEDDER, LLM_CLIENT, VECTOR_STORE } from './ai.tokens.js';
         new QdrantVectorStore(config.get('QDRANT_URL', { infer: true })),
     },
     MessageIndexerService,
+    RetrievalService,
   ],
-  exports: [EMBEDDER, LLM_CLIENT, VECTOR_STORE],
+  exports: [EMBEDDER, LLM_CLIENT, VECTOR_STORE, RetrievalService],
 })
 export class AiModule {}

@@ -130,6 +130,74 @@ describe('QdrantVectorStore', () => {
     expect(await store.count('messages__test__3__v1')).toBe(42);
   });
 
+  it('search lọc server/channel và bỏ point có payload hỏng hoặc sai server', async () => {
+    const payload = {
+      serverId: 'server-1',
+      channelId: 'channel-1',
+      authorId: 'author-1',
+      createdAt: '2026-10-23T00:00:00.000Z',
+      messageIds: ['message-1'],
+      modelVersion: 'model:3:schema1',
+    };
+    const fetchImpl = fetchMock(() =>
+      response(
+        200,
+        JSON.stringify({
+          result: [
+            { id: 'point-ok', score: 0.91, payload },
+            {
+              id: 'point-other-server',
+              score: 0.88,
+              payload: { ...payload, serverId: 'server-2' },
+            },
+            {
+              id: 'point-other-channel',
+              score: 0.87,
+              payload: { ...payload, channelId: 'channel-2' },
+            },
+            {
+              id: 'point-bad-payload',
+              score: 0.86,
+              payload: { ...payload, messageIds: ['message-1', 42] },
+            },
+          ],
+        }),
+      ),
+    );
+    const store = new QdrantVectorStore('http://qdrant:6333', fetchImpl);
+
+    const hits = await store.search('messages__test__3__v1', [0.1, 0.2, 0.3], {
+      serverId: 'server-1',
+      channelId: 'channel-1',
+      limit: 5,
+    });
+
+    expect(hits).toEqual([{ id: 'point-ok', score: 0.91, payload }]);
+    const searchCall = calls(fetchImpl).find((call) => call.url.endsWith('/points/search'));
+    expect(searchCall?.method).toBe('POST');
+    expect(JSON.parse(searchCall?.body ?? '{}')).toEqual({
+      vector: [0.1, 0.2, 0.3],
+      limit: 5,
+      with_payload: true,
+      with_vector: false,
+      filter: {
+        must: [
+          { key: 'serverId', match: { value: 'server-1' } },
+          { key: 'channelId', match: { value: 'channel-1' } },
+        ],
+      },
+    });
+  });
+
+  it('search ném lỗi thay vì trả rỗng khi Qdrant trả kết quả sai hình dạng', async () => {
+    const fetchImpl = fetchMock(() => response(200, JSON.stringify({ result: 'không phải mảng' })));
+    const store = new QdrantVectorStore('http://qdrant:6333', fetchImpl);
+
+    await expect(
+      store.search('messages__test__3__v1', [0.1], { serverId: 'server-1', limit: 5 }),
+    ).rejects.toBeInstanceOf(VectorStoreError);
+  });
+
   it('ném VectorStoreError khi Qdrant trả lỗi, không lộ body', async () => {
     const fetchImpl = fetchMock(() => response(500, 'vector bi mat'));
     const store = new QdrantVectorStore('http://qdrant:6333', fetchImpl);

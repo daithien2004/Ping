@@ -30,6 +30,20 @@ export class AbilityFactory {
     return defineAbilityFor(await this.contextFor(serverId, userId));
   }
 
+  /**
+   * Bỏ qua cache Redis, đọc membership/quyền từ Postgres ngay lúc gọi.
+   *
+   * Dùng cho cổng an toàn như truy xuất RAG (T5.4): user vừa bị kick hoặc vừa
+   * mất `VIEW_CHANNEL` không được nhận nội dung chỉ vì cache 30 giây còn cũ.
+   */
+  async createForUserFresh(serverId: string, userId: string): Promise<AppAbility> {
+    return defineAbilityFor(await this.contextForFresh(serverId, userId));
+  }
+
+  async contextForFresh(serverId: string, userId: string): Promise<AbilityContext> {
+    return this.loadContext(serverId, userId);
+  }
+
   /** Role đổi quyền hoặc gán/tháo role hàng loạt → cache cũ đang "nói dối": xóa ngay cả server. */
   async invalidateServer(serverId: string): Promise<void> {
     // SCAN theo từng lô thay vì KEYS: KEYS quét toàn bộ Redis trong một lệnh và chặn
@@ -82,6 +96,13 @@ export class AbilityFactory {
       return { userId, isOwner: parsed.isOwner, permissions: BigInt(parsed.permissions) };
     }
 
+    const context = await this.loadContext(serverId, userId);
+    await this.cacheContext(serverId, userId, context);
+    return context;
+  }
+
+  /** Nguồn sự thật: đọc member + role + @everyone rồi OR quyền. */
+  private async loadContext(serverId: string, userId: string): Promise<AbilityContext> {
     const member = await this.prisma.member.findUnique({
       where: { serverId_userId: { serverId, userId } },
       include: {
@@ -105,22 +126,34 @@ export class AbilityFactory {
       ...member.server.roles,
       ...member.roles.map((memberRole) => memberRole.role),
     ].reduce((acc, role) => acc | role.permissions, 0n);
-    const context: AbilityContext = {
+    return {
       userId,
       isOwner: member.server.ownerId === userId,
       permissions,
     };
+  }
+
+  private async cacheContext(
+    serverId: string,
+    userId: string,
+    context: AbilityContext,
+  ): Promise<void> {
     const serialized: CachedContext = {
       isOwner: context.isOwner,
-      permissions: permissions.toString(),
+      permissions: context.permissions.toString(),
     };
     await failOpen(
       this.redis,
       this.logger,
       'ability-cache',
-      () => this.redis.set(key, JSON.stringify(serialized), 'EX', this.ttlSeconds),
+      () =>
+        this.redis.set(
+          AbilityFactory.cacheKey(serverId, userId),
+          JSON.stringify(serialized),
+          'EX',
+          this.ttlSeconds,
+        ),
       null,
     );
-    return context;
   }
 }
