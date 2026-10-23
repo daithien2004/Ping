@@ -1,0 +1,8 @@
+﻿NAME            STATUS                        PORTS
+ping-qdrant-1   Up About a minute (healthy)   127.0.0.1:6333-6334->6333-6334/tcp
+  TCP    127.0.0.1:6333         0.0.0.0:0              LISTENING       19180
+  TCP    127.0.0.1:6333         127.0.0.1:52767        ESTABLISHED     19180
+  TCP    127.0.0.1:6334         0.0.0.0:0              LISTENING       19180
+  TCP    127.0.0.1:52767        127.0.0.1:6333         ESTABLISHED     26796
+  TCP    127.0.0.1:53581        127.0.0.1:6333         TIME_WAIT       0
+  TCP    127.0.0.1:53583        127.0.0.1:6333         TIME_WAIT       0

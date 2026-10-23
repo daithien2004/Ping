@@ -25,6 +25,16 @@ services:
       retries: 10
     restart: unless-stopped
 
+  # Qdrant chỉ nằm trong mạng compose, KHÔNG publish cổng ra ngoài (T5.2).
+  qdrant:
+    image: qdrant/qdrant:v1.12.4
+    volumes: ['qdrantdata:/qdrant/storage']
+    healthcheck:
+      test: ['CMD-SHELL', 'bash -c ":> /dev/tcp/127.0.0.1/6333"']
+      interval: 5s
+      retries: 10
+    restart: unless-stopped
+
   # Migration tách khỏi API: chạy xong (thành công) thì api mới khởi động. Không để mọi instance tự migrate.
   migrate:
     build: { context: ., dockerfile: apps/api/Dockerfile, target: migrate }
@@ -47,10 +57,12 @@ services:
       SHUTDOWN_GRACE_MS: 10000
       SHUTDOWN_TIMEOUT_MS: 25000
       SENTRY_DSN: ${SENTRY_DSN:-}
+      QDRANT_URL: http://qdrant:6333
       # METRICS_PORT cố ý không đặt: đặt thì chỉ mở trong mạng nội bộ của compose, KHÔNG publish ra ngoài.
     depends_on:
       migrate: { condition: service_completed_successfully }
       redis: { condition: service_healthy }
+      qdrant: { condition: service_healthy }
     stop_grace_period: 40s # > SHUTDOWN_GRACE_MS + SHUTDOWN_TIMEOUT_MS thì docker mới không SIGKILL giữa chừng
     restart: unless-stopped
 
@@ -78,3 +90,4 @@ services:
 
 volumes:
   pgdata:
+  qdrantdata:

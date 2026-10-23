@@ -70,6 +70,11 @@ vào free tier trong T5.1; dữ liệu người dùng thật chỉ dùng khi có
 3. **Không hardcode nhà cung cấp**: đổi model/API chỉ sửa adapter hoặc biến môi trường
    `EMBEDDING_MODEL` / `GROQ_MODEL`.
 4. **Qdrant** chạy Docker local (T5.2). Không dùng embedding API trả phí trong v0.2.0.
+5. **Vector store (T5.2)**: mỗi cặp model + số chiều + phiên bản schema có collection riêng
+   `messages__<model-slug>__<dimensions>__v<schema>`. Payload chỉ chứa
+   `{serverId, channelId, authorId, createdAt, messageIds[], modelVersion}` — **không chứa nội dung
+   tin nhắn**; nội dung luôn hydrate lại từ Postgres sau khi lọc quyền (T5.4). Qdrant chỉ publish
+   trên loopback khi dev và không publish cổng ở production.
 
 ## Alternatives
 

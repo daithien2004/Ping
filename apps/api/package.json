@@ -28,7 +28,10 @@
     "typecheck": "tsc --noEmit",
     "loadtest:seed": "tsx test/loadtest/seed.ts",
     "drill:redis": "tsx test/drill/redis-outage.drill.ts",
-    "drill:postgres": "tsx test/drill/postgres-outage.drill.ts"
+    "drill:postgres": "tsx test/drill/postgres-outage.drill.ts",
+    "ai:eval": "tsx scripts/eval-embeddings.ts",
+    "ai:smoke": "tsx scripts/smoke-llm.ts",
+    "ai:rebuild": "tsx scripts/rebuild-vector-index.ts"
   },
   "dependencies": {
     "@casl/ability": "7.0.2",
