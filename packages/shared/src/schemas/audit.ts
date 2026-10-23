@@ -13,6 +13,7 @@ export const AuditActions = {
   MESSAGE_DELETE: 'MESSAGE_DELETE',
   CHANNEL_DELETE: 'CHANNEL_DELETE',
   SERVER_DELETE: 'SERVER_DELETE',
+  SERVER_UPDATE: 'SERVER_UPDATE',
 } as const;
 
 export const auditActionSchema = z.enum(AuditActions);

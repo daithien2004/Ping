@@ -63,8 +63,29 @@ test('admin surface: audit log follows permissions, role permissions save, dange
       await memberPage.goto(settings);
       await expect(memberPage.getByRole('heading', { name: 'Cài đặt server' })).toBeVisible();
       await expect(memberPage.getByRole('region', { name: 'Nhật ký hành động' })).toHaveCount(0);
+      await expect(memberPage.getByRole('region', { name: 'Thông tin server' })).toHaveCount(0);
       // Member không có quyền quản trị nào thì không thấy lối vào từ sidebar.
       await expect(memberPage.getByRole('button', { name: 'Cài đặt' })).toHaveCount(0);
+    });
+
+    await test.step('đổi tên server: form lưu qua API và rail đổi ngay', async () => {
+      const section = ownerPage.getByRole('region', { name: 'Thông tin server' });
+      const renamed = `Ping ${suffix}`;
+      await section.getByRole('textbox', { name: 'Tên server' }).fill(renamed);
+      await section.getByRole('button', { name: 'Lưu' }).click();
+      await expect(ownerPage.getByText('Đã đổi tên server.')).toBeVisible();
+      // Danh sách server (rail) đọc từ cache đã được cập nhật, không cần tải lại trang.
+      await expect(ownerPage.getByRole('link', { name: renamed })).toBeVisible();
+
+      const detail = (await (
+        await owner.request.get(`${API}/servers/${serverId}`, { headers: ownerHeaders })
+      ).json()) as ServerDetail;
+      expect(detail.name).toBe(renamed);
+
+      // Trả tên cũ để các spec khác dùng chung server không bị ảnh hưởng.
+      await section.getByRole('textbox', { name: 'Tên server' }).fill(server.name);
+      await section.getByRole('button', { name: 'Lưu' }).click();
+      await expect(ownerPage.getByRole('link', { name: server.name })).toBeVisible();
     });
 
     await test.step('API chặn member chưa có quyền xem nhật ký', async () => {
@@ -125,7 +146,10 @@ test('admin surface: audit log follows permissions, role permissions save, dange
       const auditBox = ownerPage.getByRole('checkbox', { name: 'Xem nhật ký hành động' });
       await expect(auditBox).not.toBeChecked();
       await auditBox.click();
-      await ownerPage.getByRole('button', { name: 'Lưu' }).click();
+      await ownerPage
+        .getByRole('region', { name: 'Vai trò' })
+        .getByRole('button', { name: 'Lưu' })
+        .click();
       await expect(ownerPage.getByText('Đã lưu vai trò.')).toBeVisible();
 
       const roles = (await (

@@ -13,11 +13,13 @@ import { pingToast } from '@/components/ui/ping-toast';
 import { useMembers } from '@/features/members/hooks';
 import { useServerAbility } from '@/features/permissions/context';
 import { useServerPermissions } from '@/features/permissions/hooks';
+import { useServer } from '@/features/servers/hooks';
 import { useErrorMessage } from '@/lib/error-message';
 import { useDeleteServer, useRoles } from '../hooks';
 import { AuditLogTable } from './audit-log-table';
 import { RoleEditor } from './role-editor';
 import { RoleTag } from './role-tag';
+import { ServerNameForm } from './server-name-form';
 
 // Drawer chỉ cần khi mở chi tiết một thành viên: tách khỏi chunk của trang cài đặt và chỉ tải
 // khi thực sự mở (giữ bundle ban đầu theo ngân sách, xem ADR-0058).
@@ -39,6 +41,7 @@ export function AdminSurface({ params }: { params: Promise<{ serverId: string }>
   const tc = useTranslations('common');
   const { ability } = useServerAbility();
   const { data: permissions } = useServerPermissions(serverId);
+  const { data: server } = useServer(serverId);
   const router = useRouter();
   const errorMessage = useErrorMessage();
   const deleteMutation = useDeleteServer();
@@ -68,6 +71,7 @@ export function AdminSurface({ params }: { params: Promise<{ serverId: string }>
         <p className="text-sm text-muted-foreground">{t('hint')}</p>
       </header>
 
+      {canManageServer && <ServerNameForm server={server} />}
       <RolesSection serverId={serverId} enabled={canManageRoles} />
       {hasAdminAccess ? (
         <MembersSection serverId={serverId} onOpen={setMember} />

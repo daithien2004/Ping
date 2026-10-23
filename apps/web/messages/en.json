@@ -39,6 +39,10 @@
   "admin": {
     "title": "Server settings",
     "hint": "Manage roles, members and the action log of this server.",
+    "serverSection": "Server details",
+    "serverName": "Server name",
+    "serverNameHint": "This name is visible to every member.",
+    "serverNameSaved": "Server name updated.",
     "noAccess": "You do not have permission to administer this server.",
     "open": "Settings",
     "roles": "Roles",
@@ -114,7 +118,8 @@
       "messageDelete": "Message deleted",
       "channelDelete": "Channel deleted",
       "serverDelete": "Server deleted",
-      "unknown": "Other action"
+      "unknown": "Other action",
+      "serverUpdate": "Renamed server"
     }
   },
   "app": {

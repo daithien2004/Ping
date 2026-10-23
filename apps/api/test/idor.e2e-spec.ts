@@ -23,6 +23,7 @@ type Verb = 'get' | 'post' | 'patch' | 'put' | 'delete';
 /** Mọi endpoint nhận ID (path đã chuẩn hóa: `:id` thay cho `:serverId`, `:channelId`…). Nguồn của test 401 và test phủ route. */
 const ID_ROUTES: Array<[Verb, string]> = [
   ['get', '/servers/:id'],
+  ['patch', '/servers/:id'],
   ['get', '/servers/:id/me/permissions'],
   ['get', '/servers/:id/members'],
   ['post', '/servers/:id/leave'],
@@ -395,7 +396,7 @@ describe('IDOR (e2e)', () => {
 
   it('no token → 401 on every endpoint that takes an id', async () => {
     const uuid = randomUUID();
-    expect(ID_ROUTES).toHaveLength(20);
+    expect(ID_ROUTES).toHaveLength(21);
     for (const [verb, template] of ID_ROUTES) {
       const url = template.replaceAll(':id', uuid);
       const res = await as(undefined, verb, url).send({});

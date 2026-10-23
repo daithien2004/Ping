@@ -6,14 +6,16 @@ import {
   type MemberRemovedPayload,
   type PermissionsChangedPayload,
   type ChannelDto,
+  type ServerDetail,
   type ServerSummary,
+  type UpdateServerInput,
 } from '@ping/shared';
 import { useEffect, useEffectEvent } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import type { RealtimeSession } from '@/features/realtime/session';
 import { qk } from '@/lib/query-keys';
 import { ApiError } from '@/lib/api-client';
-import { createServer, getServer, joinServer, leaveServer, listServers } from './api';
+import { createServer, getServer, joinServer, leaveServer, listServers, updateServer } from './api';
 
 /** Chỉ dùng dưới AuthGate (đã giới hạn trong trình duyệt). */
 export function useServers() {
@@ -22,6 +24,25 @@ export function useServers() {
 
 export function useServer(serverId: string) {
   return useSuspenseQuery({ queryKey: qk.server(serverId), queryFn: () => getServer(serverId) });
+}
+
+/**
+ * Đổi tên server (T3.1). Ghi thẳng tên mới vào cache chi tiết + danh sách server để
+ * rail và sidebar đổi ngay, không phải gọi lại API.
+ */
+export function useUpdateServer(serverId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: UpdateServerInput) => updateServer(serverId, input),
+    onSuccess: (server) => {
+      queryClient.setQueryData<ServerDetail>(qk.server(serverId), (old) =>
+        old ? { ...old, name: server.name } : old,
+      );
+      queryClient.setQueryData<ServerSummary[]>(qk.servers, (old) =>
+        old?.map((item) => (item.id === server.id ? { ...item, name: server.name } : item)),
+      );
+    },
+  });
 }
 
 export function useCreateServer() {
