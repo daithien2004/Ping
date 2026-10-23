@@ -152,17 +152,27 @@ describe('Audit log (e2e)', () => {
     ]);
   });
 
-  it('xóa role, xóa channel, xóa server đều được ghi; log còn sau khi server bị xóa', async () => {
+  it('đổi tên channel được ghi; xóa role, xóa channel, xóa server đều được ghi; log còn sau khi server bị xóa', async () => {
     await api('delete', `/api/v1/roles/${roleId}`, owner.token).expect(200);
     const channel = await api('post', `/api/v1/servers/${serverId}/channels`, owner.token)
       .send({ name: 'temp' })
       .expect(201);
+    await api('patch', `/api/v1/channels/${channel.body.id}`, owner.token)
+      .send({ name: 'temp-renamed' })
+      .expect(200);
     await api('delete', `/api/v1/channels/${channel.body.id}`, owner.token).expect(200);
     await api('delete', `/api/v1/servers/${serverId}`, owner.token).expect(200);
 
     expect(await logs('ROLE_DELETE')).toHaveLength(1);
+    expect(await logs('CHANNEL_UPDATE')).toEqual([
+      expect.objectContaining({
+        actorId: owner.id,
+        targetId: channel.body.id,
+        metadata: { from: 'temp', to: 'temp-renamed' },
+      }),
+    ]);
     expect(await logs('CHANNEL_DELETE')).toEqual([
-      expect.objectContaining({ targetId: channel.body.id, metadata: { name: 'temp' } }),
+      expect.objectContaining({ targetId: channel.body.id, metadata: { name: 'temp-renamed' } }),
     ]);
     expect(await logs('SERVER_DELETE')).toEqual([
       expect.objectContaining({ actorId: owner.id, targetId: serverId }),

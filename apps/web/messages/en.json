@@ -38,7 +38,7 @@
   },
   "admin": {
     "title": "Server settings",
-    "hint": "Manage roles, members and the action log of this server.",
+    "hint": "Manage channels, roles, members and the action log of this server.",
     "serverSection": "Server details",
     "serverName": "Server name",
     "serverNameHint": "This name is visible to every member.",
@@ -119,8 +119,11 @@
       "channelDelete": "Channel deleted",
       "serverDelete": "Server deleted",
       "unknown": "Other action",
-      "serverUpdate": "Renamed server"
-    }
+      "serverUpdate": "Renamed server",
+      "channelUpdate": "Renamed channel"
+    },
+    "channels": "Channels",
+    "channelActions": "Actions"
   },
   "app": {
     "accessDenied": "Can't open this page",
@@ -170,7 +173,16 @@
     "name": "Channel name",
     "noPermissionCreate": "You don't have permission to create channels.",
     "notFound": "This channel does not exist.",
-    "empty": "This server has no channels yet."
+    "empty": "This server has no channels yet.",
+    "rename": "Rename channel",
+    "noPermissionManage": "You don't have permission to manage channels.",
+    "created": "Channel created.",
+    "renamed": "Channel renamed.",
+    "deleted": "Channel deleted.",
+    "delete": "Delete channel",
+    "deleteTitle": "Delete this channel?",
+    "deleteDescription": "All messages in this channel will be deleted. This cannot be undone.",
+    "actions": "Actions"
   },
   "members": {
     "panel": "Members",

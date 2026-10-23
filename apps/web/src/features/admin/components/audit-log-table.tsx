@@ -20,6 +20,7 @@ const ACTION_KEYS = {
   MEMBER_KICK: 'memberKick',
   MESSAGE_DELETE: 'messageDelete',
   CHANNEL_DELETE: 'channelDelete',
+  CHANNEL_UPDATE: 'channelUpdate',
   SERVER_DELETE: 'serverDelete',
   SERVER_UPDATE: 'serverUpdate',
 } as const satisfies Record<AuditAction, string>;

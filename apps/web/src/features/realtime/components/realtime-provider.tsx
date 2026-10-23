@@ -2,6 +2,7 @@
 import { ServerEvents, type TypingStartedPayload } from '@ping/shared';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useMe } from '@/features/auth/hooks';
+import { useChannelEvents } from '@/features/channels/hooks';
 import { useMemberPresence } from '@/features/members/hooks';
 import { useMessageEvents } from '@/features/messages/hooks';
 import { useServerEvents } from '@/features/servers/hooks';
@@ -21,6 +22,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
 function SignedInRealtime({ userId, children }: { userId: string; children: ReactNode }) {
   const [session] = useState(() => new RealtimeSession(createSocket()));
   useMessageEvents(session);
+  useChannelEvents(session);
   useServerEvents(session);
   useMemberPresence(session);
   useEffect(() => {

@@ -1,10 +1,11 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module.js';
+import { RealtimeModule } from '../realtime/realtime.module.js';
 import { ChannelsController } from './channels.controller.js';
 import { ChannelsService } from './channels.service.js';
 
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, RealtimeModule],
   controllers: [ChannelsController],
   providers: [ChannelsService],
 })

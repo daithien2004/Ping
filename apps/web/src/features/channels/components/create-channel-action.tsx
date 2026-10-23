@@ -4,9 +4,9 @@ import type { AppAbility } from '@ping/shared';
 import { Plus } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslations } from 'use-intl';
-import { Button } from '@/components/ui/button';
+import { PingButton } from '@/components/ui/ping-button';
 import { useServerAbility } from '@/features/permissions/context';
-import { CreateChannelDialog } from './create-channel-dialog';
+import { ChannelNameDialog } from './channel-name-dialog';
 
 export function CreateChannelAction({ serverId }: { serverId: string }) {
   return (
@@ -22,7 +22,7 @@ function CreateChannelButton({ serverId }: { serverId: string }) {
   const t = useTranslations('channels');
   return (
     <>
-      <Button
+      <PingButton
         variant="ghost"
         size="sm"
         disabled={!ready}
@@ -30,8 +30,8 @@ function CreateChannelButton({ serverId }: { serverId: string }) {
         className="justify-start text-muted-foreground"
       >
         <Plus /> {t('create')}
-      </Button>
-      <CreateChannelDialog serverId={serverId} open={open} onClose={() => setOpen(false)} />
+      </PingButton>
+      <ChannelNameDialog serverId={serverId} open={open} onClose={() => setOpen(false)} />
     </>
   );
 }

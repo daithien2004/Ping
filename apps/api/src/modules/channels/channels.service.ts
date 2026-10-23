@@ -1,19 +1,20 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { Limits } from '@ping/shared';
+import { Limits, ServerEvents, type ChannelDto, type UpdateChannelInput } from '@ping/shared';
 import { limitReached } from '../../common/limit-reached.js';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
 import { AuditService } from '../audit/audit.service.js';
-import type { UpdateChannelInput } from './schemas.js';
+import { RealtimeService } from '../realtime/realtime.service.js';
 
 @Injectable()
 export class ChannelsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly realtime: RealtimeService,
   ) {}
 
-  create(serverId: string, name: string) {
-    return this.prisma.$transaction(async (tx) => {
+  async create(serverId: string, name: string) {
+    const channel = await this.prisma.$transaction(async (tx) => {
       // Khóa theo server tới hết transaction: hai request tạo channel cùng lúc xếp hàng
       // thay vì cùng đọc một giá trị max rồi cùng ghi trùng position.
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${serverId}))`;
@@ -25,11 +26,13 @@ export class ChannelsService {
         where: { serverId },
         _max: { position: true },
       });
-      // Nối tiếp sau channel cuối (max + 1, không phải count: xóa channel giữa dãy làm count trùng).
+      // Nối tiếp sau channel cuối (max + 1, không phải count: xóa channel giữa dãy làm count trống).
       return tx.channel.create({
         data: { serverId, name, position: (_max.position ?? -1) + 1 },
       });
     });
+    this.realtime.emitToServer(serverId, ServerEvents.ChannelCreated, this.toDto(channel));
+    return channel;
   }
 
   list(serverId: string) {
@@ -39,9 +42,25 @@ export class ChannelsService {
     });
   }
 
-  async update(channelId: string, input: UpdateChannelInput) {
-    const channel = await this.getChannel(channelId);
-    return this.prisma.channel.update({ where: { id: channel.id }, data: input });
+  async update(channelId: string, actorId: string, input: UpdateChannelInput) {
+    const current = await this.getChannel(channelId);
+    const [channel] = await this.prisma.$transaction([
+      this.prisma.channel.update({ where: { id: current.id }, data: input }),
+      this.audit.record({
+        serverId: current.serverId,
+        actorId,
+        action: 'CHANNEL_UPDATE',
+        targetId: current.id,
+        metadata: {
+          ...(input.name !== undefined ? { from: current.name, to: input.name } : {}),
+          ...(input.position !== undefined
+            ? { position: { from: current.position, to: input.position } }
+            : {}),
+        },
+      }),
+    ]);
+    this.realtime.emitToServer(channel.serverId, ServerEvents.ChannelUpdated, this.toDto(channel));
+    return channel;
   }
 
   async remove(channelId: string, actorId: string): Promise<{ id: string }> {
@@ -57,7 +76,29 @@ export class ChannelsService {
         metadata: { name: channel.name },
       }),
     ]);
+    this.realtime.emitToServer(channel.serverId, ServerEvents.ChannelDeleted, {
+      id: channel.id,
+      serverId: channel.serverId,
+    });
     return { id: channelId };
+  }
+
+  private toDto(channel: {
+    id: string;
+    serverId: string;
+    name: string;
+    type: string;
+    position: number;
+    createdAt: Date;
+  }): ChannelDto {
+    return {
+      id: channel.id,
+      serverId: channel.serverId,
+      name: channel.name,
+      type: channel.type as ChannelDto['type'],
+      position: channel.position,
+      createdAt: channel.createdAt.toISOString(),
+    };
   }
 
   private async getChannel(channelId: string) {

@@ -17,6 +17,7 @@ import { useServer } from '@/features/servers/hooks';
 import { useErrorMessage } from '@/lib/error-message';
 import { useDeleteServer, useRoles } from '../hooks';
 import { AuditLogTable } from './audit-log-table';
+import { ChannelManager } from './channel-manager';
 import { RoleEditor } from './role-editor';
 import { RoleTag } from './role-tag';
 import { ServerNameForm } from './server-name-form';
@@ -50,9 +51,11 @@ export function AdminSurface({ params }: { params: Promise<{ serverId: string }>
   const canManageRoles = ability.can('manage', 'Role');
   const canViewAudit = ability.can('view', 'AuditLog');
   const canManageServer = ability.can('update', 'Server');
+  const canManageChannels = ability.can('manage', 'Channel');
   const isOwner = permissions?.isOwner ?? false;
   // Không có quyền quản trị nào thì không mở bề mặt quản trị (API vẫn kiểm tra lại).
-  const hasAdminAccess = canManageRoles || canViewAudit || canManageServer || isOwner;
+  const hasAdminAccess =
+    canManageRoles || canViewAudit || canManageServer || isOwner || canManageChannels;
 
   function removeServer() {
     deleteMutation.mutate(serverId, {
@@ -72,6 +75,7 @@ export function AdminSurface({ params }: { params: Promise<{ serverId: string }>
       </header>
 
       {canManageServer && <ServerNameForm server={server} />}
+      {canManageChannels && <ChannelManager serverId={serverId} />}
       <RolesSection serverId={serverId} enabled={canManageRoles} />
       {hasAdminAccess ? (
         <MembersSection serverId={serverId} onOpen={setMember} />

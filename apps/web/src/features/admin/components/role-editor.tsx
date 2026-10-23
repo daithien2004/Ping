@@ -97,6 +97,7 @@ function RoleForm({ serverId, role }: { serverId: string; role: RoleDto }) {
 
   return (
     <PingForm
+      name={`role-${role.id}`}
       form={form}
       layout="vertical"
       initialValues={{ name: role.name }}

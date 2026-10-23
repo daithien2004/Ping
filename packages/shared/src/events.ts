@@ -1,10 +1,14 @@
 import { z } from 'zod';
 import type { ErrorCode } from './errors';
+import type { ChannelDto } from './schemas/channel';
 
 export const ServerEvents = {
   MessageCreated: 'message.created',
   MessageUpdated: 'message.updated',
   MessageDeleted: 'message.deleted',
+  ChannelCreated: 'channel.created',
+  ChannelUpdated: 'channel.updated',
+  ChannelDeleted: 'channel.deleted',
   TypingStarted: 'typing.started',
   PresenceUpdated: 'presence.updated',
   PermissionsChanged: 'permissions.changed',
@@ -47,6 +51,15 @@ export interface MessageDeletedPayload {
   channelId: string;
 }
 
+/** Channel mới/đổi tên gửi tới room `server:<id>`; client cập nhật cache danh sách channel. */
+export type ChannelCreatedPayload = ChannelDto;
+export type ChannelUpdatedPayload = ChannelDto;
+
+export interface ChannelDeletedPayload {
+  id: string;
+  serverId: string;
+}
+
 export interface TypingStartedPayload {
   channelId: string;
   userId: string;
@@ -81,6 +94,9 @@ export interface ServerToClientEvents {
   [ServerEvents.MessageCreated]: (payload: MessageCreatedPayload) => void;
   [ServerEvents.MessageUpdated]: (payload: MessageUpdatedPayload) => void;
   [ServerEvents.MessageDeleted]: (payload: MessageDeletedPayload) => void;
+  [ServerEvents.ChannelCreated]: (payload: ChannelCreatedPayload) => void;
+  [ServerEvents.ChannelUpdated]: (payload: ChannelUpdatedPayload) => void;
+  [ServerEvents.ChannelDeleted]: (payload: ChannelDeletedPayload) => void;
   [ServerEvents.TypingStarted]: (payload: TypingStartedPayload) => void;
   [ServerEvents.PresenceUpdated]: (payload: PresenceUpdatedPayload) => void;
   [ServerEvents.PermissionsChanged]: (payload: PermissionsChangedPayload) => void;
