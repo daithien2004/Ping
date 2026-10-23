@@ -7,7 +7,7 @@ export type Actions = 'view' | 'create' | 'update' | 'delete' | 'manage';
 export type MessageSubject = { authorId: string } & ForcedSubject<'Message'>;
 
 export type Subjects =
-  'Server' | 'Channel' | 'Message' | 'Role' | 'Member' | 'all' | MessageSubject;
+  'Server' | 'Channel' | 'Message' | 'Role' | 'Member' | 'AuditLog' | 'all' | MessageSubject;
 
 export type AppAbility = MongoAbility<[Actions, Subjects]>;
 
@@ -65,6 +65,11 @@ export function defineAbilityFor(ctx: AbilityContext): AppAbility {
 
   if (has(Permissions.KICK_MEMBERS)) {
     can('delete', 'Member');
+  }
+
+  // Nhật ký hành động: chỉ role được cấp VIEW_AUDIT_LOG mới xem được (TF.10).
+  if (has(Permissions.VIEW_AUDIT_LOG)) {
+    can('view', 'AuditLog');
   }
 
   return build();

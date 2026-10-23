@@ -25,7 +25,7 @@ describe('timeouts on infrastructure calls (ADR-0026)', () => {
   });
 
   it('a slow Postgres query is cut at PG_QUERY_TIMEOUT_MS and reads as an outage', async () => {
-    const prisma = new PrismaService(configWith({ PG_QUERY_TIMEOUT_MS: 300 }));
+    const prisma = new PrismaService(configWith({ PG_QUERY_TIMEOUT_MS: 300, PG_POOL_MAX: 5 }));
     await prisma.onModuleInit();
     closers.push(() => prisma.$disconnect());
 

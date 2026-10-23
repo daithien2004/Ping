@@ -7,6 +7,8 @@ export const Permissions = {
   MANAGE_SERVER: 32n,
   ADMINISTRATOR: 64n,
   KICK_MEMBERS: 128n,
+  /** Xem nhật ký hành động của server (TF.10). Không mặc định cho ai. */
+  VIEW_AUDIT_LOG: 256n,
 } as const;
 
 export function hasPermission(value: bigint, flag: bigint): boolean {

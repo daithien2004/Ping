@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { Limits } from '@ping/shared';
 import { limitReached } from '../../common/limit-reached.js';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
-import { AuditService } from '../audit/audit.module.js';
+import { AuditService } from '../audit/audit.service.js';
 import type { UpdateChannelInput } from './schemas.js';
 
 @Injectable()

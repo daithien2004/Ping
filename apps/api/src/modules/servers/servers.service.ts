@@ -18,7 +18,7 @@ import { limitReached } from '../../common/limit-reached.js';
 import { isUniqueConstraintError } from '../../common/utils/prisma-errors.js';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
 import { AbilityFactory } from '../ability/ability.factory.js';
-import { AuditService } from '../audit/audit.module.js';
+import { AuditService } from '../audit/audit.service.js';
 import { RealtimeService } from '../realtime/realtime.service.js';
 
 /**

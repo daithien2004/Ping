@@ -4,7 +4,7 @@ import { ServerEvents, type AppAbility, type CreateMessageInput } from '@ping/sh
 import { isUniqueConstraintError } from '../../common/utils/prisma-errors.js';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
 import { OutboxService } from '../../infra/events/outbox.service.js';
-import { AuditService } from '../audit/audit.module.js';
+import { AuditService } from '../audit/audit.service.js';
 import { RealtimeService } from '../realtime/realtime.service.js';
 import { MessageRateLimiter } from './message-rate-limiter.js';
 import type { ListMessagesQuery } from './schemas.js';

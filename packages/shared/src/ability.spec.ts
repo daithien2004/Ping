@@ -139,6 +139,26 @@ describe('defineAbilityFor', () => {
     expect(ability.can('view', 'Member')).toBe(true);
     expect(ability.can('create', 'Message')).toBe(false);
   });
+
+  it('only grants the action log to roles with VIEW_AUDIT_LOG (TF.10)', () => {
+    const member = defineAbilityFor({
+      userId: 'user-A',
+      isOwner: false,
+      permissions: memberPermissions,
+    });
+    const auditor = defineAbilityFor({
+      userId: 'user-B',
+      isOwner: false,
+      permissions: memberPermissions | Permissions.VIEW_AUDIT_LOG,
+    });
+    const owner = defineAbilityFor({ userId: 'user-C', isOwner: true, permissions: 0n });
+
+    expect(member.can('view', 'AuditLog')).toBe(false);
+    expect(auditor.can('view', 'AuditLog')).toBe(true);
+    // Xem nhật ký không kéo theo quyền quản trị khác.
+    expect(auditor.can('manage', 'Role')).toBe(false);
+    expect(owner.can('view', 'AuditLog')).toBe(true);
+  });
 });
 
 describe('canManagePermissions / canManageMember', () => {

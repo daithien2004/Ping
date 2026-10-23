@@ -34,6 +34,7 @@ const ID_ROUTES: Array<[Verb, string]> = [
   ['delete', '/channels/:id'],
   ['get', '/servers/:id/roles'],
   ['post', '/servers/:id/roles'],
+  ['get', '/servers/:id/audit-log'],
   ['put', '/servers/:id/members/:id/roles'],
   ['patch', '/roles/:id'],
   ['delete', '/roles/:id'],
@@ -57,7 +58,11 @@ function discoverIdRoutes(app: INestApplication): string[] {
         const method = Reflect.getMetadata(METHOD_METADATA, handler) as RequestMethod | undefined;
         if (method === undefined) continue;
         const path = Reflect.getMetadata(PATH_METADATA, handler) as string | string[] | undefined;
-        const full = `/${[base, path].flat().filter(Boolean).join('/')}`.replace(/\/+/g, '/');
+        // `@Get()` không tham số cho path mặc định `'/'`: gộp lại và bỏ dấu `/` cuối để
+        // `/servers/:id/audit-log/` và `/servers/:id/audit-log` là một route.
+        const full = `/${[base, path].flat().filter(Boolean).join('/')}`
+          .replace(/\/+/g, '/')
+          .replace(/\/$/, '');
         const normalized = full.replace(/:[A-Za-z]*Id/g, ':id');
         if (normalized.includes(':id')) {
           found.push(`${RequestMethod[method]!.toLowerCase()} ${normalized}`);
@@ -390,7 +395,7 @@ describe('IDOR (e2e)', () => {
 
   it('no token → 401 on every endpoint that takes an id', async () => {
     const uuid = randomUUID();
-    expect(ID_ROUTES).toHaveLength(19);
+    expect(ID_ROUTES).toHaveLength(20);
     for (const [verb, template] of ID_ROUTES) {
       const url = template.replaceAll(':id', uuid);
       const res = await as(undefined, verb, url).send({});
