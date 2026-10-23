@@ -1,6 +1,6 @@
 # ADR-0058: Đo ngân sách bundle theo JS tải ban đầu (không cộng mọi route)
 
-Status: proposed — chờ OWNER duyệt
+Status: accepted — OWNER duyệt ngày 2026-10-23
 Date: 2026-10-23
 
 ## Context
