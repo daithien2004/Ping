@@ -39,7 +39,7 @@ describe('timeouts on infrastructure calls (ADR-0026)', () => {
 
   it('a Redis command against an unreachable server fails fast instead of hanging', async () => {
     const redis = new RedisProvider(
-      configWith({ REDIS_URL: 'redis://localhost:6390', REDIS_COMMAND_TIMEOUT_MS: 300 }),
+      configWith({ REDIS_URL: 'redis://127.0.0.1:1', REDIS_COMMAND_TIMEOUT_MS: 300 }),
       logger,
     );
     closers.push(async () => redis.disconnect());

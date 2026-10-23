@@ -247,6 +247,27 @@ describe('Messages (e2e)', () => {
     );
   });
 
+  it('ghi outbox message.created/updated/deleted trong cùng transaction (T5.3)', async () => {
+    const prisma = app.get(PrismaService);
+    const events = await prisma.outboxEvent.findMany({
+      where: {
+        aggregateId: { in: [messageIds[0]!, messageIds[1]!, otherMessageId] },
+        type: { in: ['message.created', 'message.updated', 'message.deleted'] },
+      },
+      select: { aggregateId: true, type: true },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    expect(events).toEqual(
+      expect.arrayContaining([
+        { aggregateId: messageIds[1], type: 'message.created' },
+        { aggregateId: messageIds[1], type: 'message.updated' },
+        { aggregateId: messageIds[0], type: 'message.deleted' },
+        { aggregateId: otherMessageId, type: 'message.deleted' },
+      ]),
+    );
+  });
+
   it('không phải member — không gửi, không đọc, không sửa/xóa được (403 ở guard)', async () => {
     await api('post', `/api/v1/channels/${channelId}/messages`, outsider.token)
       .send({ content: 'x', nonce: randomUUID() })

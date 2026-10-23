@@ -48,20 +48,21 @@ export class OutboxRelayService implements OnModuleInit, OnApplicationShutdown {
 
       for (const event of pending) {
         try {
-          if (this.redis.isUp) {
-            await this.redis.xadd(
-              'stream:outbox',
-              '*',
-              'id',
-              event.id,
-              'type',
-              event.type,
-              'aggregateType',
-              event.aggregateType,
-              'payload',
-              JSON.stringify(event.payload),
-            );
+          if (!this.redis.isUp) {
+            throw new Error('redis unavailable');
           }
+          await this.redis.xadd(
+            'stream:outbox',
+            '*',
+            'id',
+            event.id,
+            'type',
+            event.type,
+            'aggregateType',
+            event.aggregateType,
+            'payload',
+            JSON.stringify(event.payload),
+          );
           await this.prisma.outboxEvent.update({
             where: { id: event.id },
             data: { publishedAt: new Date(), attempts: event.attempts + 1 },

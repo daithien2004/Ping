@@ -41,6 +41,12 @@ export class MetricsService implements OnModuleDestroy {
     help: 'Do tre cua event outbox cu nhat (giay)',
     registers: [this.registry],
   });
+  /** T5.3: entry stream chưa xử lý xong (lag + pending) của consumer indexer. */
+  readonly consumerLag = new Gauge({
+    name: 'consumer_lag',
+    help: 'So event stream chua duoc consumer xu ly xong',
+    registers: [this.registry],
+  });
 
   constructor(
     private readonly prisma: PrismaService,

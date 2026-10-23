@@ -4,13 +4,13 @@ import type { Env } from '../../config/env.schema.js';
 import type { Embedder } from './embedder.port.js';
 import { GroqLlmClient } from './groq-llm.client.js';
 import type { LlmClient } from './llm-client.port.js';
+import { EMBEDDER, LLM_CLIENT, VECTOR_STORE } from './ai.tokens.js';
+import { MessageIndexerService } from './indexer/message-indexer.service.js';
 import { OnnxEmbedder } from './onnx-embedder.js';
 import { QdrantVectorStore } from './qdrant-vector-store.js';
 import type { VectorStore } from './vector-store.port.js';
 
-export const EMBEDDER = Symbol('EMBEDDER');
-export const LLM_CLIENT = Symbol('LLM_CLIENT');
-export const VECTOR_STORE = Symbol('VECTOR_STORE');
+export { EMBEDDER, LLM_CLIENT, VECTOR_STORE } from './ai.tokens.js';
 
 /**
  * Điểm nối duy nhất cho AI (ADR-0046). Port được export để module khác inject;
@@ -39,6 +39,7 @@ export const VECTOR_STORE = Symbol('VECTOR_STORE');
       useFactory: (config: ConfigService<Env, true>): VectorStore =>
         new QdrantVectorStore(config.get('QDRANT_URL', { infer: true })),
     },
+    MessageIndexerService,
   ],
   exports: [EMBEDDER, LLM_CLIENT, VECTOR_STORE],
 })
