@@ -1,37 +1,49 @@
-import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { join, relative } from 'node:path';
 import { gzipSync } from 'node:zlib';
 
-// Ngân sách JS phía client (H4, ADR-0029): tổng gzip và chunk lớn nhất. Số đo ban đầu: 371 KB tổng,
-// chunk lớn nhất 70 KB; trần chừa ~20% dư địa. Muốn biết CÁI GÌ làm phình bundle: `pnpm exec next experimental-analyze`.
-// ADR-0050/TF.15: ngân sách tăng từ 450 lên 550 KB sau khi thêm Ant Design (bộ Ping*) cho UI v0.2.0.
-// Số đo: build có antd, JS client ban đầu 525.8 KB gzip. Điều chỉnh kèm bằng chứng, không tắt check.
-export const LIMITS = { totalKb: 550, chunkKb: 100, lazyKb: 160 };
+// Ngân sách JS phía client (H4, ADR-0029; đo lại theo ADR-0058).
+//
+// `rootMainFiles` + `polyfillFiles` trong `build-manifest.json` là những chunk trình duyệt tải
+// ngay khi mở trang, trước khi điều hướng sang route khác — đúng nghĩa "JS tải ban đầu" mà plan
+// (T3.7/TF.15) và checklist phát hành nói tới. Các chunk còn lại chỉ tải khi vào route tương ứng
+// (admin/AI/search, xem ADR-0050 mục 6) nên có trần riêng, không cộng vào tổng ban đầu.
+//
+// Trần lấy từ plan: bundle ban đầu 450 KB gzip (T3.7, T6.10, checklist phát hành), mỗi chunk
+// 100 KB, chunk tải theo yêu cầu 160 KB (ADR-0031 cho Sentry; ADR-0058 áp dụng cho route).
+export const LIMITS = { initialKb: 450, chunkKb: 100, routeKb: 160 };
 
-// Chunk tải theo yêu cầu, chỉ khi bật tính năng tương ứng (Sentry khi có DSN, ADR-0031): không tính vào
-// JS tải ban đầu, có trần riêng. Nhận ra bằng chuỗi đặc trưng trong nội dung chunk.
-export const LAZY_PREFIX = 'lazy:';
+// Chunk tải theo yêu cầu (route hoặc thư viện bật bằng cấu hình như Sentry): tên có tiền tố này
+// trong `sizes` để `evaluate` không cộng vào tổng ban đầu. Nhận thêm bằng chuỗi đặc trưng trong
+// nội dung chunk (ADR-0031) vì Sentry được nạp bằng `import()` có điều kiện.
+export const ROUTE_PREFIX = 'route:';
 export const LAZY_MARKERS = ['sentry.javascript'];
+
+const bytesToKb = (bytes) => bytes / 1024;
+const kbText = (bytes) => bytesToKb(bytes).toFixed(1);
 
 /** sizes: { tên chunk: byte gzip } → danh sách vi phạm (rỗng = đạt). */
 export function evaluate(sizes, limits = LIMITS) {
   const entries = Object.entries(sizes);
-  const isLazy = ([name]) => name.startsWith(LAZY_PREFIX);
-  const lazy = entries.filter(isLazy);
-  const initial = entries.filter((entry) => !isLazy(entry));
-  const total = initial.reduce((sum, [, bytes]) => sum + bytes, 0);
+  const isRoute = ([name]) => name.startsWith(ROUTE_PREFIX);
+  const route = entries.filter(isRoute);
+  const initial = entries.filter((entry) => !isRoute(entry));
   const problems = [];
-  for (const [name, bytes] of lazy) {
-    if (bytes > limits.lazyKb * 1024) {
-      problems.push(`${name}: ${(bytes / 1024).toFixed(1)} KB gzip > ${limits.lazyKb} KB (lazy)`);
-    }
-  }
-  if (total > limits.totalKb * 1024) {
-    problems.push(`tổng ${(total / 1024).toFixed(1)} KB gzip > ${limits.totalKb} KB`);
+
+  const total = initial.reduce((sum, [, bytes]) => sum + bytes, 0);
+  if (total > limits.initialKb * 1024) {
+    problems.push(`JS tải ban đầu ${kbText(total)} KB gzip > ${limits.initialKb} KB`);
   }
   for (const [name, bytes] of initial) {
     if (bytes > limits.chunkKb * 1024) {
-      problems.push(`${name}: ${(bytes / 1024).toFixed(1)} KB gzip > ${limits.chunkKb} KB`);
+      problems.push(`${name}: ${kbText(bytes)} KB gzip > ${limits.chunkKb} KB`);
+    }
+  }
+  for (const [name, bytes] of route) {
+    if (bytes > limits.routeKb * 1024) {
+      problems.push(
+        `${name.replace(ROUTE_PREFIX, '')}: ${kbText(bytes)} KB gzip > ${limits.routeKb} KB (tải theo yêu cầu)`,
+      );
     }
   }
   return problems;
@@ -44,26 +56,61 @@ function walk(dir) {
   });
 }
 
-export function measure(chunksDir) {
+const normalize = (path) => path.replaceAll('\\', '/');
+
+/**
+ * Đo mọi chunk JS của client. Chunk nằm trong `rootMainFiles`/`polyfillFiles`/`lowPriorityFiles`
+ * (hoặc được đánh dấu lazy) là JS tải ban đầu; phần còn lại là chunk tải theo yêu cầu.
+ * Cần chạy `pnpm build` trước — thiếu `build-manifest.json` thì báo lỗi rõ ràng.
+ */
+export function measure(nextDir = '.next') {
+  const manifestPath = join(nextDir, 'build-manifest.json');
+  if (!existsSync(manifestPath)) {
+    throw new Error(
+      `Không thấy ${manifestPath}. Chạy \`pnpm build\` trước khi kiểm ngân sách bundle.`,
+    );
+  }
+  const chunksDir = join(nextDir, 'static/chunks');
+  if (!existsSync(chunksDir)) {
+    throw new Error(
+      `Không thấy ${chunksDir}. Chạy \`pnpm build\` trước khi kiểm ngân sách bundle.`,
+    );
+  }
+
+  const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+  const initialFiles = new Set(
+    [
+      ...(manifest.rootMainFiles ?? []),
+      ...(manifest.polyfillFiles ?? []),
+      ...(manifest.lowPriorityFiles ?? []),
+    ].map(normalize),
+  );
+
   const sizes = {};
-  for (const file of walk(chunksDir).filter((f) => f.endsWith('.js'))) {
+  for (const file of walk(chunksDir).filter((path) => path.endsWith('.js'))) {
     const content = readFileSync(file);
+    const name = normalize(relative(nextDir, file));
     const lazy = LAZY_MARKERS.some((marker) => content.includes(marker));
-    sizes[`${lazy ? LAZY_PREFIX : ''}${file.slice(chunksDir.length + 1)}`] =
+    sizes[`${initialFiles.has(name) && !lazy ? '' : ROUTE_PREFIX}${name}`] =
       gzipSync(content).length;
   }
   return sizes;
 }
 
 if (process.argv[1]?.endsWith('bundle-budget.mjs')) {
-  const sizes = measure('.next/static/chunks');
-  const sum = (entries) => entries.reduce((a, [, bytes]) => a + bytes, 0) / 1024;
+  const sizes = measure();
+  const isRoute = (name) => name.startsWith(ROUTE_PREFIX);
+  const sum = (entries) => entries.reduce((total, [, bytes]) => total + bytes, 0);
   const all = Object.entries(sizes);
-  const lazy = all.filter(([name]) => name.startsWith(LAZY_PREFIX));
+  const initial = all.filter(([name]) => !isRoute(name));
+  const route = all.filter(([name]) => isRoute(name));
+
   console.log(
-    `JS client ban đầu: ${(sum(all) - sum(lazy)).toFixed(1)} KB gzip (${all.length - lazy.length} chunk); ` +
-      `tải theo yêu cầu: ${sum(lazy).toFixed(1)} KB (${lazy.length} chunk)`,
+    `JS tải ban đầu: ${kbText(sum(initial))} KB gzip (${initial.length} chunk); ` +
+      `tải theo yêu cầu: ${kbText(sum(route))} KB (${route.length} chunk); ` +
+      `tổng mọi chunk (tham khảo): ${kbText(sum(all))} KB`,
   );
+
   const problems = evaluate(sizes);
   if (problems.length) {
     console.error(problems.join('\n'));
