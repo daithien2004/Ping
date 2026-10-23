@@ -26,7 +26,7 @@ Phụ thuộc một chiều `app → features → components → lib`, ESLint ch
 pnpm --filter web dev           # chạy dev (pnpm dev ở gốc chạy cả API)
 pnpm --filter web test          # test đơn vị (Vitest)
 pnpm --filter web test:e2e      # Playwright: tự bật API + web, cần Docker; lần đầu: playwright install chromium
-pnpm --filter web check:bundle  # ngân sách JS client (sau pnpm build): tổng ≤ 450 KB gzip, mỗi chunk ≤ 100 KB
+pnpm --filter web check:bundle  # ngân sách JS tải ban đầu (sau pnpm build): ≤ 450 KB gzip, mỗi chunk ≤ 100 KB, chunk route ≤ 160 KB (ADR-0058)
 ```
 
 E2E gồm cả quét accessibility (axe, sáng và tối), bàn phím, header bảo mật/CSP và hai phiên realtime.

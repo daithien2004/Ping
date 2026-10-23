@@ -40,5 +40,7 @@ ngân sách bundle.
 - Thay nội bộ một component (ví dụ bỏ antd khỏi `PingTooltip`) không phải sửa nơi dùng.
 - Cần spike tương thích (TF.2) trước khi viết UI mới; báo cáo bundle/Lighthouse trong evidence T0.7.
 - ADR-0023 (UI hiện tại) vẫn có hiệu lực cho code cũ; migration dần sang bộ `Ping*`.
-- Ngân sách bundle ban đầu 450 KB (ADR-0029) được điều chỉnh lên 550 KB sau khi thêm antd (TF.15),
-  bằng chứng: JS client ban đầu 525.8 KB gzip sau T0.7. Không tắt check:bundle.
+- Ngân sách bundle: ADR-0029 đặt 450 KB cho JS client; ADR-0050 từng nâng lên 550 KB sau khi thêm
+  antd (số đo 525.8 KB gzip, đo bằng cách cộng mọi chunk). ADR-0058 thay cách đo bằng **JS tải ban
+  đầu** (`rootMainFiles` + polyfills) với trần 450 KB đúng như plan, cộng trần 160 KB cho từng chunk
+  tải theo yêu cầu. Không tắt `check:bundle`.

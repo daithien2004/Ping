@@ -11,5 +11,7 @@ export const qk = {
   channels: (serverId: string) => ['servers', serverId, 'channels'] as const,
   members: (serverId: string) => ['servers', serverId, 'members'] as const,
   permissions: (serverId: string) => ['servers', serverId, 'permissions'] as const,
+  roles: (serverId: string) => ['servers', serverId, 'roles'] as const,
+  auditLog: (serverId: string) => ['servers', serverId, 'audit-log'] as const,
   messages: (channelId: string) => ['channels', channelId, 'messages'] as const,
 };

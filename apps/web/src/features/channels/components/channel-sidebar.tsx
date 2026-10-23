@@ -1,7 +1,7 @@
 'use client';
 
 import { ErrorCodes } from '@ping/shared';
-import { Copy, LogOut } from 'lucide-react';
+import { Copy, LogOut, Settings } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
 import { useTranslations } from 'use-intl';
 import { FormError } from '@/components/form-parts';
@@ -21,6 +21,13 @@ export function ChannelSidebar() {
   const leaveMutation = useLeaveServer();
   const t = useTranslations();
   const errorMessage = useErrorMessage();
+
+  // Bề mặt quản trị (TF.10): chỉ hiện lối vào khi người dùng có ít nhất một quyền quản trị
+  // (quản lý vai trò, xem nhật ký hành động hoặc quản lý server).
+  const canOpenSettings =
+    ability.can('manage', 'Role') ||
+    ability.can('view', 'AuditLog') ||
+    ability.can('update', 'Server');
 
   function leave() {
     leaveMutation.mutate(serverId, { onSuccess: () => router.replace('/servers') });
@@ -60,6 +67,16 @@ export function ChannelSidebar() {
       )}
 
       <div className="mt-auto flex flex-col gap-1 border-t border-sidebar-border p-2">
+        {canOpenSettings && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="justify-start"
+            onClick={() => router.push(`/servers/${serverId}/settings`)}
+          >
+            <Settings /> {t('admin.open')}
+          </Button>
+        )}
         {leaveMutation.isError && (
           <FormError>
             {errorMessage(leaveMutation.error, {
