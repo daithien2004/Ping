@@ -37,6 +37,7 @@ export function ServerNameForm({ server }: { server: ServerDetail }) {
       <h2 className="text-lg font-semibold">{t('serverSection')}</h2>
       <p className="text-sm text-muted-foreground">{t('serverNameHint')}</p>
       <PingForm
+        name="server-name"
         form={form}
         layout="vertical"
         initialValues={{ name: server.name }}

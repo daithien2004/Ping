@@ -186,7 +186,40 @@ test('admin surface: audit log follows permissions, role permissions save, dange
       await expect(drawer).toHaveCount(0);
     });
 
-    await test.step('vùng nguy hiểm: xoá server phải xác nhận', async () => {
+    await test.step('quản lý kênh: tạo, đổi tên, xóa có xác nhận', async () => {
+      const channels = ownerPage.getByRole('region', { name: 'Kênh' });
+      await expect(channels).toBeVisible();
+
+      await channels.getByRole('button', { name: 'Tạo channel' }).click();
+      const modal = ownerPage.getByRole('dialog');
+      await expect(modal).toBeVisible();
+      await modal.getByRole('textbox', { name: 'Tên channel' }).fill(`general-${suffix}`);
+      await modal.getByRole('button', { name: 'Tạo' }).click();
+      await expect(modal).toHaveCount(0);
+      await expect(channels.getByText(`general-${suffix}`)).toBeVisible();
+
+      let row = channels.getByRole('row', { name: new RegExp(`general-${suffix}`) });
+      await row.getByRole('button', { name: 'Đổi tên channel' }).click();
+      const renameModal = ownerPage.getByRole('dialog');
+      await expect(renameModal).toBeVisible();
+      await renameModal.getByRole('textbox', { name: 'Tên channel' }).fill(`ann-${suffix}`);
+      await renameModal.getByRole('button', { name: 'Lưu' }).click();
+      await expect(renameModal).toHaveCount(0);
+      await expect(channels.getByText(`ann-${suffix}`)).toBeVisible();
+
+      row = channels.getByRole('row', { name: new RegExp(`ann-${suffix}`) });
+      await row.getByRole('button', { name: 'Xoá channel' }).click();
+      await expect(ownerPage.getByText('Xoá channel này?')).toBeVisible();
+      await visiblePopconfirm(ownerPage).getByRole('button', { name: 'Xoá channel' }).click();
+      await expect(channels.getByText(`ann-${suffix}`)).toHaveCount(0);
+    });
+
+    await test.step('thành viên không có quyền quản lý channel không thấy/không thao tác được', async () => {
+      await memberPage.reload();
+      await expect(memberPage.getByRole('region', { name: 'Kênh' })).toHaveCount(0);
+    });
+
+    await test.step('vùng nguy hiểm: xóa server phải xác nhận', async () => {
       const danger = ownerPage.getByRole('region', { name: 'Vùng nguy hiểm' });
       await expect(danger).toBeVisible();
       await danger.getByRole('button', { name: 'Xoá server' }).click();

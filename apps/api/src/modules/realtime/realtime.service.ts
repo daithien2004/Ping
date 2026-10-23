@@ -32,6 +32,17 @@ export class RealtimeService {
     void room.emit(event, payload);
   }
 
+  /** Room `server:<id>`: mọi client đang xem một channel của server. */
+  emitToServer<T extends EventName>(serverId: string, event: T, payload: Payload<T>): void {
+    if (!this.server) {
+      return;
+    }
+    const room = this.server.to(`server:${serverId}`) as unknown as {
+      emit: (e: unknown, p: unknown) => void;
+    };
+    void room.emit(event, payload);
+  }
+
   /**
    * Số socket đang mở của user trên MỌI instance (Redis adapter hỏi các instance khác).
    * Đếm socket thật thay cho bộ đếm INCR/DECR: không lệch khi key hết TTL hay instance chết.

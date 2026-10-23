@@ -9,7 +9,12 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { createChannelSchema, type CreateChannelInput } from '@ping/shared';
+import {
+  createChannelSchema,
+  updateChannelSchema,
+  type CreateChannelInput,
+  type UpdateChannelInput,
+} from '@ping/shared';
 import { IdempotencyInterceptor } from '../../common/interceptors/idempotency.interceptor.js';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe.js';
 import { AbilityGuard } from '../ability/ability.guard.js';
@@ -17,7 +22,6 @@ import { CheckAbility } from '../ability/check-ability.decorator.js';
 import { CurrentUser, type AuthenticatedUser } from '../auth/current-user.decorator.js';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { ChannelsService } from './channels.service.js';
-import { updateChannelSchema, type UpdateChannelInput } from './schemas.js';
 
 /** @Controller() gốc vì route trải trên hai prefix: /servers/:id/channels và /channels/:id. */
 @Controller()
@@ -44,10 +48,11 @@ export class ChannelsController {
   @Patch('channels/:channelId')
   @CheckAbility(['manage', 'Channel'])
   update(
+    @CurrentUser() user: AuthenticatedUser,
     @Param('channelId') channelId: string,
     @Body(new ZodValidationPipe(updateChannelSchema)) body: UpdateChannelInput,
   ) {
-    return this.channelsService.update(channelId, body);
+    return this.channelsService.update(channelId, user.userId, body);
   }
 
   @Delete('channels/:channelId')

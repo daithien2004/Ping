@@ -38,7 +38,7 @@
   },
   "admin": {
     "title": "Cài đặt server",
-    "hint": "Quản lý vai trò, thành viên và nhật ký hành động của server.",
+    "hint": "Quản lý kênh, vai trò, thành viên và nhật ký hành động của server.",
     "serverSection": "Thông tin server",
     "serverName": "Tên server",
     "serverNameHint": "Tên này hiển thị với mọi thành viên.",
@@ -119,8 +119,11 @@
       "channelDelete": "Xoá channel",
       "serverDelete": "Xoá server",
       "unknown": "Hành động khác",
-      "serverUpdate": "Đổi tên server"
-    }
+      "serverUpdate": "Đổi tên server",
+      "channelUpdate": "Đổi tên channel"
+    },
+    "channels": "Kênh",
+    "channelActions": "Thao tác"
   },
   "app": {
     "accessDenied": "Không truy cập được",
@@ -170,7 +173,16 @@
     "name": "Tên channel",
     "noPermissionCreate": "Bạn không có quyền tạo channel.",
     "notFound": "Channel không tồn tại.",
-    "empty": "Server chưa có channel nào."
+    "empty": "Server chưa có channel nào.",
+    "rename": "Đổi tên channel",
+    "noPermissionManage": "Bạn không có quyền quản lý channel.",
+    "created": "Đã tạo channel.",
+    "renamed": "Đã đổi tên channel.",
+    "deleted": "Đã xoá channel.",
+    "delete": "Xoá channel",
+    "deleteTitle": "Xoá channel này?",
+    "deleteDescription": "Toàn bộ tin nhắn trong channel sẽ bị xoá. Thao tác không thể hoàn tác.",
+    "actions": "Thao tác"
   },
   "members": {
     "panel": "Thành viên",

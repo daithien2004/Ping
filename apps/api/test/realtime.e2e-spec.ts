@@ -462,6 +462,44 @@ describe('Realtime across two instances (e2e)', () => {
     socket.disconnect();
   });
 
+  it('channel.created/updated/deleted phát tới client ở instance khác trong server', async () => {
+    const watcher = await connectClient(portB, member.token);
+    watcher.emit('channel.join', { channelId });
+    await settle();
+
+    const createdEvent = waitEvent<{ id: string; serverId: string; name: string }>(
+      watcher,
+      'channel.created',
+    );
+    const created = await request(appA.getHttpServer())
+      .post(`/api/v1/servers/${serverId}/channels`)
+      .set('Authorization', `Bearer ${owner.token}`)
+      .send({ name: 'realtime-temp' })
+      .expect(201);
+    expect(await createdEvent).toMatchObject({
+      id: created.body.id,
+      serverId,
+      name: 'realtime-temp',
+    });
+
+    const updatedEvent = waitEvent<{ id: string; name: string }>(watcher, 'channel.updated');
+    await request(appA.getHttpServer())
+      .patch(`/api/v1/channels/${created.body.id}`)
+      .set('Authorization', `Bearer ${owner.token}`)
+      .send({ name: 'realtime-renamed' })
+      .expect(200);
+    expect(await updatedEvent).toMatchObject({ id: created.body.id, name: 'realtime-renamed' });
+
+    const deletedEvent = waitEvent<{ id: string; serverId: string }>(watcher, 'channel.deleted');
+    await request(appA.getHttpServer())
+      .delete(`/api/v1/channels/${created.body.id}`)
+      .set('Authorization', `Bearer ${owner.token}`)
+      .expect(200);
+    expect(await deletedEvent).toEqual({ id: created.body.id, serverId });
+
+    watcher.disconnect();
+  });
+
   it('member.removed: bị kick → nhận event riêng để rời server ở client', async () => {
     const socket = await connectClient(portB, bystander.token);
     await settle();
