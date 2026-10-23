@@ -25,8 +25,10 @@ Date: 2026-10-20
   - New messages are announced in an `aria-live="polite"` region (own messages are not).
   - `e2e/keyboard.spec.ts`: dialog opens by keyboard, focus enters the field, Esc returns focus; the
     message menu opens by keyboard.
-- **Bundle budget.** `pnpm --filter web check:bundle` (after `build`): total client JS ≤ 450 KB gzip,
-  each chunk ≤ 100 KB (baseline 371 KB / 70 KB). `next experimental-analyze` shows what grew.
+- **Bundle budget.** `pnpm --filter web check:bundle` (after `build`): initial client JS ≤ 450 KB gzip,
+  each chunk ≤ 100 KB (baseline 371 KB / 70 KB). Route chunks loaded on navigation are capped at
+  160 KB each instead of being summed — see ADR-0058 for the measurement. `next experimental-analyze`
+  shows what grew.
 - **`process.env` only in `src/lib/env.ts`** (ESLint), so configuration is validated in one place.
 
 ## Consequences
