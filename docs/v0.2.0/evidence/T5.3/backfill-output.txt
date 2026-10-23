@@ -1,0 +1,17 @@
+
+> api@0.2.0 ai:backfill D:\discord\Ping\apps\api
+> tsx scripts/backfill-messages.ts "--rate=20" "--limit=60"
+
+─æ├ú xß╗¡ l├╜ 50 tin (id cuß╗æi 01a15613-5511-799c-bc84-a32642a9fc9f)
+{
+  "model": "Xenova/multilingual-e5-small",
+  "ratePerSecond": 20,
+  "windowSize": 4,
+  "maxTokens": 512,
+  "processed": 60,
+  "lastId": "01a15617-3c75-7216-b14b-d406becfdecd",
+  "durationMs": 8515,
+  "messagesPerSecond": 7.05,
+  "qdrant": "http://localhost:6333",
+  "totalDurationMs": 8516
+}

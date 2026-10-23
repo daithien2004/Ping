@@ -1,0 +1,33 @@
+
+> api@0.2.0 drill:consumer-lag D:\discord\Ping\apps\api
+> tsx test/drill/consumer-lag.drill.ts
+
+{
+  "step": "result",
+  "metric": "consumer_lag",
+  "beforeEvents": 0,
+  "eventsPublished": 200,
+  "observedMax": 198,
+  "samples": [
+    198,
+    198,
+    188,
+    188,
+    188,
+    178,
+    178,
+    168,
+    168,
+    158,
+    158,
+    148,
+    148,
+    138,
+    138,
+    138,
+    128,
+    128
+  ],
+  "exposed": true,
+  "positiveDuringBacklog": true
+}

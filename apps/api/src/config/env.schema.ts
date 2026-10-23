@@ -51,6 +51,16 @@ export const envSchema = z.object({
     z.string().min(1).optional(),
   ),
   GROQ_MODEL: z.string().min(1).default('openai/gpt-oss-20b'),
+  // Indexer T5.3: cửa sổ hội thoại + giới hạn token ước lượng cho mỗi chunk.
+  AI_CHUNK_WINDOW: z.coerce.number().int().min(1).max(20).default(4),
+  AI_CHUNK_MAX_TOKENS: z.coerce.number().int().min(64).max(2048).default(512),
+  // Tắt consumer khi cần (test tự động luôn tắt qua NODE_ENV=test).
+  AI_INDEXER_ENABLED: z.preprocess(
+    (value) => (value === undefined || value === '' ? true : value !== 'false'),
+    z.boolean(),
+  ),
+  // Entry pending lâu hơn ngưỡng này được consumer mới nhận lại (consumer chết giữa chừng).
+  AI_INDEXER_CLAIM_IDLE_MS: z.coerce.number().int().min(1_000).max(300_000).default(30_000),
 });
 
 export type Env = z.infer<typeof envSchema>;

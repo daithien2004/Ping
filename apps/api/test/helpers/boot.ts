@@ -9,7 +9,10 @@ import { ShutdownService } from '../../src/infra/lifecycle/shutdown.service.js';
 import { RedisProvider } from '../../src/infra/redis/redis.module.js';
 import { RedisIoAdapter } from '../../src/infra/socket/redis-io.adapter.js';
 
-export const DEAD_REDIS = 'redis://localhost:6390'; // không ai nghe: mô phỏng đúng một Redis đã chết
+// Cổng 1 hầu như chắc chắn không có ai nghe và trả ECONNREFUSED ngay. Tránh dùng cổng
+// dev phổ biến (ví dụ 6390) vì một container khác trên máy có thể chiếm, làm test
+// "Redis chết" lại kết nối được vào Redis thật.
+export const DEAD_REDIS = 'redis://127.0.0.1:1';
 
 /**
  * Dựng app thật (Postgres thật). `deadRedis` thay RedisProvider bằng một provider cùng class, cùng

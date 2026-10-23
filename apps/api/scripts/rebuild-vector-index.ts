@@ -1,20 +1,23 @@
 /**
- * Rebuild toàn bộ chỉ mục vector từ Postgres (T5.2).
+ * Rebuild toàn bộ chỉ mục vector từ Postgres (T5.2, cập nhật ở T5.3).
  *
- * Postgres là nguồn sự thật; Qdrant chỉ là chỉ mục có thể dựng lại. Script này đọc
- * tin nhắn chưa xoá, embed theo lô, upsert idempotent (point id = message id) và
- * kiểm tra lại số point. Không lưu nội dung tin nhắn trong payload.
+ * Postgres là nguồn sự thật; Qdrant chỉ là chỉ mục có thể dựng lại. Từ T5.3 script
+ * dùng chung `MessageIndexerCore` với consumer: point neo vào tin nhắn, vector là
+ * cửa sổ tin liền trước cùng channel. Nhờ vậy rebuild không ghi đè chunk realtime
+ * bằng point một-tin. Point id = message id nên chạy lại vẫn idempotent.
  *
- *   pnpm --filter api ai:rebuild              # upsert, giữ point cũ
- *   pnpm --filter api ai:rebuild -- --recreate # xoá collection rồi dựng lại
+ *   pnpm --filter api ai:rebuild                # upsert, giữ point cũ
+ *   pnpm --filter api ai:rebuild -- --recreate  # xoá collection rồi dựng lại
+ *   pnpm --filter api ai:rebuild -- --batch=100
  */
 import { PrismaPg } from '@prisma/adapter-pg';
 import { config } from 'dotenv';
 import { PrismaClient } from '../src/generated/prisma/client.js';
+import { MessageIndexerCore } from '../src/modules/ai/indexer/message-indexer.core.js';
 import { OnnxEmbedder } from '../src/modules/ai/onnx-embedder.js';
 import { QdrantVectorStore } from '../src/modules/ai/qdrant-vector-store.js';
 import { collectionName, embeddingVersion } from '../src/modules/ai/vector-schema.js';
-import type { VectorPoint } from '../src/modules/ai/vector-store.port.js';
+import { backfillMessages } from './lib/backfill.js';
 
 config({ path: '../../.env', quiet: true });
 
@@ -33,11 +36,13 @@ if (!qdrantUrl) throw new Error('Thiếu QDRANT_URL');
 
 const model = process.env.EMBEDDING_MODEL || 'Xenova/multilingual-e5-small';
 const requestedBatch = Number(arg('batch', '64'));
-const batchSize =
+const pageSize =
   Number.isFinite(requestedBatch) && requestedBatch > 0 && requestedBatch <= 256
     ? Math.floor(requestedBatch)
     : 64;
 const recreate = process.argv.includes('--recreate');
+const windowSize = Number(process.env.AI_CHUNK_WINDOW ?? 4);
+const maxTokens = Number(process.env.AI_CHUNK_MAX_TOKENS ?? 512);
 
 const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString: databaseUrl, max: 2 }),
@@ -45,76 +50,38 @@ const prisma = new PrismaClient({
 const embedder = new OnnxEmbedder(model);
 const store = new QdrantVectorStore(qdrantUrl);
 
-const started = performance.now();
-let cursor: string | undefined;
-let messages = 0;
-let batches = 0;
-let collection: string | undefined;
-let modelVersion: string | undefined;
-
 try {
-  do {
-    const rows = await prisma.message.findMany({
-      where: { deletedAt: null },
-      include: { channel: { select: { serverId: true } } },
-      orderBy: { id: 'asc' },
-      take: batchSize,
-      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
-    });
-    if (rows.length === 0) break;
+  // Cần biết số chiều trước khi xoá collection: embed một câu thăm dò.
+  const probe = await embedder.embed(['khởi tạo chỉ mục'], 'passage');
+  const collection = collectionName(model, probe.dimensions);
+  const modelVersion = embeddingVersion(model, probe.dimensions);
+  if (recreate) await store.deleteCollection(collection);
+  await store.ensureCollection(collection, probe.dimensions);
 
-    cursor = rows.at(-1)?.id;
-    const embedded = await embedder.embed(
-      rows.map((row) => row.content),
-      'passage',
-    );
-
-    if (!collection || !modelVersion) {
-      collection = collectionName(model, embedded.dimensions);
-      modelVersion = embeddingVersion(model, embedded.dimensions);
-      if (recreate) await store.deleteCollection(collection);
-      await store.ensureCollection(collection, embedded.dimensions);
-    }
-
-    const points: VectorPoint[] = rows.map((row, index) => ({
-      id: row.id,
-      vector: embedded.vectors[index] ?? [],
-      payload: {
-        serverId: row.channel.serverId,
-        channelId: row.channelId,
-        authorId: row.authorId,
-        createdAt: row.createdAt.toISOString(),
-        messageIds: [row.id],
-        modelVersion: modelVersion ?? '',
-      },
-    }));
-
-    await store.upsert(collection, points);
-    messages += points.length;
-    batches += 1;
-    console.log(`đã xử lý ${messages} tin (${batches} lô)`);
-  } while (cursor);
-
-  // Database rỗng vẫn tạo collection để lần index đầu tiên không phải chờ.
-  if (!collection || !modelVersion) {
-    const probe = await embedder.embed(['khởi tạo chỉ mục'], 'passage');
-    collection = collectionName(model, probe.dimensions);
-    modelVersion = embeddingVersion(model, probe.dimensions);
-    if (recreate) await store.deleteCollection(collection);
-    await store.ensureCollection(collection, probe.dimensions);
-  }
-
+  const core = new MessageIndexerCore(prisma, embedder, store, {
+    windowSize: Number.isFinite(windowSize) ? windowSize : 4,
+    maxTokens: Number.isFinite(maxTokens) ? maxTokens : 512,
+  });
+  const result = await backfillMessages({
+    prisma,
+    core,
+    ratePerSecond: 0,
+    pageSize,
+    onProgress: (processed) => {
+      if (processed % 50 === 0) console.log(`đã xử lý ${processed} tin`);
+    },
+  });
   const points = await store.count(collection);
   console.log(
     JSON.stringify(
       {
         collection,
         modelVersion,
-        messages,
+        messages: result.processed,
         points,
-        batches,
+        pageSize,
         recreated: recreate,
-        durationMs: Math.round(performance.now() - started),
+        durationMs: result.durationMs,
         qdrant: qdrantUrl,
       },
       null,

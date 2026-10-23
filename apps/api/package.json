@@ -31,7 +31,10 @@
     "drill:postgres": "tsx test/drill/postgres-outage.drill.ts",
     "ai:eval": "tsx scripts/eval-embeddings.ts",
     "ai:smoke": "tsx scripts/smoke-llm.ts",
-    "ai:rebuild": "tsx scripts/rebuild-vector-index.ts"
+    "ai:rebuild": "tsx scripts/rebuild-vector-index.ts",
+    "ai:backfill": "tsx scripts/backfill-messages.ts",
+    "drill:indexer": "tsx test/drill/indexer-crash.drill.ts",
+    "drill:consumer-lag": "tsx test/drill/consumer-lag.drill.ts"
   },
   "dependencies": {
     "@casl/ability": "7.0.2",

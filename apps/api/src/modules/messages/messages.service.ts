@@ -106,10 +106,24 @@ export class MessagesService {
     // tra được khi đã có đối tượng thật trong tay.
     ForbiddenError.from(ability).throwUnlessCan('update', subject('Message', message));
 
-    const updated = await this.prisma.message.update({
-      where: { id: message.id },
-      data: { content, editedAt: new Date() },
-      select: messageWithAuthor,
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const row = await tx.message.update({
+        where: { id: message.id },
+        data: { content, editedAt: new Date() },
+        select: messageWithAuthor,
+      });
+      await this.outbox.write(tx, {
+        aggregateType: 'Message',
+        aggregateId: row.id,
+        type: ServerEvents.MessageUpdated,
+        payload: {
+          id: row.id,
+          channelId: message.channelId,
+          content: row.content,
+          updatedAt: (row.editedAt ?? row.createdAt).toISOString(),
+        },
+      });
+      return row;
     });
 
     this.realtime.emitToChannel(message.channelId, ServerEvents.MessageUpdated, {
@@ -128,29 +142,50 @@ export class MessagesService {
     ForbiddenError.from(ability).throwUnlessCan('delete', subject('Message', message));
 
     // Soft delete: moderation cần lịch sử, và client cần event message.deleted
-    // — row phải còn để biết nó từng tồn tại.
-    const softDelete = this.prisma.message.update({
-      where: { id: message.id },
-      data: { deletedAt: new Date() },
-    });
+    // — row phải còn để biết nó từng tồn tại. Outbox ghi cùng transaction để
+    // indexer (T5.3) nhận được cả khi realtime lỗi.
+    const deletedPayload = { id: message.id, channelId: message.channelId };
     if (message.authorId === actorId) {
-      await softDelete;
+      await this.prisma.$transaction(async (tx) => {
+        await tx.message.update({
+          where: { id: message.id },
+          data: { deletedAt: new Date() },
+        });
+        await this.outbox.write(tx, {
+          aggregateType: 'Message',
+          aggregateId: message.id,
+          type: ServerEvents.MessageDeleted,
+          payload: deletedPayload,
+        });
+      });
     } else {
       // Xóa tin của người khác là hành động moderation: phải có AuditLog (quy tắc 11).
       const { serverId } = await this.prisma.channel.findUniqueOrThrow({
         where: { id: message.channelId },
         select: { serverId: true },
       });
-      await this.prisma.$transaction([
-        softDelete,
-        this.audit.record({
-          serverId,
-          actorId,
-          action: 'MESSAGE_DELETE',
-          targetId: message.id,
-          metadata: { authorId: message.authorId, channelId: message.channelId },
-        }),
-      ]);
+      await this.prisma.$transaction(async (tx) => {
+        await tx.message.update({
+          where: { id: message.id },
+          data: { deletedAt: new Date() },
+        });
+        await this.audit.record(
+          {
+            serverId,
+            actorId,
+            action: 'MESSAGE_DELETE',
+            targetId: message.id,
+            metadata: { authorId: message.authorId, channelId: message.channelId },
+          },
+          tx,
+        );
+        await this.outbox.write(tx, {
+          aggregateType: 'Message',
+          aggregateId: message.id,
+          type: ServerEvents.MessageDeleted,
+          payload: deletedPayload,
+        });
+      });
     }
 
     this.realtime.emitToChannel(message.channelId, ServerEvents.MessageDeleted, {

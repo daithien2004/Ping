@@ -1,0 +1,20 @@
+
+> api@0.2.0 drill:indexer D:\discord\Ping\apps\api
+> tsx test/drill/indexer-crash.drill.ts
+
+{"step":"seeded","messages":40,"collection":"messages__fake_embedding_v1__16__v1","runId":"mvkpfw2c"}
+[first] {"worker":"started","consumer":"drill-first-27588-1792743918098","claimIdleMs":1000,"delayMs":150}
+{"step":"killed","pointsBeforeKill":6,"pointsAtKill":6,"pendingAtKill":5}
+[recovery] {"worker":"started","consumer":"drill-recovery-27588-1792743920098","claimIdleMs":1000,"delayMs":150}
+{
+  "step": "result",
+  "seededMessages": 40,
+  "pointsBeforeKill": 6,
+  "pendingAtKill": 5,
+  "pointsAfterRecovery": 40,
+  "missing": 0,
+  "duplicates": 0,
+  "extra": 0,
+  "idsMatch": true,
+  "durationMs": 8937
+}
