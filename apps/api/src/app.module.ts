@@ -21,6 +21,7 @@ import { PrismaModule } from './infra/prisma/prisma.module.js';
 import { RedisModule, RedisProvider } from './infra/redis/redis.module.js';
 import { RedisThrottlerStorage } from './infra/throttler/redis-throttler.storage.js';
 import { AbilityModule } from './modules/ability/ability.module.js';
+import { AiModule } from './modules/ai/ai.module.js';
 import { AuditModule } from './modules/audit/audit.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { EventsModule } from './infra/events/events.module.js';
@@ -87,6 +88,7 @@ import { UsersModule } from './modules/users/users.module.js';
     RolesModule,
     MessagesModule,
     RealtimeModule,
+    AiModule,
   ],
   controllers: [AppController],
   providers: [

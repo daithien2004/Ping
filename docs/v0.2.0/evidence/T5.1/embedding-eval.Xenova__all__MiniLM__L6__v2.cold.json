@@ -1,0 +1,215 @@
+{
+  "generatedAt": "2026-10-23T07:18:04.971Z",
+  "model": "Xenova/all-MiniLM-L6-v2",
+  "runtime": {
+    "node": "v24.22.0",
+    "platform": "win32/x64",
+    "cpu": "Intel64 Family 6 Model 141 Stepping 1, GenuineIntel"
+  },
+  "corpus": {
+    "messages": 50,
+    "queries": 25,
+    "channels": 5
+  },
+  "embedding": {
+    "dimensions": 384,
+    "coldStartMs": 3555,
+    "passageBatchMs": 66,
+    "queryLatencyMs": {
+      "p50": 1.8,
+      "p95": 2.7
+    },
+    "rssBeforeMb": 189.4,
+    "rssAfterMb": 287.4,
+    "modelCacheMb": 22.6
+  },
+  "quality": {
+    "vector": {
+      "recallAt1": 0.64,
+      "recallAt5": 0.8,
+      "mrr": 0.7269042585321656
+    },
+    "lexical": {
+      "recallAt1": 0.8,
+      "recallAt5": 0.92,
+      "mrr": 0.8409166666666666
+    }
+  },
+  "perQuery": [
+    {
+      "id": "q01",
+      "query": "deadline báo cáo tiến độ là khi nào?",
+      "relevant": ["m03"],
+      "vectorTop5": ["m03", "m40", "m31", "m34", "m35"],
+      "lexicalTop5": ["m03", "m40", "m31", "m01", "m02"]
+    },
+    {
+      "id": "q02",
+      "query": "làm sao bật redis khi chạy local?",
+      "relevant": ["m16"],
+      "vectorTop5": ["m44", "m16", "m15", "m39", "m13"],
+      "lexicalTop5": ["m16", "m39", "m24", "m44", "m13"]
+    },
+    {
+      "id": "q03",
+      "query": "CI build lỗi vì thiếu gì?",
+      "relevant": ["m17"],
+      "vectorTop5": ["m17", "m01", "m14", "m50", "m41"],
+      "lexicalTop5": ["m17", "m27", "m40", "m25", "m19"]
+    },
+    {
+      "id": "q04",
+      "query": "sau khi pull code cần chạy lệnh gì để cập nhật database?",
+      "relevant": ["m18"],
+      "vectorTop5": ["m18", "m29", "m21", "m26", "m04"],
+      "lexicalTop5": ["m18", "m06", "m24", "m29", "m38"]
+    },
+    {
+      "id": "q05",
+      "query": "tại sao API trả về lỗi 401?",
+      "relevant": ["m19"],
+      "vectorTop5": ["m19", "m35", "m46", "m20", "m14"],
+      "lexicalTop5": ["m19", "m39", "m40", "m28", "m24"]
+    },
+    {
+      "id": "q06",
+      "query": "có nên commit file .env không?",
+      "relevant": ["m21"],
+      "vectorTop5": ["m21", "m31", "m37", "m04", "m49"],
+      "lexicalTop5": ["m21", "m01", "m02", "m03", "m04"]
+    },
+    {
+      "id": "q07",
+      "query": "bài kiểm thử tự động thỉnh thoảng thất bại",
+      "relevant": ["m22"],
+      "vectorTop5": ["m09", "m03", "m35", "m49", "m48"],
+      "lexicalTop5": ["m50", "m32", "m01", "m02", "m03"]
+    },
+    {
+      "id": "q08",
+      "query": "chạy nhiều instance API thì socket cần gì?",
+      "relevant": ["m24"],
+      "vectorTop5": ["m24", "m19", "m18", "m31", "m04"],
+      "lexicalTop5": ["m24", "m16", "m19", "m10", "m18"]
+    },
+    {
+      "id": "q09",
+      "query": "dùng trình quản lý gói nào trong monorepo?",
+      "relevant": ["m25"],
+      "vectorTop5": ["m25", "m07", "m47", "m09", "m15"],
+      "lexicalTop5": ["m25", "m01", "m02", "m03", "m04"]
+    },
+    {
+      "id": "q10",
+      "query": "ai đang sửa quy trình tích hợp liên tục?",
+      "relevant": ["m26"],
+      "vectorTop5": ["m09", "m37", "m08", "m15", "m33"],
+      "lexicalTop5": ["m26", "m08", "m01", "m02", "m03"]
+    },
+    {
+      "id": "q11",
+      "query": "khôi phục phiên bản triển khai trước",
+      "relevant": ["m27"],
+      "vectorTop5": ["m06", "m09", "m45", "m11", "m08"],
+      "lexicalTop5": ["m06", "m27", "m29", "m10", "m38"]
+    },
+    {
+      "id": "q12",
+      "query": "hệ thống ngừng phục vụ lúc nào?",
+      "relevant": ["m31"],
+      "vectorTop5": ["m37", "m09", "m44", "m31", "m15"],
+      "lexicalTop5": ["m37", "m01", "m02", "m03", "m04"]
+    },
+    {
+      "id": "q13",
+      "query": "mật khẩu mới cần bao nhiêu ký tự?",
+      "relevant": ["m32"],
+      "vectorTop5": ["m32", "m45", "m50", "m36", "m03"],
+      "lexicalTop5": ["m32", "m39", "m45", "m01", "m50"]
+    },
+    {
+      "id": "q14",
+      "query": "nhân viên phải có mặt ở công ty lúc mấy giờ?",
+      "relevant": ["m33"],
+      "vectorTop5": ["m09", "m46", "m07", "m14", "m43"],
+      "lexicalTop5": ["m34", "m11", "m05", "m33", "m01"]
+    },
+    {
+      "id": "q15",
+      "query": "ngày nào công ty nghỉ lễ?",
+      "relevant": ["m34"],
+      "vectorTop5": ["m34", "m11", "m09", "m38", "m06"],
+      "lexicalTop5": ["m34", "m11", "m09", "m36", "m38"]
+    },
+    {
+      "id": "q16",
+      "query": "đào tạo bảo mật diễn ra khi nào và ở đâu?",
+      "relevant": ["m35"],
+      "vectorTop5": ["m35", "m03", "m46", "m31", "m48"],
+      "lexicalTop5": ["m35", "m39", "m29", "m21", "m22"]
+    },
+    {
+      "id": "q17",
+      "query": "được làm việc từ xa mấy ngày một tuần?",
+      "relevant": ["m36"],
+      "vectorTop5": ["m36", "m33", "m46", "m09", "m44"],
+      "lexicalTop5": ["m36", "m13", "m33", "m49", "m02"]
+    },
+    {
+      "id": "q18",
+      "query": "VPN đổi địa chỉ khi nào?",
+      "relevant": ["m37"],
+      "vectorTop5": ["m40", "m37", "m26", "m49", "m31"],
+      "lexicalTop5": ["m37", "m05", "m40", "m42", "m21"]
+    },
+    {
+      "id": "q19",
+      "query": "tôi không thấy thư đặt lại mật khẩu",
+      "relevant": ["m39"],
+      "vectorTop5": ["m09", "m32", "m03", "m36", "m49"],
+      "lexicalTop5": ["m39", "m45", "m32", "m21", "m35"]
+    },
+    {
+      "id": "q20",
+      "query": "VPN báo timeout, không kết nối được",
+      "relevant": ["m40"],
+      "vectorTop5": ["m40", "m37", "m31", "m22", "m03"],
+      "lexicalTop5": ["m40", "m03", "m22", "m31", "m37"]
+    },
+    {
+      "id": "q21",
+      "query": "xin quyền vào repository private",
+      "relevant": ["m41"],
+      "vectorTop5": ["m41", "m37", "m12", "m21", "m26"],
+      "lexicalTop5": ["m41", "m01", "m40", "m10", "m12"]
+    },
+    {
+      "id": "q22",
+      "query": "xuất bảng tính ra CSV",
+      "relevant": ["m42"],
+      "vectorTop5": ["m42", "m23", "m11", "m15", "m31"],
+      "lexicalTop5": ["m42", "m23", "m06", "m01", "m02"]
+    },
+    {
+      "id": "q23",
+      "query": "máy in bị kẹt giấy",
+      "relevant": ["m43"],
+      "vectorTop5": ["m43", "m44", "m38", "m33", "m07"],
+      "lexicalTop5": ["m43", "m21", "m22", "m45", "m37"]
+    },
+    {
+      "id": "q24",
+      "query": "cách đổi nền tảng họp trực tuyến",
+      "relevant": ["m44"],
+      "vectorTop5": ["m49", "m44", "m37", "m33", "m13"],
+      "lexicalTop5": ["m05", "m15", "m41", "m42", "m44"]
+    },
+    {
+      "id": "q25",
+      "query": "tài khoản bị vô hiệu hoá do gõ sai mật khẩu",
+      "relevant": ["m45"],
+      "vectorTop5": ["m45", "m46", "m09", "m35", "m03"],
+      "lexicalTop5": ["m45", "m39", "m11", "m32", "m43"]
+    }
+  ]
+}

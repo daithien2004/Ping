@@ -40,6 +40,17 @@ export const envSchema = z.object({
   ),
   // Sentry (ADR-0031). Bỏ trống = tắt hẳn, không gửi gì, không khởi tạo SDK.
   SENTRY_DSN: z.preprocess((value) => (value === '' ? undefined : value), z.url().optional()),
+  // AI (ADR-0046): embedding chạy cục bộ bằng ONNX, LLM qua Groq free tier.
+  // Model ONNX đa ngữ nhỏ; đổi tên model là phải re-embed toàn bộ (lưu modelVersion).
+  EMBEDDING_MODEL: z.string().min(1).default('Xenova/multilingual-e5-small'),
+  // Qdrant local (ADR-0046/T5.2). Bỏ trống = tính năng vector tắt.
+  QDRANT_URL: z.preprocess((value) => (value === '' ? undefined : value), z.url().optional()),
+  // Groq (ADR-0059). Bỏ trống = AI tắt; mọi lời gọi ném AiUnavailableError.
+  GROQ_API_KEY: z.preprocess(
+    (value) => (value === '' ? undefined : value),
+    z.string().min(1).optional(),
+  ),
+  GROQ_MODEL: z.string().min(1).default('openai/gpt-oss-20b'),
 });
 
 export type Env = z.infer<typeof envSchema>;

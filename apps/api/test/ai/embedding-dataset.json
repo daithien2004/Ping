@@ -1,0 +1,336 @@
+{
+  "description": "Bộ dữ liệu đánh giá embedding T5.1: 50 tin nhắn demo tiếng Việt trên 5 channel, 25 truy vấn kèm tin nhắn liên quan. Không phải dữ liệu người dùng thật.",
+  "messages": [
+    {
+      "id": "m01",
+      "channel": "general",
+      "author": "an",
+      "content": "Chào mọi người, mình mới vào server."
+    },
+    {
+      "id": "m02",
+      "channel": "general",
+      "author": "binh",
+      "content": "Cuối tuần này team mình off thứ Bảy nhé."
+    },
+    {
+      "id": "m03",
+      "channel": "general",
+      "author": "chi",
+      "content": "Hạn chót nộp báo cáo tiến độ là thứ Sáu tuần này."
+    },
+    {
+      "id": "m04",
+      "channel": "general",
+      "author": "dung",
+      "content": "Ai rảnh review giúp mình cái pull request không?"
+    },
+    {
+      "id": "m05",
+      "channel": "general",
+      "author": "binh",
+      "content": "Mình vừa đổi giờ họp standup sang 9h30."
+    },
+    {
+      "id": "m06",
+      "channel": "general",
+      "author": "chi",
+      "content": "Nhớ cập nhật trạng thái task trên bảng Kanban trước khi về."
+    },
+    {
+      "id": "m07",
+      "channel": "general",
+      "author": "dung",
+      "content": "Hôm nay ăn trưa ở quán bún bò gần văn phòng nhé."
+    },
+    {
+      "id": "m08",
+      "channel": "general",
+      "author": "an",
+      "content": "Có ai biết chỗ sửa laptop uy tín quanh đây không?"
+    },
+    {
+      "id": "m09",
+      "channel": "general",
+      "author": "chi",
+      "content": "Mình nghỉ phép từ thứ Hai đến thứ Tư, có việc gì nhắn sau nhé."
+    },
+    {
+      "id": "m10",
+      "channel": "general",
+      "author": "binh",
+      "content": "Bản demo khách hàng sẽ chạy vào chiều thứ Năm."
+    },
+    {
+      "id": "m11",
+      "channel": "general",
+      "author": "dung",
+      "content": "Mọi người nhớ bật xác thực hai lớp cho tài khoản công ty."
+    },
+    {
+      "id": "m12",
+      "channel": "general",
+      "author": "an",
+      "content": "Mình vừa gửi link tài liệu thiết kế vào kênh announce."
+    },
+    {
+      "id": "m13",
+      "channel": "general",
+      "author": "chi",
+      "content": "Tuần sau mình chuyển sang làm ca tối."
+    },
+    {
+      "id": "m14",
+      "channel": "general",
+      "author": "binh",
+      "content": "Cảm ơn mọi người đã hỗ trợ mình tuần vừa rồi!"
+    },
+    {
+      "id": "m15",
+      "channel": "general",
+      "author": "dung",
+      "content": "Ai giữ chìa khoá phòng họp tầng 3 vậy?"
+    },
+    {
+      "id": "m16",
+      "channel": "dev",
+      "author": "an",
+      "content": "Chạy docker compose up -d redis để bật Redis local."
+    },
+    {
+      "id": "m17",
+      "channel": "dev",
+      "author": "binh",
+      "content": "Lỗi build trên CI là do thiếu biến môi trường DATABASE_URL."
+    },
+    {
+      "id": "m18",
+      "channel": "dev",
+      "author": "chi",
+      "content": "Nhớ chạy pnpm prisma migrate dev sau khi pull code mới."
+    },
+    {
+      "id": "m19",
+      "channel": "dev",
+      "author": "dung",
+      "content": "API trả về 401 vì access token đã hết hạn."
+    },
+    {
+      "id": "m20",
+      "channel": "dev",
+      "author": "an",
+      "content": "Mình vừa thêm rate limit 100 request mỗi phút cho endpoint đăng nhập."
+    },
+    {
+      "id": "m21",
+      "channel": "dev",
+      "author": "binh",
+      "content": "Đừng commit file .env, khoá bí mật chỉ để trong máy local."
+    },
+    {
+      "id": "m22",
+      "channel": "dev",
+      "author": "chi",
+      "content": "Test e2e bị flaky ở bước tạo channel, cần tăng timeout."
+    },
+    {
+      "id": "m23",
+      "channel": "dev",
+      "author": "dung",
+      "content": "Đã bật index cho cột createdAt trong bảng messages."
+    },
+    {
+      "id": "m24",
+      "channel": "dev",
+      "author": "an",
+      "content": "Socket.IO cần Redis adapter khi chạy nhiều instance API."
+    },
+    {
+      "id": "m25",
+      "channel": "dev",
+      "author": "binh",
+      "content": "Dùng pnpm thay vì npm để cài dependency trong monorepo."
+    },
+    {
+      "id": "m26",
+      "channel": "dev",
+      "author": "chi",
+      "content": "Nhánh main đang đỏ, ai đang sửa pipeline vậy?"
+    },
+    {
+      "id": "m27",
+      "channel": "dev",
+      "author": "dung",
+      "content": "Mình vừa rollback bản deploy tối qua vì lỗi migration."
+    },
+    {
+      "id": "m28",
+      "channel": "dev",
+      "author": "an",
+      "content": "Coverage unit test hiện tại là 82 phần trăm."
+    },
+    {
+      "id": "m29",
+      "channel": "dev",
+      "author": "binh",
+      "content": "Nhớ format code bằng prettier trước khi tạo pull request."
+    },
+    {
+      "id": "m30",
+      "channel": "dev",
+      "author": "chi",
+      "content": "Bucket S3 lưu ảnh đại diện đã hết dung lượng miễn phí."
+    },
+    {
+      "id": "m31",
+      "channel": "announce",
+      "author": "admin",
+      "content": "Thông báo: server sẽ bảo trì từ 22h đến 23h tối nay."
+    },
+    {
+      "id": "m32",
+      "channel": "announce",
+      "author": "admin",
+      "content": "Chính sách mật khẩu mới yêu cầu tối thiểu 12 ký tự."
+    },
+    {
+      "id": "m33",
+      "channel": "announce",
+      "author": "admin",
+      "content": "Từ tháng sau, giờ làm việc chuyển sang 8h30 đến 17h30."
+    },
+    {
+      "id": "m34",
+      "channel": "announce",
+      "author": "admin",
+      "content": "Công ty sẽ đóng cửa nghỉ lễ vào ngày 2 tháng 9."
+    },
+    {
+      "id": "m35",
+      "channel": "announce",
+      "author": "admin",
+      "content": "Buổi đào tạo bảo mật diễn ra online vào chiều thứ Tư."
+    },
+    {
+      "id": "m36",
+      "channel": "announce",
+      "author": "admin",
+      "content": "Đã có chính sách mới về làm việc từ xa, tối đa 2 ngày mỗi tuần."
+    },
+    {
+      "id": "m37",
+      "channel": "announce",
+      "author": "admin",
+      "content": "Hệ thống VPN sẽ đổi địa chỉ máy chủ vào cuối tuần."
+    },
+    {
+      "id": "m38",
+      "channel": "announce",
+      "author": "admin",
+      "content": "Mọi người cập nhật ảnh đại diện thật trước ngày 30 nhé."
+    },
+    {
+      "id": "m39",
+      "channel": "help",
+      "author": "binh",
+      "content": "Làm sao để reset mật khẩu khi không nhận được email?"
+    },
+    {
+      "id": "m40",
+      "channel": "help",
+      "author": "chi",
+      "content": "Mình không đăng nhập được vào VPN, báo lỗi timeout."
+    },
+    {
+      "id": "m41",
+      "channel": "help",
+      "author": "dung",
+      "content": "Cách xin quyền truy cập vào repository private là gì?"
+    },
+    {
+      "id": "m42",
+      "channel": "help",
+      "author": "an",
+      "content": "Ai chỉ mình cách export dữ liệu từ bảng tính ra CSV với?"
+    },
+    {
+      "id": "m43",
+      "channel": "help",
+      "author": "binh",
+      "content": "Máy in tầng 2 bị kẹt giấy, gọi bộ phận nào?"
+    },
+    {
+      "id": "m44",
+      "channel": "help",
+      "author": "chi",
+      "content": "Làm sao để chuyển cuộc họp từ Google Meet sang Zoom?"
+    },
+    {
+      "id": "m45",
+      "channel": "help",
+      "author": "dung",
+      "content": "Tài khoản của mình bị khoá sau nhiều lần nhập sai mật khẩu."
+    },
+    {
+      "id": "m46",
+      "channel": "random",
+      "author": "an",
+      "content": "Hôm nay trời mưa to quá, đi làm muộn mất rồi."
+    },
+    {
+      "id": "m47",
+      "channel": "random",
+      "author": "binh",
+      "content": "Có ai xem trận bóng tối qua không?"
+    },
+    {
+      "id": "m48",
+      "channel": "random",
+      "author": "chi",
+      "content": "Mèo nhà mình vừa đẻ ba con, dễ thương lắm."
+    },
+    {
+      "id": "m49",
+      "channel": "random",
+      "author": "dung",
+      "content": "Cuối tuần này có ai đi cắm trại không?"
+    },
+    {
+      "id": "m50",
+      "channel": "random",
+      "author": "an",
+      "content": "Mình vừa thử quán cà phê mới, cà phê muối ngon."
+    }
+  ],
+  "queries": [
+    { "id": "q01", "query": "deadline báo cáo tiến độ là khi nào?", "relevant": ["m03"] },
+    { "id": "q02", "query": "làm sao bật redis khi chạy local?", "relevant": ["m16"] },
+    { "id": "q03", "query": "CI build lỗi vì thiếu gì?", "relevant": ["m17"] },
+    {
+      "id": "q04",
+      "query": "sau khi pull code cần chạy lệnh gì để cập nhật database?",
+      "relevant": ["m18"]
+    },
+    { "id": "q05", "query": "tại sao API trả về lỗi 401?", "relevant": ["m19"] },
+    { "id": "q06", "query": "có nên commit file .env không?", "relevant": ["m21"] },
+    { "id": "q07", "query": "bài kiểm thử tự động thỉnh thoảng thất bại", "relevant": ["m22"] },
+    { "id": "q08", "query": "chạy nhiều instance API thì socket cần gì?", "relevant": ["m24"] },
+    { "id": "q09", "query": "dùng trình quản lý gói nào trong monorepo?", "relevant": ["m25"] },
+    { "id": "q10", "query": "ai đang sửa quy trình tích hợp liên tục?", "relevant": ["m26"] },
+    { "id": "q11", "query": "khôi phục phiên bản triển khai trước", "relevant": ["m27"] },
+    { "id": "q12", "query": "hệ thống ngừng phục vụ lúc nào?", "relevant": ["m31"] },
+    { "id": "q13", "query": "mật khẩu mới cần bao nhiêu ký tự?", "relevant": ["m32"] },
+    { "id": "q14", "query": "nhân viên phải có mặt ở công ty lúc mấy giờ?", "relevant": ["m33"] },
+    { "id": "q15", "query": "ngày nào công ty nghỉ lễ?", "relevant": ["m34"] },
+    { "id": "q16", "query": "đào tạo bảo mật diễn ra khi nào và ở đâu?", "relevant": ["m35"] },
+    { "id": "q17", "query": "được làm việc từ xa mấy ngày một tuần?", "relevant": ["m36"] },
+    { "id": "q18", "query": "VPN đổi địa chỉ khi nào?", "relevant": ["m37"] },
+    { "id": "q19", "query": "tôi không thấy thư đặt lại mật khẩu", "relevant": ["m39"] },
+    { "id": "q20", "query": "VPN báo timeout, không kết nối được", "relevant": ["m40"] },
+    { "id": "q21", "query": "xin quyền vào repository private", "relevant": ["m41"] },
+    { "id": "q22", "query": "xuất bảng tính ra CSV", "relevant": ["m42"] },
+    { "id": "q23", "query": "máy in bị kẹt giấy", "relevant": ["m43"] },
+    { "id": "q24", "query": "cách đổi nền tảng họp trực tuyến", "relevant": ["m44"] },
+    { "id": "q25", "query": "tài khoản bị vô hiệu hoá do gõ sai mật khẩu", "relevant": ["m45"] }
+  ]
+}
