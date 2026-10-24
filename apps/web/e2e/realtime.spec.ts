@@ -191,7 +191,8 @@ test('two isolated sessions: messages, typing, missed events, edits, deletes and
     ).toBeTruthy();
     await setOffline(false);
     await expect(pb.getByText(missed, { exact: true }).filter({ visible: true })).toBeVisible({
-      timeout: 20000,
+      // Routed WebSockets make the first reconnect after the outage slow; see the kick assertions.
+      timeout: 45_000,
     });
     await expect(pb.getByText('Mất kết nối. Đang thử kết nối lại…', { exact: true })).toHaveCount(
       0,
@@ -227,9 +228,22 @@ test('two isolated sessions: messages, typing, missed events, edits, deletes and
         await a.request.delete(`${API}/servers/${serverId}/members/${memberId}`, { headers: auth })
       ).status(),
     ).toBe(204);
-    await expect(pb.getByRole('textbox', { name: `Nhắn #${channel.name}` })).toHaveCount(0);
-    await expect(pb.getByText(missed, { exact: true }).filter({ visible: true })).toHaveCount(0);
-    await expect(pb.getByText(hidden, { exact: true }).filter({ visible: true })).toHaveCount(0);
+    // Routed WebSockets make Socket.IO reconnect slowly after an outage (the in-flight handshake
+    // only fails after the browser's own timeout), so reconciliation gets the same budget as the
+    // disconnect banner instead of the 10s default.
+    const reconciled = { timeout: 45_000 } as const;
+    await expect(pb.getByRole('textbox', { name: `Nhắn #${channel.name}` })).toHaveCount(
+      0,
+      reconciled,
+    );
+    await expect(pb.getByText(missed, { exact: true }).filter({ visible: true })).toHaveCount(
+      0,
+      reconciled,
+    );
+    await expect(pb.getByText(hidden, { exact: true }).filter({ visible: true })).toHaveCount(
+      0,
+      reconciled,
+    );
 
     // A kick while offline has no delivered personal event; reconnect must check REST.
     expect(
@@ -258,8 +272,11 @@ test('two isolated sessions: messages, typing, missed events, edits, deletes and
       ).status(),
     ).toBe(204);
     await setOffline(false);
-    await expect(pb.getByRole('textbox', { name: `Nhắn #${channel.name}` })).toHaveCount(0);
-    await expect(pb.getByText(missed, { exact: true })).toHaveCount(0);
+    await expect(pb.getByRole('textbox', { name: `Nhắn #${channel.name}` })).toHaveCount(
+      0,
+      reconciled,
+    );
+    await expect(pb.getByText(missed, { exact: true })).toHaveCount(0, reconciled);
 
     // Rejected refresh clears the signed-in UI and sends the user back to login.
     refreshes = 0;

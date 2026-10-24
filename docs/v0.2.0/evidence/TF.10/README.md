@@ -2,7 +2,7 @@
 
 - Ngày: 2026-10-23.
 - Người thực hiện: chủ repo, nhánh `chore/tf.10-admin-surface`, base commit `e1b7468` (merge TF.9).
-- Task: TF.10 (Pha 3/4) — [plan](../../../ping-v0.2.0-plan.md).
+- Task: TF.10 (Pha 3/4) - kế hoạch local `docs/ping-v0.2.0-plan.md` (không commit).
 - Commit: `6d45445` (bề mặt quản trị + API audit), `9737234` (đo bundle ban đầu), commit tài liệu này;
   base `e1b7468`.
 
