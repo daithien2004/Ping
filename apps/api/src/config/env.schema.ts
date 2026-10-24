@@ -51,6 +51,19 @@ export const envSchema = z.object({
     z.string().min(1).optional(),
   ),
   GROQ_MODEL: z.string().min(1).default('openai/gpt-oss-20b'),
+  // T5.7/ADR-0047: hạn mức AI theo ngày (UTC). `AI_DAILY_REQUEST_LIMIT` là số request/user/ngày.
+  // `AI_DAILY_BUDGET_USD = 0` tắt kill-switch ngân sách; > 0 là trần chi phí toàn hệ thống/ngày.
+  AI_DAILY_REQUEST_LIMIT: z.coerce.number().int().min(1).max(10_000).default(50),
+  AI_DAILY_BUDGET_USD: z.coerce.number().min(0).max(1_000).default(1),
+  // Giá để quy đổi token → USD. Free tier Groq = 0; đặt > 0 khi đổi sang provider trả phí.
+  AI_PRICE_INPUT_PER_MTOK: z.coerce.number().min(0).default(0),
+  AI_PRICE_OUTPUT_PER_MTOK: z.coerce.number().min(0).default(0),
+  // Cache câu trả lời theo (server, channel, khoảng tin, model, câu hỏi). 0 = tắt cache.
+  AI_CACHE_TTL_SECONDS: z.coerce.number().int().min(0).max(86_400).default(3_600),
+  // Timeout mỗi lần gọi LLM + số lần thử lại có giới hạn (chỉ 429/5xx/lỗi mạng).
+  AI_LLM_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(60_000).default(20_000),
+  AI_LLM_MAX_RETRIES: z.coerce.number().int().min(0).max(3).default(1),
+  AI_LLM_RETRY_BACKOFF_MS: z.coerce.number().int().min(0).max(5_000).default(300),
   // Indexer T5.3: cửa sổ hội thoại + giới hạn token ước lượng cho mỗi chunk.
   AI_CHUNK_WINDOW: z.coerce.number().int().min(1).max(20).default(4),
   AI_CHUNK_MAX_TOKENS: z.coerce.number().int().min(64).max(2048).default(512),

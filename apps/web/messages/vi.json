@@ -272,6 +272,8 @@
     "unavailable": "AI hiện không sẵn sàng. Vui lòng thử lại sau.",
     "retrievalFailed": "Không lấy được ngữ cảnh. Vui lòng thử lại sau.",
     "invalidQuestion": "Câu hỏi trống hoặc quá dài.",
+    "quotaExceeded": "Bạn đã dùng hết số lượt hỏi AI hôm nay. Vui lòng thử lại vào ngày mai.",
+    "budgetExhausted": "Ngân sách AI hôm nay đã hết. Vui lòng thử lại vào ngày mai.",
     "error": "Có lỗi xảy ra. Vui lòng thử lại sau."
   }
 }

@@ -1,8 +1,15 @@
 import { ForbiddenException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
+import type { MetricsService } from '../../../infra/metrics/metrics.service.js';
 import type { AbilityFactory } from '../../ability/ability.factory.js';
-import type { ChatMessage, LlmClient } from '../llm-client.port.js';
+import type { AskCacheService, CachedAskAnswer } from '../cache/ask-cache.service.js';
+import { AiUnavailableError, type ChatMessage, type LlmClient } from '../llm-client.port.js';
 import type { RetrievalService, RetrievedChunk } from '../retrieval/retrieval.service.js';
+import {
+  AiBudgetExhaustedError,
+  AiQuotaExceededError,
+  type AiUsageService,
+} from '../usage/ai-usage.service.js';
 import { AskService, type AskEvent, type AskInput } from './ask.service.js';
 
 const SERVER_ID = '11111111-1111-4111-8111-111111111111';
@@ -43,6 +50,9 @@ function setup(
     retrieveError?: Error;
     reply?: string;
     llmError?: Error;
+    quotaError?: Error;
+    budgetError?: Error;
+    cached?: CachedAskAnswer | null;
   } = {},
 ) {
   const ability = { can: () => options.canView ?? true };
@@ -65,7 +75,37 @@ function setup(
         usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
       }));
   const llm = { model: 'fake', complete } as unknown as LlmClient;
-  return { service: new AskService(abilityFactory, retrieval, llm), retrieve, complete };
+
+  const reserveQuota = options.quotaError
+    ? vi.fn(async (): Promise<void> => {
+        throw options.quotaError;
+      })
+    : vi.fn(async (): Promise<void> => {});
+  const assertWithinBudget = options.budgetError
+    ? vi.fn(async (): Promise<void> => {
+        throw options.budgetError;
+      })
+    : vi.fn(async (): Promise<void> => {});
+  const record = vi.fn(async () => 0.001);
+  const usage = { reserveQuota, assertWithinBudget, record } as unknown as AiUsageService;
+
+  const buildKey = vi.fn(() => 'ai:ask:test');
+  const cacheGet = vi.fn(async () => options.cached ?? null);
+  const cacheSet = vi.fn(async () => {});
+  const cache = { buildKey, get: cacheGet, set: cacheSet } as unknown as AskCacheService;
+
+  const aiRequestFinished = vi.fn();
+  const aiLlmCompleted = vi.fn();
+  const metrics = { aiRequestFinished, aiLlmCompleted } as unknown as MetricsService;
+
+  return {
+    service: new AskService(abilityFactory, retrieval, llm, usage, cache, metrics),
+    retrieve,
+    complete,
+    usage: { reserveQuota, assertWithinBudget, record },
+    cache: { buildKey, get: cacheGet, set: cacheSet },
+    metrics: { aiRequestFinished, aiLlmCompleted },
+  };
 }
 
 async function collect(service: AskService, askInput: AskInput = input): Promise<AskEvent[]> {
@@ -193,6 +233,116 @@ describe('AskService', () => {
     expect(userPrompt.match(/00000000-0000-4000-8000-000000000002/g)).toHaveLength(1);
     // Tin cũ đứng trước tin mới trong ngữ cảnh.
     expect(userPrompt.indexOf('tin cũ')).toBeLessThan(userPrompt.indexOf('tin mới'));
+  });
+
+  it('hết hạn mức ngày: AI_QUOTA_EXCEEDED, không retrieval/LLM, metric quota_exceeded', async () => {
+    const { service, retrieve, complete, metrics } = setup({
+      quotaError: new AiQuotaExceededError(50),
+    });
+
+    const events = await collect(service);
+
+    expect(events).toEqual([
+      {
+        type: 'error',
+        data: { code: 'AI_QUOTA_EXCEEDED', message: 'Đã dùng hết 50 lượt hỏi AI hôm nay.' },
+      },
+    ]);
+    expect(retrieve).not.toHaveBeenCalled();
+    expect(complete).not.toHaveBeenCalled();
+    expect(metrics.aiRequestFinished).toHaveBeenCalledWith('quota_exceeded');
+  });
+
+  it('không kiểm tra được quota (Redis chết): AI_UNAVAILABLE, fail-closed', async () => {
+    const { service, retrieve, complete } = setup({
+      quotaError: new AiUnavailableError('Không kiểm tra được hạn mức AI'),
+    });
+
+    const events = await collect(service);
+
+    expect(events.at(-1)).toMatchObject({ type: 'error', data: { code: 'AI_UNAVAILABLE' } });
+    expect(retrieve).not.toHaveBeenCalled();
+    expect(complete).not.toHaveBeenCalled();
+  });
+
+  it('chạm trần ngân sách ngày: AI_BUDGET_EXHAUSTED, không gọi LLM', async () => {
+    const { service, complete, metrics } = setup({
+      budgetError: new AiBudgetExhaustedError(1, 1.25),
+    });
+
+    const events = await collect(service);
+
+    expect(events.at(-1)).toMatchObject({ type: 'error', data: { code: 'AI_BUDGET_EXHAUSTED' } });
+    expect(complete).not.toHaveBeenCalled();
+    expect(metrics.aiRequestFinished).toHaveBeenCalledWith('budget_exhausted');
+  });
+
+  it('cache hit trả lời ngay, không gọi LLM và không ghi thêm chi phí', async () => {
+    const { service, complete, usage, cache, metrics } = setup({
+      cached: { answer: 'Câu trả lời cũ', citations: [MESSAGE_ID], model: 'fake' },
+    });
+
+    const events = await collect(service);
+
+    expect(events).toEqual([
+      {
+        type: 'meta',
+        data: { retrievedChunks: 1, messageCount: 1, cached: true },
+      },
+      { type: 'delta', data: { text: 'Câu trả lời cũ' } },
+      { type: 'done', data: { citations: [MESSAGE_ID], model: 'fake' } },
+    ]);
+    expect(complete).not.toHaveBeenCalled();
+    expect(usage.record).not.toHaveBeenCalled();
+    expect(cache.set).not.toHaveBeenCalled();
+    // Cache hit vẫn phải qua cửa ngân sách? Không: cache phục vụ trước kill-switch để
+    // câu trả lời có sẵn vẫn dùng được khi hết tiền.
+    expect(usage.assertWithinBudget).not.toHaveBeenCalled();
+    expect(metrics.aiRequestFinished).toHaveBeenCalledWith('cache_hit');
+  });
+
+  it('cache miss: gọi LLM, ghi token/chi phí, lưu cache và ghi metric ok', async () => {
+    const { service, complete, usage, cache, metrics } = setup();
+
+    const events = await collect(service);
+
+    expect(events.map((event) => event.type)).toEqual(['meta', 'delta', 'done']);
+    expect(complete).toHaveBeenCalledTimes(1);
+    expect(usage.record).toHaveBeenCalledWith(USER_ID, {
+      promptTokens: 1,
+      completionTokens: 1,
+      totalTokens: 2,
+    });
+    expect(cache.set).toHaveBeenCalledWith('ai:ask:test', {
+      answer: `Trả lời [${MESSAGE_ID}]`,
+      citations: [MESSAGE_ID],
+      model: 'fake',
+    });
+    expect(metrics.aiLlmCompleted).toHaveBeenCalledWith(
+      expect.any(Number),
+      { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+      0.001,
+    );
+    expect(metrics.aiRequestFinished).toHaveBeenCalledWith('ok');
+  });
+
+  it('câu trả lời không trích dẫn vẫn ghi token đã tiêu nhưng không cache', async () => {
+    const { service, usage, cache, metrics } = setup({ reply: 'Không nêu nguồn.' });
+
+    const events = await collect(service);
+
+    expect(events.at(-1)).toMatchObject({ type: 'error', data: { code: 'AI_NO_CITATION' } });
+    expect(usage.record).toHaveBeenCalledTimes(1);
+    expect(cache.set).not.toHaveBeenCalled();
+    expect(metrics.aiRequestFinished).toHaveBeenCalledWith('no_citation');
+  });
+
+  it('câu hỏi không hợp lệ không giữ quota', async () => {
+    const { service, usage } = setup();
+
+    await collect(service, { ...input, question: '   ' });
+
+    expect(usage.reserveQuota).not.toHaveBeenCalled();
   });
 
   it('authorize ném ForbiddenException khi không có quyền xem tin', async () => {

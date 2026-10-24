@@ -97,6 +97,10 @@ export function AskDialog({
         return t('ask.retrievalFailed');
       case 'AI_INVALID_QUESTION':
         return t('ask.invalidQuestion');
+      case 'AI_QUOTA_EXCEEDED':
+        return t('ask.quotaExceeded');
+      case 'AI_BUDGET_EXHAUSTED':
+        return t('ask.budgetExhausted');
       default:
         return t('ask.error');
     }
