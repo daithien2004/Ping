@@ -8,6 +8,7 @@ import {
   createRole,
   deleteRole,
   deleteServer,
+  kickMember,
   listAuditLog,
   listRoles,
   updateRole,
@@ -103,6 +104,22 @@ export function useDeleteRole(serverId: string) {
   return useMutation({
     mutationFn: (roleId: string) => deleteRole(roleId),
     onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: qk.roles(serverId) });
+      void queryClient.invalidateQueries({ queryKey: qk.server(serverId) });
+    },
+  });
+}
+
+/**
+ * Kick thành viên. Xoá member làm đổi số thành viên của vai trò và chi tiết server nên phải
+ * làm mới cả hai, không chỉ danh sách thành viên.
+ */
+export function useKickMember(serverId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (memberId: string) => kickMember(serverId, memberId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: qk.members(serverId) });
       void queryClient.invalidateQueries({ queryKey: qk.roles(serverId) });
       void queryClient.invalidateQueries({ queryKey: qk.server(serverId) });
     },
