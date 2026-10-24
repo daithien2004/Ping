@@ -165,6 +165,8 @@ function OnboardingContent({
             <p role="alert" className="text-sm text-destructive">
               {errorMessage(joinMutation.error, {
                 [ErrorCodes.NOT_FOUND]: t('invalidInvite'),
+                [ErrorCodes.INVITE_EXPIRED]: t('inviteExpired'),
+                [ErrorCodes.INVITE_REVOKED]: t('inviteRevoked'),
                 [ErrorCodes.CONFLICT]: t('alreadyMember'),
               })}
             </p>

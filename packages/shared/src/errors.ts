@@ -12,6 +12,8 @@ export const ErrorCodes = {
   TOO_MANY_REQUESTS: 'TOO_MANY_REQUESTS',
   SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
   INTERNAL_ERROR: 'INTERNAL_ERROR',
+  INVITE_EXPIRED: 'INVITE_EXPIRED',
+  INVITE_REVOKED: 'INVITE_REVOKED',
 } as const;
 
 export type ErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes];

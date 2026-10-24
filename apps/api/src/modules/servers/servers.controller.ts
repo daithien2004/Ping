@@ -15,10 +15,12 @@ import {
   createServerSchema,
   joinServerSchema,
   listMembersQuerySchema,
+  regenerateInviteSchema,
   updateServerSchema,
   type CreateServerInput,
   type JoinServerInput,
   type ListMembersQuery,
+  type RegenerateInviteInput,
   type UpdateServerInput,
 } from '@ping/shared';
 import { IdempotencyInterceptor } from '../../common/interceptors/idempotency.interceptor.js';
@@ -72,6 +74,21 @@ export class ServersController {
     @Body(new ZodValidationPipe(updateServerSchema)) body: UpdateServerInput,
   ) {
     return this.serversService.update(serverId, user.userId, body.name);
+  }
+
+  /**
+   * Tạo mã mời mới, vô hiệu mã cũ (T3.6): cần `update Server` (MANAGE_SERVER) — cùng
+   * mức quyền với đổi tên; service thu hồi/cấp mã + ghi audit trong một transaction.
+   */
+  @Post(':serverId/invite/regenerate')
+  @CheckAbility(['update', 'Server'])
+  @UseInterceptors(IdempotencyInterceptor)
+  regenerateInvite(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('serverId') serverId: string,
+    @Body(new ZodValidationPipe(regenerateInviteSchema)) body: RegenerateInviteInput,
+  ) {
+    return this.serversService.regenerate(serverId, user.userId, body);
   }
 
   /** Quyền hiệu lực của chính người gọi: frontend dựng CASL ability từ đây để ẩn/hiện nút. */

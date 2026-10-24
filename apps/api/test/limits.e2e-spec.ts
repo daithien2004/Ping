@@ -115,10 +115,16 @@ describe('limits (e2e)', () => {
     await call('post', '/servers', { name: 'the-100th-server' }).expect(201);
     expectLimit(await call('post', '/servers', { name: 'one-too-many' }), 'servers');
 
-    // Tham gia bằng mã mời cũng bị chặn (server của người khác).
+    // Tham gia bằng mã mời cũng bị chặn (server của người khác). Join tra mã ở bảng
+    // ServerInvite (T3.6) nên phải tạo luôn bản ghi mã đang hoạt động.
     const other = await prisma.user.findFirstOrThrow({ where: { email: { not: emails[0] } } });
     const foreign = await prisma.server.create({
-      data: { name: 'foreign', ownerId: other.id, inviteCode: `foreign-${runId}` },
+      data: {
+        name: 'foreign',
+        ownerId: other.id,
+        inviteCode: `foreign-${runId}`,
+        invites: { create: { code: `foreign-${runId}`, createdById: other.id } },
+      },
     });
     try {
       expectLimit(
