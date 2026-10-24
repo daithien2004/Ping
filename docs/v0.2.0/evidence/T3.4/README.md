@@ -3,7 +3,7 @@
 - Ngày: 2026-10-24.
 - Người thực hiện: chủ repo; nhánh `feat/t3.4-member-kick-ui`, base `9175b78` (merge T3.3).
 - Task: T3.4 (Pha 3) — kế hoạch local `docs/ping-v0.2.0-plan.md` (không commit).
-- Commit code: `1608077`; commit bằng chứng này ở sau.
+- Commit code: `1608077`; bằng chứng: `a94e855`; sửa CI (seed) + cập nhật bằng chứng: `70b36b6`.
 - Phạm vi: chỉ web. Không đổi API, schema Prisma hay migration; quyền vẫn theo bit quyền
   ([ADR-0004](../../../adr/0004-role-permission-grants.md)).
 
@@ -54,6 +54,7 @@ phần giao diện và gọi đúng endpoint:
 | E2E web toàn bộ không hồi quy                                               | `pnpm --filter web exec playwright test`                                 | pass    | 27 test: 26 pass, 1 skip (6,9 phút)                                                                                                |
 | Build production + ngân sách bundle                                         | `pnpm --filter web build`; `pnpm --filter web check:bundle`              | pass    | JS ban đầu **243,8 KB** gzip / 8 chunk; chunk ban đầu lớn nhất 74,7 KB; chunk route lớn nhất 134,4 KB — trần 450/100/160           |
 | Format + tài liệu                                                           | `pnpm format:check`; `pnpm docs:check`                                   | pass    | xem log lần chạy này                                                                                                               |
+| CI remote đủ 8 job                                                          | GitHub Actions cho `70b36b6`                                             | pass    | 8/8 job xanh; lần trước (`a94e855`) đỏ `web-e2e` vì CI thiếu seed, đã thêm bước `prisma db seed`                                   |
 
 Không chạy lại API e2e: T3.4 không sửa API/schema. Luật kick đã có test riêng
 (`apps/api/test/kick.e2e-spec.ts`) và IDOR (`DELETE /servers/:serverId/members/:memberId` nằm
