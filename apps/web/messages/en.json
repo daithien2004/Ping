@@ -272,6 +272,8 @@
     "unavailable": "AI is currently unavailable. Please try again later.",
     "retrievalFailed": "Could not retrieve context. Please try again later.",
     "invalidQuestion": "Question is empty or too long.",
+    "quotaExceeded": "You have used all your AI questions for today. Please try again tomorrow.",
+    "budgetExhausted": "Today's AI budget is exhausted. Please try again tomorrow.",
     "error": "An error occurred. Please try again later."
   }
 }

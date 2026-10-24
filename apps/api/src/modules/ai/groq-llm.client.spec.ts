@@ -67,4 +67,94 @@ describe('GroqLlmClient', () => {
       AiUnavailableError,
     );
   });
+
+  it('thử lại khi 500 rồi thành công', async () => {
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(jsonResponse({ error: 'boom' }, 500))
+      .mockResolvedValueOnce(
+        jsonResponse({
+          model: 'openai/gpt-oss-20b',
+          choices: [{ message: { content: 'Lần hai mới được.' } }],
+        }),
+      );
+    const client = new GroqLlmClient('test-key', 'openai/gpt-oss-20b', fetchImpl, 1_000, 1, 0);
+
+    const result = await client.complete([{ role: 'user', content: 'xin chào' }]);
+
+    expect(result.content).toBe('Lần hai mới được.');
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it('thử lại khi 429 (rate limit)', async () => {
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(jsonResponse({ error: 'rate limit' }, 429))
+      .mockResolvedValueOnce(
+        jsonResponse({ choices: [{ message: { content: 'Đã trả lời.' } }], model: 'm' }),
+      );
+    const client = new GroqLlmClient('test-key', 'openai/gpt-oss-20b', fetchImpl, 1_000, 1, 0);
+
+    await expect(client.complete([{ role: 'user', content: 'xin chào' }])).resolves.toMatchObject({
+      content: 'Đã trả lời.',
+    });
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it('thử lại khi lỗi mạng/timeout', async () => {
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockRejectedValueOnce(new DOMException('The operation timed out.', 'TimeoutError'))
+      .mockResolvedValueOnce(
+        jsonResponse({ choices: [{ message: { content: 'Sau timeout.' } }], model: 'm' }),
+      );
+    const client = new GroqLlmClient('test-key', 'openai/gpt-oss-20b', fetchImpl, 1_000, 1, 0);
+
+    await expect(client.complete([{ role: 'user', content: 'xin chào' }])).resolves.toMatchObject({
+      content: 'Sau timeout.',
+    });
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it('không thử lại với 4xx khác (sai khoá/request hỏng)', async () => {
+    const fetchImpl = vi.fn<typeof fetch>(async () => jsonResponse({ error: 'unauthorized' }, 401));
+    const client = new GroqLlmClient('test-key', 'openai/gpt-oss-20b', fetchImpl, 1_000, 3, 0);
+
+    await expect(client.complete([{ role: 'user', content: 'xin chào' }])).rejects.toBeInstanceOf(
+      AiUnavailableError,
+    );
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it('dừng sau khi hết số lần thử lại', async () => {
+    const fetchImpl = vi.fn<typeof fetch>(async () => jsonResponse({ error: 'down' }, 503));
+    const client = new GroqLlmClient('test-key', 'openai/gpt-oss-20b', fetchImpl, 1_000, 2, 0);
+
+    await expect(client.complete([{ role: 'user', content: 'xin chào' }])).rejects.toBeInstanceOf(
+      AiUnavailableError,
+    );
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+  });
+
+  it('không thử lại khi maxRetries = 0', async () => {
+    const fetchImpl = vi.fn<typeof fetch>(async () => jsonResponse({ error: 'down' }, 500));
+    const client = new GroqLlmClient('test-key', 'openai/gpt-oss-20b', fetchImpl, 1_000, 0, 0);
+
+    await expect(client.complete([{ role: 'user', content: 'xin chào' }])).rejects.toBeInstanceOf(
+      AiUnavailableError,
+    );
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it('mỗi lần gọi đều có AbortSignal để không treo vô hạn', async () => {
+    const fetchImpl = vi.fn<typeof fetch>(async () =>
+      jsonResponse({ choices: [{ message: { content: 'ok' } }], model: 'm' }),
+    );
+    const client = new GroqLlmClient('test-key', 'openai/gpt-oss-20b', fetchImpl);
+
+    await client.complete([{ role: 'user', content: 'xin chào' }]);
+
+    const [, request] = fetchImpl.mock.calls[0]!;
+    expect(request?.signal).toBeInstanceOf(AbortSignal);
+  });
 });

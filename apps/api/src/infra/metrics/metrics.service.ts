@@ -6,6 +6,21 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import { RedisProvider } from '../redis/redis.module.js';
 
 /**
+ * Kết quả một lượt hỏi AI — tập hữu hạn để nhãn Prometheus không nổ cardinality
+ * (không bao giờ dùng user id, câu hỏi hay nội dung tin làm nhãn).
+ */
+export type AiRequestOutcome =
+  | 'ok'
+  | 'cache_hit'
+  | 'invalid_question'
+  | 'quota_exceeded'
+  | 'budget_exhausted'
+  | 'retrieval_failed'
+  | 'insufficient_context'
+  | 'no_citation'
+  | 'unavailable';
+
+/**
  * Metrics Prometheus (ADR-0031). Registry riêng của từng instance Nest (không dùng registry toàn cục
  * của prom-client) để hai app trong cùng một process test không giẫm lên nhau. Phục vụ ở CỔNG RIÊNG
  * (`listen`), không bao giờ trên cổng công khai: số liệu nội bộ không nên ra internet.
@@ -47,6 +62,31 @@ export class MetricsService implements OnModuleDestroy {
     help: 'So event stream chua duoc consumer xu ly xong',
     registers: [this.registry],
   });
+  /** T5.7/ADR-0047: kết quả từng lượt hỏi AI. Nhãn là tập hữu hạn, không chứa user/nội dung. */
+  readonly aiRequests = new Counter({
+    name: 'ai_requests_total',
+    help: 'So luot hoi AI theo ket qua',
+    labelNames: ['outcome'],
+    registers: [this.registry],
+  });
+  /** Token đã dùng (prompt/completion) — cơ sở tính chi phí. */
+  readonly aiTokens = new Counter({
+    name: 'ai_tokens_total',
+    help: 'So token LLM da dung',
+    labelNames: ['kind'],
+    registers: [this.registry],
+  });
+  /** Chi phí ước tính (USD) theo giá cấu hình; free tier luôn 0. */
+  readonly aiCost = new Counter({
+    name: 'ai_cost_usd_total',
+    help: 'Chi phi LLM uoc tinh (USD)',
+    registers: [this.registry],
+  });
+  readonly aiLlmDuration = new Histogram({
+    name: 'ai_llm_duration_seconds',
+    help: 'Thoi gian mot loi goi LLM (giay)',
+    registers: [this.registry],
+  });
 
   constructor(
     private readonly prisma: PrismaService,
@@ -85,6 +125,25 @@ export class MetricsService implements OnModuleDestroy {
   socketClosed(): void {
     this.wsConnections.dec();
     this.wsDisconnects.inc();
+  }
+
+  /** Ghi nhận kết quả một lượt hỏi AI (đúng một lần cho mỗi request stream). */
+  aiRequestFinished(outcome: AiRequestOutcome): void {
+    this.aiRequests.inc({ outcome });
+  }
+
+  /** Ghi nhận một lời gọi LLM: thời gian, token và chi phí ước tính. */
+  aiLlmCompleted(
+    seconds: number,
+    usage?: { promptTokens: number; completionTokens: number },
+    costUsd = 0,
+  ): void {
+    this.aiLlmDuration.observe(seconds);
+    if (usage) {
+      this.aiTokens.inc({ kind: 'prompt' }, usage.promptTokens);
+      this.aiTokens.inc({ kind: 'completion' }, usage.completionTokens);
+    }
+    if (costUsd > 0) this.aiCost.inc(costUsd);
   }
 
   /** Mở cổng metrics (`GET /metrics`). Trả về cổng thật (0 = hệ điều hành chọn, dùng cho test). */

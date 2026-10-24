@@ -179,6 +179,26 @@ model OutboxEvent {
   @@index([publishedAt, nextRetryAt, createdAt])
 }
 
+/// T5.7: tổng hợp chi phí/token AI theo user/ngày (UTC) cho quota + kill-switch ngân sách
+/// (ADR-0047). Chỉ số liệu, không chứa prompt/nội dung tin nhắn. Không có khoá ngoại để giữ
+/// số liệu chi phí khi user bị xoá (cùng lý do với AuditLog).
+model AiUsage {
+  id               String   @id @default(uuid(7)) @db.Uuid
+  userId           String   @db.Uuid
+  day              DateTime @db.Date
+  requests         Int      @default(0)
+  promptTokens     Int      @default(0)
+  completionTokens Int      @default(0)
+  costUsd          Decimal  @default(0) @db.Decimal(12, 6)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  // Mỗi user chỉ có một bản ghi cho mỗi ngày; ghi bằng upsert + increment.
+  @@unique([userId, day])
+  // Kill-switch đọc tổng chi phí toàn hệ thống theo ngày.
+  @@index([day])
+}
+
 enum AuditAction {
   ROLE_CREATE
   ROLE_UPDATE
