@@ -226,10 +226,10 @@ export function AskDialog({
         </form>
 
         {isAsking && (
-          <p className="flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <PingSpinner size="small" />
             {t('ask.asking')}
-          </p>
+          </div>
         )}
 
         {status === 'error' && errorMessage && (

@@ -8,8 +8,10 @@ import { AskService, type AskEvent, type AskInput } from './ask.service.js';
 const SERVER_ID = '11111111-1111-4111-8111-111111111111';
 const USER_ID = '22222222-2222-4222-8222-222222222222';
 const CHANNEL_ID = '33333333-3333-4333-8333-333333333333';
-const MESSAGE_ID = '44444444-4444-4444-8444-444444444444';
-const OTHER_MESSAGE_ID = '55555555-5555-4555-8555-555555555555';
+// Id thật của Prisma là UUIDv7 (`@default(uuid(7))`) — dùng đúng dạng này trong test để không
+// vô tình giả định id là v4.
+const MESSAGE_ID = '019a1bdf-8959-7186-aee6-9554201d3365';
+const OTHER_MESSAGE_ID = '019a1bdf-9516-71fb-875e-16d5d62ae85e';
 
 const input: AskInput = {
   userId: USER_ID,
@@ -175,6 +177,22 @@ describe('AskService', () => {
     const events = await collect(service);
 
     expect(events[0]).toMatchObject({ type: 'meta', data: { messageCount: 8 } });
+  });
+
+  it('khử trùng tin giữa các chunk chồng lấn và xếp theo thời gian', async () => {
+    // Cửa sổ hội thoại của retrieval chồng lấn: cùng một tin nằm trong nhiều chunk.
+    const earlier = chunk('tin cũ', '00000000-0000-4000-8000-000000000001');
+    const later = chunk('tin mới', '00000000-0000-4000-8000-000000000002');
+    later.messages[0]!.createdAt = new Date('2026-10-24T11:00:00.000Z');
+    const { service, complete } = setup({ chunks: [later, earlier, later] });
+
+    const events = await collect(service);
+
+    expect(events[0]).toMatchObject({ type: 'meta', data: { messageCount: 2 } });
+    const userPrompt = complete.mock.calls[0]![0][1]!.content;
+    expect(userPrompt.match(/00000000-0000-4000-8000-000000000002/g)).toHaveLength(1);
+    // Tin cũ đứng trước tin mới trong ngữ cảnh.
+    expect(userPrompt.indexOf('tin cũ')).toBeLessThan(userPrompt.indexOf('tin mới'));
   });
 
   it('authorize ném ForbiddenException khi không có quyền xem tin', async () => {
