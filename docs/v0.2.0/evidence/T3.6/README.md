@@ -5,6 +5,7 @@
   `ServerInvite`).
 - Task, nhánh: T3.6 — `feat/t3.6-invite` (PR nháp local); kế hoạch local
   `docs/ping-v0.2.0-plan.md` (không commit); base `b01ba1d` (merge T3.5).
+- Commit: `e5910ca` (tính năng + test), commit tài liệu này.
 - Môi trường: Windows, Docker Desktop 28.5.1 (Postgres + Redis + Qdrant), Node/pnpm theo
   `pnpm-lock.yaml`.
 
