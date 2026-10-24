@@ -206,7 +206,12 @@
     },
     "copyInvite": "Sao chép mã mời",
     "inviteCopied": "Đã sao chép mã mời.",
-    "copyFailed": "Không sao chép được mã mời."
+    "copyFailed": "Không sao chép được mã mời.",
+    "railLabelUnread": "{name}, {count} tin chưa đọc",
+    "railLabelMention": "{name}, {count} lượt nhắc bạn",
+    "mentionCount": "{count} lượt nhắc",
+    "mentionAnnounce": "Bạn đã được nhắc trong server {server}.",
+    "mentionAnnounceGeneric": "Bạn đã được nhắc."
   },
   "channels": {
     "navLabel": "Channel",
@@ -259,7 +264,8 @@
     "composerLabel": "Nhắn #{channel}",
     "edited": "(đã sửa)",
     "failed": "Gửi thất bại",
-    "emptyAction": "Gửi tin đầu tiên"
+    "emptyAction": "Gửi tin đầu tiên",
+    "newDivider": "Tin mới"
   },
   "landing": {
     "eyebrow": "Chat realtime cho nhóm nhỏ",

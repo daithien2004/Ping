@@ -9,6 +9,7 @@ export const ServerEvents = {
   ChannelCreated: 'channel.created',
   ChannelUpdated: 'channel.updated',
   ChannelDeleted: 'channel.deleted',
+  ChannelActivity: 'channel.activity',
   TypingStarted: 'typing.started',
   PresenceUpdated: 'presence.updated',
   PermissionsChanged: 'permissions.changed',
@@ -105,6 +106,19 @@ export interface MentionCreatedPayload {
   serverId: string;
 }
 
+/**
+ * Phát tới room `server:<id>` khi có tin mới (T4.3): CHỈ mang metadata (không nội dung) để
+ * badge unread trên các kênh không đang xem tăng theo realtime. Nội dung tin vẫn chỉ đi
+ * room `channel:<id>` sau kiểm quyền — người không có quyền xem không nhận được gì hơn
+ * "kênh đó vừa có hoạt động" ở mức server.
+ */
+export interface ChannelActivityPayload {
+  channelId: string;
+  serverId: string;
+  messageId: string;
+  authorId: string;
+}
+
 /** Payload client gửi lên chỉ là dữ liệu chưa tin cậy: gateway parse bằng schema này. */
 export const channelEventSchema = z.object({ channelId: z.uuid() });
 export type ChannelJoinPayload = z.infer<typeof channelEventSchema>;
@@ -125,6 +139,7 @@ export interface ServerToClientEvents {
   [ServerEvents.MemberRemoved]: (payload: MemberRemovedPayload) => void;
   [ServerEvents.ReadUpdated]: (payload: ReadUpdatedPayload) => void;
   [ServerEvents.MentionCreated]: (payload: MentionCreatedPayload) => void;
+  [ServerEvents.ChannelActivity]: (payload: ChannelActivityPayload) => void;
 }
 
 export interface ClientToServerEvents {

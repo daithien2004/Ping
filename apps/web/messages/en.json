@@ -206,7 +206,12 @@
     },
     "copyInvite": "Copy invite code",
     "inviteCopied": "Invite code copied.",
-    "copyFailed": "Could not copy the invite code."
+    "copyFailed": "Could not copy the invite code.",
+    "railLabelUnread": "{name}, {count} unread messages",
+    "railLabelMention": "{name}, mentioned you {count} times",
+    "mentionCount": "{count} mentions",
+    "mentionAnnounce": "You were mentioned in server {server}.",
+    "mentionAnnounceGeneric": "You were mentioned."
   },
   "channels": {
     "navLabel": "Channels",
@@ -259,7 +264,8 @@
     "composerLabel": "Message #{channel}",
     "edited": "(edited)",
     "failed": "Failed to send",
-    "emptyAction": "Send the first message"
+    "emptyAction": "Send the first message",
+    "newDivider": "New"
   },
   "landing": {
     "eyebrow": "Realtime chat for small teams",

@@ -28,6 +28,8 @@ export interface ChannelUnreadDto {
   channelId: string;
   unreadCount: number;
   mentionCount: number;
+  /** Cursor đã đọc của kênh (T4.3: vạch "tin mới" ở khung chat); null = chưa đọc lần nào. */
+  lastReadMessageId: string | null;
 }
 
 export interface ChannelDto {

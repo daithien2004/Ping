@@ -110,6 +110,14 @@ export class MessagesService {
         createdAt: message.createdAt.toISOString(),
         nonce: message.nonce,
       });
+      // T4.3: metadata (không nội dung) tới room server để badge unread của kênh không
+      // đang xem tăng realtime; người xem kênh nhận cả hai event nhưng bỏ qua event này.
+      this.realtime.emitToServer(channel.serverId, ServerEvents.ChannelActivity, {
+        channelId,
+        serverId: channel.serverId,
+        messageId: message.id,
+        authorId,
+      });
       // Ping riêng người được mention (T4.2): broadcast tới room channel giữ nguyên (ranh
       // giới quyền), event cá nhân chỉ tới từng người được nhắc. Không chặn response —
       // tin đã commit, ping lỗi không làm hỏng đường gửi.

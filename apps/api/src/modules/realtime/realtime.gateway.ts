@@ -124,6 +124,24 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
         socket.once('disconnect', () => clearTimeout(timer));
       }
       await socket.join(`user:${userId}`);
+      // T4.3: vào room `server:<id>` của mọi server mình thuộc ngay từ lúc kết nối — nhận
+      // `channel.activity` (metadata, không nội dung) cho badge unread kể cả khi chưa mở
+      // channel nào. Best-effort như presence: pool cạn thì bỏ qua, badge tự đối soát khi
+      // socket reconnect. Bị kick/rời server thì refreshAccess đã dọn room này.
+      try {
+        const memberships = await this.prisma.member.findMany({
+          where: { userId },
+          select: { serverId: true },
+        });
+        if (memberships.length > 0) {
+          await socket.join(memberships.map((row) => `server:${row.serverId}`));
+        }
+      } catch (error) {
+        this.logger.warn(
+          { sid: socket.id, userId, err: (error as Error).message },
+          'ws: server room join skipped',
+        );
+      }
       if (await this.tooManySockets(userId)) {
         this.logger.warn({ sid: socket.id, userId }, 'ws: too many sockets for this user');
         socket.disconnect(true);
