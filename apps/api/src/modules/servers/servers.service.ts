@@ -2,20 +2,25 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  GoneException,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
 import {
   canKickMember,
+  ErrorCodes,
   Limits,
   Permissions,
   type ListMembersQuery,
   type MyServerPermissions,
+  type RegenerateInviteInput,
+  type RegenerateInviteResult,
 } from '@ping/shared';
 import { randomBytes } from 'node:crypto';
 import { limitReached } from '../../common/limit-reached.js';
 import { isUniqueConstraintError } from '../../common/utils/prisma-errors.js';
+import type { Prisma } from '../../generated/prisma/client.js';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
 import { AbilityFactory } from '../ability/ability.factory.js';
 import { AuditService } from '../audit/audit.service.js';
@@ -54,6 +59,8 @@ export class ServersService {
           name,
           ownerId: userId,
           inviteCode,
+          // T3.6: mã mời là bản ghi ServerInvite đang hoạt động (join tra bảng này).
+          invites: { create: { code: inviteCode, createdById: userId } },
           roles: {
             create: {
               name: '@everyone',
@@ -105,15 +112,22 @@ export class ServersService {
   }
 
   async detail(serverId: string) {
-    const { _count, ...server } = await this.prisma.server.findUniqueOrThrow({
+    const { _count, invites, ...server } = await this.prisma.server.findUniqueOrThrow({
       where: { id: serverId },
       include: {
         channels: { orderBy: { position: 'asc' } },
         roles: { orderBy: { position: 'asc' } },
+        // Mã đang hoạt động là bản ghi chưa thu hồi duy nhất (regenerate thu hồi hết
+        // rồi tạo mới, create tạo đúng một) — chỉ lấy hạn dùng để UI hiển thị.
+        invites: { where: { revokedAt: null }, select: { expiresAt: true }, take: 1 },
         _count: { select: { members: true } },
       },
     });
-    return { ...server, memberCount: _count.members };
+    return {
+      ...server,
+      memberCount: _count.members,
+      inviteExpiresAt: invites[0]?.expiresAt?.toISOString() ?? null,
+    };
   }
 
   /**
@@ -177,10 +191,28 @@ export class ServersService {
   }
 
   async join(userId: string, inviteCode: string) {
-    const server = await this.prisma.server.findUnique({ where: { inviteCode } });
-    if (!server) {
+    // T3.6: join tra mã mời ở bảng ServerInvite để phân biệt rõ hết hạn/thu hồi
+    // (mã lỗi riêng) với mã không tồn tại. `Server.inviteCode` chỉ là bản sao hiển thị.
+    const invite = await this.prisma.serverInvite.findUnique({
+      where: { code: inviteCode },
+      include: { server: { select: { id: true, name: true, inviteCode: true } } },
+    });
+    if (!invite) {
       throw new NotFoundException('Invalid invite code');
     }
+    if (invite.revokedAt) {
+      throw new GoneException({
+        code: ErrorCodes.INVITE_REVOKED,
+        message: 'This invite has been revoked',
+      });
+    }
+    if (invite.expiresAt && invite.expiresAt.getTime() <= Date.now()) {
+      throw new GoneException({
+        code: ErrorCodes.INVITE_EXPIRED,
+        message: 'This invite has expired',
+      });
+    }
+    const server = invite.server;
 
     const existing = await this.prisma.member.findUnique({
       where: { serverId_userId: { serverId: server.id, userId } },
@@ -316,17 +348,66 @@ export class ServersService {
   }
 
   /**
+   * Tạo mã mời mới (T3.6): thu hồi mọi mã đang hoạt động, cấp mã mới (hạn dùng tùy
+   * chọn), đồng bộ bản sao `Server.inviteCode` và ghi audit — tất cả trong một
+   * transaction nên không có khoảnh khắc server "không có mã".
+   * Guard đã xác nhận `update Server` trước khi vào đây.
+   */
+  async regenerate(
+    serverId: string,
+    actorId: string,
+    input: RegenerateInviteInput,
+  ): Promise<RegenerateInviteResult> {
+    const server = await this.prisma.server.findUnique({
+      where: { id: serverId },
+      select: { id: true },
+    });
+    if (!server) {
+      throw new NotFoundException('Server not found');
+    }
+
+    const expiresAt =
+      input.expiresInDays !== undefined
+        ? new Date(Date.now() + input.expiresInDays * 24 * 60 * 60 * 1000)
+        : null;
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.serverInvite.updateMany({
+        where: { serverId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+      const code = await this.generateUniqueInviteCode(tx);
+      const invite = await tx.serverInvite.create({
+        data: { serverId, code, createdById: actorId, expiresAt },
+      });
+      await tx.server.update({ where: { id: serverId }, data: { inviteCode: code } });
+      await this.audit.record(
+        {
+          serverId,
+          actorId,
+          action: 'SERVER_INVITE_REGENERATE',
+          targetId: invite.id,
+          metadata: { expiresAt: expiresAt?.toISOString() ?? null },
+        },
+        tx,
+      );
+      return { invite: { code: invite.code, expiresAt: invite.expiresAt?.toISOString() ?? null } };
+    });
+  }
+
+  /**
    * 6 byte ngẫu nhiên → 8 ký tự base64url (~48 bit): đủ ngắn để share, đủ rộng
    * để không đoán được. Vẫn kiểm tra trùng vì unique constraint là chốt chặn cuối.
+   * Chấp nhận client của transaction đang chạy để gọi được trong `regenerate`.
    */
-  private async generateUniqueInviteCode(): Promise<string> {
+  private async generateUniqueInviteCode(db: Prisma.TransactionClient = this.prisma) {
     for (let attempt = 0; attempt < 3; attempt += 1) {
       const code = randomBytes(6).toString('base64url');
-      const taken = await this.prisma.server.findUnique({
-        where: { inviteCode: code },
-        select: { id: true },
-      });
-      if (!taken) {
+      const [takenByServer, takenByInvite] = await Promise.all([
+        db.server.findUnique({ where: { inviteCode: code }, select: { id: true } }),
+        db.serverInvite.findUnique({ where: { code }, select: { id: true } }),
+      ]);
+      if (!takenByServer && !takenByInvite) {
         return code;
       }
     }

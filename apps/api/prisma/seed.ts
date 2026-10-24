@@ -71,6 +71,8 @@ async function main(): Promise<void> {
       name: 'Ping Playground',
       ownerId: alice.id,
       inviteCode: 'playground',
+      // T3.6: join tra mã ở bảng ServerInvite — seed cũng tạo bản ghi đang hoạt động.
+      invites: { create: { id: id('0125'), code: 'playground', createdById: alice.id } },
     },
   });
 

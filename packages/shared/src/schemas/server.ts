@@ -89,9 +89,31 @@ export interface ServerDetail extends Omit<ServerSummary, 'memberCount' | 'chann
   roles: RoleDto[];
   /** Có ở GET /servers/:id, không có ở POST /servers (server mới chỉ có chủ). */
   memberCount?: number;
+  /** Hạn dùng của mã mời đang hoạt động (T3.6); `null`/vắng = không hạn dùng. */
+  inviteExpiresAt?: string | null;
 }
 
 /** POST /servers/join. */
 export interface JoinServerResponse {
   server: { id: string; name: string; inviteCode: string };
+}
+
+/**
+ * POST /servers/:serverId/invite/regenerate (T3.6) — tạo mã mời mới, vô hiệu mã cũ.
+ * `expiresInDays` bỏ qua = mã mới không hạn dùng; đặt = mã hết hạn sau N ngày.
+ */
+export const regenerateInviteSchema = z.object({
+  expiresInDays: z.coerce.number().int().min(1).max(30).optional(),
+});
+export type RegenerateInviteInput = z.infer<typeof regenerateInviteSchema>;
+
+/** Mã mời đang hoạt động của server, trả về sau regenerate. */
+export interface InviteDto {
+  code: string;
+  /** Chuỗi ISO 8601; `null` = không hạn dùng. */
+  expiresAt: string | null;
+}
+
+export interface RegenerateInviteResult {
+  invite: InviteDto;
 }

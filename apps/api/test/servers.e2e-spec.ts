@@ -150,6 +150,59 @@ describe('Servers, channels & roles (e2e)', () => {
       .expect(404);
   });
 
+  it('POST /servers/:id/invite/regenerate — mã cũ vô hiệu (INVITE_REVOKED), mã mới join được, hết hạn (INVITE_EXPIRED), audit ghi hành động (T3.6)', async () => {
+    // Thành viên thường và người ngoài đều không có `update Server`.
+    await api('post', `/api/v1/servers/${serverId}/invite/regenerate`, plain.token)
+      .send({})
+      .expect(403);
+    await api('post', `/api/v1/servers/${serverId}/invite/regenerate`, outsider.token)
+      .send({})
+      .expect(403);
+
+    // Owner regenerate: mã mới không hạn dùng; mã cũ bị thu hồi.
+    const regen = await api('post', `/api/v1/servers/${serverId}/invite/regenerate`, owner.token)
+      .send({})
+      .expect(201);
+    expect(regen.body.invite.code).toHaveLength(8);
+    expect(regen.body.invite.expiresAt).toBeNull();
+    expect(regen.body.invite.code).not.toBe(inviteCode);
+
+    await api('post', '/api/v1/servers/join', joiner.token)
+      .send({ inviteCode })
+      .expect(410)
+      .expect((res) => expect(res.body.code).toBe('INVITE_REVOKED'));
+
+    // Mã mới hoạt động: outsider vào được rồi rời ra để không ảnh hưởng test sau.
+    await api('post', '/api/v1/servers/join', outsider.token)
+      .send({ inviteCode: regen.body.invite.code })
+      .expect(201);
+    await api('post', `/api/v1/servers/${serverId}/leave`, outsider.token).expect(204);
+
+    // Hạn dùng quá khứ (gán trực tiếp trong DB) → INVITE_EXPIRED.
+    const prisma = app.get(PrismaService);
+    await prisma.serverInvite.updateMany({
+      where: { code: regen.body.invite.code },
+      data: { expiresAt: new Date(Date.now() - 1000) },
+    });
+    await api('post', '/api/v1/servers/join', outsider.token)
+      .send({ inviteCode: regen.body.invite.code })
+      .expect(410)
+      .expect((res) => expect(res.body.code).toBe('INVITE_EXPIRED'));
+
+    // Detail trả kèm hạn dùng (đã quá hạn) để UI hiển thị.
+    const detail = await api('get', `/api/v1/servers/${serverId}`, owner.token).expect(200);
+    expect(typeof detail.body.inviteExpiresAt).toBe('string');
+
+    // Audit đã ghi regenerate (trước các hành động khác nên nằm cuối danh sách giảm dần).
+    const audit = await api('get', `/api/v1/servers/${serverId}/audit-log`, owner.token).expect(
+      200,
+    );
+    const entry = audit.body.entries.find(
+      (item: { action: string }) => item.action === 'SERVER_INVITE_REGENERATE',
+    );
+    expect(entry).toMatchObject({ targetId: expect.any(String), metadata: { expiresAt: null } });
+  });
+
   it('PATCH /servers/:id - đổi tên cần MANAGE_SERVER, tên hợp lệ, và ghi audit SERVER_UPDATE', async () => {
     // Thành viên thường và người ngoài đều không có `update Server`.
     await api('patch', `/api/v1/servers/${serverId}`, plain.token)

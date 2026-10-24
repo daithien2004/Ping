@@ -22,6 +22,7 @@ model User {
   members      Member[]
   messages     Message[]
   ownedServers Server[]
+  invites      ServerInvite[]
 }
 
 model Session {
@@ -58,6 +59,27 @@ model Server {
   members  Member[]
   roles    Role[]
   channels Channel[]
+  invites  ServerInvite[]
+}
+
+// T3.6: mã mời là bản ghi riêng thay vì chỉ cột `inviteCode` trên Server, để
+// regenerate vô hiệu mã cũ (revokedAt) và mã có hạn dùng (expiresAt). Cột
+// `Server.inviteCode` giữ làm bản sao Denormalized của mã đang hoạt động để
+// danh sách server/hiển thị không cần join; join (tham gia server) tra bảng này.
+model ServerInvite {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  serverId    String   @db.Uuid
+  code        String   @unique
+  createdById String   @db.Uuid
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime?
+  revokedAt   DateTime?
+
+  server   Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  createdBy User  @relation(fields: [createdById], references: [id], onDelete: Restrict)
+
+  // Tìm mã đang hoạt động của một server (hiển thị, regenerate revoke mã cũ).
+  @@index([serverId, revokedAt])
 }
 
 model Role {
@@ -210,4 +232,5 @@ enum AuditAction {
   CHANNEL_UPDATE
   SERVER_DELETE
   SERVER_UPDATE
+  SERVER_INVITE_REGENERATE
 }

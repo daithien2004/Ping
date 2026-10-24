@@ -23,6 +23,7 @@ const ACTION_KEYS = {
   CHANNEL_UPDATE: 'channelUpdate',
   SERVER_DELETE: 'serverDelete',
   SERVER_UPDATE: 'serverUpdate',
+  SERVER_INVITE_REGENERATE: 'serverInviteRegenerate',
 } as const satisfies Record<AuditAction, string>;
 
 function formatTime(value: string, locale: string): string {

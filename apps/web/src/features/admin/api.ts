@@ -1,4 +1,10 @@
-import type { AuditAction, AuditLogPage, MemberDto, RoleDto } from '@ping/shared';
+import type {
+  AuditAction,
+  AuditLogPage,
+  MemberDto,
+  RegenerateInviteResult,
+  RoleDto,
+} from '@ping/shared';
 import { api } from '@/lib/api-client';
 
 export interface AuditLogFilters {
@@ -45,6 +51,10 @@ export const deleteRole = (roleId: string) => api.delete<{ id: string }>(`/roles
 /** Kick thành viên (T3.4). API kiểm tra thứ bậc; `204` không có body. */
 export const kickMember = (serverId: string, memberId: string) =>
   api.delete<void>(`/servers/${serverId}/members/${memberId}`);
+
+/** Tạo mã mời mới, vô hiệu mã cũ (T3.6). `expiresInDays` bỏ qua = không hạn dùng. */
+export const regenerateInvite = (serverId: string, input: { expiresInDays?: number }) =>
+  api.post<RegenerateInviteResult>(`/servers/${serverId}/invite/regenerate`, input);
 
 /** Xoá server — chỉ chủ server (API tự kiểm tra). */
 export const deleteServer = (serverId: string) =>

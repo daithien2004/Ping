@@ -11,6 +11,7 @@ import {
   kickMember,
   listAuditLog,
   listRoles,
+  regenerateInvite,
   updateRole,
 } from './api';
 import type { AuditLogFilters, CreateRoleInput } from './api';
@@ -122,6 +123,21 @@ export function useKickMember(serverId: string) {
       void queryClient.invalidateQueries({ queryKey: qk.members(serverId) });
       void queryClient.invalidateQueries({ queryKey: qk.roles(serverId) });
       void queryClient.invalidateQueries({ queryKey: qk.server(serverId) });
+    },
+  });
+}
+
+/**
+ * Tạo mã mời mới (T3.6). Mã mời hiển thị ở chi tiết server, danh sách server và bề mặt
+ * quản trị nên invalidate cả ba nguồn.
+ */
+export function useRegenerateInvite(serverId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { expiresInDays?: number }) => regenerateInvite(serverId, input),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: qk.server(serverId) });
+      void queryClient.invalidateQueries({ queryKey: qk.servers, exact: true });
     },
   });
 }
