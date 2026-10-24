@@ -135,7 +135,8 @@
       "kickMembers": "Đuổi thành viên",
       "manageServer": "Quản lý server",
       "viewAuditLog": "Xem nhật ký hành động",
-      "administrator": "Quản trị viên"
+      "administrator": "Quản trị viên",
+      "mentionEveryone": "Nhắc @everyone/@role"
     },
     "permissionGroups": {
       "channels": "Kênh",

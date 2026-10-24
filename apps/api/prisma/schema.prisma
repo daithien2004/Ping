@@ -93,6 +93,7 @@ model Role {
 
   server  Server       @relation(fields: [serverId], references: [id], onDelete: Cascade)
   members MemberRole[]
+  mentions MessageMention[]
 
   @@index([serverId])
 }
@@ -107,6 +108,8 @@ model Member {
   server Server       @relation(fields: [serverId], references: [id], onDelete: Cascade)
   user   User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   roles  MemberRole[]
+  readStates ChannelReadState[]
+  mentions   MessageMention[]
 
   // Một user chỉ là member đúng 1 lần mỗi server.
   @@unique([serverId, userId])
@@ -114,6 +117,42 @@ model Member {
   @@index([userId])
   // Phân trang cursor danh sách thành viên: WHERE serverId = ? AND id > ? ORDER BY id.
   @@index([serverId, id])
+}
+
+// Trạng thái đã đọc theo thành viên-kênh (T4.1, ADR-0043): một hàng cho mỗi
+// (member, channel), ghi bởi T4.2; unread = đếm tin `id > lastReadMessageId` có trần.
+model ChannelReadState {
+  memberId          String   @db.Uuid
+  channelId         String   @db.Uuid
+  lastReadMessageId String?  @db.Uuid
+  updatedAt         DateTime @updatedAt
+
+  member  Member  @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@id([memberId, channelId])
+  // GET /servers/:id/unread quét mọi kênh của một thành viên (T4.2).
+  @@index([memberId])
+}
+
+// Mention được parse khi tạo/sửa tin (T4.1, ADR-0043). Id surrogate + unique thay vì
+// PK composite như plan 5.1 vì Postgres không cho cột NULL trong primary key; dedup do
+// ứng dụng kiểm soát (parse ra tập duy nhất, sửa tin xoá rồi ghi lại).
+model MessageMention {
+  id                String   @id @default(uuid(7)) @db.Uuid
+  messageId         String   @db.Uuid
+  // NULL khi là @everyone / @role.
+  mentionedMemberId String?  @db.Uuid
+  kind              String // "user" | "role" | "everyone"
+  roleId            String?  @db.Uuid
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  mentionedMember Member? @relation(fields: [mentionedMemberId], references: [id], onDelete: Cascade)
+  role            Role?   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, kind, mentionedMemberId, roleId])
+  // Đếm mention mới cho một user (T4.2/T4.3): WHERE mentionedMemberId = ? AND messageId > ?.
+  @@index([mentionedMemberId, messageId(sort: Desc)])
 }
 
 model MemberRole {
@@ -136,6 +175,7 @@ model Channel {
 
   server   Server    @relation(fields: [serverId], references: [id], onDelete: Cascade)
   messages Message[]
+  readStates ChannelReadState[]
 
   @@index([serverId])
 }
@@ -165,6 +205,8 @@ model Message {
 
   // Index quan trọng nhất hệ thống: phân trang cursor (keyset) theo tin mới nhất.
   @@index([channelId, id(sort: Desc)])
+
+  mentions MessageMention[]
 }
 
 /// Lịch sử hành động nhạy cảm (CLAUDE.md quy tắc 11): chỉ ghi thêm, không sửa/xóa.

@@ -135,7 +135,8 @@
       "kickMembers": "Kick members",
       "manageServer": "Manage server",
       "viewAuditLog": "View the action log",
-      "administrator": "Administrator"
+      "administrator": "Administrator",
+      "mentionEveryone": "Mention @everyone/@role"
     },
     "permissionGroups": {
       "channels": "Channels",
