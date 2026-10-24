@@ -4,9 +4,12 @@ import { ServerEvents, type AppAbility, type CreateMessageInput } from '@ping/sh
 import { isUniqueConstraintError } from '../../common/utils/prisma-errors.js';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
 import { OutboxService } from '../../infra/events/outbox.service.js';
+import { AbilityFactory } from '../ability/ability.factory.js';
 import { AuditService } from '../audit/audit.service.js';
 import { RealtimeService } from '../realtime/realtime.service.js';
 import { MessageRateLimiter } from './message-rate-limiter.js';
+import { extractMentionTokens } from './mention-parser.js';
+import { resolveMentions } from './mention-resolver.js';
 import type { ListMessagesQuery } from './schemas.js';
 
 /** Chỉ các trường client cần — không bao giờ trả bản ghi thô (guide 10.3). */
@@ -28,6 +31,7 @@ export class MessagesService {
     private readonly audit: AuditService,
     private readonly rateLimiter: MessageRateLimiter,
     private readonly outbox: OutboxService,
+    private readonly abilityFactory: AbilityFactory,
   ) {}
 
   /**
@@ -54,12 +58,33 @@ export class MessagesService {
 
   async create(channelId: string, authorId: string, input: CreateMessageInput) {
     await this.rateLimiter.consume(authorId, channelId);
+    // Bối cảnh server để kiểm MENTION_EVERYONE khi parse mention (ADR-0043); guard đã
+    // xác nhận người gửi là thành viên nên channel luôn tồn tại ở bước này.
+    const channel = await this.prisma.channel.findUnique({
+      where: { id: channelId },
+      select: { serverId: true },
+    });
+    if (!channel) {
+      throw new NotFoundException('Channel not found');
+    }
+    const actor = await this.abilityFactory.contextFor(channel.serverId, authorId);
     try {
       const message = await this.prisma.$transaction(async (tx) => {
         const created = await tx.message.create({
           data: { channelId, authorId, content: input.content, nonce: input.nonce },
           select: messageWithAuthor,
         });
+        const mentions = await resolveMentions(
+          tx,
+          channel.serverId,
+          actor,
+          extractMentionTokens(input.content),
+        );
+        if (mentions.length > 0) {
+          await tx.messageMention.createMany({
+            data: mentions.map((mention) => ({ messageId: created.id, ...mention })),
+          });
+        }
         await this.outbox.write(tx, {
           aggregateType: 'Message',
           aggregateId: created.id,
@@ -106,12 +131,35 @@ export class MessagesService {
     // tra được khi đã có đối tượng thật trong tay.
     ForbiddenError.from(ability).throwUnlessCan('update', subject('Message', message));
 
+    // Sửa tin = parse lại mention: xoá toàn bộ hàng cũ rồi ghi lại từ nội dung mới
+    // (ADR-0043), trong cùng transaction với cập nhật tin.
+    const channel = await this.prisma.channel.findUnique({
+      where: { id: message.channelId },
+      select: { serverId: true },
+    });
+    if (!channel) {
+      throw new NotFoundException('Channel not found');
+    }
+    const actor = await this.abilityFactory.contextFor(channel.serverId, message.authorId);
+
     const updated = await this.prisma.$transaction(async (tx) => {
       const row = await tx.message.update({
         where: { id: message.id },
         data: { content, editedAt: new Date() },
         select: messageWithAuthor,
       });
+      await tx.messageMention.deleteMany({ where: { messageId: message.id } });
+      const mentions = await resolveMentions(
+        tx,
+        channel.serverId,
+        actor,
+        extractMentionTokens(content),
+      );
+      if (mentions.length > 0) {
+        await tx.messageMention.createMany({
+          data: mentions.map((mention) => ({ messageId: message.id, ...mention })),
+        });
+      }
       await this.outbox.write(tx, {
         aggregateType: 'Message',
         aggregateId: row.id,

@@ -6,4 +6,6 @@ export const Limits = {
   MAX_CHANNELS_PER_SERVER: 200,
   MAX_ROLES_PER_SERVER: 100,
   MAX_SERVERS_PER_USER: 100,
+  /** Số mention khác nhau tối đa mỗi tin (T4.1, ADR-0043): vượt phần sau bị bỏ qua. */
+  MENTIONS_PER_MESSAGE: 20,
 } as const;

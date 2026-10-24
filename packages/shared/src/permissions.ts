@@ -9,6 +9,8 @@ export const Permissions = {
   KICK_MEMBERS: 128n,
   /** Xem nhật ký hành động của server (TF.10). Không mặc định cho ai. */
   VIEW_AUDIT_LOG: 256n,
+  /** Được ping @everyone/@role trong tin nhắn (T4.1, ADR-0043). Không mặc định cho ai. */
+  MENTION_EVERYONE: 512n,
 } as const;
 
 export function hasPermission(value: bigint, flag: bigint): boolean {
