@@ -2,7 +2,7 @@
 
 - Ngày: 2026-10-23.
 - Người thực hiện: chủ repo, nhánh `feat/t3.1-server-rename`, base `f550422` (merge ADR-0059).
-- Task: T3.1 (Pha 3) — [plan](../../../ping-v0.2.0-plan.md).
+- Task: T3.1 (Pha 3) - kế hoạch local `docs/ping-v0.2.0-plan.md` (không commit).
 - Commit code: `6fbcf91`; commit tài liệu này ngay sau đó.
 
 ## Phạm vi

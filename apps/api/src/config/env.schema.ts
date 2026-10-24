@@ -42,7 +42,11 @@ export const envSchema = z.object({
   SENTRY_DSN: z.preprocess((value) => (value === '' ? undefined : value), z.url().optional()),
   // AI (ADR-0046): embedding chạy cục bộ bằng ONNX, LLM qua Groq free tier.
   // Model ONNX đa ngữ nhỏ; đổi tên model là phải re-embed toàn bộ (lưu modelVersion).
-  EMBEDDING_MODEL: z.string().min(1).default('Xenova/multilingual-e5-small'),
+  // `.env.example` để trống (dùng mặc định), nên chuỗi rỗng phải quy về `undefined` trước khi default.
+  EMBEDDING_MODEL: z.preprocess(
+    (value) => (value === '' ? undefined : value),
+    z.string().min(1).default('Xenova/multilingual-e5-small'),
+  ),
   // Qdrant local (ADR-0046/T5.2). Bỏ trống = tính năng vector tắt.
   QDRANT_URL: z.preprocess((value) => (value === '' ? undefined : value), z.url().optional()),
   // Groq (ADR-0059). Bỏ trống = AI tắt; mọi lời gọi ném AiUnavailableError.
