@@ -42,6 +42,10 @@ export const updateRole = (
 
 export const deleteRole = (roleId: string) => api.delete<{ id: string }>(`/roles/${roleId}`);
 
+/** Kick thành viên (T3.4). API kiểm tra thứ bậc; `204` không có body. */
+export const kickMember = (serverId: string, memberId: string) =>
+  api.delete<void>(`/servers/${serverId}/members/${memberId}`);
+
 /** Xoá server — chỉ chủ server (API tự kiểm tra). */
 export const deleteServer = (serverId: string) =>
   api.delete<{ id: string }>(`/servers/${serverId}`);

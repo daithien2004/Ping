@@ -1,4 +1,5 @@
 import {
+  canKickMember,
   canManageMember,
   canManagePermissions,
   Permissions,
@@ -84,6 +85,23 @@ export function memberContext(
     isOwner: member.userId === ownerId,
     permissions: effectiveMemberPermissions(member, roles),
   };
+}
+
+export type KickBlockReason = 'self' | 'owner' | 'stronger';
+
+/**
+ * Vì sao không kick được thành viên này (T3.4), hoặc null nếu kick được. Chỉ gọi khi người
+ * thao tác đã có `delete Member` (KICK_MEMBERS) — cờ quyền đó do ability/CASL quyết định;
+ * hàm này phân loại lý do chặn theo đối tượng, khớp `canKickMember` của API (ADR-0004).
+ */
+export function kickBlockReason(
+  actor: AbilityContext,
+  target: AbilityContext,
+): KickBlockReason | null {
+  if (canKickMember(actor, target)) return null;
+  if (target.isOwner) return 'owner';
+  if (actor.userId === target.userId) return 'self';
+  return 'stronger';
 }
 
 /** Gán được role này cho member đích không (không tính `@everyone`). */

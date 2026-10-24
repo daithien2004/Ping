@@ -4,6 +4,7 @@ import {
   assignableRoles,
   effectiveMemberPermissions,
   isRoleAssignable,
+  kickBlockReason,
   maskOf,
   memberContext,
   nextPosition,
@@ -32,8 +33,8 @@ function member(roleIds: string[], userId = 'member-1'): MemberDto {
   };
 }
 
-function actor(permissions: bigint, isOwner = false): AbilityContext {
-  return { userId: 'actor-1', isOwner, permissions };
+function actor(permissions: bigint, isOwner = false, userId = 'actor-1'): AbilityContext {
+  return { userId, isOwner, permissions };
 }
 
 describe('quyền của vai trò (TF.10)', () => {
@@ -174,5 +175,48 @@ describe('gán vai trò cho thành viên (T3.3)', () => {
     expect(reorderUpdates([everyone, reader, second], 'second', 'up')).toEqual([
       { id: 'reader', position: 2 },
     ]);
+  });
+});
+
+describe('kick thành viên (T3.4)', () => {
+  const kicker = actor(Permissions.VIEW_CHANNEL | Permissions.KICK_MEMBERS);
+  const weakTarget = actor(Permissions.VIEW_CHANNEL, false, 'target-1');
+
+  it('người có KICK_MEMBERS kick được thành viên yếu hơn', () => {
+    expect(kickBlockReason(kicker, weakTarget)).toBeNull();
+  });
+
+  it('không kick được thành viên mạnh hơn mình', () => {
+    const strongTarget = actor(
+      Permissions.VIEW_CHANNEL | Permissions.ADMINISTRATOR,
+      false,
+      'target-1',
+    );
+
+    expect(kickBlockReason(kicker, strongTarget)).toBe('stronger');
+  });
+
+  it('không kick được chủ server, kể cả khi mình là owner hay admin', () => {
+    const owner = actor(Permissions.ADMINISTRATOR, true);
+    const ownerTarget = actor(Permissions.VIEW_CHANNEL, true, 'owner-1');
+    const admin = actor(Permissions.ADMINISTRATOR);
+
+    expect(kickBlockReason(owner, ownerTarget)).toBe('owner');
+    expect(kickBlockReason(admin, ownerTarget)).toBe('owner');
+  });
+
+  it('không kick được chính mình (dùng leave)', () => {
+    expect(kickBlockReason(kicker, { ...kicker })).toBe('self');
+  });
+
+  it('owner và admin kick được thành viên mạnh hơn', () => {
+    const strongTarget = actor(
+      Permissions.VIEW_CHANNEL | Permissions.ADMINISTRATOR,
+      false,
+      'target-1',
+    );
+
+    expect(kickBlockReason(actor(Permissions.VIEW_CHANNEL, true), strongTarget)).toBeNull();
+    expect(kickBlockReason(actor(Permissions.ADMINISTRATOR), strongTarget)).toBeNull();
   });
 });

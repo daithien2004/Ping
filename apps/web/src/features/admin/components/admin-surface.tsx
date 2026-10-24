@@ -1,6 +1,6 @@
 'use client';
 
-import type { MemberDto } from '@ping/shared';
+import type { AbilityContext, MemberDto, ServerDetail } from '@ping/shared';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { use, useState } from 'react';
@@ -10,12 +10,14 @@ import { PingEmpty } from '@/components/ui/ping-empty';
 import { PingPopconfirm } from '@/components/ui/ping-popconfirm';
 import { PingTable, type PingTableColumn } from '@/components/ui/ping-table';
 import { pingToast } from '@/components/ui/ping-toast';
+import { useMe } from '@/features/auth/hooks';
 import { useMembers } from '@/features/members/hooks';
 import { useServerAbility } from '@/features/permissions/context';
 import { useServerPermissions } from '@/features/permissions/hooks';
 import { useServer } from '@/features/servers/hooks';
 import { useErrorMessage } from '@/lib/error-message';
-import { useDeleteServer, useRoles } from '../hooks';
+import { useDeleteServer, useKickMember, useRoles } from '../hooks';
+import { kickBlockReason, memberContext } from '../permissions';
 import { AuditLogTable } from './audit-log-table';
 import { ChannelManager } from './channel-manager';
 import { RoleEditor } from './role-editor';
@@ -42,6 +44,7 @@ export function AdminSurface({ params }: { params: Promise<{ serverId: string }>
   const tc = useTranslations('common');
   const { ability } = useServerAbility();
   const { data: permissions } = useServerPermissions(serverId);
+  const { data: me } = useMe();
   const { data: server } = useServer(serverId);
   const router = useRouter();
   const errorMessage = useErrorMessage();
@@ -52,10 +55,19 @@ export function AdminSurface({ params }: { params: Promise<{ serverId: string }>
   const canViewAudit = ability.can('view', 'AuditLog');
   const canManageServer = ability.can('update', 'Server');
   const canManageChannels = ability.can('manage', 'Channel');
+  const canKick = ability.can('delete', 'Member');
   const isOwner = permissions?.isOwner ?? false;
+  const actor: AbilityContext | null =
+    permissions && me
+      ? {
+          userId: me.id,
+          isOwner: permissions.isOwner,
+          permissions: BigInt(permissions.permissions),
+        }
+      : null;
   // Không có quyền quản trị nào thì không mở bề mặt quản trị (API vẫn kiểm tra lại).
   const hasAdminAccess =
-    canManageRoles || canViewAudit || canManageServer || isOwner || canManageChannels;
+    canManageRoles || canViewAudit || canManageServer || canManageChannels || canKick || isOwner;
 
   function removeServer() {
     deleteMutation.mutate(serverId, {
@@ -78,7 +90,13 @@ export function AdminSurface({ params }: { params: Promise<{ serverId: string }>
       {canManageChannels && <ChannelManager serverId={serverId} />}
       <RolesSection serverId={serverId} enabled={canManageRoles} />
       {hasAdminAccess ? (
-        <MembersSection serverId={serverId} onOpen={setMember} />
+        <MembersSection
+          serverId={serverId}
+          server={server}
+          actor={actor}
+          canKick={canKick}
+          onOpen={setMember}
+        />
       ) : (
         <p className="text-sm text-muted-foreground">{t('noAccess')}</p>
       )}
@@ -141,14 +159,36 @@ function RolesSection({ serverId, enabled }: { serverId: string; enabled: boolea
 
 function MembersSection({
   serverId,
+  server,
+  actor,
+  canKick,
   onOpen,
 }: {
   serverId: string;
+  server: ServerDetail;
+  actor: AbilityContext | null;
+  canKick: boolean;
   onOpen: (member: MemberDto) => void;
 }) {
   const t = useTranslations('admin');
+  const tc = useTranslations('common');
+  const errorMessage = useErrorMessage();
   const query = useMembers(serverId);
+  const kickMutation = useKickMember(serverId);
   const members = query.data?.pages.flatMap((page) => page.members) ?? [];
+
+  const reasonOf = {
+    self: t('kickReasonSelf'),
+    owner: t('kickReasonOwner'),
+    stronger: t('kickReasonStronger'),
+  } as const;
+
+  function kick(row: MemberDto) {
+    kickMutation.mutate(row.id, {
+      onSuccess: () => pingToast.success(t('memberKicked')),
+      onError: (error) => pingToast.error(errorMessage(error)),
+    });
+  }
 
   const columns: PingTableColumn<MemberDto>[] = [
     {
@@ -171,13 +211,45 @@ function MembersSection({
         ),
     },
     {
-      key: 'details',
+      key: 'actions',
       header: t('memberActions'),
-      render: (row) => (
-        <PingButton variant="secondary" size="sm" onClick={() => onOpen(row)}>
-          {t('memberDetails')}
-        </PingButton>
-      ),
+      render: (row) => {
+        const name = row.nickname ?? row.user.displayName;
+        // Thứ bậc tính từ quyền hiệu lực (role của server + @everyone), khớp API (ADR-0004).
+        const blocked = actor
+          ? kickBlockReason(actor, memberContext(row, server.roles, server.ownerId))
+          : null;
+        const label = blocked
+          ? t('kickBlocked', { name, reason: reasonOf[blocked] })
+          : t('kickMember', { name });
+        return (
+          <div className="flex items-center gap-2">
+            <PingButton variant="secondary" size="sm" onClick={() => onOpen(row)}>
+              {t('memberDetails')}
+            </PingButton>
+            {canKick && (
+              <PingPopconfirm
+                title={t('kickTitle', { name })}
+                description={t('kickDescription')}
+                okText={t('kick')}
+                cancelText={tc('cancel')}
+                onConfirm={() => kick(row)}
+                disabled={blocked !== null || kickMutation.isPending}
+              >
+                <PingButton
+                  variant="danger"
+                  size="sm"
+                  aria-label={label}
+                  disabled={blocked !== null || kickMutation.isPending}
+                  loading={kickMutation.isPending && kickMutation.variables === row.id}
+                >
+                  {t('kick')}
+                </PingButton>
+              </PingPopconfirm>
+            )}
+          </div>
+        );
+      },
     },
   ];
 
