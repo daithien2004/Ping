@@ -107,7 +107,14 @@ export function AdminSurface({ params }: { params: Promise<{ serverId: string }>
         </section>
       )}
 
-      {member && <MemberDetailsDrawer member={member} onClose={() => setMember(null)} />}
+      {member && (
+        <MemberDetailsDrawer
+          serverId={serverId}
+          ownerId={server.ownerId}
+          member={member}
+          onClose={() => setMember(null)}
+        />
+      )}
     </div>
   );
 }

@@ -3,8 +3,16 @@
 import type { AuditAction } from '@ping/shared';
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { qk } from '@/lib/query-keys';
-import { deleteRole, deleteServer, listAuditLog, listRoles, updateRole } from './api';
-import type { AuditLogFilters } from './api';
+import {
+  assignMemberRoles,
+  createRole,
+  deleteRole,
+  deleteServer,
+  listAuditLog,
+  listRoles,
+  updateRole,
+} from './api';
+import type { AuditLogFilters, CreateRoleInput } from './api';
 
 /**
  * Nhật ký hành động theo trang cursor. Bộ lọc nằm trong query key nên đổi bộ lọc là
@@ -39,6 +47,52 @@ export function useUpdateRole(serverId: string) {
       void queryClient.invalidateQueries({ queryKey: qk.roles(serverId) });
       void queryClient.invalidateQueries({ queryKey: qk.server(serverId) });
       void queryClient.invalidateQueries({ queryKey: qk.permissions(serverId) });
+    },
+  });
+}
+
+/** Tạo vai trò mới; vị trí do người gọi tính từ danh sách hiện tại. */
+export function useCreateRole(serverId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreateRoleInput) => createRole(serverId, input),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: qk.roles(serverId) });
+      void queryClient.invalidateQueries({ queryKey: qk.server(serverId) });
+    },
+  });
+}
+
+/**
+ * Gán vai trò cho thành viên. Đổi role làm đổi quyền hiệu lực nên phải làm mới cả
+ * thành viên, vai trò (đếm member) và quyền của server.
+ */
+export function useAssignMemberRoles(serverId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ memberId, roleIds }: { memberId: string; roleIds: string[] }) =>
+      assignMemberRoles(serverId, memberId, roleIds),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: qk.members(serverId) });
+      void queryClient.invalidateQueries({ queryKey: qk.roles(serverId) });
+      void queryClient.invalidateQueries({ queryKey: qk.server(serverId) });
+      void queryClient.invalidateQueries({ queryKey: qk.permissions(serverId) });
+    },
+  });
+}
+
+/**
+ * Đổi thứ tự hiển thị: gửi các cập nhật `position` đã tính sẵn. API không có endpoint
+ * đổi hàng loạt nên mỗi role một PATCH; danh sách role bị giới hạn bởi `Limits`.
+ */
+export function useReorderRoles(serverId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (updates: Array<{ id: string; position: number }>) =>
+      Promise.all(updates.map(({ id, position }) => updateRole(id, { position }))),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: qk.roles(serverId) });
+      void queryClient.invalidateQueries({ queryKey: qk.server(serverId) });
     },
   });
 }
