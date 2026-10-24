@@ -13,6 +13,8 @@ export const ServerEvents = {
   PresenceUpdated: 'presence.updated',
   PermissionsChanged: 'permissions.changed',
   MemberRemoved: 'member.removed',
+  ReadUpdated: 'read.updated',
+  MentionCreated: 'mention.created',
 } as const;
 
 export const ClientEvents = {
@@ -83,6 +85,26 @@ export interface PresenceUpdatedPayload {
   status: 'online' | 'offline';
 }
 
+/**
+ * Gửi riêng tới user (room `user:<id>`) khi họ đánh dấu đã đọc (T4.2): mọi tab/thiết bị
+ * khác của cùng user cập nhật cursor theo — hai tab không tụt badge lệch nhau.
+ */
+export interface ReadUpdatedPayload {
+  channelId: string;
+  lastReadMessageId: string;
+}
+
+/**
+ * Gửi riêng tới user được mention (T4.2). Event `message.created` vẫn phát broadcast tới
+ * room channel (ranh giới quyền); event này chỉ tới người được nhắc nên không lộ danh sách
+ * mention của người khác. Payload tối giản: client tự đối chiếu với tin đã nhận/theo badge.
+ */
+export interface MentionCreatedPayload {
+  messageId: string;
+  channelId: string;
+  serverId: string;
+}
+
 /** Payload client gửi lên chỉ là dữ liệu chưa tin cậy: gateway parse bằng schema này. */
 export const channelEventSchema = z.object({ channelId: z.uuid() });
 export type ChannelJoinPayload = z.infer<typeof channelEventSchema>;
@@ -101,6 +123,8 @@ export interface ServerToClientEvents {
   [ServerEvents.PresenceUpdated]: (payload: PresenceUpdatedPayload) => void;
   [ServerEvents.PermissionsChanged]: (payload: PermissionsChangedPayload) => void;
   [ServerEvents.MemberRemoved]: (payload: MemberRemovedPayload) => void;
+  [ServerEvents.ReadUpdated]: (payload: ReadUpdatedPayload) => void;
+  [ServerEvents.MentionCreated]: (payload: MentionCreatedPayload) => void;
 }
 
 export interface ClientToServerEvents {

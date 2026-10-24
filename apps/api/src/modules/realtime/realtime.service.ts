@@ -44,6 +44,20 @@ export class RealtimeService {
   }
 
   /**
+   * Room `user:<id>`: mọi socket của MỘT user (nhiều tab/thiết bị). Dùng cho sự kiện cá
+   * nhân — trạng thái đã đọc (T4.2) hay mình vừa được mention — không qua room channel.
+   */
+  emitToUser<T extends EventName>(userId: string, event: T, payload: Payload<T>): void {
+    if (!this.server) {
+      return;
+    }
+    const room = this.server.to(`user:${userId}`) as unknown as {
+      emit: (e: unknown, p: unknown) => void;
+    };
+    void room.emit(event, payload);
+  }
+
+  /**
    * Số socket đang mở của user trên MỌI instance (Redis adapter hỏi các instance khác).
    * Đếm socket thật thay cho bộ đếm INCR/DECR: không lệch khi key hết TTL hay instance chết.
    */

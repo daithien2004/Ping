@@ -110,6 +110,12 @@ export class MessagesService {
         createdAt: message.createdAt.toISOString(),
         nonce: message.nonce,
       });
+      // Ping riêng người được mention (T4.2): broadcast tới room channel giữ nguyên (ranh
+      // giới quyền), event cá nhân chỉ tới từng người được nhắc. Không chặn response —
+      // tin đã commit, ping lỗi không làm hỏng đường gửi.
+      void this.notifyMentionedUsers(message.id, channelId, channel.serverId).catch(
+        () => undefined,
+      );
       return message;
     } catch (error) {
       // Client retry (mạng chập chờn) gửi lại CÙNG nonce → unique
@@ -182,6 +188,64 @@ export class MessagesService {
     });
 
     return updated;
+  }
+
+  /**
+   * Phát `mention.created` tới từng user được mention (T4.2): user trực tiếp, member của
+   * role được nhắc, hoặc mọi member với @everyone. Chỉ người còn xem được channel nhận
+   * (kiểm ability, có cache) — không ping kẻ không được đọc. Không phát lại khi sửa tin.
+   */
+  private async notifyMentionedUsers(
+    messageId: string,
+    channelId: string,
+    serverId: string,
+  ): Promise<void> {
+    const mentions = await this.prisma.messageMention.findMany({
+      where: { messageId },
+      select: { kind: true, mentionedMemberId: true, roleId: true },
+    });
+    if (mentions.length === 0) {
+      return;
+    }
+    const memberIds = new Set<string>();
+    for (const mention of mentions) {
+      if (mention.kind === 'user' && mention.mentionedMemberId) {
+        memberIds.add(mention.mentionedMemberId);
+      } else if (mention.kind === 'role' && mention.roleId) {
+        const holders = await this.prisma.memberRole.findMany({
+          where: { roleId: mention.roleId },
+          select: { memberId: true },
+        });
+        for (const holder of holders) memberIds.add(holder.memberId);
+      } else if (mention.kind === 'everyone') {
+        const members = await this.prisma.member.findMany({
+          where: { serverId },
+          select: { id: true },
+        });
+        for (const member of members) memberIds.add(member.id);
+      }
+    }
+    if (memberIds.size === 0) {
+      return;
+    }
+    const mentioned = await this.prisma.member.findMany({
+      where: { id: { in: [...memberIds] } },
+      select: { userId: true },
+    });
+    for (const member of mentioned) {
+      try {
+        const ability = await this.abilityFactory.createForUser(serverId, member.userId);
+        if (ability.can('view', 'Message')) {
+          this.realtime.emitToUser(member.userId, ServerEvents.MentionCreated, {
+            messageId,
+            channelId,
+            serverId,
+          });
+        }
+      } catch {
+        // Không còn là member giữa chừng — bỏ qua, không ping.
+      }
+    }
   }
 
   async remove(messageId: string, actorId: string, ability: AppAbility): Promise<{ id: string }> {
