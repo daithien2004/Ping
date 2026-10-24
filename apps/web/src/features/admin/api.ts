@@ -1,4 +1,4 @@
-import type { AuditAction, AuditLogPage, RoleDto } from '@ping/shared';
+import type { AuditAction, AuditLogPage, MemberDto, RoleDto } from '@ping/shared';
 import { api } from '@/lib/api-client';
 
 export interface AuditLogFilters {
@@ -19,9 +19,26 @@ export const listAuditLog = (serverId: string, filters: AuditLogFilters = {}, af
 /** Danh sách vai trò của server (cần quyền `manage Role`). */
 export const listRoles = (serverId: string) => api.get<RoleDto[]>(`/servers/${serverId}/roles`);
 
+export interface CreateRoleInput {
+  name: string;
+  /** Bitmask dạng chuỗi thập phân. */
+  permissions?: string;
+  position?: number;
+}
+
+/** Tạo vai trò mới (T3.3). */
+export const createRole = (serverId: string, input: CreateRoleInput) =>
+  api.post<RoleDto>(`/servers/${serverId}/roles`, input);
+
+/** Gán danh sách vai trò cho một thành viên; `@everyone` do API tự giữ. */
+export const assignMemberRoles = (serverId: string, memberId: string, roleIds: string[]) =>
+  api.put<MemberDto>(`/servers/${serverId}/members/${memberId}/roles`, { roleIds });
+
 /** Sửa vai trò. `permissions` là bitmask dạng chuỗi thập phân (JSON không có bigint). */
-export const updateRole = (roleId: string, input: { name?: string; permissions?: string }) =>
-  api.patch<RoleDto>(`/roles/${roleId}`, input);
+export const updateRole = (
+  roleId: string,
+  input: { name?: string; permissions?: string; position?: number },
+) => api.patch<RoleDto>(`/roles/${roleId}`, input);
 
 export const deleteRole = (roleId: string) => api.delete<{ id: string }>(`/roles/${roleId}`);
 
