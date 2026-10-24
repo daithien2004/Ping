@@ -16,6 +16,20 @@ export const updateChannelSchema = z
   });
 export type UpdateChannelInput = z.infer<typeof updateChannelSchema>;
 
+/**
+ * PUT /channels/:id/read (T4.2, ADR-0043): đánh dấu đã đọc đến `messageId` (phải là tin
+ * của đúng channel đó). Chỉ tiến không lùi — server bỏ qua nếu cursor hiện tại đã mới hơn.
+ */
+export const markChannelReadSchema = z.object({ messageId: z.uuid() });
+export type MarkChannelReadInput = z.infer<typeof markChannelReadSchema>;
+
+/** Một dòng trong GET /servers/:id/unread. Đếm có trần (100); tin đã xóa mềm không tính. */
+export interface ChannelUnreadDto {
+  channelId: string;
+  unreadCount: number;
+  mentionCount: number;
+}
+
 export interface ChannelDto {
   id: string;
   serverId: string;

@@ -3,16 +3,20 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
   Param,
   Patch,
   Post,
+  Put,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import {
   createChannelSchema,
+  markChannelReadSchema,
   updateChannelSchema,
   type CreateChannelInput,
+  type MarkChannelReadInput,
   type UpdateChannelInput,
 } from '@ping/shared';
 import { IdempotencyInterceptor } from '../../common/interceptors/idempotency.interceptor.js';
@@ -22,12 +26,16 @@ import { CheckAbility } from '../ability/check-ability.decorator.js';
 import { CurrentUser, type AuthenticatedUser } from '../auth/current-user.decorator.js';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { ChannelsService } from './channels.service.js';
+import { ReadStateService } from './read-state.service.js';
 
 /** @Controller() gốc vì route trải trên hai prefix: /servers/:id/channels và /channels/:id. */
 @Controller()
 @UseGuards(JwtAuthGuard, AbilityGuard)
 export class ChannelsController {
-  constructor(private readonly channelsService: ChannelsService) {}
+  constructor(
+    private readonly channelsService: ChannelsService,
+    private readonly readState: ReadStateService,
+  ) {}
 
   @Post('servers/:serverId/channels')
   @CheckAbility(['manage', 'Channel'])
@@ -43,6 +51,28 @@ export class ChannelsController {
   @CheckAbility(['view', 'Channel'])
   list(@Param('serverId') serverId: string) {
     return this.channelsService.list(serverId);
+  }
+
+  /**
+   * Đánh dấu đã đọc đến `messageId` (T4.2): chỉ thành viên xem được channel; cursor chỉ
+   * tiến, không lùi. 204 — các tab khác của cùng user nhận `read.updated`.
+   */
+  @Put('channels/:channelId/read')
+  @CheckAbility(['view', 'Message'])
+  @HttpCode(204)
+  markRead(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('channelId') channelId: string,
+    @Body(new ZodValidationPipe(markChannelReadSchema)) body: MarkChannelReadInput,
+  ) {
+    return this.readState.markRead(channelId, user.userId, body.messageId);
+  }
+
+  /** Số tin/mention chưa đọc của mọi channel trong server (T4.2); đếm có trần 100. */
+  @Get('servers/:serverId/unread')
+  @CheckAbility(['view', 'Server'])
+  unread(@CurrentUser() user: AuthenticatedUser, @Param('serverId') serverId: string) {
+    return this.readState.unreadForServer(serverId, user.userId);
   }
 
   @Patch('channels/:channelId')
