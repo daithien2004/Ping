@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { useChannelRealtime } from '@/features/realtime/hooks';
 import { TypingIndicator } from '@/features/realtime/components/typing-indicator';
 import { useMe } from '@/features/auth/hooks';
+import { useMarkRead, useUnread } from '@/features/unread/hooks';
 import { incomingMessage } from '../announce';
 import { useMessages, useSendMessage } from '../hooks';
 import { type ClientMessage, oldestFirst } from '../message-cache';
@@ -45,6 +46,10 @@ export function MessagePane({
   const roomDenied = useChannelRealtime(serverId, channelId);
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useMessages(channelId);
   const sendMutation = useSendMessage(channelId);
+  const { data: unread } = useUnread(serverId);
+  // `mutate` của TanStack có identity ổn định — tách ra để effect dưới không chạy lại khi
+  // trạng thái mutation đổi (tránh vòng mutate → isPending → effect → mutate).
+  const { mutate: mutateRead } = useMarkRead(channelId);
   const [selection, setSelection] = useState<MessageSelection | null>(null);
   const { ability, ready } = useServerAbility();
   const messages = useMemo(() => oldestFirst(data), [data]);
@@ -149,6 +154,34 @@ export function MessagePane({
     }
   }, [loadOlderEnabled, firstVisible, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
+  // T4.3: vào kênh / có tin mới ở kênh đang xem → đánh dấu đã đọc tới tin cuối. Tin optimistic
+  // (id `temp-…`) chưa tồn tại ở server nên bỏ qua; cursor chỉ tiến nên gửi lặp vẫn vô hại.
+  useEffect(() => {
+    const last = messages.at(-1);
+    if (last && !last.id.startsWith('temp-')) {
+      mutateRead(last.id);
+    }
+  }, [messages, mutateRead]);
+
+  // T4.3: vạch "Tin mới" — cursor ĐÃ ĐỌC được chốt MỘT lần mỗi phiên xem kênh: mark-read
+  // của chính mình (đi kèm `read.updated`) không kéo vạch chạy xuống. `<Activity>` giữ
+  // component khi rời kênh nhưng tháo effect khi ẩn nên vào lại = phiên mới (reset),
+  // kể cả khi trang bị unmount hoàn toàn.
+  const dividerCursor = useRef<string | null | undefined>(undefined);
+  useEffect(() => {
+    dividerCursor.current = undefined;
+  }, [channelId]);
+  useEffect(() => {
+    if (dividerCursor.current === undefined && unread !== undefined) {
+      dividerCursor.current =
+        unread.find((row) => row.channelId === channelId)?.lastReadMessageId ?? null;
+    }
+  }, [unread, channelId]);
+  const dividerId =
+    dividerCursor.current != null
+      ? (messages.find((message) => message.id > dividerCursor.current!)?.id ?? null)
+      : null;
+
   function send(content: string, nonce: string) {
     if (!ready || !ability.can('create', 'Message')) return;
     sendMutation.mutate({ content, nonce });
@@ -224,6 +257,18 @@ export function MessagePane({
                 className="absolute inset-x-0 top-0"
                 style={{ transform: `translateY(${item.start}px)` }}
               >
+                {/* T4.3: vạch "Tin mới" nằm ngay trên tin chưa đọc đầu tiên (nếu trong
+                    cửa sổ đã tải — nhảy sâu tới tin cũ hơn thuộc TG.5 `?around=`). */}
+                {message.id === dividerId && (
+                  <p
+                    aria-label={t('newDivider')}
+                    className="mx-4 mb-1 flex items-center gap-2 text-xs font-medium text-destructive"
+                  >
+                    <span className="h-px flex-1 bg-destructive/40" aria-hidden />
+                    {t('newDivider')}
+                    <span className="h-px flex-1 bg-destructive/40" aria-hidden />
+                  </p>
+                )}
                 <MessageItem
                   message={message}
                   onRetry={retry}

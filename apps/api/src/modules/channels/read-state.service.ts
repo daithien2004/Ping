@@ -87,6 +87,7 @@ export class ReadStateService {
     return this.prisma.$queryRaw<ChannelUnreadDto[]>(Prisma.sql`
       SELECT
         c.id::text AS "channelId",
+        rs."lastReadMessageId"::text AS "lastReadMessageId",
         LEAST((
           SELECT count(*) FROM "Message" m
           WHERE m."channelId" = c.id
