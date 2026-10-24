@@ -49,18 +49,22 @@ export class AskController {
         question: parsed.question,
         channelId: parsed.channelId,
       })) {
+        // Client đã hủy (đóng tab/dialog): ngừng ghi, không nối socket đã đóng.
+        if (response.destroyed) break;
         response.write(this.format(event));
       }
     } catch (error) {
-      response.write(
-        this.format({
-          type: 'error',
-          data: {
-            code: 'AI_ASK_FAILED',
-            message: error instanceof Error ? error.message : 'Ask failed',
-          },
-        }),
-      );
+      if (!response.destroyed) {
+        response.write(
+          this.format({
+            type: 'error',
+            data: {
+              code: 'AI_ASK_FAILED',
+              message: error instanceof Error ? error.message : 'Ask failed',
+            },
+          }),
+        );
+      }
     } finally {
       response.end();
     }

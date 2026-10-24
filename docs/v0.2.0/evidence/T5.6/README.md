@@ -38,25 +38,25 @@ Base: `3f2f071` (merge T5.4). Nhánh: `feat/t5.6-ask`. Bằng chứng nằm tron
 
 ## Kết quả
 
-| Tiêu chí                                  | Lệnh/cách thử                                                                            | Kết quả                             | Ghi chú                                                                          |
-| ----------------------------------------- | ---------------------------------------------------------------------------------------- | ----------------------------------- | -------------------------------------------------------------------------------- |
-| API typecheck                             | `pnpm --filter api typecheck`                                                            | pass                                |                                                                                  |
-| API lint                                  | `pnpm --filter api lint`                                                                 | pass                                |                                                                                  |
-| Unit API                                  | `pnpm --filter api test`                                                                 | pass — 19 file / 80 test            | thêm 10 test `AskService`                                                        |
-| Web typecheck                             | `pnpm --filter web typecheck`                                                            | pass                                |                                                                                  |
-| Web lint                                  | `pnpm --filter web lint`                                                                 | pass                                |                                                                                  |
-| Unit web                                  | `pnpm --filter web test`                                                                 | pass — 20 file / 117 test           | thêm 3 test `api.stream`                                                         |
-| Build web                                 | `pnpm --filter web build`                                                                | pass                                |                                                                                  |
-| Ngân sách bundle                          | `pnpm --filter web check:bundle`                                                         | pass — JS tải ban đầu 243,7 KB gzip | ngưỡng 450 KB                                                                    |
-| Format                                    | `pnpm format:check`                                                                      | pass                                |                                                                                  |
-| Liên kết tài liệu                         | `pnpm docs:check`                                                                        | pass                                |                                                                                  |
-| SSE trả `meta → delta → done` + trích dẫn | `ask.service.spec.ts`                                                                    | pass                                | id ngoài ngữ cảnh bị bỏ                                                          |
-| Không đủ ngữ cảnh bị từ chối              | `ask.service.spec.ts`                                                                    | pass                                | `AI_INSUFFICIENT_CONTEXT`, không gọi LLM                                         |
-| Chống prompt injection bằng thoát XML     | `ask.service.spec.ts`                                                                    | pass                                | dữ liệu không đóng được `</context>`                                             |
-| E2E `ask.e2e-spec.ts` (4 test)            | `pnpm --filter api exec vitest run --config ./vitest.config.e2e.ts test/ask.e2e-spec.ts` | **not-run**                         | Docker Desktop service `Stopped`, không có Postgres/Redis/Qdrant; xem “Giới hạn” |
-| IDOR có route `POST /servers/:id/ask`     | `test/idor.e2e-spec.ts`                                                                  | **not-run**                         | đã thêm route + nâng số kỳ vọng 21 → 22, chưa chạy lại được                      |
-| Hủy yêu cầu từ client                     | thao tác tay/e2e                                                                         | **not-run**                         | logic `AbortController` có trong `ask-dialog.tsx`; chưa có browser test          |
-| Chip trích dẫn nhảy tới tin gốc           | thao tác tay/e2e + ảnh                                                                   | **not-run**                         | cùng lý do Docker                                                                |
+| Tiêu chí                                               | Lệnh/cách thử                                                                            | Kết quả                             | Ghi chú                                                                          |
+| ------------------------------------------------------ | ---------------------------------------------------------------------------------------- | ----------------------------------- | -------------------------------------------------------------------------------- |
+| API typecheck                                          | `pnpm --filter api typecheck`                                                            | pass                                |                                                                                  |
+| API lint                                               | `pnpm --filter api lint`                                                                 | pass                                |                                                                                  |
+| Unit API                                               | `pnpm --filter api test`                                                                 | pass — 19 file / 80 test            | thêm 10 test `AskService`                                                        |
+| Web typecheck                                          | `pnpm --filter web typecheck`                                                            | pass                                |                                                                                  |
+| Web lint                                               | `pnpm --filter web lint`                                                                 | pass                                |                                                                                  |
+| Unit web                                               | `pnpm --filter web test`                                                                 | pass — 20 file / 117 test           | thêm 3 test `api.stream`                                                         |
+| Build web                                              | `pnpm --filter web build`                                                                | pass                                |                                                                                  |
+| Ngân sách bundle                                       | `pnpm --filter web check:bundle`                                                         | pass — JS tải ban đầu 243,7 KB gzip | ngưỡng 450 KB                                                                    |
+| Format                                                 | `pnpm format:check`                                                                      | pass                                |                                                                                  |
+| Liên kết tài liệu                                      | `pnpm docs:check`                                                                        | pass                                |                                                                                  |
+| SSE trả `meta → delta → done` + trích dẫn              | `ask.service.spec.ts`                                                                    | pass                                | id ngoài ngữ cảnh bị bỏ                                                          |
+| Không đủ ngữ cảnh bị từ chối                           | `ask.service.spec.ts`                                                                    | pass                                | `AI_INSUFFICIENT_CONTEXT`, không gọi LLM                                         |
+| Giảm thiểu prompt injection (thoát XML + tách chỉ thị) | `ask.service.spec.ts`                                                                    | pass                                | dữ liệu không đóng được `</context>`; không chứng minh miễn nhiễm hoàn toàn      |
+| E2E `ask.e2e-spec.ts` (4 test)                         | `pnpm --filter api exec vitest run --config ./vitest.config.e2e.ts test/ask.e2e-spec.ts` | **not-run**                         | Docker Desktop service `Stopped`, không có Postgres/Redis/Qdrant; xem “Giới hạn” |
+| IDOR có route `POST /servers/:id/ask`                  | `test/idor.e2e-spec.ts`                                                                  | **not-run**                         | đã thêm route + nâng số kỳ vọng 21 → 22, chưa chạy lại được                      |
+| Hủy yêu cầu từ client                                  | thao tác tay/e2e                                                                         | **not-run**                         | logic `AbortController` có trong `ask-dialog.tsx`; chưa có browser test          |
+| Chip trích dẫn nhảy tới tin gốc                        | thao tác tay/e2e + ảnh                                                                   | **not-run**                         | cùng lý do Docker                                                                |
 
 ## Giới hạn
 
@@ -67,7 +67,10 @@ Base: `3f2f071` (merge T5.4). Nhánh: `feat/t5.6-ask`. Bằng chứng nằm tron
 - Vì vậy T5.6 giữ trạng thái `in-progress (chờ e2e)` trong `status.md` cho tới khi có Docker.
 - SSE hiện phát một `delta` chứa toàn bộ câu trả lời (LLM client chưa stream token); giao thức và UI
   đã sẵn sàng cho nhiều `delta`.
-- Chưa có hạn mức/ngân sách AI cho endpoint này (T5.7) và chưa có rate limit riêng (T6.5).
+- Hủy phía client dừng vòng ghi SSE và không ghi tiếp vào socket đã đóng; lời gọi LLM đang chạy
+  vẫn hoàn tất vì `LlmClient` chưa nhận `AbortSignal` (để T5.7 cùng timeout/retry).
+- Chưa có hạn mức/ngân sách/retry cho endpoint này (T5.7) và chưa có rate limit riêng (T6.5);
+  `GroqLlmClient` đã có timeout 20 s và lỗi mạng/HTTP thành `AI_UNAVAILABLE`.
 
 ## Cách chạy lại
 
