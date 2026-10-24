@@ -1,12 +1,14 @@
 'use client';
 
-import { Suspense, use } from 'react';
+import { Suspense, use, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Users } from 'lucide-react';
 import { useTranslations } from 'use-intl';
 import { Button } from '@/components/ui/button';
 import { MessageListSkeleton } from '@/components/skeletons';
 import { MemberPanel } from '@/features/members/components/member-panel';
 import { useMemberPanel } from '@/features/members/store';
+import { AskDialog } from '@/features/messages/components/ask-dialog';
 import { MessagePane } from '@/features/messages/components/message-pane';
 import { useChannels } from '../hooks';
 
@@ -16,22 +18,34 @@ import { useChannels } from '../hooks';
  * Lấy params từ prop của page, KHÔNG dùng useParams(): <Activity> giữ trang channel cũ ở dạng ẩn,
  * và useParams() trong trang ẩn trả params của URL HIỆN TẠI → trang #general ẩn render lại thành
  * #dev, key của MessagePane đổi, nháp + vị trí cuộn mất (đã gặp khi kiểm tra). `params` của page
- * luôn là params của chính trang đó.
+ * luôn là params của chính trang đó. `searchParams` cũng lấy từ page vì lý do tương tự: chip trích
+ * dẫn của AI điều hướng tới `?m=<messageId>`.
  */
 export function ChannelView({
   params,
+  searchParams,
 }: {
   params: Promise<{ serverId: string; channelId: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const { serverId, channelId } = use(params);
+  const query = use(searchParams);
+  const focusId = typeof query.m === 'string' ? query.m : null;
   const { data: channels } = useChannels(serverId);
   const channel = channels.find((item) => item.id === channelId);
   const t = useTranslations();
+  const router = useRouter();
   const panelOpen = useMemberPanel((state) => state.open);
   const togglePanel = useMemberPanel((state) => state.toggle);
+  const [askOpen, setAskOpen] = useState(false);
 
   if (!channel) {
     return <p className="m-auto text-sm text-muted-foreground">{t('channels.notFound')}</p>;
+  }
+
+  function goToMessage(messageId: string) {
+    setAskOpen(false);
+    router.push(`/servers/${serverId}/channels/${channelId}?m=${encodeURIComponent(messageId)}`);
   }
 
   return (
@@ -50,6 +64,13 @@ export function ChannelView({
           >
             <Users />
           </Button>
+          <AskDialog
+            serverId={serverId}
+            channelId={channel.id}
+            open={askOpen}
+            onOpenChange={setAskOpen}
+            onCitationClick={goToMessage}
+          />
         </header>
         <Suspense fallback={<MessageListSkeleton />}>
           {/* key: mỗi channel một trạng thái riêng (nháp, vị trí cuộn lần đầu). */}
@@ -58,6 +79,7 @@ export function ChannelView({
             serverId={serverId}
             channelId={channel.id}
             channelName={channel.name}
+            focusId={focusId}
           />
         </Suspense>
       </section>

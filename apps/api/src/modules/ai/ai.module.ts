@@ -1,10 +1,13 @@
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { AuthModule } from '../auth/auth.module.js';
 import type { Env } from '../../config/env.schema.js';
 import type { Embedder } from './embedder.port.js';
 import { GroqLlmClient } from './groq-llm.client.js';
 import type { LlmClient } from './llm-client.port.js';
 import { EMBEDDER, LLM_CLIENT, VECTOR_STORE } from './ai.tokens.js';
+import { AskController } from './ask/ask.controller.js';
+import { AskService } from './ask/ask.service.js';
 import { MessageIndexerService } from './indexer/message-indexer.service.js';
 import { OnnxEmbedder } from './onnx-embedder.js';
 import { QdrantVectorStore } from './qdrant-vector-store.js';
@@ -18,6 +21,8 @@ export { EMBEDDER, LLM_CLIENT, VECTOR_STORE } from './ai.tokens.js';
  * adapter thật chỉ tải model/gọi mạng khi có lời gọi đầu tiên.
  */
 @Module({
+  imports: [AuthModule],
+  controllers: [AskController],
   providers: [
     {
       provide: EMBEDDER,
@@ -42,7 +47,8 @@ export { EMBEDDER, LLM_CLIENT, VECTOR_STORE } from './ai.tokens.js';
     },
     MessageIndexerService,
     RetrievalService,
+    AskService,
   ],
-  exports: [EMBEDDER, LLM_CLIENT, VECTOR_STORE, RetrievalService],
+  exports: [EMBEDDER, LLM_CLIENT, VECTOR_STORE, RetrievalService, AskService],
 })
 export class AiModule {}

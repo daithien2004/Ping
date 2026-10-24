@@ -60,7 +60,18 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function send(method: Method, path: string, body?: unknown): Promise<Response> {
+/** Header thêm cho một request cụ thể (ví dụ `Accept: text/event-stream`). */
+export interface SendOptions {
+  signal?: AbortSignal;
+  headers?: Record<string, string>;
+}
+
+async function send(
+  method: Method,
+  path: string,
+  body?: unknown,
+  options?: SendOptions,
+): Promise<Response> {
   const headers = new Headers();
   if (accessToken) {
     headers.set('Authorization', `Bearer ${accessToken}`);
@@ -72,6 +83,9 @@ async function send(method: Method, path: string, body?: unknown): Promise<Respo
   if (path === '/auth/refresh' || path === '/auth/logout') {
     headers.set(CLIENT_HEADER, CLIENT_HEADER_VALUE);
   }
+  for (const [name, value] of Object.entries(options?.headers ?? {})) {
+    headers.set(name, value);
+  }
   const request = () =>
     fetch(`${apiBaseUrl}${path}`, {
       method,
@@ -79,10 +93,13 @@ async function send(method: Method, path: string, body?: unknown): Promise<Respo
       // Gửi kèm cookie refresh (httpOnly) cho /auth/*; API bật CORS credentials cho WEB_ORIGIN.
       credentials: 'include',
       body: body === undefined ? undefined : JSON.stringify(body),
+      signal: options?.signal,
     });
   try {
     return await request();
-  } catch {
+  } catch (error) {
+    // Người dùng hủy (đóng dialog, rời trang): để AbortError đi tiếp, không thử lại.
+    if (options?.signal?.aborted) throw error;
     // fetch chỉ reject khi không tới được server (mất mạng, API tắt, CORS chặn).
     // Thử lại một lần cho GET: sau khi API khởi động lại, trình duyệt vẫn còn socket keep-alive
     // cũ (Chrome giữ tới ~4 phút) nên request có thể rơi vào socket đã chết. Lần thử sau mở
@@ -146,26 +163,39 @@ async function toApiError(res: Response): Promise<ApiError> {
   );
 }
 
+/**
+ * Gửi request, tự refresh access token một lần khi gặp 401 (trừ `/auth/*` để không lặp vô hạn).
+ * Dùng chung cho `request` (JSON) và `stream` (SSE).
+ */
+async function sendWithRefresh(
+  method: Method,
+  path: string,
+  body?: unknown,
+  options?: SendOptions,
+): Promise<Response> {
+  const generation = tokenGeneration;
+  let res = await send(method, path, body, options);
+
+  // Access token hết hạn (15 phút): refresh một lần rồi thử lại đúng một lần.
+  // Bỏ qua /auth/*: login sai mật khẩu cũng là 401, refresh ở đó sẽ thành vòng lặp.
+  if (res.status === 401 && !path.startsWith('/auth/') && generation === tokenGeneration) {
+    if ((await refreshAccessToken()) && generation === tokenGeneration) {
+      res = await send(method, path, body, options);
+    }
+    if (res.status === 401 && generation === tokenGeneration) {
+      expireSession();
+    }
+  }
+  return res;
+}
+
 async function request<T>(
   method: Method,
   path: string,
   body?: unknown,
   schema?: ZodType<T>,
 ): Promise<T> {
-  const generation = tokenGeneration;
-  let res = await send(method, path, body);
-
-  // Access token hết hạn (15 phút): refresh một lần rồi thử lại đúng một lần.
-  // Bỏ qua /auth/*: login sai mật khẩu cũng là 401, refresh ở đó sẽ thành vòng lặp.
-  if (res.status === 401 && !path.startsWith('/auth/') && generation === tokenGeneration) {
-    if ((await refreshAccessToken()) && generation === tokenGeneration) {
-      res = await send(method, path, body);
-    }
-    if (res.status === 401 && generation === tokenGeneration) {
-      expireSession();
-    }
-  }
-
+  const res = await sendWithRefresh(method, path, body);
   if (!res.ok) {
     throw await toApiError(res);
   }
@@ -174,6 +204,23 @@ async function request<T>(
   }
   const data: unknown = await res.json();
   return schema ? schema.parse(data) : (data as T);
+}
+
+/**
+ * Như `request` nhưng trả nguyên `Response` để đọc dần — dùng cho SSE (`text/event-stream`).
+ * Không gọi `res.json()` vì body là luồng sự kiện; vẫn gắn Bearer token, cookie và refresh 401.
+ */
+async function stream(
+  method: Method,
+  path: string,
+  body?: unknown,
+  options?: SendOptions,
+): Promise<Response> {
+  const res = await sendWithRefresh(method, path, body, options);
+  if (!res.ok) {
+    throw await toApiError(res);
+  }
+  return res;
 }
 
 /** `schema` (tùy chọn): parse response bằng zod ở những chỗ quan trọng (hướng dẫn 12.2). */
@@ -187,4 +234,10 @@ export const api = {
     request<T>('PUT', path, body, schema),
   delete: <T = void>(path: string, schema?: ZodType<T>) =>
     request<T>('DELETE', path, undefined, schema),
+  /**
+   * Request trả về `Response` chưa đọc — dùng cho SSE. Ví dụ:
+   * `api.stream('POST', '/servers/x/ask', body, { signal, headers: { Accept: 'text/event-stream' } })`.
+   */
+  stream: (method: Method, path: string, body?: unknown, options?: SendOptions) =>
+    stream(method, path, body, options),
 };

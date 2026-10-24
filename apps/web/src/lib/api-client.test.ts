@@ -237,4 +237,60 @@ describe('api-client', () => {
     });
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
+
+  it('stream trả nguyên Response để đọc dần, kèm Bearer và header thêm', async () => {
+    const { api, setAccessToken } = await load();
+    setAccessToken('tok-s');
+    fetchMock.mockResolvedValue(
+      new Response(new ReadableStream(), {
+        status: 200,
+        headers: { 'Content-Type': 'text/event-stream' },
+      }),
+    );
+
+    const res = await api.stream(
+      'POST',
+      '/servers/s1/ask',
+      { question: 'q' },
+      { headers: { Accept: 'text/event-stream' } },
+    );
+
+    expect(res.headers.get('Content-Type')).toBe('text/event-stream');
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(url).toBe(`${API}/servers/s1/ask`);
+    expect(init.method).toBe('POST');
+    expect(init.credentials).toBe('include');
+    expect(init.body).toBe(JSON.stringify({ question: 'q' }));
+    expect(authHeader(init)).toBe('Bearer tok-s');
+    expect(new Headers(init.headers).get('Accept')).toBe('text/event-stream');
+    expect(new Headers(init.headers).get('Content-Type')).toBe('application/json');
+  });
+
+  it('stream 401 → refresh rồi thử lại một lần với token mới', async () => {
+    const { api, setAccessToken, getAccessToken } = await load();
+    setAccessToken('old');
+    fetchMock.mockImplementation((url, init) => {
+      if (url.endsWith('/auth/refresh')) return json(200, { accessToken: 'new' });
+      return authHeader(init) === 'Bearer new'
+        ? new Response(new ReadableStream(), { status: 200 })
+        : json(401, { code: 'UNAUTHORIZED', message: 'x', requestId: 'r' });
+    });
+
+    const res = await api.stream('POST', '/servers/s1/ask', { question: 'q' });
+
+    expect(res.status).toBe(200);
+    expect(getAccessToken()).toBe('new');
+  });
+
+  it('stream lỗi HTTP thành ApiError có code', async () => {
+    const { api, ApiError } = await load();
+    fetchMock.mockResolvedValue(json(403, { code: 'FORBIDDEN', message: 'Nope' }));
+
+    const error = await api
+      .stream('POST', '/servers/s1/ask', { question: 'q' })
+      .catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error).toMatchObject({ status: 403, code: ErrorCodes.FORBIDDEN });
+  });
 });

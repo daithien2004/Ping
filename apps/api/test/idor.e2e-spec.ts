@@ -43,6 +43,7 @@ const ID_ROUTES: Array<[Verb, string]> = [
   ['post', '/channels/:id/messages'],
   ['patch', '/messages/:id'],
   ['delete', '/messages/:id'],
+  ['post', '/servers/:id/ask'],
 ];
 
 /** Quét controller của app qua metadata của Nest: các route có tham số `:...Id`, dạng `verb /path/:id`, đã sắp xếp. */
@@ -396,7 +397,7 @@ describe('IDOR (e2e)', () => {
 
   it('no token → 401 on every endpoint that takes an id', async () => {
     const uuid = randomUUID();
-    expect(ID_ROUTES).toHaveLength(21);
+    expect(ID_ROUTES).toHaveLength(22);
     for (const [verb, template] of ID_ROUTES) {
       const url = template.replaceAll(':id', uuid);
       const res = await as(undefined, verb, url).send({});
