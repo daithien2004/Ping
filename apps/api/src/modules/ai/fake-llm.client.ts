@@ -7,15 +7,26 @@ export class FakeLlmClient implements LlmClient {
   constructor(private readonly reply = 'Trả lời giả lập.') {}
 
   async complete(messages: readonly ChatMessage[]): Promise<LlmCompletion> {
+    // Adapter giả cho test: nếu câu trả lời mặc định không chứa trích dẫn, trích
+    // xuất id tin đầu tiên trong <context> và trích dẫn nó để AskService không từ chối.
+    let content = this.reply;
+    if (!/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/i.test(content)) {
+      const context = messages.map((message) => message.content).join('\n');
+      const match = context.match(
+        /<message id="([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab][0-9a-f]{3}-[0-9a-f]{12})"/i,
+      );
+      if (match?.[1]) {
+        content = `${content} [${match[1]}]`;
+      }
+    }
     return {
-      content: this.reply,
+      content,
       model: this.model,
       usage: {
         promptTokens: messages.reduce((total, message) => total + message.content.length, 0),
-        completionTokens: this.reply.length,
+        completionTokens: content.length,
         totalTokens:
-          messages.reduce((total, message) => total + message.content.length, 0) +
-          this.reply.length,
+          messages.reduce((total, message) => total + message.content.length, 0) + content.length,
       },
     };
   }

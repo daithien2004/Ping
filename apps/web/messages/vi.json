@@ -258,5 +258,20 @@
     "unknown": "Có lỗi xảy ra.",
     "unknownWithId": "Có lỗi xảy ra. Mã lỗi: {requestId}",
     "withReference": "{message} Mã lỗi: {requestId}"
+  },
+  "ask": {
+    "title": "Hỏi AI về lịch sử kênh",
+    "placeholder": "Nhập câu hỏi về tin nhắn trong kênh này…",
+    "askButton": "Hỏi",
+    "asking": "Đang hỏi…",
+    "answer": "Câu trả lời",
+    "citations": "Nguồn",
+    "goToMessage": "Nhảy tới tin gốc",
+    "insufficient": "Không đủ ngữ cảnh để trả lời câu hỏi này.",
+    "noCitation": "Câu trả lời không có trích dẫn hợp lệ, nên bị từ chối.",
+    "unavailable": "AI hiện không sẵn sàng. Vui lòng thử lại sau.",
+    "retrievalFailed": "Không lấy được ngữ cảnh. Vui lòng thử lại sau.",
+    "invalidQuestion": "Câu hỏi trống hoặc quá dài.",
+    "error": "Có lỗi xảy ra. Vui lòng thử lại sau."
   }
 }

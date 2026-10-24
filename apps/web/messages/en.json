@@ -258,5 +258,20 @@
     "unknown": "Something went wrong.",
     "unknownWithId": "Something went wrong. Error ID: {requestId}",
     "withReference": "{message} Error ID: {requestId}"
+  },
+  "ask": {
+    "title": "Ask AI about channel history",
+    "placeholder": "Ask a question about messages in this channel…",
+    "askButton": "Ask",
+    "asking": "Asking…",
+    "answer": "Answer",
+    "citations": "Sources",
+    "goToMessage": "Go to original message",
+    "insufficient": "Not enough context to answer this question.",
+    "noCitation": "The answer has no valid citations, so it was rejected.",
+    "unavailable": "AI is currently unavailable. Please try again later.",
+    "retrievalFailed": "Could not retrieve context. Please try again later.",
+    "invalidQuestion": "Question is empty or too long.",
+    "error": "An error occurred. Please try again later."
   }
 }

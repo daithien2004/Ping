@@ -19,6 +19,9 @@ import { useServerAbility } from '@/features/permissions/context';
 /** Chiều cao phần đầu danh sách ("Đây là đầu channel" / "Đang tải tin cũ…"). */
 const HEADER_HEIGHT = 48;
 
+/** Số trang tin cũ tối đa tự tải để tìm tin đích của `?m=` (không quét cả lịch sử). */
+const MAX_FOCUS_PAGES = 5;
+
 /**
  * Danh sách tin (ảo hóa) + ô soạn tin của một channel.
  *
@@ -31,10 +34,13 @@ export function MessagePane({
   serverId,
   channelId,
   channelName,
+  focusId,
 }: {
   serverId: string;
   channelId: string;
   channelName: string;
+  /** Tin cần nhảy tới (từ `?m=` khi bấm chip trích dẫn của AI), null nếu không có. */
+  focusId: string | null;
 }) {
   const roomDenied = useChannelRealtime(serverId, channelId);
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useMessages(channelId);
@@ -90,12 +96,44 @@ export function MessagePane({
     }
     const frame = requestAnimationFrame(() => {
       didInitialScroll.current = true;
-      virtualizer.scrollToIndex(messages.length - 1, { align: 'end' });
-      // Đã ở đáy thì virtual-core tự giữ ở đáy khi chiều cao thật của tin được đo dần.
-      requestAnimationFrame(() => setLoadOlderEnabled(true));
+      // Có `?m=` thì để effect nhảy tới tin gốc quyết định vị trí, không kéo xuống đáy trước.
+      if (!focusId) {
+        virtualizer.scrollToIndex(messages.length - 1, { align: 'end' });
+        // Đã ở đáy thì virtual-core tự giữ ở đáy khi chiều cao thật của tin được đo dần.
+        requestAnimationFrame(() => setLoadOlderEnabled(true));
+      }
     });
     return () => cancelAnimationFrame(frame);
-  }, [messages.length, virtualizer]);
+  }, [messages.length, virtualizer, focusId]);
+
+  // Nhảy tới tin gốc từ chip trích dẫn của AI (`?m=<messageId>`). Nếu tin chưa nằm trong
+  // trang đang có, tải thêm trang cũ (có giới hạn) cho tới khi thấy.
+  const focusIndex = focusId ? messages.findIndex((message) => message.id === focusId) : -1;
+  const focusPending = focusId !== null && focusIndex < 0;
+  useEffect(() => {
+    if (focusIndex < 0) return;
+    virtualizer.scrollToIndex(focusIndex, { align: 'center' });
+    // Đã tới đích thì trả lại hành vi tải tin cũ khi cuộn lên.
+    setLoadOlderEnabled(true);
+  }, [focusIndex, virtualizer]);
+
+  const focusLoads = useRef(0);
+  useEffect(() => {
+    // Chỉ điều khiển việc tải khi đang tìm tin đích; không có `?m=` thì giữ nguyên hành vi cũ.
+    if (!focusId) return;
+    if (!focusPending) {
+      setLoadOlderEnabled(true);
+      return;
+    }
+    if (!hasNextPage) {
+      // Hết lịch sử mà vẫn không thấy tin: bỏ cuộc, cho phép cuộn/tải bình thường.
+      setLoadOlderEnabled(true);
+      return;
+    }
+    if (isFetchingNextPage || focusLoads.current >= MAX_FOCUS_PAGES) return;
+    focusLoads.current += 1;
+    void fetchNextPage();
+  }, [focusId, focusPending, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   // Cuộn gần tới đầu danh sách → tải trang cũ hơn.
   const firstVisible = virtualizer.getVirtualItems()[0]?.index;
@@ -186,7 +224,12 @@ export function MessagePane({
                 className="absolute inset-x-0 top-0"
                 style={{ transform: `translateY(${item.start}px)` }}
               >
-                <MessageItem message={message} onRetry={retry} onAction={setSelection} />
+                <MessageItem
+                  message={message}
+                  onRetry={retry}
+                  onAction={setSelection}
+                  highlighted={message.id === focusId}
+                />
               </div>
             );
           })}
