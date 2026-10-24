@@ -67,6 +67,10 @@ trong `ID_ROUTES`); e2e web ở trên gọi thẳng API thật để xác nhận
   (không liên quan logic T3.4). Bản cuối dùng tài khoản seed (`bob@`, `carol@`, `alice@` —
   `password123`, chỉ dev) nên spec này **không đăng ký user nào**; tổng lượt đăng ký mỗi phút
   trở lại dưới ngưỡng.
+- **CI phải seed giống dev**: lần chạy `a94e855` đỏ ở `login('bob@ping.dev')`
+  (`expect(response.ok())` false) vì job `web-e2e` chỉ chạy migrate, không chạy seed — DB dev local
+  thì luôn có sẵn seed. Đã thêm bước `pnpm --filter api exec prisma db seed` vào job (idempotent,
+  id cố định + upsert) để CI khớp môi trường dev.
 - Spec tự tạo server riêng rồi xoá ở cuối. Một lần chạy hỏng trước đó để lại server `Members *`;
   đã xoá tay bằng SQL để dữ liệu dev sạch.
 - `WEB_PORT=3101` chỉ dùng được khi API khởi động với `WEB_ORIGIN` tương ứng; lần chạy lấy bằng

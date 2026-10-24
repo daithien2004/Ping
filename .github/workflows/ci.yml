@@ -113,6 +113,10 @@ jobs:
       - run: pnpm --filter @ping/shared build
       - run: pnpm --filter api exec prisma generate
       - run: pnpm --filter api exec prisma migrate deploy
+      # Spec e2e dùng tài khoản dev seed (bob/carol/alice) để không đốt rate limit
+      # `POST /auth/register` (5 lượt/phút/IP) — DB dev local luôn có seed, CI phải tạo tương tự.
+      # Seed idempotent (id cố định + upsert) nên chạy lại không đổi dữ liệu.
+      - run: pnpm --filter api exec prisma db seed
       - run: pnpm --filter web exec playwright install --with-deps chromium
       # Playwright tự bật API (start:dev) và web (dev) theo playwright.config.ts.
       - run: pnpm --filter web test:e2e
