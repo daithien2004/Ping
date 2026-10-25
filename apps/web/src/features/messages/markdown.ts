@@ -4,6 +4,8 @@
  * Bộ test XSS trong markdown.test.ts là ràng buộc bắt buộc của mọi thay đổi ở đây.
  */
 
+import { SHORTCODE_TO_UNICODE as EMOJI } from '@/features/emoji/map';
+
 export type InlineNode =
   | { type: 'text'; value: string }
   | { type: 'emoji'; unicode: string }
@@ -22,69 +24,6 @@ export type MarkdownBlock =
   | { type: 'listBlock'; items: InlineNode[][] };
 
 export type MarkdownNode = MarkdownBlock | InlineNode;
-
-/** Shortcode emoji phổ biến — đủ cho chat hằng ngày; picker đầy đủ là TG.23. */
-const EMOJI: Record<string, string> = {
-  smile: '😄',
-  joy: '😂',
-  grin: '😁',
-  wink: '😉',
-  blush: '😊',
-  heart_eyes: '😍',
-  thinking: '🤔',
-  neutral_face: '😐',
-  expressionless: '😑',
-  sweat_smile: '😅',
-  laughing: '😆',
-  sob: '😭',
-  scream: '😱',
-  angry: '😠',
-  rage: '😡',
-  sleeping: '😴',
-  sunglasses: '😎',
-  upside_down: '🙃',
-  cry: '😢',
-  tired_face: '😫',
-  thumbsup: '👍',
-  thumbsdown: '👎',
-  ok_hand: '👌',
-  clap: '👏',
-  wave: '👋',
-  pray: '🙏',
-  muscle: '💪',
-  eyes: '👀',
-  heart: '❤️',
-  broken_heart: '💔',
-  fire: '🔥',
-  sparkles: '✨',
-  star: '⭐',
-  rocket: '🚀',
-  party: '🎉',
-  cake: '🎂',
-  coffee: '☕',
-  pizza: '🍕',
-  bug: '🐛',
-  memo: '📝',
-  check: '✅',
-  x: '❌',
-  warning: '⚠️',
-  question: '❓',
-  bulb: '💡',
-  lock: '🔒',
-  key: '🔑',
-  bell: '🔔',
-  computer: '💻',
-  phone: '📱',
-  hourglass: '⌛',
-  clock: '🕐',
-  calendar: '📅',
-  zap: '⚡',
-  rainbow: '🌈',
-  sun: '☀️',
-  moon: '🌙',
-  dog: '🐶',
-  cat: '🐱',
-};
 
 /** Chuẩn hóa URL để kiểm scheme: bỏ mọi ký tự điều khiển/zero-width có thể lừa bộ kiểm. */
 function sanitizeUrlCandidate(raw: string): string {
@@ -230,4 +169,23 @@ export function parseMarkdown(content: string): MarkdownBlock[] {
   }
   flushAll();
   return blocks;
+}
+
+/**
+ * Tin "chỉ emoji" (TG.23): toàn bộ nội dung là emoji + khoảng trắng (1–3 emoji, không cú
+ * pháp nào khác) → render cỡ lớn kiểu Discord. Đếm trực tiếp ký tự pictographic trên chuỗi
+ * gốc — emoji Unicode literal KHÔNG thành node `emoji` ở parser (chỉ shortcode mới thành).
+ * Trả về số emoji nếu thỏa, ngược lại 0.
+ */
+const EMOJI_CHAR = /\p{Extended_Pictographic}/gu;
+
+export function bigEmojiCount(content: string): number {
+  const trimmed = content.trim();
+  if (trimmed === '') return 0;
+  const count = trimmed.match(EMOJI_CHAR)?.length ?? 0;
+  if (count < 1 || count > 3) return 0;
+  // Mọi ký tự còn lại phải là emoji/selector/khoảng trắng — không chữ, không cú pháp.
+  const rest = trimmed.replace(EMOJI_CHAR, '');
+  // Phần còn lại chỉ được là khoảng trắng/selector — không chữ, số hay cú pháp markdown.
+  return /^\s*$/.test(rest) && !/[a-zA-Z0-9<>`*_~:|@/-]/.test(rest) ? count : 0;
 }
