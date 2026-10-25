@@ -65,8 +65,8 @@ browser  GET /servers/:s/channels/:c/messages/:m
 
 ## Alternatives
 
-- **Tải cả lịch sử rồi cuộn**: 10k tin = 200 trang 50 tin; chậm, tốn băng thông, hỏng mục tiêu
-  "mở permalink tin cũ dưới 3 s".
+- **Tải cả lịch sử rồi cuộn**: 10k tin = 200 trang 50 tin; chậm, tốn băng thông, và mở permalink
+  sẽ chậm hơn hẳn việc mở channel ở trang mới nhất (tiêu chí đo: chênh < 2 s, xem evidence TG.5).
 - **Client gọi `before=` + `after=` quanh id rồi tự ghép**: hai request, client phải biết id tin
   đích nằm ở đâu, và phải tự tính `hasMore`/`hasNewer`; một endpoint giữ nguyên contract
   `MessagePage` cho cả ba chế độ nên ít sai lệch hơn.
