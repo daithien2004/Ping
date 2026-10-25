@@ -14,6 +14,7 @@ export const ErrorCodes = {
   INTERNAL_ERROR: 'INTERNAL_ERROR',
   INVITE_EXPIRED: 'INVITE_EXPIRED',
   INVITE_REVOKED: 'INVITE_REVOKED',
+  SEARCH_QUERY_INVALID: 'SEARCH_QUERY_INVALID',
 } as const;
 
 export type ErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes];

@@ -3,6 +3,7 @@ export * from './schemas/server';
 export * from './schemas/channel';
 export * from './schemas/message';
 export * from './schemas/audit';
+export * from './schemas/search';
 export * from './permissions';
 export * from './ability';
 export * from './events';

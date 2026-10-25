@@ -9,6 +9,7 @@ import { MessageListSkeleton } from '@/components/skeletons';
 import { MemberPanel } from '@/features/members/components/member-panel';
 import { useMemberPanel } from '@/features/members/store';
 import { AskDialog } from '@/features/messages/components/ask-dialog';
+import { SearchDialog } from '@/features/search/components/search-dialog';
 import { MessagePane } from '@/features/messages/components/message-pane';
 import { useChannels } from '../hooks';
 
@@ -54,10 +55,10 @@ export function ChannelView({
         <header className="flex h-12 shrink-0 items-center border-b px-4 font-semibold shadow-xs">
           <span className="mr-1.5 text-xl leading-none text-muted-foreground">#</span>
           {channel.name}
+          <SearchDialog serverId={serverId} />
           <Button
             variant="ghost"
             size="icon"
-            className="ml-auto"
             aria-pressed={panelOpen}
             aria-label={t(panelOpen ? 'members.hide' : 'members.show')}
             onClick={togglePanel}

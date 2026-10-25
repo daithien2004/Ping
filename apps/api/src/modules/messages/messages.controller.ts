@@ -23,11 +23,29 @@ import { CurrentUser, type AuthenticatedUser } from '../auth/current-user.decora
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { MessagesService } from './messages.service.js';
 import { listMessagesQuerySchema, type ListMessagesQuery } from './schemas.js';
+import { searchQuerySchema, type SearchQuery } from '@ping/shared';
+import { SearchService } from './search.service.js';
 
 @Controller()
 @UseGuards(JwtAuthGuard, AbilityGuard)
 export class MessagesController {
-  constructor(private readonly messagesService: MessagesService) {}
+  constructor(
+    private readonly messagesService: MessagesService,
+    private readonly searchService: SearchService,
+  ) {}
+
+  /**
+   * Tìm kiếm tin nhắn trong server (T4.6, ADR-0045): FTS + trigram, lọc channel/author/thời
+   * gian, cursor `before`. Guard `view Server` — chỉ thành viên; where luôn ràng buộc serverId.
+   */
+  @Get('servers/:serverId/search')
+  @CheckAbility(['view', 'Server'])
+  search(
+    @Param('serverId') serverId: string,
+    @Query(new ZodValidationPipe(searchQuerySchema)) query: SearchQuery,
+  ) {
+    return this.searchService.search(serverId, query);
+  }
 
   @Get('channels/:channelId/messages')
   @CheckAbility(['view', 'Message'])
