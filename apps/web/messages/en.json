@@ -284,6 +284,26 @@
     "resultsLabel": "Search results",
     "loadMore": "Load more"
   },
+  "emoji": {
+    "open": "Pick an emoji",
+    "search": "Search emoji",
+    "searchPlaceholder": "Search by name or keyword…",
+    "groupsLabel": "Emoji groups",
+    "groupRecent": "Recent",
+    "groupSmileys": "Smileys",
+    "groupGestures": "Gestures",
+    "groupPeople": "People & symbols",
+    "groupAnimals": "Animals",
+    "groupFood": "Food",
+    "groupActivities": "Activities",
+    "groupTravel": "Travel & places",
+    "groupObjects": "Objects",
+    "noResults": "No emoji found.",
+    "pickEmoji": "Insert emoji {name}",
+    "skinTone": "Skin tone",
+    "skinToneOption": "Skin tone {n}",
+    "suggestionsLabel": "Emoji suggestions"
+  },
   "landing": {
     "eyebrow": "Realtime chat for small teams",
     "title": "Ping — where your team talks",

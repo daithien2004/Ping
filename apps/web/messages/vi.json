@@ -284,6 +284,26 @@
     "resultsLabel": "Kết quả tìm kiếm",
     "loadMore": "Xem thêm"
   },
+  "emoji": {
+    "open": "Chọn emoji",
+    "search": "Tìm emoji",
+    "searchPlaceholder": "Tìm theo tên hoặc từ khóa…",
+    "groupsLabel": "Nhóm emoji",
+    "groupRecent": "Gần đây",
+    "groupSmileys": "Cảm xúc",
+    "groupGestures": "Cử chỉ",
+    "groupPeople": "Người & ký hiệu",
+    "groupAnimals": "Động vật",
+    "groupFood": "Đồ ăn",
+    "groupActivities": "Hoạt động",
+    "groupTravel": "Đi lại & nơi chốn",
+    "groupObjects": "Đồ vật",
+    "noResults": "Không tìm thấy emoji nào.",
+    "pickEmoji": "Chèn emoji {name}",
+    "skinTone": "Tông da",
+    "skinToneOption": "Tông da {n}",
+    "suggestionsLabel": "Gợi ý emoji"
+  },
   "landing": {
     "eyebrow": "Chat realtime cho nhóm nhỏ",
     "title": "Ping — nơi đội ngũ của bạn nói chuyện",

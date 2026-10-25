@@ -3,7 +3,7 @@
 import type { InlineNode, MarkdownBlock } from '../markdown';
 import { useMemo, useState } from 'react';
 import { useTranslations } from 'use-intl';
-import { parseMarkdown } from '../markdown';
+import { bigEmojiCount, parseMarkdown } from '../markdown';
 
 /**
  * Hiển thị nội dung tin nhắn qua markdown tập con (TG.4, ADR-0054): parse thành AST rồi dựng
@@ -13,8 +13,12 @@ import { parseMarkdown } from '../markdown';
  */
 export function MarkdownText({ content }: { content: string }) {
   const blocks = useMemo(() => parseMarkdown(content), [content]);
+  const bigEmoji = useMemo(() => bigEmojiCount(content), [content]);
   return (
-    <div className="wrap-break-word whitespace-pre-wrap">
+    <div
+      className={`wrap-break-word whitespace-pre-wrap ${bigEmoji > 0 ? 'text-4xl leading-relaxed' : ''}`}
+      data-testid={bigEmoji > 0 ? 'big-emoji' : undefined}
+    >
       {blocks.map((block, index) => (
         <BlockView key={index} block={block} />
       ))}
