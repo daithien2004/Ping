@@ -1,0 +1,156 @@
+{
+  'rule_files': ['../alerts.yml'],
+  'evaluation_interval': '1m',
+  'tests':
+    [
+      {
+        'name': 'Above 80%, waits for two minutes',
+        'interval': '1m',
+        'input_series':
+          [
+            { 'series': 'ai_daily_spent_usd{job="ping-api",instance="a"}', 'values': '8.1+0x5' },
+            { 'series': 'ai_daily_budget_usd{job="ping-api",instance="a"}', 'values': '10+0x5' },
+            { 'series': 'ai_budget_metrics_up{job="ping-api",instance="a"}', 'values': '1+0x5' },
+          ],
+        'alert_rule_test':
+          [
+            { 'eval_time': '1m', 'alertname': 'PingAiBudgetWarning', 'exp_alerts': [] },
+            {
+              'eval_time': '3m',
+              'alertname': 'PingAiBudgetWarning',
+              'exp_alerts':
+                [
+                  {
+                    'exp_labels': { 'job': 'ping-api', 'severity': 'ticket' },
+                    'exp_annotations':
+                      {
+                        'summary': 'Daily AI spending is above 80% of the configured budget',
+                        'runbook': 'docs/runbook/alerts.md#pingaibudgetwarning',
+                      },
+                  },
+                ],
+            },
+          ],
+      },
+      {
+        'name': 'Exactly 80%, no alert',
+        'interval': '1m',
+        'input_series':
+          [
+            { 'series': 'ai_daily_spent_usd{job="ping-api",instance="a"}', 'values': '8+0x5' },
+            { 'series': 'ai_daily_budget_usd{job="ping-api",instance="a"}', 'values': '10+0x5' },
+            { 'series': 'ai_budget_metrics_up{job="ping-api",instance="a"}', 'values': '1+0x5' },
+          ],
+        'alert_rule_test':
+          [
+            { 'eval_time': '1m', 'alertname': 'PingAiBudgetWarning', 'exp_alerts': [] },
+            { 'eval_time': '3m', 'alertname': 'PingAiBudgetWarning', 'exp_alerts': [] },
+          ],
+      },
+      {
+        'name': 'Disabled budget, no alert',
+        'interval': '1m',
+        'input_series':
+          [
+            { 'series': 'ai_daily_spent_usd{job="ping-api",instance="a"}', 'values': '9+0x5' },
+            { 'series': 'ai_daily_budget_usd{job="ping-api",instance="a"}', 'values': '0+0x5' },
+            { 'series': 'ai_budget_metrics_up{job="ping-api",instance="a"}', 'values': '1+0x5' },
+          ],
+        'alert_rule_test':
+          [
+            { 'eval_time': '1m', 'alertname': 'PingAiBudgetWarning', 'exp_alerts': [] },
+            { 'eval_time': '3m', 'alertname': 'PingAiBudgetWarning', 'exp_alerts': [] },
+          ],
+      },
+      {
+        'name': 'Failed collection cannot trigger a budget warning',
+        'interval': '1m',
+        'input_series':
+          [
+            { 'series': 'ai_daily_spent_usd{job="ping-api",instance="a"}', 'values': '9+0x5' },
+            { 'series': 'ai_daily_budget_usd{job="ping-api",instance="a"}', 'values': '10+0x5' },
+            { 'series': 'ai_budget_metrics_up{job="ping-api",instance="a"}', 'values': '0+0x5' },
+          ],
+        'alert_rule_test':
+          [
+            { 'eval_time': '1m', 'alertname': 'PingAiBudgetWarning', 'exp_alerts': [] },
+            { 'eval_time': '3m', 'alertname': 'PingAiBudgetWarning', 'exp_alerts': [] },
+          ],
+      },
+      {
+        'name': 'Replicas must not double global spend',
+        'interval': '1m',
+        'input_series':
+          [
+            { 'series': 'ai_daily_spent_usd{job="ping-api",instance="a"}', 'values': '5+0x5' },
+            { 'series': 'ai_daily_budget_usd{job="ping-api",instance="a"}', 'values': '10+0x5' },
+            { 'series': 'ai_budget_metrics_up{job="ping-api",instance="a"}', 'values': '1+0x5' },
+            { 'series': 'ai_daily_spent_usd{job="ping-api",instance="b"}', 'values': '5+0x5' },
+            { 'series': 'ai_daily_budget_usd{job="ping-api",instance="b"}', 'values': '10+0x5' },
+            { 'series': 'ai_budget_metrics_up{job="ping-api",instance="b"}', 'values': '1+0x5' },
+          ],
+        'alert_rule_test':
+          [
+            { 'eval_time': '1m', 'alertname': 'PingAiBudgetWarning', 'exp_alerts': [] },
+            { 'eval_time': '3m', 'alertname': 'PingAiBudgetWarning', 'exp_alerts': [] },
+          ],
+      },
+      {
+        'name': 'UTC day rollover resolves alert',
+        'interval': '1m',
+        'input_series':
+          [
+            {
+              'series': 'ai_daily_spent_usd{job="ping-api",instance="a"}',
+              'values': '9 9 9 0 0 0',
+            },
+            { 'series': 'ai_daily_budget_usd{job="ping-api",instance="a"}', 'values': '10+0x5' },
+            { 'series': 'ai_budget_metrics_up{job="ping-api",instance="a"}', 'values': '1+0x5' },
+          ],
+        'alert_rule_test':
+          [
+            { 'eval_time': '1m', 'alertname': 'PingAiBudgetWarning', 'exp_alerts': [] },
+            {
+              'eval_time': '2m',
+              'alertname': 'PingAiBudgetWarning',
+              'exp_alerts':
+                [
+                  {
+                    'exp_labels': { 'job': 'ping-api', 'severity': 'ticket' },
+                    'exp_annotations':
+                      {
+                        'summary': 'Daily AI spending is above 80% of the configured budget',
+                        'runbook': 'docs/runbook/alerts.md#pingaibudgetwarning',
+                      },
+                  },
+                ],
+            },
+            { 'eval_time': '4m', 'alertname': 'PingAiBudgetWarning', 'exp_alerts': [] },
+          ],
+      },
+      {
+        'name': 'Budget collection down',
+        'interval': '1m',
+        'input_series':
+          [{ 'series': 'ai_budget_metrics_up{job="ping-api",instance="a"}', 'values': '0+0x5' }],
+        'alert_rule_test':
+          [
+            {
+              'eval_time': '3m',
+              'alertname': 'PingAiBudgetMetricsUnavailable',
+              'exp_alerts':
+                [
+                  {
+                    'exp_labels': { 'job': 'ping-api', 'instance': 'a', 'severity': 'ticket' },
+                    'exp_annotations':
+                      {
+                        'summary': 'Cannot read daily AI spending from Postgres',
+                        'runbook': 'docs/runbook/alerts.md#pingaibudgetmetricsunavailable',
+                      },
+                  },
+                ],
+            },
+          ],
+      },
+    ],
+}

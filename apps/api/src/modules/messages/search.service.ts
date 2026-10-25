@@ -7,6 +7,7 @@ import {
   type SearchQuery,
 } from '@ping/shared';
 import { Prisma } from '../../generated/prisma/client.js';
+import { MetricsService } from '../../infra/metrics/metrics.service.js';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
 
 interface SearchRow {
@@ -27,9 +28,24 @@ interface SearchRow {
  */
 @Injectable()
 export class SearchService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly metrics: MetricsService,
+  ) {}
 
   async search(serverId: string, query: SearchQuery): Promise<SearchResultPage> {
+    const started = performance.now();
+    let outcome: 'ok' | 'error' = 'error';
+    try {
+      const result = await this.searchResults(serverId, query);
+      outcome = 'ok';
+      return result;
+    } finally {
+      this.metrics.searchCompleted((performance.now() - started) / 1_000, outcome);
+    }
+  }
+
+  private async searchResults(serverId: string, query: SearchQuery): Promise<SearchResultPage> {
     const q = query.q?.trim() ?? '';
     if (q.length === 0 || q.length > Limits.SEARCH_QUERY_MAX) {
       throw new BadRequestException({

@@ -1,0 +1,91 @@
+
+> ping@0.2.0 build D:\discord\Ping-t5.11
+> turbo run build
+
+
+   • turbo 2.11.9
+   • Packages in scope: @ping/eslint-config, @ping/shared, @ping/tsconfig, api, web
+   • Running build in 5 packages
+   • Remote caching disabled, using shared worktree cache
+
+@ping/shared:build: cache hit, replaying logs 1ac6aab5dac37519
+@ping/shared:build: 
+@ping/shared:build: > @ping/shared@0.2.0 build D:\discord\Ping\packages\shared
+@ping/shared:build: > tsup
+@ping/shared:build: 
+@ping/shared:build: [34mCLI[39m Building entry: src/index.ts
+@ping/shared:build: [34mCLI[39m Using tsconfig: tsconfig.json
+@ping/shared:build: [34mCLI[39m tsup v9.0.0
+@ping/shared:build: [34mCLI[39m Using tsup config: D:\discord\Ping\packages\shared\tsup.config.ts
+@ping/shared:build: [34mCLI[39m Target: es2023
+@ping/shared:build: [34mCLI[39m Cleaning output folder
+@ping/shared:build: [34mCJS[39m Build start
+@ping/shared:build: [34mESM[39m Build start
+@ping/shared:build: [32mCJS[39m [1mdist\index.cjs [22m[32m11.56 KB[39m
+@ping/shared:build: [32mCJS[39m ⚡️ Build success in 1680ms
+@ping/shared:build: [32mESM[39m [1mdist\index.js [22m[32m8.59 KB[39m
+@ping/shared:build: [32mESM[39m ⚡️ Build success in 1685ms
+@ping/shared:build: [34mDTS[39m Build start
+@ping/shared:build: [32mDTS[39m ⚡️ Build success in 2517ms
+@ping/shared:build: [32mDTS[39m [1mdist\index.d.cts [22m[32m22.65 KB[39m
+@ping/shared:build: [32mDTS[39m [1mdist\index.d.ts  [22m[32m22.65 KB[39m
+web:build: cache miss, executing 88b0a0e27350ae04
+api:build: cache miss, executing 17e07d7dd54ee50d
+web:build: 
+web:build: > web@0.2.0 build D:\discord\Ping-t5.11\apps\web
+web:build: > next build
+web:build: 
+api:build: 
+api:build: > api@0.2.0 build D:\discord\Ping-t5.11\apps\api
+api:build: > prisma generate && nest build
+api:build: 
+api:build: ◇ injected env (30) from ..\..\.env
+api:build: Loaded Prisma config from prisma7.config.ts.
+api:build: 
+api:build: Prisma schema loaded from prisma\schema.prisma.
+api:build: 
+api:build: ✔ Generated Prisma Client (7.10.1) to .\src\generated\prisma in 169ms
+api:build: 
+web:build: ▲ Next.js 16.4.2 (Turbopack)
+web:build: ✓ Running next.config.ts took 168ms
+web:build: - Cache Components enabled
+web:build: - Partial Prefetching enabled
+web:build: - Experiments (use with caution):
+web:build:   · instantInsights
+web:build: 
+web:build:   Creating an optimized production build ...
+web:build: ✓ Compiled successfully in 48s
+web:build:   Running TypeScript ...
+web:build: ✓ Finished writing to filesystem cache in 16.8s
+web:build:   Finished TypeScript in 36.8s ...
+web:build:   Collecting page data using 11 workers ...
+web:build:   Generating static pages using 11 workers (0/11) ...
+web:build:   Generating static pages using 11 workers (2/11) 
+web:build:   Generating static pages using 11 workers (5/11) 
+web:build:   Generating static pages using 11 workers (8/11) 
+web:build: ✓ Generating static pages using 11 workers (11/11) in 1064ms
+web:build:   Finalizing page optimization ...
+web:build: 
+web:build: Route (app)
+web:build: ┌ ○ /
+web:build: ├ ○ /_not-found
+web:build: ├ ○ /dev/ui
+web:build: ├ ○ /login
+web:build: ├ ○ /register
+web:build: ├ ○ /servers
+web:build: ├   /servers/[serverId]
+web:build: │ └ ◐ /servers/[serverId]
+web:build: ├   /servers/[serverId]/channels/[channelId]
+web:build: │ └ ◐ /servers/[serverId]/channels/[channelId]
+web:build: └   /servers/[serverId]/settings
+web:build:   └ ◐ /servers/[serverId]/settings
+web:build: 
+web:build: 
+web:build: ○  (Static)             prerendered as static content
+web:build: ◐  (Partial Prerender)  prerendered as static HTML with dynamic server-streamed content
+web:build: 
+
+ Tasks:    3 successful, 3 total
+Cached:    1 cached, 3 total
+  Time:    1m38.389s 
+

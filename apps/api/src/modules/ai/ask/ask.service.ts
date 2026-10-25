@@ -61,7 +61,8 @@ export class AskService {
   }
 
   async *stream(input: AskInput): AsyncGenerator<AskEvent> {
-    let outcome: AiRequestOutcome = 'ok';
+    const requestStarted = performance.now();
+    let outcome: AiRequestOutcome = 'cancelled';
     try {
       const question = input.question.trim();
       if (question.length === 0 || question.length > MAX_QUESTION_LENGTH) {
@@ -248,12 +249,16 @@ export class AskService {
 
       await this.cache.set(cacheKey, { answer, citations, model: completion.model });
       yield { type: 'delta', data: { text: answer } };
+      outcome = 'ok';
       yield {
         type: 'done',
         data: { citations, model: completion.model },
       };
+    } catch (error) {
+      outcome = 'unavailable';
+      throw error;
     } finally {
-      this.metrics.aiRequestFinished(outcome);
+      this.metrics.aiRequestFinished(outcome, (performance.now() - requestStarted) / 1_000);
     }
   }
 

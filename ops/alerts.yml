@@ -46,3 +46,30 @@ groups:
         annotations:
           summary: 'Không scrape được metrics của một instance API'
           runbook: docs/runbook/alerts.md#pinginstancedown
+
+  - name: ping-ai
+    rules:
+      - alert: PingAiBudgetWarning
+        # Every replica reads the same global UTC-day sum: MAX, never SUM.
+        # Ignore failed collectors; zero budget means the kill-switch is disabled.
+        expr: |
+          (
+            max by (job) (
+              ai_daily_spent_usd{job="ping-api"}
+                and on (job, instance) (ai_budget_metrics_up{job="ping-api"} == 1)
+            ) / max by (job) (ai_daily_budget_usd{job="ping-api"}) > 0.8
+          )
+          and on (job) (max by (job) (ai_daily_budget_usd{job="ping-api"}) > 0)
+        for: 2m
+        labels: { severity: ticket }
+        annotations:
+          summary: 'Daily AI spending is above 80% of the configured budget'
+          runbook: docs/runbook/alerts.md#pingaibudgetwarning
+
+      - alert: PingAiBudgetMetricsUnavailable
+        expr: ai_budget_metrics_up{job="ping-api"} == 0
+        for: 2m
+        labels: { severity: ticket }
+        annotations:
+          summary: 'Cannot read daily AI spending from Postgres'
+          runbook: docs/runbook/alerts.md#pingaibudgetmetricsunavailable

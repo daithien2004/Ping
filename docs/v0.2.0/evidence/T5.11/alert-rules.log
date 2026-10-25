@@ -1,0 +1,4 @@
+Command: docker run --rm --entrypoint /bin/promtool -v D:/discord/Ping-t5.11/ops:/work:ro -w /work/monitoring prom/prometheus:v3.15.0 test rules alerts.test.yml
+Exit: 0
+  SUCCESS
+

@@ -68,6 +68,7 @@ export class QdrantVectorStore implements VectorStore {
     url: string | undefined,
     private readonly fetchImpl: typeof fetch = fetch,
     private readonly timeoutMs = 5_000,
+    private readonly observe?: (seconds: number, outcome: 'ok' | 'error') => void,
   ) {
     this.baseUrl = url?.replace(/\/+$/g, '') || undefined;
   }
@@ -236,10 +237,18 @@ export class QdrantVectorStore implements VectorStore {
     if (!this.baseUrl) {
       throw new VectorStoreError('Thiếu QDRANT_URL');
     }
-    return this.fetchImpl(`${this.baseUrl}${path}`, {
-      ...init,
-      headers: { 'content-type': 'application/json', ...init.headers },
-      signal: AbortSignal.timeout(this.timeoutMs),
-    });
+    const started = performance.now();
+    let outcome: 'ok' | 'error' = 'error';
+    try {
+      const response = await this.fetchImpl(`${this.baseUrl}${path}`, {
+        ...init,
+        headers: { 'content-type': 'application/json', ...init.headers },
+        signal: AbortSignal.timeout(this.timeoutMs),
+      });
+      outcome = response.ok ? 'ok' : 'error';
+      return response;
+    } finally {
+      this.observe?.((performance.now() - started) / 1_000, outcome);
+    }
   }
 }

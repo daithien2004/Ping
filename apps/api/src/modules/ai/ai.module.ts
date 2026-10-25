@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { MetricsService } from '../../infra/metrics/metrics.service.js';
 import { AuthModule } from '../auth/auth.module.js';
 import type { Env } from '../../config/env.schema.js';
 import type { Embedder } from './embedder.port.js';
@@ -47,9 +48,14 @@ export { EMBEDDER, LLM_CLIENT, VECTOR_STORE } from './ai.tokens.js';
     },
     {
       provide: VECTOR_STORE,
-      inject: [ConfigService],
-      useFactory: (config: ConfigService<Env, true>): VectorStore =>
-        new QdrantVectorStore(config.get('QDRANT_URL', { infer: true })),
+      inject: [ConfigService, MetricsService],
+      useFactory: (config: ConfigService<Env, true>, metrics: MetricsService): VectorStore =>
+        new QdrantVectorStore(
+          config.get('QDRANT_URL', { infer: true }),
+          fetch,
+          5_000,
+          (seconds, outcome) => metrics.qdrantCompleted(seconds, outcome),
+        ),
     },
     MessageIndexerService,
     RetrievalService,

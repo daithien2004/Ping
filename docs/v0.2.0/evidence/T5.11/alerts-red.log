@@ -1,0 +1,38 @@
+
+
+
+
+docker :   FAILED:
+At line:105 char:1
++ docker run --rm --entrypoint /bin/promtool -v D:/discord/Ping-t5.11/o ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (  FAILED::String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+    name: Above 80%, waits for two minutes,
+    alertname: PingAiBudgetWarning, time: 3m, 
+        exp:[
+            0:
+              Labels:{alertname="PingAiBudgetWarning", job="ping-api", severity="ticket"}
+              Annotations:{runbook="docs/runbook/alerts.md#pingaibudgetwarning", summary="Daily AI spending is above 
+80% of the configured budget"}
+            ], 
+        got:[]
+    name: UTC day rollover resolves alert,
+    alertname: PingAiBudgetWarning, time: 3m, 
+        exp:[
+            0:
+              Labels:{alertname="PingAiBudgetWarning", job="ping-api", severity="ticket"}
+              Annotations:{runbook="docs/runbook/alerts.md#pingaibudgetwarning", summary="Daily AI spending is above 
+80% of the configured budget"}
+            ], 
+        got:[]
+    name: Budget collection down,
+    alertname: PingAiBudgetMetricsUnavailable, time: 3m, 
+        exp:[
+            0:
+              Labels:{alertname="PingAiBudgetMetricsUnavailable", instance="a", job="ping-api", severity="ticket"}
+              Annotations:{runbook="docs/runbook/alerts.md#pingaibudgetmetricsunavailable", summary="Cannot read daily 
+AI spending from Postgres"}
+            ], 
+        got:[]

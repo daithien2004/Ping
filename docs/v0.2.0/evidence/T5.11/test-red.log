@@ -1,0 +1,33 @@
+Expected RED before implementation.
+ RUN  v4.1.12 D:/discord/Ping-t5.11/apps/api
+ ❯ src/modules/ai/qdrant-vector-store.spec.ts (11 tests | 2 failed) 49ms
+     × records both HTTP failures and network failures, without a URL label 5ms
+     × records a successful HTTP operation once 3ms
+ ❯ src/modules/messages/search.service.spec.ts (2 tests | 2 failed) 14ms
+     × records completion even when the database fails: false 9ms
+     × records completion even when the database fails: true 2ms
+ ❯ src/infra/metrics/metrics.service.spec.ts (3 tests | 3 failed) 120ms
+     × reads durable daily spend at scrape time, including the UTC day after midnight 85ms
+     × does not report stale spend or zero spend as healthy when Postgres fails, and recovers 30ms
+     × exports budget zero as disabled and records latency for successful and failed operations without IDs 3ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 7 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/infra/metrics/metrics.service.spec.ts > AI observability > reads durable daily spend at scrape time, 
+AssertionError: expected '# HELP http_request_duration_seconds …' to contain 'ai_daily_spent_usd 8.1'
+ FAIL  src/infra/metrics/metrics.service.spec.ts > AI observability > does not report stale spend or zero spend as 
+AssertionError: expected '# HELP http_request_duration_seconds …' to contain 'ai_daily_spent_usd NaN'
+ Test Files  3 failed (3)
+      Tests  7 failed | 9 passed (16)
+   Start at  23:00:03
+   Duration  11.94s (transform 601ms, setup 0ms, import 18.91s, tests 182ms, environment 0ms)
+     46|     expect(failed).toContain('ai_daily_spent_usd NaN');
+     47|     expect(failed).toContain('ai_budget_metrics_up 0');
+ FAIL  src/infra/metrics/metrics.service.spec.ts > AI observability > exports budget zero as disabled and records 
+TypeError: service.qdrantCompleted is not a function
+ FAIL  src/modules/ai/qdrant-vector-store.spec.ts > Qdrant latency observer > records both HTTP failures and network 
+AssertionError: expected "vi.fn()" to be called 2 times, but got 0 times
+ FAIL  src/modules/ai/qdrant-vector-store.spec.ts > Qdrant latency observer > records a successful HTTP operation once
+AssertionError: expected "vi.fn()" to be called once with arguments: [ Any<Number>, 'ok' ]
+ FAIL  src/modules/messages/search.service.spec.ts > Search latency > records completion even when the database fails: 
+AssertionError: expected "vi.fn()" to be called once with arguments: [ Any<Number>, 'ok' ]
+ FAIL  src/modules/messages/search.service.spec.ts > Search latency > records completion even when the database fails: 
+AssertionError: expected "vi.fn()" to be called once with arguments: [ Any<Number>, 'error' ]
