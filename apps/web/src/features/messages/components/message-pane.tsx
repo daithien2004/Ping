@@ -232,7 +232,7 @@ export function MessagePane({
   };
 
   // Nhảy tới tin gốc của một reply. Tin đã có trong cửa sổ → cuộn + tô sáng; tin cũ hơn
-  // (chưa tải) → mở permalink để pane nạp `?around=` quanh nó (TG.5, ADR-0061).
+  // (chưa tải) → mở permalink để pane nạp `?around=` quanh nó (TG.5, ADR-0062).
   function jumpTo(messageId: string) {
     const index = messages.findIndex((message) => message.id === messageId);
     if (index < 0) {

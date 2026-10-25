@@ -20,7 +20,7 @@ import { useSearch } from '../hooks';
 /**
  * Tìm kiếm tin nhắn trong server (T4.6, ADR-0045): FTS + trigram phía API; UI lọc
  * channel/người gửi/thời gian; bấm kết quả điều hướng permalink `/…/messages/:id` — khung chat
- * nạp cửa sổ quanh tin đó và highlight (TG.5, ADR-0061).
+ * nạp cửa sổ quanh tin đó và highlight (TG.5, ADR-0062).
  */
 export function SearchDialog({ serverId }: { serverId: string }) {
   const t = useTranslations('search');

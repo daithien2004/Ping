@@ -75,7 +75,7 @@ export class MessagesService {
    * `after` (T4.4, ADR-0044): chiều ngược — tin MỚI HƠN cursor, thứ tự tăng dần,
    * `hasMore` = còn tin mới hơn nữa; dùng để vá khoảng trống khi reconnect.
    *
-   * `around` (TG.5, ADR-0061): cửa sổ quanh một tin cho permalink — hai truy vấn keyset
+   * `around` (TG.5, ADR-0062): cửa sổ quanh một tin cho permalink — hai truy vấn keyset
    * (nửa cũ hơn gồm chính tin đích, nửa mới hơn), gộp lại theo thứ tự mới nhất trước như
    * trang thường. Tin đích phải nằm trong CHÍNH channel và chưa bị xóa mềm, nếu không 404
    * (không phân biệt "không tồn tại" với "thuộc channel khác" để không lộ id).
