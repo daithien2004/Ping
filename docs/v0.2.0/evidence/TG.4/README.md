@@ -52,6 +52,17 @@ e2e: `WEB_PORT=3110 pnpm --filter web exec playwright test e2e/markdown.spec.ts`
   name lookup) — dùng CSS locator + `toContainText` trên article.
 - Parser bug thật bắt được nhờ test: list item lưu mảng dòng nhưng `parseInline` nhận string.
 
+## Sự cố CI (đang theo dõi)
+
+- Run đầu trên main (`953635f`): verify đỏ vì docs:check bắt pseudo-link trong evidence — đã sửa
+  (`6072083`).
+- Run sau (`6072083`): **web-e2e đỏ với 4 spec CUỐI** (realtime, search, security-headers,
+  unread-ui), bắt đầu bằng login API trả !ok — các spec đó rerun **local 4/4 pass** với cùng
+  commit. Chẩn đoán: hạ tầng runner 2-core cạn về cuối run (web-e2e dài hơn sau khi thêm
+  markdown spec); log chi tiết cần quyền admin nên chưa tải được. Không phải lỗi code
+  (không có thay đổi API/DB; các spec fail không đụng markdown). Theo dõi ở run kế tiếp; nếu
+  lặp lại thì chia mảng web-e2e trên CI (thay đổi .github/workflows — sẽ đề xuất riêng).
+
 ## Giới hạn và tiếp theo
 
 - Tô màu cú pháp code block (tải lười) hoãn — ghi trong ADR.
