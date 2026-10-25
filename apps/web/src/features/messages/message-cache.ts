@@ -83,9 +83,35 @@ export function upsertMessage(
     }),
   }));
   if (!replaced && pages[0]) {
-    pages[0] = { ...pages[0], messages: [message, ...pages[0].messages] };
+    // Chèn vào đúng vị trí theo id (T4.5): event có thể ĐẢO THỨ TỰ (hai instance API phát
+    // gần như đồng thời qua Redis pub/sub) — prepend vô điều kiện sẽ để m4 trên m5 mãi mãi.
+    // Trang 0 mới nhất trước; tin mới hơn mọi thứ thuộc đầu trang 0, cũ hơn rơi vào trang
+    // chứa khoảng id của nó (vá khoảng trống), không có trang nào khớp thì xuống cuối trang
+    // cuối cùng (cũ hơn toàn bộ cache).
+    insertSorted(pages, message);
   }
   return { ...cache, pages };
+}
+
+/** Chèn `message` vào trang đúng theo id: trong trang giảm dần, đứng trước phần tử nhỏ hơn. */
+function insertSorted(pages: ClientMessagePage[], message: ClientMessage): void {
+  for (let p = 0; p < pages.length; p += 1) {
+    const rows = pages[p]!.messages;
+    // Tin mới hơn tin CŨ NHẤT của trang này → thuộc trang này (hoặc trang trước đã xét).
+    const oldestOfPage = rows[rows.length - 1];
+    if (oldestOfPage === undefined || message.id > oldestOfPage.id) {
+      const index = rows.findIndex((row) => row.id < message.id);
+      const at = index === -1 ? rows.length : index;
+      pages[p] = { ...pages[p]!, messages: [...rows.slice(0, at), message, ...rows.slice(at)] };
+      return;
+    }
+  }
+  // Cũ hơn mọi tin đã có: cuối trang cuối.
+  const last = pages[pages.length - 1]!;
+  pages[pages.length - 1] = {
+    ...last,
+    messages: [...last.messages, message],
+  };
 }
 
 function setStatus(
@@ -185,6 +211,7 @@ export function patchGap(
   cache: MessagesCache | undefined,
   afterId: string,
   fetched: ClientMessage[],
+  { prune = true }: { prune?: boolean } = {},
 ): MessagesCache | undefined {
   if (!cache) return cache;
   let result = cache;
@@ -192,7 +219,7 @@ export function patchGap(
     result = upsertMessage(result, message) ?? result;
   }
   const upper = fetched.at(-1)?.id;
-  if (upper === undefined) return result;
+  if (upper === undefined || !prune) return result;
   const fetchedIds = new Set(fetched.map((message) => message.id));
   return {
     ...result,

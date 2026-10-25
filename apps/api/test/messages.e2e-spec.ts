@@ -153,6 +153,29 @@ describe('Messages (e2e)', () => {
       .expect(201);
     expect(retry.body.id).toBe(messageIds[0]);
     expect(retry.body.content).toBe('tin so 0');
+
+    // T4.5 (hỗn loạn): HAI request cùng nonce ĐỒNG THỜI — một request kịp ghi, request kia
+    // văng unique constraint và đi nhánh "trả lại tin cũ": cả hai cùng id, DB chỉ một hàng.
+    const concurrentNonce = randomUUID();
+    const [a, b] = await Promise.all([
+      api('post', `/api/v1/channels/${channelId}/messages`, author.token).send({
+        content: 'dual write',
+        nonce: concurrentNonce,
+      }),
+      api('post', `/api/v1/channels/${channelId}/messages`, author.token).send({
+        content: 'dual write',
+        nonce: concurrentNonce,
+      }),
+    ]);
+    expect([a.status, b.status].sort()).toEqual([201, 201]);
+    expect(a.body.id).toBe(b.body.id);
+    const db = app.get(PrismaService);
+    const count = await db.message.count({
+      where: { channelId: channelId, nonce: concurrentNonce },
+    });
+    expect(count).toBe(1);
+    // Dọn tin của test này (xóa mềm) để không lệch đếm của các test phía sau.
+    await api('delete', `/api/v1/messages/${a.body.id}`, author.token).expect(200);
   });
 
   it('GET messages — phân trang cursor: mới nhất trước, before kéo trang cũ hơn, hasMore đúng', async () => {
