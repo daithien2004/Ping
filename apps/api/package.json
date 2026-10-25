@@ -35,7 +35,8 @@
     "ai:backfill": "tsx scripts/backfill-messages.ts",
     "drill:indexer": "tsx test/drill/indexer-crash.drill.ts",
     "drill:consumer-lag": "tsx test/drill/consumer-lag.drill.ts",
-    "seed:demo": "tsx prisma/seed-demo.ts"
+    "seed:demo": "tsx prisma/seed-demo.ts",
+    "ai:eval:qa": "tsx scripts/eval-qa.ts"
   },
   "dependencies": {
     "@casl/ability": "7.0.2",

@@ -1,0 +1,192 @@
+{
+  "version": 1,
+  "description": "30 golden Q&A over the synthetic T5.1 corpus. Chat facts are fictional, not current repository configuration.",
+  "cases": [
+    {
+      "id": "qa-01",
+      "question": "Team nghỉ ngày nào cuối tuần?",
+      "messageIds": ["m02"],
+      "expectedFacts": [["thứ bảy"]]
+    },
+    {
+      "id": "qa-02",
+      "question": "Hạn nộp báo cáo tiến độ là khi nào?",
+      "messageIds": ["m03"],
+      "expectedFacts": [["thứ sáu"]]
+    },
+    {
+      "id": "qa-03",
+      "question": "Giờ standup mới là mấy giờ?",
+      "messageIds": ["m05"],
+      "expectedFacts": [["9h30", "9:30", "9 giờ 30"]]
+    },
+    {
+      "id": "qa-04",
+      "question": "Cần cập nhật task trên bảng nào trước khi về?",
+      "messageIds": ["m06"],
+      "expectedFacts": [["kanban"]]
+    },
+    {
+      "id": "qa-05",
+      "question": "Địa điểm ăn trưa hôm nay là đâu?",
+      "messageIds": ["m07"],
+      "expectedFacts": [["bún bò"], ["văn phòng"]]
+    },
+    {
+      "id": "qa-06",
+      "question": "Chi nghỉ phép từ ngày nào tới ngày nào?",
+      "messageIds": ["m09"],
+      "expectedFacts": [["thứ hai"], ["thứ tư"]]
+    },
+    {
+      "id": "qa-07",
+      "question": "Demo khách hàng diễn ra buổi nào, ngày nào?",
+      "messageIds": ["m10"],
+      "expectedFacts": [["chiều"], ["thứ năm"]]
+    },
+    {
+      "id": "qa-08",
+      "question": "Tài khoản công ty cần bật loại xác thực nào?",
+      "messageIds": ["m11"],
+      "expectedFacts": [["hai lớp", "2 lớp", "hai yếu tố", "2fa"]]
+    },
+    {
+      "id": "qa-09",
+      "question": "Link tài liệu thiết kế đã được gửi vào kênh nào?",
+      "messageIds": ["m12"],
+      "expectedFacts": [["announce"]]
+    },
+    {
+      "id": "qa-10",
+      "question": "Tuần sau Chi chuyển sang ca nào?",
+      "messageIds": ["m13"],
+      "expectedFacts": [["ca tối"]]
+    },
+    {
+      "id": "qa-11",
+      "question": "Lệnh bật Redis local trong đoạn chat là gì?",
+      "messageIds": ["m16"],
+      "expectedFacts": [["docker compose up -d redis"]]
+    },
+    {
+      "id": "qa-12",
+      "question": "Build CI bị lỗi vì thiếu biến môi trường nào?",
+      "messageIds": ["m17"],
+      "expectedFacts": [["database_url"]]
+    },
+    {
+      "id": "qa-13",
+      "question": "Đoạn chat yêu cầu chạy lệnh gì để cập nhật DB sau khi pull?",
+      "messageIds": ["m18"],
+      "expectedFacts": [["pnpm prisma migrate dev"]]
+    },
+    {
+      "id": "qa-14",
+      "question": "Vì sao API trả lỗi 401 trong đoạn chat?",
+      "messageIds": ["m19"],
+      "expectedFacts": [["token"], ["hết hạn"]]
+    },
+    {
+      "id": "qa-15",
+      "question": "Giới hạn request được nói đến trong đoạn chat là bao nhiêu?",
+      "messageIds": ["m20"],
+      "expectedFacts": [["100"], ["phút"]]
+    },
+    {
+      "id": "qa-16",
+      "question": "Đoạn chat dặn gì về commit file .env?",
+      "messageIds": ["m21"],
+      "expectedFacts": [["không", "đừng"], ["commit"], [".env"]]
+    },
+    {
+      "id": "qa-17",
+      "question": "Test e2e bị flaky ở bước nào?",
+      "messageIds": ["m22"],
+      "expectedFacts": [["tạo channel", "tạo kênh"]]
+    },
+    {
+      "id": "qa-18",
+      "question": "Index mới được thêm vào cột nào, bảng nào?",
+      "messageIds": ["m23"],
+      "expectedFacts": [["createdat"], ["messages"]]
+    },
+    {
+      "id": "qa-19",
+      "question": "Socket.IO cần adapter nào khi chạy nhiều instance API?",
+      "messageIds": ["m24"],
+      "expectedFacts": [["redis"]]
+    },
+    {
+      "id": "qa-20",
+      "question": "Monorepo dùng trình quản lý gói nào?",
+      "messageIds": ["m25"],
+      "expectedFacts": [["pnpm"]]
+    },
+    {
+      "id": "qa-21",
+      "question": "Vì sao bản deploy tối qua bị rollback?",
+      "messageIds": ["m27"],
+      "expectedFacts": [["migration"]]
+    },
+    {
+      "id": "qa-22",
+      "question": "Coverage unit test trong đoạn chat là bao nhiêu?",
+      "messageIds": ["m28"],
+      "expectedFacts": [["82"]]
+    },
+    {
+      "id": "qa-23",
+      "question": "Công cụ format code trước pull request là gì?",
+      "messageIds": ["m29"],
+      "expectedFacts": [["prettier"]]
+    },
+    {
+      "id": "qa-24",
+      "question": "Bucket S3 chứa loại dữ liệu gì và gặp vấn đề gì?",
+      "messageIds": ["m30"],
+      "expectedFacts": [
+        ["ảnh đại diện", "avatar"],
+        ["dung lượng", "miễn phí"]
+      ]
+    },
+    {
+      "id": "qa-25",
+      "question": "Thời gian bảo trì server tối nay là từ mấy giờ đến mấy giờ?",
+      "messageIds": ["m31"],
+      "expectedFacts": [["22"], ["23"]]
+    },
+    {
+      "id": "qa-26",
+      "question": "Mật khẩu mới phải có tối thiểu bao nhiêu ký tự?",
+      "messageIds": ["m32"],
+      "expectedFacts": [["12", "mười hai"]]
+    },
+    {
+      "id": "qa-27",
+      "question": "Giờ làm việc mới từ tháng sau là khoảng nào?",
+      "messageIds": ["m33"],
+      "expectedFacts": [
+        ["8h30", "8:30", "8 giờ 30"],
+        ["17h30", "17:30", "17 giờ 30"]
+      ]
+    },
+    {
+      "id": "qa-28",
+      "question": "Công ty nghỉ lễ vào ngày nào?",
+      "messageIds": ["m34"],
+      "expectedFacts": [["2 tháng 9", "2/9", "02/09"]]
+    },
+    {
+      "id": "qa-29",
+      "question": "Đào tạo bảo mật diễn ra lúc nào và theo hình thức nào?",
+      "messageIds": ["m35"],
+      "expectedFacts": [["chiều"], ["thứ tư"], ["online", "trực tuyến"]]
+    },
+    {
+      "id": "qa-30",
+      "question": "Số ngày làm việc từ xa tối đa mỗi tuần là bao nhiêu?",
+      "messageIds": ["m36"],
+      "expectedFacts": [["2 ngày", "hai ngày"]]
+    }
+  ]
+}
