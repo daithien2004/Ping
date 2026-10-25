@@ -271,7 +271,14 @@
     "replyingTo": "Replying to {author}",
     "cancelReply": "Cancel reply",
     "replyDeleted": "Message deleted",
-    "jumpToOriginal": "Jump to {author}'s message"
+    "jumpToOriginal": "Jump to {author}'s message",
+    "copyLink": "Copy link",
+    "linkCopied": "Message link copied",
+    "linkCopyFailed": "Could not copy the link. Copy it from the address bar instead.",
+    "loadNewer": "Load newer messages",
+    "loadingNewer": "Loading newer messages…",
+    "focusLoading": "Finding the linked message…",
+    "focusMissing": "The linked message was not found (it may be deleted or you no longer have access)."
   },
   "search": {
     "open": "Search in server",

@@ -14,13 +14,13 @@ import { PingSelect } from '@/components/ui/ping-select';
 import { useChannels } from '@/features/channels/hooks';
 import { useMembers } from '@/features/members/hooks';
 import { useErrorMessage } from '@/lib/error-message';
-import { channelPath } from '@/features/servers/navigation';
+import { messagePath } from '@/features/servers/navigation';
 import { useSearch } from '../hooks';
 
 /**
  * Tìm kiếm tin nhắn trong server (T4.6, ADR-0045): FTS + trigram phía API; UI lọc
- * channel/người gửi/thời gian; bấm kết quả điều hướng `/channels/:id?m=` — khung chat
- * cuộn tới tin và highlight (cơ chế focusId sẵn có của chip trích dẫn AI).
+ * channel/người gửi/thời gian; bấm kết quả điều hướng permalink `/…/messages/:id` — khung chat
+ * nạp cửa sổ quanh tin đó và highlight (TG.5, ADR-0061).
  */
 export function SearchDialog({ serverId }: { serverId: string }) {
   const t = useTranslations('search');
@@ -90,7 +90,7 @@ function SearchModal({ serverId, onClose }: { serverId: string; onClose: () => v
 
   function goTo(item: SearchResultItem) {
     onClose();
-    router.push(`${channelPath(serverId, item.channelId)}?m=${encodeURIComponent(item.id)}`);
+    router.push(messagePath(serverId, item.channelId, item.id));
   }
 
   return (

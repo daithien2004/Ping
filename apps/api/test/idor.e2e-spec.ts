@@ -301,6 +301,13 @@ describe('IDOR (e2e)', () => {
       () => `/channels/${channelA}/messages`,
       outsider,
     );
+    // TG.5: permalink đọc quanh một tin — người ngoài không được dùng `around` để dò id.
+    add(
+      'GET /channels/:channelId/messages?around=<tin của A>',
+      'get',
+      () => `/channels/${channelA}/messages?around=${aliceMessage}`,
+      outsider,
+    );
     add(
       'POST /channels/:channelId/messages',
       'post',

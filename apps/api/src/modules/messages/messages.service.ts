@@ -74,8 +74,16 @@ export class MessagesService {
    *
    * `after` (T4.4, ADR-0044): chiều ngược — tin MỚI HƠN cursor, thứ tự tăng dần,
    * `hasMore` = còn tin mới hơn nữa; dùng để vá khoảng trống khi reconnect.
+   *
+   * `around` (TG.5, ADR-0061): cửa sổ quanh một tin cho permalink — hai truy vấn keyset
+   * (nửa cũ hơn gồm chính tin đích, nửa mới hơn), gộp lại theo thứ tự mới nhất trước như
+   * trang thường. Tin đích phải nằm trong CHÍNH channel và chưa bị xóa mềm, nếu không 404
+   * (không phân biệt "không tồn tại" với "thuộc channel khác" để không lộ id).
    */
   async list(channelId: string, query: ListMessagesQuery) {
+    if (query.around !== undefined) {
+      return this.listAround(channelId, query.around, query.limit);
+    }
     if (query.after !== undefined) {
       const messages = await this.prisma.message.findMany({
         where: {
@@ -110,6 +118,49 @@ export class MessagesService {
     return {
       messages: (hasMore ? messages.slice(0, query.limit) : messages).map(toMessageDto),
       hasMore,
+    };
+  }
+
+  /**
+   * Cửa sổ quanh `aroundId` (TG.5): `limit` chia đôi — nửa cũ hơn GỒM tin đích, nửa mới hơn.
+   * Hai truy vấn keyset độc lập dùng index `(channelId, id)` nên chi phí không phụ thuộc số
+   * tin của channel; lấy dư 1 mỗi phía để biết còn tin cũ/mới hơn ngoài cửa sổ.
+   */
+  private async listAround(channelId: string, aroundId: string, limit: number) {
+    const target = await this.prisma.message.findUnique({
+      where: { id: aroundId },
+      select: { id: true, channelId: true, deletedAt: true },
+    });
+    // 404 cho cả ba trường hợp: không tồn tại, khác channel, đã xóa mềm.
+    if (!target || target.channelId !== channelId || target.deletedAt !== null) {
+      throw new NotFoundException('Message not found');
+    }
+    const olderLimit = Math.ceil(limit / 2);
+    const newerLimit = limit - olderLimit;
+    const [olderRows, newerRows] = await Promise.all([
+      this.prisma.message.findMany({
+        where: { channelId, deletedAt: null, id: { lte: aroundId } },
+        orderBy: { id: 'desc' },
+        take: olderLimit + 1,
+        select: messageWithAuthor,
+      }),
+      this.prisma.message.findMany({
+        where: { channelId, deletedAt: null, id: { gt: aroundId } },
+        orderBy: { id: 'asc' },
+        // +1 để biết còn tin mới hơn nữa; newerLimit = 0 (limit 1) vẫn lấy 1 tin để kiểm.
+        take: newerLimit + 1,
+        select: messageWithAuthor,
+      }),
+    ]);
+    const hasMore = olderRows.length > olderLimit;
+    const hasNewer = newerRows.length > newerLimit;
+    const older = olderRows.slice(0, olderLimit);
+    // Trang trả về mới nhất trước (như mọi trang khác), nên nửa mới hơn phải đảo lại.
+    const newer = newerRows.slice(0, newerLimit).reverse();
+    return {
+      messages: [...newer, ...older].map(toMessageDto),
+      hasMore,
+      hasNewer,
     };
   }
 

@@ -444,4 +444,97 @@ describe('Messages (e2e)', () => {
       author.token,
     ).expect(400);
   });
+
+  it('GET messages?around (TG.5): cửa sổ quanh tin cũ, đúng thứ tự, hasMore/hasNewer, chéo channel → 404', async () => {
+    const aroundChannel = await api('post', `/api/v1/servers/${serverId}/channels`, author.token)
+      .send({ name: 'around-tg5' })
+      .expect(201);
+    const channel = aroundChannel.body.id as string;
+    const ids: string[] = [];
+    for (let index = 1; index <= 7; index += 1) {
+      const sent = await api('post', `/api/v1/channels/${channel}/messages`, author.token)
+        .send({ content: `around ${index}`, nonce: randomUUID() })
+        .expect(201);
+      ids.push(sent.body.id);
+    }
+
+    // limit 4 = 2 cũ hơn (gồm tin đích) + 2 mới hơn; trang vẫn xếp mới nhất trước.
+    const middle = await api(
+      'get',
+      `/api/v1/channels/${channel}/messages?limit=4&around=${ids[3]}`,
+      author.token,
+    ).expect(200);
+    expect(middle.body.messages.map((message: { id: string }) => message.id)).toEqual([
+      ids[5],
+      ids[4],
+      ids[3],
+      ids[2],
+    ]);
+    expect(middle.body.hasMore).toBe(true);
+    expect(middle.body.hasNewer).toBe(true);
+
+    // Tin đầu channel: không còn tin cũ hơn, vẫn còn tin mới hơn.
+    const first = await api(
+      'get',
+      `/api/v1/channels/${channel}/messages?limit=4&around=${ids[0]}`,
+      author.token,
+    ).expect(200);
+    expect(first.body.messages.map((message: { id: string }) => message.id)).toEqual([
+      ids[2],
+      ids[1],
+      ids[0],
+    ]);
+    expect(first.body.hasMore).toBe(false);
+    expect(first.body.hasNewer).toBe(true);
+
+    // Tin cuối channel: hết tin mới hơn.
+    const last = await api(
+      'get',
+      `/api/v1/channels/${channel}/messages?limit=4&around=${ids[6]}`,
+      author.token,
+    ).expect(200);
+    expect(last.body.messages.map((message: { id: string }) => message.id)).toEqual([
+      ids[6],
+      ids[5],
+    ]);
+    expect(last.body.hasNewer).toBe(false);
+
+    // limit 1: chỉ đúng tin đích.
+    const single = await api(
+      'get',
+      `/api/v1/channels/${channel}/messages?limit=1&around=${ids[3]}`,
+      author.token,
+    ).expect(200);
+    expect(single.body.messages.map((message: { id: string }) => message.id)).toEqual([ids[3]]);
+    expect(single.body.hasMore).toBe(true);
+    expect(single.body.hasNewer).toBe(true);
+
+    // Tin đích của channel khác / không tồn tại / đã xóa mềm → 404 (không lộ id).
+    await api(
+      'get',
+      `/api/v1/channels/${channel}/messages?around=${messageIds[0]}`,
+      author.token,
+    ).expect(404);
+    await api(
+      'get',
+      `/api/v1/channels/${channel}/messages?around=${randomUUID()}`,
+      author.token,
+    ).expect(404);
+    await api('delete', `/api/v1/messages/${ids[1]}`, author.token).expect(200);
+    await api('get', `/api/v1/channels/${channel}/messages?around=${ids[1]}`, author.token).expect(
+      404,
+    );
+
+    // around không dùng chung với before/after.
+    await api(
+      'get',
+      `/api/v1/channels/${channel}/messages?around=${ids[3]}&before=${ids[4]}`,
+      author.token,
+    ).expect(400);
+    await api(
+      'get',
+      `/api/v1/channels/${channel}/messages?around=${ids[3]}&after=${ids[1]}`,
+      author.token,
+    ).expect(400);
+  });
 });

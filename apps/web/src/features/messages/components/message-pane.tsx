@@ -2,14 +2,16 @@
 
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useTranslations } from 'use-intl';
 import { Button } from '@/components/ui/button';
 import { useChannelRealtime } from '@/features/realtime/hooks';
 import { TypingIndicator } from '@/features/realtime/components/typing-indicator';
 import { useMe } from '@/features/auth/hooks';
 import { useMarkRead, useUnread } from '@/features/unread/hooks';
+import { messagePath } from '@/features/servers/navigation';
 import { incomingMessage } from '../announce';
-import { useMessages, useSendMessage } from '../hooks';
+import { useLoadNewer, useMessages, useResetWindow, useSeedAround, useSendMessage } from '../hooks';
 import { type ClientMessage, oldestFirst } from '../message-cache';
 import { MessageComposer } from './message-composer';
 import { MessageItem } from './message-item';
@@ -19,9 +21,6 @@ import { useServerAbility } from '@/features/permissions/context';
 
 /** Chiều cao phần đầu danh sách ("Đây là đầu channel" / "Đang tải tin cũ…"). */
 const HEADER_HEIGHT = 48;
-
-/** Số trang tin cũ tối đa tự tải để tìm tin đích của `?m=` (không quét cả lịch sử). */
-const MAX_FOCUS_PAGES = 5;
 
 /**
  * Danh sách tin (ảo hóa) + ô soạn tin của một channel.
@@ -40,12 +39,16 @@ export function MessagePane({
   serverId: string;
   channelId: string;
   channelName: string;
-  /** Tin cần nhảy tới (từ `?m=` khi bấm chip trích dẫn của AI), null nếu không có. */
+  /** Tin cần nhảy tới (permalink `…/messages/:id` hoặc `?m=` cũ), null nếu không có. */
   focusId: string | null;
 }) {
   const roomDenied = useChannelRealtime(serverId, channelId);
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useMessages(channelId);
   const sendMutation = useSendMessage(channelId);
+  const seedAround = useSeedAround(channelId);
+  const resetWindow = useResetWindow(channelId);
+  const loadNewer = useLoadNewer(channelId);
+  const router = useRouter();
   const { data: unread } = useUnread(serverId);
   // `mutate` của TanStack có identity ổn định — tách ra để effect dưới không chạy lại khi
   // trạng thái mutation đổi (tránh vòng mutate → isPending → effect → mutate).
@@ -115,10 +118,32 @@ export function MessagePane({
     return () => cancelAnimationFrame(frame);
   }, [messages.length, virtualizer, focusId]);
 
-  // Nhảy tới tin gốc từ chip trích dẫn của AI (`?m=<messageId>`). Nếu tin chưa nằm trong
-  // trang đang có, tải thêm trang cũ (có giới hạn) cho tới khi thấy.
+  // TG.5: nhảy tới tin đích của permalink / `?m=`. Tin đã có trong trang đang tải → cuộn tới;
+  // chưa có (tin cũ hơn) → nạp MỘT cửa sổ `?around=` (keyset, không quét lịch sử) rồi cuộn tới.
   const focusIndex = focusId ? messages.findIndex((message) => message.id === focusId) : -1;
-  const focusPending = focusId !== null && focusIndex < 0;
+  const windowed = focusId !== null && data?.window?.aroundId === focusId;
+  const [focusMissing, setFocusMissing] = useState(false);
+  const seeding = useRef<string | null>(null);
+  useEffect(() => {
+    if (!focusId || focusIndex >= 0 || windowed || seeding.current === focusId) return;
+    seeding.current = focusId;
+    void seedAround(focusId)
+      .then((result) => {
+        if (result === 'missing') setFocusMissing(true);
+      })
+      .catch(() => {
+        // Lỗi mạng: để lần điều hướng sau thử lại, không treo UI.
+      })
+      .finally(() => {
+        seeding.current = null;
+      });
+  }, [focusId, focusIndex, windowed, seedAround]);
+
+  const focusPending = focusId !== null && focusIndex < 0 && !focusMissing;
+  // Rời permalink (không còn tin đích) mà cache vẫn là cửa sổ → nạp lại trang mới nhất.
+  useEffect(() => {
+    if (focusId === null && data?.window) void resetWindow();
+  }, [focusId, data?.window, resetWindow]);
   useEffect(() => {
     if (focusIndex < 0) return;
     virtualizer.scrollToIndex(focusIndex, { align: 'center' });
@@ -126,23 +151,14 @@ export function MessagePane({
     setLoadOlderEnabled(true);
   }, [focusIndex, virtualizer]);
 
-  const focusLoads = useRef(0);
-  useEffect(() => {
-    // Chỉ điều khiển việc tải khi đang tìm tin đích; không có `?m=` thì giữ nguyên hành vi cũ.
-    if (!focusId) return;
-    if (!focusPending) {
-      setLoadOlderEnabled(true);
-      return;
-    }
-    if (!hasNextPage) {
-      // Hết lịch sử mà vẫn không thấy tin: bỏ cuộc, cho phép cuộn/tải bình thường.
-      setLoadOlderEnabled(true);
-      return;
-    }
-    if (isFetchingNextPage || focusLoads.current >= MAX_FOCUS_PAGES) return;
-    focusLoads.current += 1;
-    void fetchNextPage();
-  }, [focusId, focusPending, hasNextPage, isFetchingNextPage, fetchNextPage]);
+  // TG.5: cửa sổ permalink còn tin mới hơn ở dưới — tải tiếp từng trang cho tới tin mới nhất.
+  const hasNewer = data?.window?.hasNewer ?? false;
+  const [loadingNewer, setLoadingNewer] = useState(false);
+  function loadMoreNewer() {
+    if (loadingNewer) return;
+    setLoadingNewer(true);
+    void loadNewer().finally(() => setLoadingNewer(false));
+  }
 
   // Cuộn gần tới đầu danh sách → tải trang cũ hơn.
   const firstVisible = virtualizer.getVirtualItems()[0]?.index;
@@ -160,12 +176,15 @@ export function MessagePane({
 
   // T4.3: vào kênh / có tin mới ở kênh đang xem → đánh dấu đã đọc tới tin cuối. Tin optimistic
   // (id `temp-…`) chưa tồn tại ở server nên bỏ qua; cursor chỉ tiến nên gửi lặp vẫn vô hại.
+  // TG.5: cửa sổ permalink chưa phải tin mới nhất — không mark-read (sẽ xóa oan badge chưa đọc);
+  // chỉ đánh dấu khi đã tải tới đáy thật (hasNewer = false).
   useEffect(() => {
+    if (hasNewer) return;
     const last = messages.at(-1);
     if (last && !last.id.startsWith('temp-')) {
       mutateRead(last.id);
     }
-  }, [messages, mutateRead]);
+  }, [messages, mutateRead, hasNewer]);
 
   // T4.3: vạch "Tin mới" — cursor ĐÃ ĐỌC được chốt MỘT lần mỗi phiên xem kênh: mark-read
   // của chính mình (đi kèm `read.updated`) không kéo vạch chạy xuống. `<Activity>` giữ
@@ -212,10 +231,14 @@ export function MessagePane({
     if (message.nonce) send(message.content, message.nonce, message.replyTo?.id);
   };
 
-  // TG.1: nhảy tới tin gốc nếu đang có trong cửa sổ đã tải; tin cũ hơn thuộc TG.5 (`?around=`).
+  // Nhảy tới tin gốc của một reply. Tin đã có trong cửa sổ → cuộn + tô sáng; tin cũ hơn
+  // (chưa tải) → mở permalink để pane nạp `?around=` quanh nó (TG.5, ADR-0061).
   function jumpTo(messageId: string) {
     const index = messages.findIndex((message) => message.id === messageId);
-    if (index < 0) return;
+    if (index < 0) {
+      router.push(messagePath(serverId, channelId, messageId));
+      return;
+    }
     virtualizer.scrollToIndex(index, { align: 'center' });
     setJumpTarget(messageId);
   }
@@ -235,6 +258,24 @@ export function MessagePane({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
+      {focusMissing && (
+        <p
+          role="alert"
+          data-testid="focus-missing"
+          className="border-b bg-destructive/10 px-4 py-2 text-sm text-destructive"
+        >
+          {t('focusMissing')}
+        </p>
+      )}
+      {focusPending && !focusMissing && (
+        <p
+          role="status"
+          data-testid="focus-loading"
+          className="border-b px-4 py-2 text-sm text-muted-foreground"
+        >
+          {t('focusLoading')}
+        </p>
+      )}
       <div
         ref={scrollRef}
         className="min-h-0 flex-1 overflow-y-auto"
@@ -289,6 +330,7 @@ export function MessagePane({
                 )}
                 <MessageItem
                   message={message}
+                  permalink={messagePath(serverId, channelId, message.id)}
                   onRetry={retry}
                   onAction={setSelection}
                   onReply={setReplyTo}
@@ -300,6 +342,22 @@ export function MessagePane({
           })}
         </div>
       </div>
+
+      {/* TG.5: cửa sổ permalink dừng ở tin đích — không tự nối tới hiện tại (channel 10k tin).
+          Người dùng chủ động tải thêm từng trang mới hơn khi muốn đọc tiếp. */}
+      {hasNewer && (
+        <div className="flex justify-center border-t px-4 py-2">
+          <Button
+            size="sm"
+            variant="outline"
+            data-testid="load-newer"
+            onClick={loadMoreNewer}
+            disabled={loadingNewer}
+          >
+            {loadingNewer ? t('loadingNewer') : t('loadNewer')}
+          </Button>
+        </div>
+      )}
 
       <TypingIndicator channelId={channelId} />
       <div aria-live="polite" aria-atomic="true" className="sr-only">

@@ -11,7 +11,11 @@ import { useMemberPanel } from '@/features/members/store';
 import { AskDialog } from '@/features/messages/components/ask-dialog';
 import { SearchDialog } from '@/features/search/components/search-dialog';
 import { MessagePane } from '@/features/messages/components/message-pane';
+import { messagePath } from '@/features/servers/navigation';
 import { useChannels } from '../hooks';
+
+/** `use()` cần một promise ổn định cho trang permalink (không có searchParams). */
+const EMPTY_QUERY: Promise<Record<string, string | string[] | undefined>> = Promise.resolve({});
 
 /**
  * Vùng nội dung của một channel: tiêu đề + danh sách tin + ô soạn tin.
@@ -19,19 +23,24 @@ import { useChannels } from '../hooks';
  * Lấy params từ prop của page, KHÔNG dùng useParams(): <Activity> giữ trang channel cũ ở dạng ẩn,
  * và useParams() trong trang ẩn trả params của URL HIỆN TẠI → trang #general ẩn render lại thành
  * #dev, key của MessagePane đổi, nháp + vị trí cuộn mất (đã gặp khi kiểm tra). `params` của page
- * luôn là params của chính trang đó. `searchParams` cũng lấy từ page vì lý do tương tự: chip trích
- * dẫn của AI điều hướng tới `?m=<messageId>`.
+ * luôn là params của chính trang đó. `searchParams` cũng lấy từ page vì lý do tương tự.
+ *
+ * Tin cần nhảy tới có hai nguồn: permalink `/…/messages/:messageId` (TG.5, ADR-0061 — page
+ * truyền `focusId`) và `?m=<messageId>` cũ (chip trích dẫn AI, link đã chia sẻ trước TG.5).
  */
 export function ChannelView({
   params,
   searchParams,
+  focusId: focusIdProp,
 }: {
   params: Promise<{ serverId: string; channelId: string }>;
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
+  /** Permalink: tin đích lấy từ segment của route thay vì query. */
+  focusId?: string | null;
 }) {
   const { serverId, channelId } = use(params);
-  const query = use(searchParams);
-  const focusId = typeof query.m === 'string' ? query.m : null;
+  const query = use(searchParams ?? EMPTY_QUERY);
+  const focusId = focusIdProp ?? (typeof query.m === 'string' ? query.m : null);
   const { data: channels } = useChannels(serverId);
   const channel = channels.find((item) => item.id === channelId);
   const t = useTranslations();
@@ -46,7 +55,7 @@ export function ChannelView({
 
   function goToMessage(messageId: string) {
     setAskOpen(false);
-    router.push(`/servers/${serverId}/channels/${channelId}?m=${encodeURIComponent(messageId)}`);
+    router.push(messagePath(serverId, channelId, messageId));
   }
 
   return (
@@ -74,9 +83,10 @@ export function ChannelView({
           />
         </header>
         <Suspense fallback={<MessageListSkeleton />}>
-          {/* key: mỗi channel một trạng thái riêng (nháp, vị trí cuộn lần đầu). */}
+          {/* key: mỗi channel một trạng thái riêng (nháp, vị trí cuộn lần đầu). Tin đích của
+              permalink cũng là một "phiên xem" riêng: mở link khác thì nạp lại cửa sổ mới. */}
           <MessagePane
-            key={channel.id}
+            key={`${channel.id}:${focusId ?? ''}`}
             serverId={serverId}
             channelId={channel.id}
             channelName={channel.name}

@@ -271,7 +271,14 @@
     "replyingTo": "Đang trả lời {author}",
     "cancelReply": "Hủy trả lời",
     "replyDeleted": "Tin nhắn đã bị xóa",
-    "jumpToOriginal": "Tới tin gốc của {author}"
+    "jumpToOriginal": "Tới tin gốc của {author}",
+    "copyLink": "Sao chép liên kết",
+    "linkCopied": "Đã sao chép liên kết tin nhắn",
+    "linkCopyFailed": "Không sao chép được liên kết. Hãy sao chép từ thanh địa chỉ.",
+    "loadNewer": "Tải tin mới hơn",
+    "loadingNewer": "Đang tải tin mới hơn…",
+    "focusLoading": "Đang tìm tin nhắn trong liên kết…",
+    "focusMissing": "Không tìm thấy tin nhắn trong liên kết (có thể đã bị xóa hoặc bạn không còn quyền xem)."
   },
   "search": {
     "open": "Tìm trong server",
