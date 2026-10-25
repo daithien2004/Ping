@@ -8,15 +8,20 @@ interface Props {
   message: ClientMessage;
   onRetry: (message: ClientMessage) => void;
   onAction: (selection: MessageSelection) => void;
+  /** TG.1: đặt tin này làm đích trả lời trong composer. */
+  onReply: (message: ClientMessage) => void;
+  /** TG.1: nhảy tới tin gốc (TG.5 sẽ mở rộng cho tin chưa tải). */
+  onJumpTo: (messageId: string) => void;
   /** Tin đang được nhảy tới từ chip trích dẫn của AI. */
   highlighted?: boolean;
 }
 
-export function MessageItem({ message, onRetry, onAction, highlighted }: Props) {
+export function MessageItem({ message, onRetry, onAction, onReply, onJumpTo, highlighted }: Props) {
   const { ability, ready } = useServerAbility();
   const t = useTranslations();
   // Theo ngôn ngữ và múi giờ của trình duyệt (LocaleProvider), không viết cứng 'vi'.
   const format = useFormatter();
+  const replyTo = message.replyTo;
   return (
     <article
       id={`message-${message.id}`}
@@ -37,8 +42,22 @@ export function MessageItem({ message, onRetry, onAction, highlighted }: Props) 
         {message.editedAt && (
           <span className="text-xs text-muted-foreground">{t('messages.edited')}</span>
         )}
-        <MessageActions message={message} onAction={onAction} />
+        <MessageActions message={message} onAction={onAction} onReply={onReply} />
       </header>
+      {replyTo && (
+        <button
+          type="button"
+          onClick={() => onJumpTo(replyTo.id)}
+          aria-label={t('messages.jumpToOriginal', { author: replyTo.authorName })}
+          data-testid="reply-preview"
+          className="mb-1 flex max-w-full items-center gap-1.5 rounded border-l-2 border-muted-foreground/50 bg-muted/50 py-0.5 pl-2 pr-2 text-left text-xs text-muted-foreground transition-colors hover:bg-muted"
+        >
+          <span className="shrink-0 font-medium text-foreground/80">{replyTo.authorName}</span>
+          <span className="truncate">
+            {replyTo.deleted ? t('messages.replyDeleted') : replyTo.content}
+          </span>
+        </button>
+      )}
       {/* Markdown tập qua AST (TG.4, ADR-0054): renderer chỉ dựng element từ allowlist,
           không đường sinh HTML; tin optimistic đang gửi vẫn hiển thị như văn bản thường. */}
       <MarkdownText content={message.content} />

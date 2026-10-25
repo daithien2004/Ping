@@ -1,8 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { updateMessageSchema } from './message';
+import { createMessageSchema, updateMessageSchema } from './message';
 import { myServerPermissionsSchema } from './server';
 
 describe('message editing contracts', () => {
+  it('preserves a valid reply target and rejects malformed targets', () => {
+    const input = { content: 'reply', nonce: '01900000-0000-7000-8000-000000000001' };
+    const replyToId = '01900000-0000-7000-8000-000000000002';
+    expect(createMessageSchema.parse({ ...input, replyToId })).toEqual({ ...input, replyToId });
+    for (const replyToId of ['', 'invalid', null]) {
+      expect(createMessageSchema.safeParse({ ...input, replyToId }).success).toBe(false);
+    }
+  });
   it('trims content and enforces the same 1–4000 limit in both apps', () => {
     expect(updateMessageSchema.parse({ content: '  edited  ' })).toEqual({ content: 'edited' });
     for (const content of ['', '   ', 'a'.repeat(4001)]) {

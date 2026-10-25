@@ -22,6 +22,7 @@ const msg = (id: string, nonce: string | null = null, content = id): MessageDto 
   createdAt: '2026-10-20T00:00:00.000Z',
   authorId: author.id,
   author,
+  replyTo: null,
 });
 
 /** Trang 0 mới nhất; trong mỗi trang tin mới → cũ (đúng thứ tự API trả). */
@@ -34,6 +35,17 @@ const ids = (data: MessagesCache | undefined) =>
   data?.pages.map((page) => page.messages.map((message) => message.id));
 
 describe('message-cache', () => {
+  it('keeps the reply preview on the optimistic row until the server confirms it (TG.1)', () => {
+    const preview = { id: 'm1', authorName: 'A', content: 'gốc', deleted: false };
+    const pending = optimisticMessage({ content: 'hi', nonce: 'n1' }, author, preview);
+    expect(pending.replyTo).toEqual(preview);
+    const confirmed = upsertMessage(cache([pending]), {
+      ...msg('m2', 'n1', 'hi'),
+      replyTo: preview,
+    })!;
+    expect(confirmed.pages[0]?.messages).toHaveLength(1);
+    expect(confirmed.pages[0]?.messages[0]?.replyTo).toEqual(preview);
+  });
   it('a deletion arriving before confirmation also removes the matching optimistic nonce', () => {
     const pending = optimisticMessage({ content: 'hi', nonce: 'n1' }, author);
     const before = deleteMessage(cache([pending]), 'm1')!;

@@ -10,6 +10,7 @@ export function checkEventContracts(server: ServerToClientEvents, client: Client
     author: { id: 'user-A', username: 'alice', displayName: 'Alice', avatarUrl: null },
     content: 'Hello',
     createdAt: '2026-10-18T03:00:00.000Z',
+    replyTo: null,
     nonce: null,
   });
   server[ServerEvents.MessageUpdated]({

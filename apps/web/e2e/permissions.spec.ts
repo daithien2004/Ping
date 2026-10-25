@@ -69,10 +69,17 @@ test('permissions in the UI: menus follow ownership, edit and delete, live permi
     const menu = (page: typeof pa, text: string) =>
       row(page, text).getByRole('button', { name: 'Thao tác tin nhắn' });
 
-    await test.step('menu thao tác theo quyền: member chỉ có trên tin của mình, owner có trên mọi tin', async () => {
+    await test.step('menu thao tác theo quyền: member chỉ sửa/xóa tin của mình, owner mọi tin; ai gửi được thì trả lời được', async () => {
       await expect(row(pb, `owner says ${suffix}`)).toBeVisible();
       await expect(menu(pb, `member says ${suffix}`)).toHaveCount(1);
-      await expect(menu(pb, `owner says ${suffix}`)).toHaveCount(0);
+      // TG.1: reply mở cho mọi tin khi còn quyền gửi — menu vẫn hiện, nhưng chỉ có "Trả lời".
+      const ownerMenu = menu(pb, `owner says ${suffix}`);
+      await expect(ownerMenu).toHaveCount(1);
+      await ownerMenu.click();
+      await expect(pb.getByRole('menuitem', { name: 'Trả lời' })).toBeVisible();
+      await expect(pb.getByRole('menuitem', { name: 'Sửa' })).toHaveCount(0);
+      await expect(pb.getByRole('menuitem', { name: 'Xóa' })).toHaveCount(0);
+      await pb.keyboard.press('Escape');
       await expect(menu(pa, `owner says ${suffix}`)).toHaveCount(1);
       await expect(menu(pa, `member says ${suffix}`)).toHaveCount(1);
     });

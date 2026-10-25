@@ -193,6 +193,8 @@ model Message {
   editedAt  DateTime?
   deletedAt DateTime? // soft delete: moderation + đồng bộ realtime
   nonce     String?   // idempotency key do client sinh (xem 16.1)
+  // TG.1: reply trỏ tới tin gốc CÙNG channel (service kiểm); SetNull khi tin gốc bị xóa cứng.
+  replyToId String?   @db.Uuid
   // T4.6 (ADR-0045): cột sinh ở tầng SQL (migration fts_search):
   //   GENERATED ALWAYS AS (to_tsvector('simple', f_unaccent("content"))) STORED
   // Prisma không sinh được generated column nên chỉ khai báo kiểu để migrate diff khớp;
@@ -203,6 +205,9 @@ model Message {
   channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
   // KHÔNG onDelete Cascade ở author: xóa user không được kéo sập tin nhắn.
   author  User    @relation(fields: [authorId], references: [id])
+  // TG.1: quan hệ tự thân cho reply; soft-delete vẫn giữ liên kết để hiện "tin đã xóa".
+  replyTo Message?  @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies Message[] @relation("MessageReplies")
 
   // Chống ghi trùng khi client retry. Postgres cho phép NULL lặp trong unique
   // nên tin không có nonce không bao giờ bị block bởi index này.

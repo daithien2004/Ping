@@ -1,5 +1,5 @@
 'use client';
-import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { MoreHorizontal, Pencil, Reply, Trash2 } from 'lucide-react';
 import { useTranslations } from 'use-intl';
 import { Button } from '@/components/ui/button';
 import {
@@ -19,16 +19,20 @@ export interface MessageSelection {
 export function MessageActions({
   message,
   onAction,
+  onReply,
 }: {
   message: ClientMessage;
   onAction: (selection: MessageSelection) => void;
+  /** TG.1: chọn tin để trả lời (không mở dialog, chỉ đặt thanh reply trong composer). */
+  onReply: (message: ClientMessage) => void;
 }) {
   const { ability, ready } = useServerAbility();
   const t = useTranslations('messages');
   const target = messageSubject(message);
   const canEdit = ability.can('update', target);
   const canDelete = ability.can('delete', target);
-  if (message.status || (!canEdit && !canDelete)) return null;
+  const canReply = ability.can('create', 'Message');
+  if (message.status || (!canEdit && !canDelete && !canReply)) return null;
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -43,6 +47,12 @@ export function MessageActions({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
+        {canReply && (
+          <DropdownMenuItem onSelect={() => onReply(message)}>
+            <Reply />
+            {t('reply')}
+          </DropdownMenuItem>
+        )}
         {canEdit && (
           <DropdownMenuItem onSelect={() => onAction({ kind: 'edit', messageId: message.id })}>
             <Pencil />

@@ -10,6 +10,7 @@ const message = (overrides: Partial<ClientMessage> = {}): ClientMessage => ({
   createdAt: '2026-10-20T00:00:00.000Z',
   authorId: 'other',
   author: { id: 'other', username: 'bob', displayName: 'Bob', avatarUrl: null },
+  replyTo: null,
   ...overrides,
 });
 

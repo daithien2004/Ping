@@ -314,6 +314,74 @@ describe('Messages (e2e)', () => {
     ).expect(400);
   });
 
+  it('reply (TG.1): preview tin gốc, khác channel → 400, tin gốc xóa → deleted:true, nonce retry giữ replyTo', async () => {
+    // Channel riêng: rate limit 10 tin/10s/(user,channel) — không đẩy các test sau vượt hạn mức.
+    const replyChannel = await api('post', `/api/v1/servers/${serverId}/channels`, author.token)
+      .send({ name: 'reply-tg1' })
+      .expect(201);
+
+    const original = await api(
+      'post',
+      `/api/v1/channels/${replyChannel.body.id}/messages`,
+      author.token,
+    )
+      .send({ content: 'tin gốc để reply', nonce: randomUUID() })
+      .expect(201);
+
+    const reply = await api(
+      'post',
+      `/api/v1/channels/${replyChannel.body.id}/messages`,
+      other.token,
+    )
+      .send({ content: 'đây là trả lời', nonce: randomUUID(), replyToId: original.body.id })
+      .expect(201);
+    expect(reply.body.replyTo).toMatchObject({
+      id: original.body.id,
+      authorName: 'E2E',
+      content: 'tin gốc để reply',
+      deleted: false,
+    });
+
+    // Retry cùng nonce (mạng chập chờn): trả đúng tin cũ, replyTo không mất.
+    const retried = await api(
+      'post',
+      `/api/v1/channels/${replyChannel.body.id}/messages`,
+      other.token,
+    )
+      .send({ content: 'đây là trả lời', nonce: reply.body.nonce, replyToId: original.body.id })
+      .expect(201);
+    expect(retried.body.id).toBe(reply.body.id);
+    expect(retried.body.replyTo.id).toBe(original.body.id);
+
+    // Tin gốc ở channel khác → 400 (chốt IDOR reply).
+    const otherChannel = await api('post', `/api/v1/servers/${serverId}/channels`, author.token)
+      .send({ name: 'khac-channel' })
+      .expect(201);
+    await api('post', `/api/v1/channels/${otherChannel.body.id}/messages`, author.token)
+      .send({ content: 'trả lời chéo', nonce: randomUUID(), replyToId: original.body.id })
+      .expect(400);
+
+    // Tin gốc xóa mềm → vẫn reply được nhưng preview.deleted = true, content rỗng.
+    await api('delete', `/api/v1/messages/${original.body.id}`, author.token).expect(200);
+    const replyToDeleted = await api(
+      'post',
+      `/api/v1/channels/${replyChannel.body.id}/messages`,
+      other.token,
+    )
+      .send({ content: 'trả lời tin đã xóa', nonce: randomUUID(), replyToId: original.body.id })
+      .expect(201);
+    expect(replyToDeleted.body.replyTo).toMatchObject({
+      id: original.body.id,
+      deleted: true,
+      content: '',
+    });
+
+    // replyToId không tồn tại → 400.
+    await api('post', `/api/v1/channels/${replyChannel.body.id}/messages`, author.token)
+      .send({ content: 'reply vào hư không', nonce: randomUUID(), replyToId: randomUUID() })
+      .expect(400);
+  });
+
   it('id trên URL không phải UUID → 400 VALIDATION_ERROR, không bao giờ 500 từ Postgres', async () => {
     const urls: [HttpMethod, string][] = [
       ['get', '/api/v1/servers/abc'],

@@ -1,5 +1,5 @@
 import { ForbiddenError, subject } from '@casl/ability';
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { ServerEvents, type AppAbility, type CreateMessageInput } from '@ping/shared';
 import { isUniqueConstraintError } from '../../common/utils/prisma-errors.js';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
@@ -21,7 +21,40 @@ const messageWithAuthor = {
   createdAt: true,
   authorId: true,
   author: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
+  // TG.1: xem trước tin gốc cho khối trích dẫn (kể cả tin đã soft-delete — cờ `deleted`).
+  replyTo: {
+    select: {
+      id: true,
+      content: true,
+      deletedAt: true,
+      author: { select: { displayName: true } },
+    },
+  },
 } as const;
+
+/** Đoạn trích 120 ký tự cho preview reply (TG.1). */
+function replyPreview(
+  replyTo: {
+    id: string;
+    content: string;
+    deletedAt: Date | null;
+    author: { displayName: string };
+  } | null,
+): { id: string; authorName: string; content: string; deleted: boolean } | null {
+  if (!replyTo) return null;
+  return {
+    id: replyTo.id,
+    authorName: replyTo.author.displayName,
+    content: replyTo.deletedAt ? '' : replyTo.content.slice(0, 120),
+    deleted: replyTo.deletedAt !== null,
+  };
+}
+
+/** Hàng Prisma (select `messageWithAuthor`) → DTO: `replyTo` đổi sang dạng preview. */
+function toMessageDto<T extends { replyTo: Parameters<typeof replyPreview>[0] }>(row: T) {
+  const { replyTo, ...rest } = row;
+  return { ...rest, replyTo: replyPreview(replyTo) };
+}
 
 @Injectable()
 export class MessagesService {
@@ -55,7 +88,10 @@ export class MessagesService {
         select: messageWithAuthor,
       });
       const hasMore = messages.length > query.limit;
-      return { messages: hasMore ? messages.slice(0, query.limit) : messages, hasMore };
+      return {
+        messages: (hasMore ? messages.slice(0, query.limit) : messages).map(toMessageDto),
+        hasMore,
+      };
     }
 
     const messages = await this.prisma.message.findMany({
@@ -71,7 +107,10 @@ export class MessagesService {
     });
 
     const hasMore = messages.length > query.limit;
-    return { messages: hasMore ? messages.slice(0, query.limit) : messages, hasMore };
+    return {
+      messages: (hasMore ? messages.slice(0, query.limit) : messages).map(toMessageDto),
+      hasMore,
+    };
   }
 
   async create(channelId: string, authorId: string, input: CreateMessageInput) {
@@ -88,8 +127,27 @@ export class MessagesService {
     const actor = await this.abilityFactory.contextFor(channel.serverId, authorId);
     try {
       const message = await this.prisma.$transaction(async (tx) => {
+        // TG.1: tin gốc phải nằm trong CÙNG channel (chốt IDOR); soft-delete vẫn cho reply.
+        let replyToId: string | undefined;
+        if (input.replyToId !== undefined) {
+          const original = await tx.message.findUnique({
+            where: { id: input.replyToId },
+            select: { id: true, channelId: true },
+          });
+          if (!original || original.channelId !== channelId) {
+            throw new BadRequestException('Reply target must be in the same channel');
+          }
+          replyToId = original.id;
+        }
         const created = await tx.message.create({
-          data: { channelId, authorId, content: input.content, nonce: input.nonce },
+          // Prisma 7: field có giá trị `undefined` trong data là lỗi — spread có điều kiện.
+          data: {
+            channelId,
+            authorId,
+            content: input.content,
+            nonce: input.nonce,
+            ...(replyToId !== undefined ? { replyToId } : {}),
+          },
           select: messageWithAuthor,
         });
         const mentions = await resolveMentions(
@@ -115,6 +173,7 @@ export class MessagesService {
             content: created.content,
             createdAt: created.createdAt.toISOString(),
             nonce: created.nonce,
+            replyTo: replyPreview(created.replyTo),
           },
         });
         return created;
@@ -127,6 +186,7 @@ export class MessagesService {
         content: message.content,
         createdAt: message.createdAt.toISOString(),
         nonce: message.nonce,
+        replyTo: replyPreview(message.replyTo),
       });
       // T4.3: metadata (không nội dung) tới room server để badge unread của kênh không
       // đang xem tăng realtime; người xem kênh nhận cả hai event nhưng bỏ qua event này.
@@ -142,16 +202,17 @@ export class MessagesService {
       void this.notifyMentionedUsers(message.id, channelId, channel.serverId).catch(
         () => undefined,
       );
-      return message;
+      return toMessageDto(message);
     } catch (error) {
       // Client retry (mạng chập chờn) gửi lại CÙNG nonce → unique
       // (channelId, authorId, nonce) chặn ghi trùng: trả đúng tin cũ thay vì lỗi.
       // Không phát event lần hai vì client khác đã nhận tin này từ lần tạo đầu.
       if (isUniqueConstraintError(error)) {
-        return this.prisma.message.findUniqueOrThrow({
+        const existing = await this.prisma.message.findUniqueOrThrow({
           where: { channelId_authorId_nonce: { channelId, authorId, nonce: input.nonce } },
           select: messageWithAuthor,
         });
+        return toMessageDto(existing);
       }
       throw error;
     }
@@ -213,7 +274,7 @@ export class MessagesService {
       updatedAt: (updated.editedAt ?? updated.createdAt).toISOString(),
     });
 
-    return updated;
+    return toMessageDto(updated);
   }
 
   /**
