@@ -55,6 +55,6 @@ e2e: `WEB_PORT=3110 pnpm --filter web exec playwright test e2e/markdown.spec.ts`
 ## Giới hạn và tiếp theo
 
 - Tô màu cú pháp code block (tải lười) hoãn — ghi trong ADR.
-- Không hỗ trợ `[text](url)` markdown link (chỉ autolink) — đúng hành vi Discord; bộ XSS
+- Không hỗ trợ markdown link dạng ngoặc vuông (chỉ autolink) — đúng hành vi Discord; bộ XSS
   chứng minh payload dạng đó render thành text.
 - Kế tiếp theo lịch: TG.23 (emoji picker đầy đủ — tái dùng map shortcode), rồi TG.1 (reply).
