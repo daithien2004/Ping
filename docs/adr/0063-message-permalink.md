@@ -1,4 +1,4 @@
-# ADR-0062: Permalink tin nhắn + cửa sổ `GET messages?around=`
+# ADR-0063: Permalink tin nhắn + cửa sổ `GET messages?around=`
 
 Status: accepted — quyết định nằm trong kế hoạch Pha G (TG.5) được OWNER duyệt
 Date: 2026-10-26

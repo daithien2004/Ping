@@ -3,7 +3,7 @@ export const serverPath = (serverId: string) => `/servers/${serverId}`;
 export const channelPath = (serverId: string, channelId: string) =>
   `/servers/${serverId}/channels/${channelId}`;
 
-/** TG.5: permalink của một tin — mở channel ở cửa sổ quanh tin đó (ADR-0062). */
+/** TG.5: permalink của một tin — mở channel ở cửa sổ quanh tin đó (ADR-0063). */
 export const messagePath = (serverId: string, channelId: string, messageId: string) =>
   `${channelPath(serverId, channelId)}/messages/${messageId}`;
 

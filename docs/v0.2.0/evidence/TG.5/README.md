@@ -9,7 +9,7 @@
 
 ## Thay đổi
 
-- **ADR-0062** (`docs/adr/0062-message-permalink.md`): permalink canonical
+- **ADR-0063** (`docs/adr/0063-message-permalink.md`): permalink canonical
   `/servers/:serverId/channels/:channelId/messages/:messageId`, `?m=` giữ làm alias; API thêm
   chế độ đọc cửa sổ quanh tin; cache web giữ metadata `window`.
 - **API** (`messages.service.ts`, `schemas.ts`):
@@ -95,7 +95,7 @@ của A>` trong `idor.e2e-spec.ts`, unit `aroundWindow`/`prependNewer`/`preserve
 
 ## Giới hạn và tiếp theo
 
-- Mở permalink **không** tự theo tin mới; phải bấm "Tải tin mới hơn" (chủ ý — xem ADR-0062).
+- Mở permalink **không** tự theo tin mới; phải bấm "Tải tin mới hơn" (chủ ý — xem ADR-0063).
 - Ở permalink cũ, mark-read trễ tới khi rời permalink hoặc tải hết tin mới hơn.
 - `?m=` chỉ còn là alias; chưa có kế hoạch bỏ (liên kết ngoài hệ thống có thể còn).
 - Số thời gian chỉ có ý nghĩa **tương đối**: máy dev nhanh hơn runner CI ~2,7 lần cho cùng bản

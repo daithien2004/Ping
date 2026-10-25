@@ -5,7 +5,7 @@ import type { Env } from '../../../config/env.schema.js';
 import { RedisProvider } from '../../../infra/redis/redis.module.js';
 
 /** Tăng khi đổi prompt/định dạng trả lời để không trộn câu trả lời cũ với prompt mới. */
-export const ASK_PROMPT_VERSION = 'ask-v1';
+export const ASK_PROMPT_VERSION = 'ask-v2-strict-citations';
 
 export interface CachedAskAnswer {
   answer: string;

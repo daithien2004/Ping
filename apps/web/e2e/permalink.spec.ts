@@ -48,7 +48,7 @@ function seedMessages(channelId: string, authorId: string, count: number): SeedI
 }
 
 /**
- * TG.5 (ADR-0062): permalink + `GET messages?around=`.
+ * TG.5 (ADR-0063): permalink + `GET messages?around=`.
  *
  * Kịch bản trên channel 10.000 tin:
  *  - API `?around=` trả cửa sổ quanh tin đích, không quét cả lịch sử (so trung vị với channel 200

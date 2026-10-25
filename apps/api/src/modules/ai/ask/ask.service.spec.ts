@@ -129,11 +129,9 @@ describe('AskService', () => {
     });
   });
 
-  it('bỏ trích dẫn bịa: chỉ id có trong ngữ cảnh mới được chấp nhận', async () => {
-    const { service } = setup({ reply: `Có [${MESSAGE_ID}] và [${OTHER_MESSAGE_ID}]` });
-
+  it('accepts canonical UUIDv7 citations with uppercase hex', async () => {
+    const { service } = setup({ reply: `Trả lời [${MESSAGE_ID.toUpperCase()}]` });
     const events = await collect(service);
-
     expect(events.at(-1)).toEqual({
       type: 'done',
       data: { citations: [MESSAGE_ID], model: 'fake' },
@@ -279,7 +277,7 @@ describe('AskService', () => {
 
   it('cache hit trả lời ngay, không gọi LLM và không ghi thêm chi phí', async () => {
     const { service, complete, usage, cache, metrics } = setup({
-      cached: { answer: 'Câu trả lời cũ', citations: [MESSAGE_ID], model: 'fake' },
+      cached: { answer: `Câu trả lời cũ [${MESSAGE_ID}]`, citations: [MESSAGE_ID], model: 'fake' },
     });
 
     const events = await collect(service);
@@ -289,7 +287,7 @@ describe('AskService', () => {
         type: 'meta',
         data: { retrievedChunks: 1, messageCount: 1, cached: true },
       },
-      { type: 'delta', data: { text: 'Câu trả lời cũ' } },
+      { type: 'delta', data: { text: `Câu trả lời cũ [${MESSAGE_ID}]` } },
       { type: 'done', data: { citations: [MESSAGE_ID], model: 'fake' } },
     ]);
     expect(complete).not.toHaveBeenCalled();
@@ -367,5 +365,43 @@ describe('Ask latency and cancellation', () => {
     const { service, metrics } = setup();
     await collect(service);
     expect(metrics.aiRequestFinished).toHaveBeenCalledExactlyOnceWith('ok', expect.any(Number));
+  });
+});
+
+describe('Citation boundary (T5.9)', () => {
+  it('rejects a mixed valid/invented citation before emitting text or caching', async () => {
+    const { service, cache } = setup({ reply: `Trả lời [${MESSAGE_ID}] [${OTHER_MESSAGE_ID}]` });
+    const events = await collect(service);
+    expect(events.map((event) => event.type)).toEqual(['meta', 'error']);
+    expect(events.at(-1)).toMatchObject({ type: 'error', data: { code: 'AI_NO_CITATION' } });
+    expect(cache.set).not.toHaveBeenCalled();
+  });
+});
+
+describe('Citation replay (T5.9)', () => {
+  it('does not accept a bare UUID as a citation', async () => {
+    const { service } = setup({ reply: `Trả lời ${MESSAGE_ID}` });
+    expect((await collect(service)).at(-1)).toMatchObject({
+      type: 'error',
+      data: { code: 'AI_NO_CITATION' },
+    });
+  });
+  it('does not replay an invalid cached answer even if its citations array looks valid', async () => {
+    const { service, complete } = setup({
+      cached: {
+        answer: `Sai [${MESSAGE_ID}] [${OTHER_MESSAGE_ID}]`,
+        citations: [MESSAGE_ID],
+        model: 'old-cache',
+      },
+    });
+    const events = await collect(service);
+    expect(complete).toHaveBeenCalledTimes(1);
+    expect(events.at(-1)).toMatchObject({ type: 'done', data: { model: 'fake' } });
+    expect(
+      events
+        .filter((event) => event.type === 'delta')
+        .map((event) => event.data.text)
+        .join(''),
+    ).not.toContain(OTHER_MESSAGE_ID);
   });
 });
