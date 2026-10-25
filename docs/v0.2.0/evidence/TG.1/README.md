@@ -79,6 +79,8 @@
 - Bấm khối trích dẫn chỉ nhảy khi tin gốc đã nằm trong cửa sổ tải; permalink `?m=` +
   `GET messages?around=` cho tin cũ hơn thuộc **TG.5**.
 - Chưa có index `replyToId` (chưa có truy vấn "các tin trả lời X"); thêm khi TG.3/TG.5 cần.
-- CI nhánh `feat/tg1-reply`: 8/8 job (gồm 3 shard web-e2e chạy production build) — xem
-  `status.md` sau khi merge.
+- CI nhánh `feat/tg1-reply`: **12/12 job success** — run
+  [`40208841376`](https://github.com/daithien2004/Ping/actions/runs/40208841376) (verify, api-e2e,
+  migrations, docker, drills, security, lighthouse + 3 shard web-e2e production build + gate).
+  Còn chờ OWNER duyệt merge `--no-ff` vào `main`.
 - Kế tiếp theo lịch: TG.5 (permalink + `?around=`) → TG.2 (reaction — tái dùng emoji picker).
