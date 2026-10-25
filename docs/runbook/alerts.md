@@ -42,3 +42,27 @@ Gây một lỗi 500 có chủ đích, lấy mã lỗi từ giao diện, tìm ra
 Sentry thật của API/web đã được kiểm tại local ngày 2026-10-21; chưa đối chiếu đủ mã hiển thị trên UI
 với Sentry ở staging. Prometheus/Alertmanager cũng chưa được dựng để nạp quy tắc; xem
 [nghiệm thu](../acceptance/v0.1.0.md) và [nợ kỹ thuật](../tech-debt.md).
+
+## PingAiBudgetWarning
+
+Tổng chi phí AI ngày UTC vượt 80% `AI_DAILY_BUDGET_USD` liên tục 2 phút.
+Dashboard local và cách chạy: [giám sát AI](../../ops/monitoring/README.md).
+
+1. Xem chi phí ngày, ngân sách và `ai_budget_metrics_up` trên dashboard.
+2. Kiểm tra request/token theo thời gian, tỷ lệ cache hit/lỗi và giá provider đang
+   cấu hình. Không dùng tổng counter vòng đời process làm chi phí ngày.
+3. Giữ trần ngân sách hoặc giảm lưu lượng AI khi cần; không tăng ngân sách tự động.
+   Khi chạm 100%, kill-switch từ T5.7 từ chối lời gọi LLM mới; cache vẫn phục vụ.
+4. Giá free tier bằng 0 cho chi phí bằng 0. Budget 0 tắt kill-switch và cảnh báo 80%.
+   Ngày được reset ở 00:00 UTC, tức 07:00 Việt Nam.
+
+Mọi replica đọc cùng tổng DB: rule dùng MAX, không SUM. Mẫu có collector lỗi bị loại.
+Cảnh báo firing local chưa đồng nghĩa thông báo đã gửi tới nơi nhận staging.
+
+## PingAiBudgetMetricsUnavailable
+
+Không đọc được chi phí ngày từ Postgres liên tục 2 phút. Spending xuất NaN;
+không diễn giải dashboard trống thành chi phí bằng 0. Kiểm `dependency_up`, log DB,
+pool/timeout và quyền đọc `AiUsage`. Thu thập tự phục hồi khi DB trở lại; không cần
+xóa counter, Redis hay dữ liệu chi phí. Nếu endpoint metrics không trả lời thì xử lý
+`PingInstanceDown`.

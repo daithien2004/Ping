@@ -250,7 +250,7 @@ describe('AskService', () => {
     ]);
     expect(retrieve).not.toHaveBeenCalled();
     expect(complete).not.toHaveBeenCalled();
-    expect(metrics.aiRequestFinished).toHaveBeenCalledWith('quota_exceeded');
+    expect(metrics.aiRequestFinished).toHaveBeenCalledWith('quota_exceeded', expect.any(Number));
   });
 
   it('không kiểm tra được quota (Redis chết): AI_UNAVAILABLE, fail-closed', async () => {
@@ -274,7 +274,7 @@ describe('AskService', () => {
 
     expect(events.at(-1)).toMatchObject({ type: 'error', data: { code: 'AI_BUDGET_EXHAUSTED' } });
     expect(complete).not.toHaveBeenCalled();
-    expect(metrics.aiRequestFinished).toHaveBeenCalledWith('budget_exhausted');
+    expect(metrics.aiRequestFinished).toHaveBeenCalledWith('budget_exhausted', expect.any(Number));
   });
 
   it('cache hit trả lời ngay, không gọi LLM và không ghi thêm chi phí', async () => {
@@ -298,7 +298,7 @@ describe('AskService', () => {
     // Cache hit vẫn phải qua cửa ngân sách? Không: cache phục vụ trước kill-switch để
     // câu trả lời có sẵn vẫn dùng được khi hết tiền.
     expect(usage.assertWithinBudget).not.toHaveBeenCalled();
-    expect(metrics.aiRequestFinished).toHaveBeenCalledWith('cache_hit');
+    expect(metrics.aiRequestFinished).toHaveBeenCalledWith('cache_hit', expect.any(Number));
   });
 
   it('cache miss: gọi LLM, ghi token/chi phí, lưu cache và ghi metric ok', async () => {
@@ -323,7 +323,7 @@ describe('AskService', () => {
       { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
       0.001,
     );
-    expect(metrics.aiRequestFinished).toHaveBeenCalledWith('ok');
+    expect(metrics.aiRequestFinished).toHaveBeenCalledWith('ok', expect.any(Number));
   });
 
   it('câu trả lời không trích dẫn vẫn ghi token đã tiêu nhưng không cache', async () => {
@@ -334,7 +334,7 @@ describe('AskService', () => {
     expect(events.at(-1)).toMatchObject({ type: 'error', data: { code: 'AI_NO_CITATION' } });
     expect(usage.record).toHaveBeenCalledTimes(1);
     expect(cache.set).not.toHaveBeenCalled();
-    expect(metrics.aiRequestFinished).toHaveBeenCalledWith('no_citation');
+    expect(metrics.aiRequestFinished).toHaveBeenCalledWith('no_citation', expect.any(Number));
   });
 
   it('câu hỏi không hợp lệ không giữ quota', async () => {
@@ -349,5 +349,23 @@ describe('AskService', () => {
     const { service } = setup({ canView: false });
 
     await expect(service.authorize(input)).rejects.toBeInstanceOf(ForbiddenException);
+  });
+});
+
+describe('Ask latency and cancellation', () => {
+  it('records cancellation once when a client closes the stream after meta', async () => {
+    const { service, metrics } = setup();
+    const stream = service.stream(input);
+    expect((await stream.next()).value).toMatchObject({ type: 'meta' });
+    await stream.return(undefined);
+    expect(metrics.aiRequestFinished).toHaveBeenCalledExactlyOnceWith(
+      'cancelled',
+      expect.any(Number),
+    );
+  });
+  it('records successful end-to-end duration once', async () => {
+    const { service, metrics } = setup();
+    await collect(service);
+    expect(metrics.aiRequestFinished).toHaveBeenCalledExactlyOnceWith('ok', expect.any(Number));
   });
 });

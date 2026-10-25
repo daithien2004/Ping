@@ -208,3 +208,30 @@ describe('QdrantVectorStore', () => {
     expect((error as Error).message).not.toContain('vector bi mat');
   });
 });
+
+describe('Qdrant latency observer', () => {
+  it('records both HTTP failures and network failures, without a URL label', async () => {
+    const observe = vi.fn();
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(new Response('', { status: 503 }))
+      .mockRejectedValueOnce(new Error('timeout'));
+    const store = new QdrantVectorStore('http://qdrant:6333', fetchImpl, 100, observe);
+    await expect(store.count('messages')).rejects.toThrow();
+    await expect(store.count('messages')).rejects.toThrow();
+    expect(observe).toHaveBeenCalledTimes(2);
+    expect(observe).toHaveBeenNthCalledWith(1, expect.any(Number), 'error');
+    expect(observe).toHaveBeenNthCalledWith(2, expect.any(Number), 'error');
+  });
+  it('records a successful HTTP operation once', async () => {
+    const observe = vi.fn();
+    const store = new QdrantVectorStore(
+      'http://qdrant:6333',
+      fetchMock(() => response(200, JSON.stringify({ result: { count: 2 } }))),
+      100,
+      observe,
+    );
+    expect(await store.count('messages')).toBe(2);
+    expect(observe).toHaveBeenCalledExactlyOnceWith(expect.any(Number), 'ok');
+  });
+});

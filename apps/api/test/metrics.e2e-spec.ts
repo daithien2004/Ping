@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import request from 'supertest';
 import { io, type Socket } from 'socket.io-client';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { PrismaService } from '../src/infra/prisma/prisma.service.js';
 import { MetricsService } from '../src/infra/metrics/metrics.service.js';
 import { RedisProvider } from '../src/infra/redis/redis.module.js';
 import { bootApp } from './helpers/boot.js';
@@ -91,6 +92,47 @@ describe('metrics (e2e)', () => {
     const text = await scrape(app, port);
     expect(line(text, 'ws_connections ')).toBe('ws_connections 0');
     expect(line(text, 'ws_disconnects_total ')).toBe('ws_disconnects_total 1');
+  });
+
+  it('exports durable UTC-day spending and AI/search/Qdrant latency on the private port', async () => {
+    const prisma = app.get(PrismaService);
+    const user = await prisma.user.create({
+      data: {
+        email: `budget-${randomUUID()}@ping.dev`,
+        username: `bud_${randomUUID().slice(0, 8)}`,
+        displayName: 'Metrics fixture',
+        passwordHash: 'not-a-login-fixture',
+      },
+    });
+    try {
+      const day = new Date();
+      day.setUTCHours(0, 0, 0, 0);
+      await prisma.aiUsage.create({
+        data: {
+          userId: user.id,
+          day,
+          requests: 1,
+          promptTokens: 10,
+          completionTokens: 5,
+          costUsd: 0.081,
+        },
+      });
+      const metrics = app.get(MetricsService);
+      metrics.aiRequestFinished('ok', 0.25);
+      metrics.qdrantCompleted(0.01, 'ok');
+      metrics.searchCompleted(0.02, 'ok');
+      const text = await scrape(app, port);
+      expect(Number(line(text, 'ai_daily_spent_usd ')?.split(' ')[1])).toBeGreaterThanOrEqual(
+        0.081,
+      );
+      expect(line(text, 'ai_budget_metrics_up ')).toBe('ai_budget_metrics_up 1');
+      expect(text).toContain('ai_latency_seconds_count{outcome="ok"} 1');
+      expect(text).toContain('qdrant_latency_seconds_count{outcome="ok"} 1');
+      expect(text).toContain('search_latency_seconds_count{outcome="ok"} 1');
+    } finally {
+      await prisma.aiUsage.deleteMany({ where: { userId: user.id } });
+      await prisma.user.delete({ where: { id: user.id } });
+    }
   });
 
   it('reports postgres and redis as up', async () => {

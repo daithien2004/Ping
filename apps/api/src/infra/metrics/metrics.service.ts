@@ -1,7 +1,9 @@
 import { Injectable, type OnModuleDestroy } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import type { NextFunction, Request, Response } from 'express';
 import { createServer, type Server } from 'node:http';
 import { Counter, Gauge, Histogram, Registry, collectDefaultMetrics } from 'prom-client';
+import type { Env } from '../../config/env.schema.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { RedisProvider } from '../redis/redis.module.js';
 
@@ -10,6 +12,7 @@ import { RedisProvider } from '../redis/redis.module.js';
  * (không bao giờ dùng user id, câu hỏi hay nội dung tin làm nhãn).
  */
 export type AiRequestOutcome =
+  | 'cancelled'
   | 'ok'
   | 'cache_hit'
   | 'invalid_question'
@@ -88,11 +91,76 @@ export class MetricsService implements OnModuleDestroy {
     registers: [this.registry],
   });
 
+  readonly aiLatency = new Histogram({
+    name: 'ai_latency_seconds',
+    help: 'Ask stream lifetime, including retrieval/cache and client consumption (seconds)',
+    labelNames: ['outcome'],
+    buckets: [0.01, 0.05, 0.1, 0.5, 1, 2.5, 5, 10, 20, 30, 60],
+    registers: [this.registry],
+  });
+  readonly qdrantLatency = new Histogram({
+    name: 'qdrant_latency_seconds',
+    help: 'Qdrant HTTP request duration through response headers (seconds)',
+    labelNames: ['outcome'],
+    registers: [this.registry],
+  });
+  readonly searchLatency = new Histogram({
+    name: 'search_latency_seconds',
+    help: 'Full-text search service duration including failed queries (seconds)',
+    labelNames: ['outcome'],
+    registers: [this.registry],
+  });
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: RedisProvider,
+    config: ConfigService<Env, true>,
   ) {
     collectDefaultMetrics({ register: this.registry });
+    const budgetUsd = config.get('AI_DAILY_BUDGET_USD', { infer: true });
+    const budget = new Gauge({
+      name: 'ai_daily_budget_usd',
+      help: 'Configured daily AI budget, USD (0 disables the budget limit)',
+      registers: [this.registry],
+    });
+    budget.set(budgetUsd);
+    // Registry collects metric families concurrently. Both gauges await the same DB read
+    // so health and spending describe this scrape, rather than the previous scrape.
+    let pending: Promise<number | undefined> | undefined;
+    const snapshot = (): Promise<number | undefined> => {
+      pending ??= (async () => {
+        const day = new Date();
+        day.setUTCHours(0, 0, 0, 0);
+        try {
+          const result = await this.prisma.aiUsage.aggregate({
+            _sum: { costUsd: true },
+            where: { day },
+          });
+          return Number(result._sum.costUsd ?? 0);
+        } catch {
+          return undefined;
+        } finally {
+          pending = undefined;
+        }
+      })();
+      return pending;
+    };
+    const budgetUp = new Gauge({
+      name: 'ai_budget_metrics_up',
+      help: '1 if daily AI spending was read successfully from Postgres at scrape time',
+      registers: [this.registry],
+      collect: async () => {
+        budgetUp.set((await snapshot()) === undefined ? 0 : 1);
+      },
+    });
+    const spending = new Gauge({
+      name: 'ai_daily_spent_usd',
+      help: 'System-wide AI spending for the current UTC day from Postgres; do not sum replicas',
+      registers: [this.registry],
+      collect: async () => {
+        spending.set((await snapshot()) ?? Number.NaN);
+      },
+    });
     const dependency = new Gauge({
       name: 'dependency_up',
       help: '1 nếu Postgres/Redis trả lời được, 0 nếu không (đo lúc scrape)',
@@ -128,8 +196,9 @@ export class MetricsService implements OnModuleDestroy {
   }
 
   /** Ghi nhận kết quả một lượt hỏi AI (đúng một lần cho mỗi request stream). */
-  aiRequestFinished(outcome: AiRequestOutcome): void {
+  aiRequestFinished(outcome: AiRequestOutcome, seconds: number): void {
     this.aiRequests.inc({ outcome });
+    this.aiLatency.observe({ outcome }, seconds);
   }
 
   /** Ghi nhận một lời gọi LLM: thời gian, token và chi phí ước tính. */
@@ -146,7 +215,15 @@ export class MetricsService implements OnModuleDestroy {
     if (costUsd > 0) this.aiCost.inc(costUsd);
   }
 
-  /** Mở cổng metrics (`GET /metrics`). Trả về cổng thật (0 = hệ điều hành chọn, dùng cho test). */
+  qdrantCompleted(seconds: number, outcome: 'ok' | 'error'): void {
+    this.qdrantLatency.observe({ outcome }, seconds);
+  }
+
+  searchCompleted(seconds: number, outcome: 'ok' | 'error'): void {
+    this.searchLatency.observe({ outcome }, seconds);
+  }
+
+  /** Mở cổng metrics riêng; port 0 để hệ điều hành chọn cổng trong test. */
   async listen(port: number): Promise<number> {
     this.server = createServer((req, res) => {
       if (req.method !== 'GET' || req.url !== '/metrics') {
