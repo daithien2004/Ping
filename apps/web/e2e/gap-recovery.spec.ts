@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { expect, test } from '@playwright/test';
-import { type AuthResponse, type ServerDetail } from '@ping/shared';
+import { type ServerDetail } from '@ping/shared';
+import { pacedLogin } from './login-pace';
 
 const API = 'http://localhost:4000/api/v1';
 const SEED_PASSWORD = 'password123';
@@ -21,19 +22,15 @@ test('gap recovery: 100 messages sent while offline are patched in order after r
   const senderContext = await browser.newContext();
   try {
     const login = async (email: string, password: string) => {
-      const response = await senderContext.request.post(`${API}/auth/login`, {
-        data: { email, password },
-      });
-      expect(response.ok()).toBeTruthy();
-      const auth = (await response.json()) as AuthResponse;
+      const auth = await pacedLogin(senderContext.request, email, password);
       return { Authorization: `Bearer ${auth.accessToken}` };
     };
 
-    const viewerLogin = await viewerContext.request.post(`${API}/auth/login`, {
-      data: { email: process.env.E2E_EMAIL!, password: process.env.E2E_PASSWORD! },
-    });
-    expect(viewerLogin.ok()).toBeTruthy();
-    const viewerAuth = (await viewerLogin.json()) as AuthResponse;
+    const viewerAuth = await pacedLogin(
+      viewerContext.request,
+      process.env.E2E_EMAIL!,
+      process.env.E2E_PASSWORD!,
+    );
     const viewerHeaders = { Authorization: `Bearer ${viewerAuth.accessToken}` };
 
     const senders = [

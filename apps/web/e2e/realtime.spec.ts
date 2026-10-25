@@ -1,6 +1,7 @@
 import { createHmac, randomUUID } from 'node:crypto';
 import { expect, test, type WebSocketRoute } from '@playwright/test';
 import type { AuthResponse, ChannelDto, MemberPage, MessageDto, ServerDetail } from '@ping/shared';
+import { pacedLogin } from './login-pace';
 
 const API = 'http://localhost:4000/api/v1';
 
@@ -31,11 +32,7 @@ test('two isolated sessions: messages, typing, missed events, edits, deletes and
     }
   }
   try {
-    const login = await a.request.post(`${API}/auth/login`, {
-      data: { email: process.env.E2E_EMAIL, password: process.env.E2E_PASSWORD },
-    });
-    expect(login.ok()).toBeTruthy();
-    const owner = (await login.json()) as AuthResponse;
+    const owner = await pacedLogin(a.request, process.env.E2E_EMAIL!, process.env.E2E_PASSWORD!);
     const auth = { Authorization: `Bearer ${owner.accessToken}` };
     const suffix = randomUUID().slice(0, 8);
     const registered = await b.request.post(`${API}/auth/register`, {

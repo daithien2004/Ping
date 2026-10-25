@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { expect, test } from '@playwright/test';
+import { pacedLogin } from './login-pace';
 import type { AuthResponse, ChannelDto, RoleDto, ServerDetail } from '@ping/shared';
 
 const API = 'http://localhost:4000/api/v1';
@@ -13,11 +14,7 @@ test('permissions in the UI: menus follow ownership, edit and delete, live permi
   const b = await browser.newContext();
   try {
     const suffix = randomUUID().slice(0, 8);
-    const owner = (await (
-      await a.request.post(`${API}/auth/login`, {
-        data: { email: process.env.E2E_EMAIL, password: process.env.E2E_PASSWORD },
-      })
-    ).json()) as AuthResponse;
+    const owner = await pacedLogin(a.request, process.env.E2E_EMAIL!, process.env.E2E_PASSWORD!);
     const member = (await (
       await b.request.post(`${API}/auth/register`, {
         data: {

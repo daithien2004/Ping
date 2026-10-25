@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { expect, test } from '@playwright/test';
+import { pacedLogin } from './login-pace';
 import type { AuthResponse, ServerDetail } from '@ping/shared';
 
 // H10 (ADR-0030): panel thành viên, presence realtime giữa hai phiên, ẩn/hiện bằng nút.
@@ -12,11 +13,7 @@ test('member panel shows who is online, follows presence live, and can be hidden
   const a = await browser.newContext();
   const b = await browser.newContext();
   try {
-    const owner = (await (
-      await a.request.post(`${API}/auth/login`, {
-        data: { email: process.env.E2E_EMAIL, password: process.env.E2E_PASSWORD },
-      })
-    ).json()) as AuthResponse;
+    const owner = await pacedLogin(a.request, process.env.E2E_EMAIL!, process.env.E2E_PASSWORD!);
     const suffix = randomUUID().slice(0, 6);
     const displayName = `Zed ${suffix}`;
     const joiner = (await (

@@ -7,6 +7,7 @@ import {
   type RoleDto,
   type ServerDetail,
 } from '@ping/shared';
+import { pacedLogin } from './login-pace';
 
 const API = 'http://localhost:4000/api/v1';
 
@@ -24,11 +25,11 @@ test('admin roles: create, reorder, assign, realtime permissions and hierarchy g
   const plainContext = await browser.newContext();
   try {
     const suffix = randomUUID().slice(0, 8);
-    const ownerAuth = (await (
-      await ownerContext.request.post(`${API}/auth/login`, {
-        data: { email: process.env.E2E_EMAIL, password: process.env.E2E_PASSWORD },
-      })
-    ).json()) as AuthResponse;
+    const ownerAuth = await pacedLogin(
+      ownerContext.request,
+      process.env.E2E_EMAIL!,
+      process.env.E2E_PASSWORD!,
+    );
     const ownerHeaders = { Authorization: `Bearer ${ownerAuth.accessToken}` };
 
     const register = async (context: typeof ownerContext, prefix: string) => {

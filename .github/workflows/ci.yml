@@ -23,6 +23,28 @@ env:
   WEB_ORIGIN: http://localhost:3000
 
 jobs:
+  # Lọc docs-only: commit chỉ đụng docs/*.md/LICENSE thì các job nặng (web-e2e) bỏ qua.
+  # KHÔNG dùng paths-ignore ở cấp `on:` — workflow bị skip toàn bộ sẽ treo required check
+  # ở trạng thái "Expected" vĩnh viễn; skip ở cấp job thì GitHub tính là đạt.
+  # .github/** cố ý KHÔNG nằm trong vùng an toàn: sửa CI/Playwright cần chính run này
+  # để kiểm chứng. Filter dạng đảo: file mới ở thư mục lạ mặc định là CHẠY, không bỏ sót.
+  changes:
+    name: changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            code:
+              - '**'
+              - '!docs/**'
+              - '!**/*.md'
+              - '!LICENSE'
   verify:
     name: verify
     runs-on: ubuntu-latest
@@ -89,6 +111,9 @@ jobs:
     name: web-e2e
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # main luôn chạy đủ (mốc xanh đầy đủ); nhánh khác chỉ bỏ qua khi commit thuần docs.
+    needs: changes
+    if: github.ref == 'refs/heads/main' || needs.changes.outputs.code == 'true'
     services:
       postgres:
         image: postgres:17
@@ -117,9 +142,26 @@ jobs:
       # `POST /auth/register` (5 lượt/phút/IP) — DB dev local luôn có seed, CI phải tạo tương tự.
       # Seed idempotent (id cố định + upsert) nên chạy lại không đổi dữ liệu.
       - run: pnpm --filter api exec prisma db seed
+      # Browser cache chỉ chứa Chromium; `--with-deps` vẫn chạy khi cache hit vì apt deps
+      # không nằm trong ~/.cache/ms-playwright.
+      - name: Get Playwright version
+        id: pw-version
+        run: echo "version=$(pnpm --filter web exec playwright --version)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw-version.outputs.version }}
       - run: pnpm --filter web exec playwright install --with-deps chromium
-      # Playwright tự bật API (start:dev) và web (dev) theo playwright.config.ts.
+      # E2E chạy bản production (E2E_PRODUCTION=1): build web + API một lần ở đây,
+      # bỏ chi phí compile lạnh từng route của next dev — đo baseline, bước test:e2e
+      # chiếm ~85–90% thời gian job.
+      - run: pnpm --filter api build
+      - run: pnpm --filter web build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:4000
       - run: pnpm --filter web test:e2e
+        env:
+          E2E_PRODUCTION: '1'
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

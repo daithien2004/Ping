@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { expect, test, type Page } from '@playwright/test';
+import { pacedLogin } from './login-pace';
 import type { AuthResponse, RoleDto, ServerDetail } from '@ping/shared';
 
 const API = 'http://localhost:4000/api/v1';
@@ -20,11 +21,11 @@ test('admin surface: audit log follows permissions, role permissions save, dange
   const member = await browser.newContext();
   try {
     const suffix = randomUUID().slice(0, 8);
-    const ownerAuth = (await (
-      await owner.request.post(`${API}/auth/login`, {
-        data: { email: process.env.E2E_EMAIL, password: process.env.E2E_PASSWORD },
-      })
-    ).json()) as AuthResponse;
+    const ownerAuth = await pacedLogin(
+      owner.request,
+      process.env.E2E_EMAIL!,
+      process.env.E2E_PASSWORD!,
+    );
     const memberAuth = (await (
       await member.request.post(`${API}/auth/register`, {
         data: {

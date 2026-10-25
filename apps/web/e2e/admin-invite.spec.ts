@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { expect, test, type Page } from '@playwright/test';
-import { type AuthResponse, type ServerDetail } from '@ping/shared';
+import { type ServerDetail } from '@ping/shared';
+import { pacedLogin } from './login-pace';
 
 const API = 'http://localhost:4000/api/v1';
 const SEED_PASSWORD = 'password123';
@@ -23,11 +24,7 @@ test('admin invite: display, regenerate revokes old code, join reports clear err
   const joinerContext = await browser.newContext();
   try {
     const login = async (context: typeof ownerContext, email: string, password: string) => {
-      const response = await context.request.post(`${API}/auth/login`, {
-        data: { email, password },
-      });
-      expect(response.ok()).toBeTruthy();
-      const auth = (await response.json()) as AuthResponse;
+      const auth = await pacedLogin(context.request, email, password);
       return { auth, headers: { Authorization: `Bearer ${auth.accessToken}` } };
     };
 

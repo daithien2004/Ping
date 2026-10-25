@@ -8,6 +8,14 @@ import { defineConfig, devices } from '@playwright/test';
 /** Cổng web: mặc định 3000, đổi bằng WEB_PORT khi máy đang bận cổng 3000 (app khác). */
 const webPort = Number(process.env.WEB_PORT ?? 3000);
 
+/**
+ * E2E_PRODUCTION=1 (CI): web chạy `next start` và API chạy `start:prod` trên bản build
+ * — loại chi phí compile lạnh từng route của next dev (đo baseline: test:e2e chiếm 85–90%
+ * thời gian job CI). Máy dev giữ chế độ dev cho vòng lặp nhanh; đặt biến này khi cần tái lập.
+ * Chế độ production yêu cầu build trước: `pnpm --filter api build && pnpm --filter web build`.
+ */
+const production = process.env.E2E_PRODUCTION === '1';
+
 export default defineConfig({
   testDir: './e2e',
   globalSetup: './e2e/global-setup.ts',
@@ -24,7 +32,7 @@ export default defineConfig({
   },
   webServer: [
     {
-      command: 'pnpm --filter api start:dev',
+      command: production ? 'pnpm --filter api start:prod' : 'pnpm --filter api start:dev',
       url: 'http://localhost:4000/api/v1/health',
       reuseExistingServer: true,
       timeout: 120_000,
@@ -35,11 +43,11 @@ export default defineConfig({
       gracefulShutdown: { signal: 'SIGTERM', timeout: 5_000 },
     },
     {
-      command: 'pnpm --filter web dev',
+      command: production ? 'pnpm --filter web start' : 'pnpm --filter web dev',
       url: `http://localhost:${webPort}`,
       reuseExistingServer: true,
       timeout: 120_000,
-      // `next dev` đọc PORT; truyền kèm để không đụng cổng của app khác trên máy.
+      // `next start`/`next dev` đọc PORT; truyền kèm để không đụng cổng của app khác trên máy.
       env: { ...process.env, PORT: String(webPort) },
       gracefulShutdown: { signal: 'SIGTERM', timeout: 5_000 },
     },
