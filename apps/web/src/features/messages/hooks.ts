@@ -21,6 +21,7 @@ import { qk } from '@/lib/query-keys';
 import {
   listMessages,
   listMessagesAfter,
+  listMessagesAround,
   sendMessage,
   editMessageRequest,
   deleteMessageRequest,
@@ -39,16 +40,31 @@ import {
   preserveLocalMessages,
   patchGap,
   oldestFirst,
+  prependNewer,
+  replaceWithWindow,
 } from './message-cache';
 
 /** Lịch sử tin theo trang (cursor `before`). Trang 0 mới nhất; fetchNextPage() lấy trang cũ hơn. */
 export function useMessages(channelId: string) {
-  return useSuspenseInfiniteQuery({
+  // `TData` = MessagesCache (không chỉ InfiniteData) để nơi dùng đọc được `window` của permalink
+  // TG.5 — thuộc tính phụ do structuralSharing/seed gắn vào cache.
+  return useSuspenseInfiniteQuery<
+    ClientMessagePage,
+    Error,
+    MessagesCache,
+    readonly ['channels', string, 'messages'],
+    string | undefined
+  >({
     queryKey: qk.messages(channelId),
     queryFn: ({ pageParam }): Promise<ClientMessagePage> => listMessages(channelId, pageParam),
-    initialPageParam: undefined as string | undefined,
+    initialPageParam: undefined,
     // Tin cuối trang là tin CŨ NHẤT của trang đó → con trỏ cho trang kế tiếp.
     getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.messages.at(-1)?.id : undefined),
+    // Cửa sổ permalink (TG.5): refetch tự động của infinite query sẽ nạp lại các trang theo
+    // pageParams (đều là `undefined` trong cửa sổ) và xóa `window`. Đồng bộ lại bằng
+    // useChannelSync thay vì refetch ngầm.
+    refetchOnWindowFocus: (query) => !(query.state.data as MessagesCache | undefined)?.window,
+    refetchOnReconnect: (query) => !(query.state.data as MessagesCache | undefined)?.window,
     structuralSharing: (before, after) =>
       preserveLocalMessages(before as MessagesCache | undefined, after as MessagesCache),
   });
@@ -170,14 +186,30 @@ export function useMessageEvents(session: RealtimeSession) {
  * Đồng bộ lại kênh khi `channel.join` thành công (kể cả sau reconnect): vá khoảng trống bằng
  * `?after=` từ tail cache (ADR-0044) thay vì refetch toàn bộ trang đã tải. Cache trống, tail là
  * tin optimistic hoặc lỗi giữa chừng → fallback `invalidateQueries` như hành vi trước T4.4.
+ *
+ * TG.5: nếu cache đang là CỬA SỔ quanh tin đích của permalink thì nạp lại đúng cửa sổ đó (một
+ * truy vấn keyset), không kéo cả lịch sử từ tin cũ tới hiện tại.
  */
 export function useChannelSync(channelId: string) {
   const queryClient = useQueryClient();
   return async () => {
     const key = qk.messages(channelId);
     await queryClient.cancelQueries({ queryKey: key, exact: true });
+    const cache = queryClient.getQueryData<MessagesCache>(key);
+    if (cache?.window) {
+      try {
+        const page = await listMessagesAround(channelId, cache.window.aroundId);
+        queryClient.setQueryData<MessagesCache>(key, (old) =>
+          replaceWithWindow(old, page, cache.window!.aroundId),
+        );
+      } catch {
+        // Tin đích đã bị xóa/không còn quyền: quay về trang mới nhất.
+        await queryClient.invalidateQueries({ queryKey: key, exact: true });
+      }
+      return;
+    }
     // Trang 0 mới nhất trước: phần tử đầu là tin mới nhất client đã thấy.
-    const tail = queryClient.getQueryData<MessagesCache>(key)?.pages[0]?.messages[0]?.id;
+    const tail = cache?.pages[0]?.messages[0]?.id;
     if (!tail || tail.startsWith('temp-')) {
       await queryClient.invalidateQueries({ queryKey: key, exact: true });
       return;
@@ -199,9 +231,14 @@ export function useChannelSync(channelId: string) {
       const byId = new Map(fetched.map((message) => [message.id, message]));
       for (const message of newest.messages) byId.set(message.id, message);
       const combined = [...byId.values()].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
-      queryClient.setQueryData<MessagesCache>(key, (old) =>
-        old ? patchGap(old, tail, combined) : old,
-      );
+      queryClient.setQueryData<MessagesCache>(key, (old) => {
+        // TG.5: cửa sổ permalink có thể được seed trong lúc chờ mạng ở trên (channel.join và
+        // useSeedAround chạy song song khi mở permalink). Vá kiểu "nối tới hiện tại" vào cửa sổ sẽ
+        // nhét cả trang mới nhất vào trang 0 — `pages[0].messages[0]` hoá thành tin mới nhất thật,
+        // nút "Tải tin mới hơn" tưởng đã hết tin và biến mất. Bỏ qua: cửa sổ đã tự nạp đúng.
+        if (!old || old.window) return old;
+        return patchGap(old, tail, combined);
+      });
     } catch {
       await queryClient.invalidateQueries({ queryKey: key, exact: true });
     }
@@ -254,4 +291,57 @@ export function useSendMessage(channelId: string) {
     onSuccess: (message) => update((old) => upsertMessage(old, message)),
     onError: (_error, input) => update((old) => markFailed(old, input.nonce)),
   });
+}
+
+/**
+ * TG.5: rời permalink về kênh bình thường → xóa cache đang là cửa sổ và nạp lại trang mới nhất.
+ * `resetQueries` (không phải invalidate) vì `pageParams` của cửa sổ đều là `undefined`; refetch
+ * từng trang theo các cursor đó sẽ nhân bản trang mới nhất.
+ */
+export function useResetWindow(channelId: string) {
+  const queryClient = useQueryClient();
+  return async () => {
+    const key = qk.messages(channelId);
+    if (!queryClient.getQueryData<MessagesCache>(key)?.window) return;
+    await queryClient.resetQueries({ queryKey: key, exact: true });
+  };
+}
+
+/**
+ * TG.5: nạp cửa sổ quanh tin đích của permalink vào cache (thay trang mới nhất đang có).
+ * Trả về `'missing'` khi tin không tồn tại/không còn quyền (API 404/403) để UI báo rõ thay vì treo.
+ */
+export function useSeedAround(channelId: string) {
+  const queryClient = useQueryClient();
+  return async (messageId: string): Promise<'ok' | 'missing'> => {
+    const key = qk.messages(channelId);
+    try {
+      const page = await listMessagesAround(channelId, messageId);
+      queryClient.setQueryData<MessagesCache>(key, (old) =>
+        replaceWithWindow(old, page, messageId),
+      );
+      return 'ok';
+    } catch (error) {
+      if (error instanceof ApiError && (error.status === 404 || error.status === 403)) {
+        return 'missing';
+      }
+      throw error;
+    }
+  };
+}
+
+/**
+ * TG.5: tải trang MỚI HƠN của cửa sổ permalink (nối dần tới tin mới nhất). Chỉ hoạt động khi
+ * cache đang ở chế độ cửa sổ — cache thường đã có tin mới nhất nên không cần.
+ */
+export function useLoadNewer(channelId: string) {
+  const queryClient = useQueryClient();
+  return async (): Promise<void> => {
+    const key = qk.messages(channelId);
+    const cache = queryClient.getQueryData<MessagesCache>(key);
+    const newest = cache?.pages[0]?.messages[0]?.id;
+    if (!cache?.window || !newest) return;
+    const page = await listMessagesAfter(channelId, newest);
+    queryClient.setQueryData<MessagesCache>(key, (old) => prependNewer(old, page));
+  };
 }

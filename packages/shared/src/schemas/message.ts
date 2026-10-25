@@ -35,8 +35,13 @@ export interface MessageDto {
   replyTo: MessageReplyPreview | null;
 }
 
-/** GET /channels/:id/messages: mới nhất trước; `hasMore` = còn tin cũ hơn tin cuối trang. */
+/**
+ * GET /channels/:id/messages: mới nhất trước; `hasMore` = còn tin cũ hơn tin cuối trang.
+ * `hasNewer` chỉ có ở chế độ `?around=` (TG.5): cửa sổ quanh một tin cũ, còn tin MỚI hơn ở dưới
+ * (tải tiếp bằng `after` = tin mới nhất của cửa sổ).
+ */
 export interface MessagePage {
   messages: MessageDto[];
   hasMore: boolean;
+  hasNewer?: boolean;
 }

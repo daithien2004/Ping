@@ -14,6 +14,15 @@ export const listMessages = (channelId: string, before?: string) =>
 export const listMessagesAfter = (channelId: string, after: string) =>
   api.get<MessagePage>(`/channels/${channelId}/messages?after=${encodeURIComponent(after)}`);
 
+/**
+ * TG.5: cửa sổ quanh một tin cho permalink — `hasMore` = còn tin cũ hơn, `hasNewer` = còn tin
+ * mới hơn (tải tiếp bằng `listMessagesAfter` với tin mới nhất của cửa sổ).
+ */
+export const listMessagesAround = (channelId: string, around: string, limit = 50) =>
+  api.get<MessagePage>(
+    `/channels/${channelId}/messages?around=${encodeURIComponent(around)}&limit=${limit}`,
+  );
+
 /** Gửi lại với CÙNG nonce là an toàn: server trả lại tin đã tạo thay vì tạo bản thứ hai. */
 export const sendMessage = (channelId: string, input: CreateMessageInput) =>
   api.post<MessageDto>(`/channels/${channelId}/messages`, input);

@@ -6,17 +6,27 @@ import { MarkdownText } from './markdown-text';
 
 interface Props {
   message: ClientMessage;
+  /** TG.5: permalink tương đối của tin (menu "Sao chép liên kết"). */
+  permalink: string;
   onRetry: (message: ClientMessage) => void;
   onAction: (selection: MessageSelection) => void;
   /** TG.1: đặt tin này làm đích trả lời trong composer. */
   onReply: (message: ClientMessage) => void;
-  /** TG.1: nhảy tới tin gốc (TG.5 sẽ mở rộng cho tin chưa tải). */
+  /** Nhảy tới tin gốc của reply; tin chưa tải → mở permalink (TG.5). */
   onJumpTo: (messageId: string) => void;
-  /** Tin đang được nhảy tới từ chip trích dẫn của AI. */
+  /** Tin đang được nhảy tới từ chip trích dẫn của AI hoặc permalink. */
   highlighted?: boolean;
 }
 
-export function MessageItem({ message, onRetry, onAction, onReply, onJumpTo, highlighted }: Props) {
+export function MessageItem({
+  message,
+  permalink,
+  onRetry,
+  onAction,
+  onReply,
+  onJumpTo,
+  highlighted,
+}: Props) {
   const { ability, ready } = useServerAbility();
   const t = useTranslations();
   // Theo ngôn ngữ và múi giờ của trình duyệt (LocaleProvider), không viết cứng 'vi'.
@@ -26,6 +36,7 @@ export function MessageItem({ message, onRetry, onAction, onReply, onJumpTo, hig
     <article
       id={`message-${message.id}`}
       data-message-id={message.id}
+      data-highlighted={highlighted ? 'true' : undefined}
       className={`px-4 py-1.5 transition-colors hover:bg-accent/50 ${message.status === 'sending' ? 'opacity-60' : ''} ${highlighted ? 'bg-accent ring-1 ring-ring/40' : ''}`}
       aria-busy={message.status === 'sending' || undefined}
     >
@@ -42,7 +53,12 @@ export function MessageItem({ message, onRetry, onAction, onReply, onJumpTo, hig
         {message.editedAt && (
           <span className="text-xs text-muted-foreground">{t('messages.edited')}</span>
         )}
-        <MessageActions message={message} onAction={onAction} onReply={onReply} />
+        <MessageActions
+          message={message}
+          permalink={permalink}
+          onAction={onAction}
+          onReply={onReply}
+        />
       </header>
       {replyTo && (
         <button

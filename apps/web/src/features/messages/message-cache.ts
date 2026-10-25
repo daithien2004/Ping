@@ -12,10 +12,19 @@ export interface ClientMessagePage {
   hasMore: boolean;
 }
 
+/** TG.5: cache đang là cửa sổ quanh một tin (permalink), không phải từ tin mới nhất. */
+export interface MessagesWindow {
+  /** Tin đích của permalink — nạp lại đúng cửa sổ này khi reconnect. */
+  aroundId: string;
+  /** Còn tin MỚI hơn cửa sổ (tải tiếp bằng `after` = tin mới nhất đang có). */
+  hasNewer: boolean;
+}
+
 /** Trang 0 = mới nhất; trong mỗi trang tin xếp mới → cũ (đúng thứ tự API trả). */
 export type MessagesCache = InfiniteData<ClientMessagePage, string | undefined> & {
   deletedIds?: string[];
   deletedNonces?: string[];
+  window?: MessagesWindow;
 };
 
 /** Danh sách để hiển thị: tin cũ ở trên, mới ở dưới. */
@@ -199,7 +208,14 @@ export function preserveLocalMessages(
       result = upsertMessage(result, message) ?? result;
     }
   }
-  return result;
+  // TG.5: `fetchNextPage` của infinite query dựng lại `{pages, pageParams}` TỪ ĐẦU (không spread
+  // dữ liệu cũ), nên metadata cửa sổ permalink mất nếu không giữ ở đây — mất cờ `hasNewer` thì
+  // nút "Tải tin mới hơn" biến mất ngay sau lần tải tin cũ đầu tiên. Writer của TG.5 luôn đặt
+  // `window` trong `after` nên giá trị của `after` thắng; `resetQueries` xóa hẳn cache nên rời
+  // permalink vẫn về trang mới nhất.
+  return after.window === undefined && before?.window
+    ? { ...result, window: before.window }
+    : result;
 }
 
 /**
@@ -235,4 +251,66 @@ export function patchGap(
       ),
     })),
   };
+}
+
+/**
+ * TG.5: thay cache bằng cửa sổ quanh tin đích của permalink (một trang). `pageParam` vẫn là
+ * `undefined` để `getNextPageParam` của infinite query nối tiếp các trang CŨ hơn như bình thường.
+ */
+export function aroundWindow(
+  page: { messages: ClientMessage[]; hasMore: boolean; hasNewer?: boolean },
+  aroundId: string,
+): MessagesCache {
+  return {
+    pages: [{ messages: page.messages, hasMore: page.hasMore }],
+    pageParams: [undefined],
+    window: { aroundId, hasNewer: page.hasNewer ?? false },
+  };
+}
+
+/**
+ * TG.5: nối một trang MỚI HƠN vào cửa sổ permalink. API `after` trả tăng dần nên đảo lại cho
+ * đúng quy ước trang (mới → cũ), rồi chèn lên đầu `pages` (trang 0 = mới nhất).
+ */
+export function prependNewer(
+  cache: MessagesCache | undefined,
+  page: { messages: ClientMessage[]; hasMore: boolean },
+): MessagesCache | undefined {
+  if (!cache?.window) return cache;
+  return {
+    ...cache,
+    pages: [{ messages: [...page.messages].reverse(), hasMore: false }, ...cache.pages],
+    pageParams: [undefined, ...cache.pageParams],
+    window: { ...cache.window, hasNewer: page.hasMore },
+  };
+}
+
+/**
+ * TG.5: thay cache bằng cửa sổ permalink nhưng giữ các bất biến của cache cũ: id/nonce đã xóa
+ * không được sống lại, tin optimistic chưa xác nhận vẫn còn (chưa nằm trong cửa sổ server trả).
+ */
+export function replaceWithWindow(
+  cache: MessagesCache | undefined,
+  page: { messages: ClientMessage[]; hasMore: boolean; hasNewer?: boolean },
+  aroundId: string,
+): MessagesCache {
+  const next = aroundWindow(page, aroundId);
+  if (!cache) return next;
+  const hidden = new Set(cache.deletedIds ?? []);
+  const hiddenNonces = new Set(cache.deletedNonces ?? []);
+  let result: MessagesCache = {
+    ...next,
+    deletedIds: cache.deletedIds,
+    deletedNonces: cache.deletedNonces,
+    pages: next.pages.map((row) => ({
+      ...row,
+      messages: row.messages.filter(
+        (message) => !hidden.has(message.id) && !hiddenNonces.has(nonceKey(message)),
+      ),
+    })),
+  };
+  for (const message of oldestFirst(cache)) {
+    if (message.status) result = upsertMessage(result, message) ?? result;
+  }
+  return result;
 }

@@ -1,5 +1,5 @@
 'use client';
-import { MoreHorizontal, Pencil, Reply, Trash2 } from 'lucide-react';
+import { Link2, MoreHorizontal, Pencil, Reply, Trash2 } from 'lucide-react';
 import { useTranslations } from 'use-intl';
 import { Button } from '@/components/ui/button';
 import {
@@ -8,6 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { pingToast } from '@/components/ui/ping-toast';
 import { useServerAbility } from '@/features/permissions/context';
 import { messageSubject } from '@/features/permissions/ability';
 import type { ClientMessage } from '../message-cache';
@@ -18,10 +19,13 @@ export interface MessageSelection {
 }
 export function MessageActions({
   message,
+  permalink,
   onAction,
   onReply,
 }: {
   message: ClientMessage;
+  /** TG.5: đường dẫn tương đối của tin — "Sao chép liên kết" ghép với origin hiện tại. */
+  permalink: string;
   onAction: (selection: MessageSelection) => void;
   /** TG.1: chọn tin để trả lời (không mở dialog, chỉ đặt thanh reply trong composer). */
   onReply: (message: ClientMessage) => void;
@@ -32,7 +36,17 @@ export function MessageActions({
   const canEdit = ability.can('update', target);
   const canDelete = ability.can('delete', target);
   const canReply = ability.can('create', 'Message');
-  if (message.status || (!canEdit && !canDelete && !canReply)) return null;
+  // Tin optimistic chưa có id thật → chưa có permalink.
+  if (message.status) return null;
+  async function copyLink() {
+    try {
+      await navigator.clipboard.writeText(new URL(permalink, window.location.origin).toString());
+      pingToast.success(t('linkCopied'));
+    } catch {
+      // Clipboard bị chặn (http, thiếu quyền): không im lặng, để người dùng tự copy từ URL.
+      pingToast.error(t('linkCopyFailed'));
+    }
+  }
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -47,6 +61,10 @@ export function MessageActions({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
+        <DropdownMenuItem onSelect={() => void copyLink()} data-testid="copy-link">
+          <Link2 />
+          {t('copyLink')}
+        </DropdownMenuItem>
         {canReply && (
           <DropdownMenuItem onSelect={() => onReply(message)}>
             <Reply />

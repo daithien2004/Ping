@@ -10,6 +10,8 @@ import {
   deleteMessage,
   preserveLocalMessages,
   patchGap,
+  aroundWindow,
+  prependNewer,
 } from './message-cache';
 
 const author = { id: 'u1', username: 'a', displayName: 'A', avatarUrl: null };
@@ -262,5 +264,61 @@ describe('chaos: đảo thứ tự / rớt gói / nonce trùng (T4.5)', () => {
     expect(shown.filter((m) => m.nonce === 'n1')).toHaveLength(1);
     expect(shown.find((m) => m.nonce === 'n1')?.status).toBeUndefined();
     expect(shown.find((m) => m.nonce === 'n1')?.id).toBe('m9');
+  });
+
+  it('aroundWindow: cache là MỘT trang quanh tin đích, giữ hasNewer + cursor tải tin cũ (TG.5)', () => {
+    const data = aroundWindow(
+      { messages: [msg('m6'), msg('m5'), msg('m4')], hasMore: true, hasNewer: true },
+      'm4',
+    );
+    expect(data.pages).toHaveLength(1);
+    expect(data.pageParams).toEqual([undefined]);
+    expect(data.window).toEqual({ aroundId: 'm4', hasNewer: true });
+    expect(oldestFirst(data).map((m) => m.id)).toEqual(['m4', 'm5', 'm6']);
+    // Trang cuối là tin CŨ NHẤT → getNextPageParam của infinite query nối tiếp đúng chiều cũ.
+    expect(data.pages.at(-1)?.messages.at(-1)?.id).toBe('m4');
+  });
+
+  it('prependNewer: đảo trang after (tăng dần) thành mới→cũ và chèn lên đầu, cập nhật hasNewer (TG.5)', () => {
+    const windowed = aroundWindow(
+      { messages: [msg('m6'), msg('m5'), msg('m4')], hasMore: true, hasNewer: true },
+      'm4',
+    );
+    const more = prependNewer(windowed, {
+      messages: [msg('m7'), msg('m8')], // API `after` trả tăng dần
+      hasMore: false,
+    })!;
+    expect(oldestFirst(more).map((m) => m.id)).toEqual(['m4', 'm5', 'm6', 'm7', 'm8']);
+    expect(more.window).toEqual({ aroundId: 'm4', hasNewer: false });
+  });
+
+  it('prependNewer: cache không phải cửa sổ permalink thì trả nguyên (không phá luồng thường)', () => {
+    const normal = cache([msg('m2'), msg('m1')]);
+    expect(prependNewer(normal, { messages: [msg('m3')], hasMore: false })).toBe(normal);
+  });
+
+  it('preserveLocalMessages: giữ `window` khi fetchNextPage dựng lại {pages, pageParams} (TG.5)', () => {
+    const windowed = aroundWindow(
+      { messages: [msg('m6'), msg('m5'), msg('m4')], hasMore: true, hasNewer: true },
+      'm4',
+    );
+    // Đúng hình dạng `infiniteQueryBehavior` trả về khi tải trang cũ: chỉ có pages + pageParams,
+    // không spread metadata của cache trước đó. Thiếu bước giữ này thì nút "Tải tin mới hơn"
+    // biến mất ngay sau lần cuộn lên đầu (đã gặp trong e2e permalink).
+    const fetchedOlder: MessagesCache = {
+      pages: [windowed.pages[0]!, { messages: [msg('m3')], hasMore: true }],
+      pageParams: [undefined, 'm4'],
+    };
+    const kept = preserveLocalMessages(windowed, fetchedOlder);
+    expect(kept.window).toEqual({ aroundId: 'm4', hasNewer: true });
+    expect(kept.pages).toHaveLength(2);
+    // Writer của TG.5 (after có `window`) vẫn thắng giá trị cũ.
+    const replaced = preserveLocalMessages(
+      windowed,
+      aroundWindow({ messages: [msg('m9')], hasMore: true, hasNewer: false }, 'm9'),
+    );
+    expect(replaced.window).toEqual({ aroundId: 'm9', hasNewer: false });
+    // Cache thường (không có window) không bị thêm metadata.
+    expect(preserveLocalMessages(undefined, fetchedOlder).window).toBeUndefined();
   });
 });

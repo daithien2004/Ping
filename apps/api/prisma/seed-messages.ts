@@ -55,6 +55,14 @@ async function main(): Promise<void> {
 
   await prisma.message.createMany({ data });
   console.log(`Created ${data.length} messages in channel ${channelId}.`);
+  // E2E permalink (TG.5) cần id của tin đầu/giữa/cuối để mở đúng permalink.
+  console.log(
+    `SEED_IDS ${JSON.stringify({
+      first: data[0]?.id,
+      middle: data[Math.floor(data.length / 2)]?.id,
+      last: data.at(-1)?.id,
+    })}`,
+  );
   await prisma.$disconnect();
 }
 
