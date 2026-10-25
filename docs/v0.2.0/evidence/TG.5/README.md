@@ -3,7 +3,7 @@
 - Ngày/giờ: 2026-10-26 (UTC+7).
 - Người thực hiện: agent; thiết kế nằm trong kế hoạch Pha G (TG.5) OWNER đã duyệt.
 - Task, nhánh: TG.5 — `feat/tg5-permalink` (PR nháp local); base `c67171b` (main sau TG.1).
-- Commit code: `335697e`.
+- Commit code: `3d00e28`.
 - Môi trường: Windows, Docker Desktop, Playwright 1.63, Postgres/Redis local, `next dev`
   (trừ khi ghi rõ `E2E_PRODUCTION=1`).
 
