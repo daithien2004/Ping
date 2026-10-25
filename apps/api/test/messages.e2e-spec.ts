@@ -308,4 +308,49 @@ describe('Messages (e2e)', () => {
       });
     }
   });
+  it('GET messages?after — gap recovery (T4.4): tin mới hơn cursor, thứ tự tăng dần, hasMore còn mới hơn; bỏ tin đã xóa; before+after → 400', async () => {
+    // Hai tin mới riêng cho test này (không đụng messageIds của các test khác).
+    const sent1 = await api('post', `/api/v1/channels/${channelId}/messages`, author.token)
+      .send({ content: 'gap 1', nonce: randomUUID() })
+      .expect(201);
+    const sent2 = await api('post', `/api/v1/channels/${channelId}/messages`, author.token)
+      .send({ content: 'gap 2', nonce: randomUUID() })
+      .expect(201);
+
+    const gap = await api(
+      'get',
+      `/api/v1/channels/${channelId}/messages?limit=1&after=${messageIds[4]}`,
+      author.token,
+    ).expect(200);
+    expect(gap.body.messages.map((message: { id: string }) => message.id)).toEqual([sent1.body.id]);
+    expect(gap.body.hasMore).toBe(true);
+
+    const rest = await api(
+      'get',
+      `/api/v1/channels/${channelId}/messages?limit=1&after=${sent1.body.id}`,
+      author.token,
+    ).expect(200);
+    expect(rest.body.messages.map((message: { id: string }) => message.id)).toEqual([
+      sent2.body.id,
+    ]);
+    expect(rest.body.hasMore).toBe(false);
+
+    // Tin bị xóa mềm không nằm trong khoảng trả về.
+    await api('delete', `/api/v1/messages/${sent1.body.id}`, author.token).expect(200);
+    const afterDelete = await api(
+      'get',
+      `/api/v1/channels/${channelId}/messages?after=${messageIds[4]}`,
+      author.token,
+    ).expect(200);
+    expect(afterDelete.body.messages.map((message: { id: string }) => message.id)).not.toContain(
+      sent1.body.id,
+    );
+
+    // Hai chiều cursor cùng lúc bị từ chối.
+    await api(
+      'get',
+      `/api/v1/channels/${channelId}/messages?after=${messageIds[1]}&before=${messageIds[4]}`,
+      author.token,
+    ).expect(400);
+  });
 });
