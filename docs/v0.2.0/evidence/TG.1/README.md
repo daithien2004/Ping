@@ -82,5 +82,6 @@
 - CI nhánh `feat/tg1-reply`: **12/12 job success** — run
   [`40208841376`](https://github.com/daithien2004/Ping/actions/runs/40208841376) (verify, api-e2e,
   migrations, docker, drills, security, lighthouse + 3 shard web-e2e production build + gate).
-  Còn chờ OWNER duyệt merge `--no-ff` vào `main`.
+- Merge `--no-ff` vào `main`: commit `ceab294` (OWNER duyệt). CI `main`: **12/12 job success** —
+  run [`40210287082`](https://github.com/daithien2004/Ping/actions/runs/40210287082).
 - Kế tiếp theo lịch: TG.5 (permalink + `?around=`) → TG.2 (reaction — tái dùng emoji picker).
