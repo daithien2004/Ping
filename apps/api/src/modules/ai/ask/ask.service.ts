@@ -152,7 +152,8 @@ export class AskService {
         question,
       });
       const cached = await this.cache.get(cacheKey);
-      if (cached) {
+      const cachedCitations = cached ? this.extractCitations(cached.answer, allowedIds) : [];
+      if (cached && cachedCitations.length > 0) {
         // Cache đã qua kiểm trích dẫn; vẫn trả `meta/delta/done` để UI không cần nhánh riêng.
         outcome = 'cache_hit';
         yield {
@@ -166,7 +167,7 @@ export class AskService {
         yield { type: 'delta', data: { text: cached.answer } };
         yield {
           type: 'done',
-          data: { citations: cached.citations, model: cached.model },
+          data: { citations: cachedCitations, model: cached.model },
         };
         return;
       }
@@ -279,11 +280,20 @@ export class AskService {
 
   private extractCitations(answer: string, allowedIds: Set<string>): string[] {
     const found = new Set<string>();
-    // UUID chuẩn (variant 8/9/a/b). Prisma sinh `uuid(7)` nên không được khớp cứng version 4;
-    // an toàn nhờ `allowedIds` (chỉ id đã hydrate theo quyền mới được chấp nhận).
+    // Every UUID reference must be bracketed and belong to the hydrated context.
+    // Reject the entire answer on invented/bare references; filtering only the chip
+    // list would leave fabricated IDs in the text shown to the user (T5.9).
     const uuidPattern = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/gi;
     for (const match of answer.matchAll(uuidPattern)) {
-      if (allowedIds.has(match[0])) found.add(match[0]);
+      const id = match[0].toLowerCase();
+      const offset = match.index;
+      if (
+        !allowedIds.has(id) ||
+        answer[offset - 1] !== '[' ||
+        answer[offset + match[0].length] !== ']'
+      )
+        return [];
+      found.add(id);
     }
     return [...found];
   }

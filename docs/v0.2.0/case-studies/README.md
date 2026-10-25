@@ -8,3 +8,5 @@ chạy; ghi chưa đo khi thiếu. Chưa có case study hoàn chỉnh ở đây,
 
 Không đưa dữ liệu người dùng thật hoặc tài sản thiếu giấy phép vào ảnh/demo. Câu chuyện phải
 đủ rõ để OWNER giải thích quyết định và trade-off trong phỏng vấn.
+
+Case local mới: [Case 5 — LLM không tin cậy](cs-05-untrusted-llm.md), kèm phạm vi/giới hạn và evidence T5.9. Không tự đóng cổng hồ sơ staging hoặc các case còn lại.
