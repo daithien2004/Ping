@@ -19,8 +19,11 @@ function* markdownFiles(dir) {
 const link = /\[[^\]]*\]\(([^)\s]+)\)/g;
 const broken = [];
 for (const file of markdownFiles(root)) {
-  // Bỏ khối mã: ví dụ trong ``` có thể chứa cú pháp giống liên kết.
-  const text = readFileSync(file, 'utf8').replace(/```[\s\S]*?```/g, '');
+  // Bỏ khối mã và code span: ví dụ trong ``` hoặc `...` có thể chứa cú pháp giống liên kết
+  // (HANDOFF.md có `[text](url)` là ví dụ, không phải liên kết thật).
+  const text = readFileSync(file, 'utf8')
+    .replace(/```[\s\S]*?```/g, '')
+    .replace(/`[^`\n]*`/g, '');
   for (const match of text.matchAll(link)) {
     const target = match[1].split('#')[0];
     if (!target || /^(https?:|mailto:)/.test(target)) continue;

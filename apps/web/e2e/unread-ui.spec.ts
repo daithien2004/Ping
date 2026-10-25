@@ -55,8 +55,15 @@ test('unread ui: server/channel badges, mention badge, title, divider and two-ta
 
     // Owner mở tab A ở server khác (server E2E của global setup) — server test chưa xem.
     const tabA = await ownerContext.newPage();
+    // Chờ app nạp xong unread của server test trước khi bob gửi: event đến giữa lúc query
+    // đang bay sẽ bị lần fetch đó ghi đè (race có sẵn, không liên quan TG.1).
+    const unreadLoaded = tabA.waitForResponse(
+      (res) => res.url().includes(`/servers/${server.id}/unread`) && res.ok(),
+      { timeout: 20_000 },
+    );
     await tabA.goto('/');
     await expect(tabA.getByRole('button', { name: 'Tham gia server' })).toBeVisible();
+    await unreadLoaded;
     const testServerLink = tabA.getByRole('link', { name: new RegExp(server.name) });
     // Chưa có tin: link chỉ mang tên server (không kèm số unread).
     await expect(testServerLink).toBeVisible();
