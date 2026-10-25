@@ -8,4 +8,6 @@ export const Limits = {
   MAX_SERVERS_PER_USER: 100,
   /** Số mention khác nhau tối đa mỗi tin (T4.1, ADR-0043): vượt phần sau bị bỏ qua. */
   MENTIONS_PER_MESSAGE: 20,
+  /** Trần độ dài truy vấn tìm kiếm (T4.6, ADR-0045). */
+  SEARCH_QUERY_MAX: 200,
 } as const;

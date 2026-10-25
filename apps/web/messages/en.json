@@ -267,6 +267,22 @@
     "emptyAction": "Send the first message",
     "newDivider": "New"
   },
+  "search": {
+    "open": "Search in server",
+    "title": "Search messages",
+    "placeholder": "Search messages…",
+    "filterChannel": "Filter by channel",
+    "filterAllChannels": "All channels",
+    "filterAuthor": "Filter by author",
+    "filterAllAuthors": "Everyone",
+    "filterTime": "Time",
+    "filterAnyTime": "Any time",
+    "filterDays": "Last {days} days",
+    "typeToSearch": "Type a keyword to search this server.",
+    "noResults": "No messages found.",
+    "resultsLabel": "Search results",
+    "loadMore": "Load more"
+  },
   "landing": {
     "eyebrow": "Realtime chat for small teams",
     "title": "Ping — where your team talks",

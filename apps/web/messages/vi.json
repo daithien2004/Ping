@@ -267,6 +267,22 @@
     "emptyAction": "Gửi tin đầu tiên",
     "newDivider": "Tin mới"
   },
+  "search": {
+    "open": "Tìm trong server",
+    "title": "Tìm kiếm tin nhắn",
+    "placeholder": "Tìm tin nhắn…",
+    "filterChannel": "Lọc theo kênh",
+    "filterAllChannels": "Mọi kênh",
+    "filterAuthor": "Lọc theo người gửi",
+    "filterAllAuthors": "Mọi người",
+    "filterTime": "Thời gian",
+    "filterAnyTime": "Mọi lúc",
+    "filterDays": "{days} ngày qua",
+    "typeToSearch": "Nhập từ khóa để tìm trong server này.",
+    "noResults": "Không tìm thấy tin nào.",
+    "resultsLabel": "Kết quả tìm kiếm",
+    "loadMore": "Xem thêm"
+  },
   "landing": {
     "eyebrow": "Chat realtime cho nhóm nhỏ",
     "title": "Ping — nơi đội ngũ của bạn nói chuyện",
