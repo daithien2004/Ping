@@ -18,10 +18,17 @@ import {
 } from '@tanstack/react-query';
 import { useMe } from '@/features/auth/hooks';
 import { qk } from '@/lib/query-keys';
-import { listMessages, sendMessage, editMessageRequest, deleteMessageRequest } from './api';
+import {
+  listMessages,
+  listMessagesAfter,
+  sendMessage,
+  editMessageRequest,
+  deleteMessageRequest,
+} from './api';
 import { ApiError } from '@/lib/api-client';
 import { useServerAbility } from '@/features/permissions/context';
 import {
+  type ClientMessage,
   type ClientMessagePage,
   type MessagesCache,
   markFailed,
@@ -30,6 +37,7 @@ import {
   updateMessage,
   deleteMessage,
   preserveLocalMessages,
+  patchGap,
   oldestFirst,
 } from './message-cache';
 
@@ -158,11 +166,37 @@ export function useMessageEvents(session: RealtimeSession) {
   }, [session, queryClient]);
 }
 
+/**
+ * Đồng bộ lại kênh khi `channel.join` thành công (kể cả sau reconnect): vá khoảng trống bằng
+ * `?after=` từ tail cache (ADR-0044) thay vì refetch toàn bộ trang đã tải. Cache trống, tail là
+ * tin optimistic hoặc lỗi giữa chừng → fallback `invalidateQueries` như hành vi trước T4.4.
+ */
 export function useChannelSync(channelId: string) {
   const queryClient = useQueryClient();
   return async () => {
-    await queryClient.cancelQueries({ queryKey: qk.messages(channelId), exact: true });
-    await queryClient.invalidateQueries({ queryKey: qk.messages(channelId), exact: true });
+    const key = qk.messages(channelId);
+    await queryClient.cancelQueries({ queryKey: key, exact: true });
+    // Trang 0 mới nhất trước: phần tử đầu là tin mới nhất client đã thấy.
+    const tail = queryClient.getQueryData<MessagesCache>(key)?.pages[0]?.messages[0]?.id;
+    if (!tail || tail.startsWith('temp-')) {
+      await queryClient.invalidateQueries({ queryKey: key, exact: true });
+      return;
+    }
+    try {
+      const fetched: ClientMessage[] = [];
+      let cursor = tail;
+      for (;;) {
+        const page = await listMessagesAfter(channelId, cursor);
+        fetched.push(...page.messages);
+        if (!page.hasMore || page.messages.length === 0) break;
+        cursor = page.messages.at(-1)!.id;
+      }
+      queryClient.setQueryData<MessagesCache>(key, (old) =>
+        old ? patchGap(old, tail, fetched) : old,
+      );
+    } catch {
+      await queryClient.invalidateQueries({ queryKey: key, exact: true });
+    }
   };
 }
 

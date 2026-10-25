@@ -38,8 +38,26 @@ export class MessagesService {
    * Phân trang cursor/keyset (guide 10.3): WHERE id < before ORDER BY id DESC.
    * Nhảy thẳng tới đúng vị trí trong index (channelId, id desc) — không đọc rồi
    * vứt hàng chục nghìn row như OFFSET. Lấy dư 1 để biết còn trang cũ hơn không.
+   *
+   * `after` (T4.4, ADR-0044): chiều ngược — tin MỚI HƠN cursor, thứ tự tăng dần,
+   * `hasMore` = còn tin mới hơn nữa; dùng để vá khoảng trống khi reconnect.
    */
   async list(channelId: string, query: ListMessagesQuery) {
+    if (query.after !== undefined) {
+      const messages = await this.prisma.message.findMany({
+        where: {
+          channelId,
+          deletedAt: null,
+          id: { gt: query.after },
+        },
+        orderBy: { id: 'asc' },
+        take: query.limit + 1,
+        select: messageWithAuthor,
+      });
+      const hasMore = messages.length > query.limit;
+      return { messages: hasMore ? messages.slice(0, query.limit) : messages, hasMore };
+    }
+
     const messages = await this.prisma.message.findMany({
       where: {
         channelId,

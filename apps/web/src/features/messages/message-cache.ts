@@ -173,3 +173,37 @@ export function preserveLocalMessages(
   }
   return result;
 }
+
+/**
+ * Vá khoảng trống sau reconnect (T4.4, ADR-0044). `fetched` là TOÀN BỘ tin server trả về cho
+ * khoảng `(afterId, …]` (tăng dần, đã lặp hết hasMore): upsert từng tin về đúng chỗ; các tin
+ * trong cache nằm TRONG khoảng đã fetch mà vắng mặt ở server nghĩa là đã bị xóa lúc offline →
+ * bỏ đi. Chỉ xét tới id lớn nhất của fetched: tin đến sau đó (event socket chạy song song)
+ * không thuộc phạm vi và phải giữ. Tin optimistic cục bộ không bao giờ bị bỏ.
+ */
+export function patchGap(
+  cache: MessagesCache | undefined,
+  afterId: string,
+  fetched: ClientMessage[],
+): MessagesCache | undefined {
+  if (!cache) return cache;
+  let result = cache;
+  for (const message of fetched) {
+    result = upsertMessage(result, message) ?? result;
+  }
+  const upper = fetched.at(-1)?.id;
+  if (upper === undefined) return result;
+  const fetchedIds = new Set(fetched.map((message) => message.id));
+  return {
+    ...result,
+    pages: result.pages.map((page) => ({
+      ...page,
+      messages: page.messages.filter(
+        (message) =>
+          message.status !== undefined ||
+          message.id.startsWith('temp-') ||
+          !(message.id > afterId && message.id <= upper && !fetchedIds.has(message.id)),
+      ),
+    })),
+  };
+}

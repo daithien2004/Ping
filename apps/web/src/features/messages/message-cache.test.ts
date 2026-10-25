@@ -9,6 +9,7 @@ import {
   updateMessage,
   deleteMessage,
   preserveLocalMessages,
+  patchGap,
 } from './message-cache';
 
 const author = { id: 'u1', username: 'a', displayName: 'A', avatarUrl: null };
@@ -172,5 +173,38 @@ describe('message-cache', () => {
     const snapshot = JSON.stringify(before);
     upsertMessage(before, msg('m2'));
     expect(JSON.stringify(before)).toBe(snapshot);
+  });
+});
+
+describe('patchGap (T4.4, ADR-0044)', () => {
+  it('chèn đủ khoảng thiếu vào đúng vị trí, không trùng', () => {
+    // Cache có m1..m3 (mới nhất trước: trang 0 = [m3, m2]); fetch về m4, m5.
+    const before = cache([msg('m3'), msg('m2')], [msg('m1')]);
+    const patched = patchGap(before, 'm3', [msg('m4'), msg('m5')])!;
+    // Sau vá: m5, m4 đứng trước m3 trong trang 0 (thứ tự mới → cũ).
+    expect(ids(patched)![0]).toEqual(['m5', 'm4', 'm3', 'm2']);
+    expect(patched.pages[1]!.messages.map((m) => m.id)).toEqual(['m1']);
+  });
+
+  it('bỏ tin trong khoảng fetch mà server không trả (bị xóa lúc offline)', () => {
+    // Cache có m1..m4; offline xóa m3; fetch khoảng (m1, …] chỉ về m2, m4.
+    const before = cache([msg('m4'), msg('m3')], [msg('m2'), msg('m1')]);
+    const patched = patchGap(before, 'm1', [msg('m2'), msg('m4')])!;
+    expect(oldestFirst(patched).map((m) => m.id)).toEqual(['m1', 'm2', 'm4']);
+  });
+
+  it('KHÔNG bỏ tin mới hơn khoảng fetch (event đến song song) và tin optimistic', () => {
+    const pending = optimisticMessage({ content: 'soạn dở', nonce: 'n9' }, author);
+    // Cache: m2 (tail đã vá tới m1), có sẵn m3 từ event + tin optimistic.
+    const before = cache([pending, msg('m3'), msg('m2')], [msg('m1')]);
+    // Fetch khoảng (m1, m2] trả về đúng m2 — m3 nằm NGOÀI khoảng (m3 > upper=m2) → giữ.
+    const patched = patchGap(before, 'm1', [msg('m2')])!;
+    expect(oldestFirst(patched).map((m) => m.id)).toContain('m3');
+    expect(oldestFirst(patched).some((m) => m.id === 'temp-n9')).toBe(true);
+  });
+
+  it('fetch rỗng không đổi gì', () => {
+    const before = cache([msg('m2'), msg('m1')]);
+    expect(ids(patchGap(before, 'm2', []))).toEqual(ids(before));
   });
 });
