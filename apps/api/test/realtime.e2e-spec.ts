@@ -371,11 +371,20 @@ describe('Realtime across two instances (e2e)', () => {
 
     // Bystander là member nhưng chưa từng mở socket → counter 0 → 1 → broadcast.
     // (Dùng user chưa kết nối bao giờ để không phụ thuộc thứ tự test trước.)
-    const received = waitEvent<{ userId: string; status: string }>(
-      watcherB,
-      'presence.updated',
-      5000,
-    );
+    // Cửa sổ gộp presence (T1.2, 1 giây) có thể đang mang event presence của user khác
+    // (các socket kết nối trước đó) — chờ đúng event của bystander, bỏ qua event khác.
+    const received = (async () => {
+      const deadline = Date.now() + 10_000;
+      for (;;) {
+        const payload = await waitEvent<{ userId: string; status: string }>(
+          watcherB,
+          'presence.updated',
+          10_000,
+        );
+        if (payload.userId === bystander.id) return payload;
+        if (Date.now() > deadline) throw new Error('Timeout: không thấy presence của bystander');
+      }
+    })();
     const bystanderSocket = await connectClient(portA, bystander.token);
 
     const payload = await received;
@@ -386,7 +395,10 @@ describe('Realtime across two instances (e2e)', () => {
     const secondTab = await connectClient(portB, bystander.token);
     await settle();
     bystanderSocket.disconnect();
-    await assertNoEvent(watcherB, 'presence.updated');
+    // Xả cửa sổ gộp presence (1 giây) — event online trễ của bystander có thể đến muộn
+    // và assertNoEvent sẽ bắt nhầm nó; sau khi xả thì mọi event tiếp theo phải là offline.
+    await new Promise((resolve) => setTimeout(resolve, 1300));
+    await assertNoEvent(watcherB, 'presence.updated', 1500);
 
     const lastTabClosed = waitEvent<{ userId: string; status: string }>(
       watcherB,

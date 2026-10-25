@@ -265,7 +265,8 @@
     "edited": "(đã sửa)",
     "failed": "Gửi thất bại",
     "emptyAction": "Gửi tin đầu tiên",
-    "newDivider": "Tin mới"
+    "newDivider": "Tin mới",
+    "spoiler": "Nội dung bị che, bấm để xem"
   },
   "search": {
     "open": "Tìm trong server",

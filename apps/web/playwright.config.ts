@@ -28,6 +28,9 @@ export default defineConfig({
       url: 'http://localhost:4000/api/v1/health',
       reuseExistingServer: true,
       timeout: 120_000,
+      // CORS của API cho phép đúng origin của web e2e: khi WEB_PORT khác 3000 (cổng bận),
+      // browser ở cổng khác bị chặn CORS nếu API vẫn chỉ cho phép 3000.
+      env: { ...process.env, WEB_ORIGIN: `http://localhost:${webPort}` },
       // Windows: SIGTERM cho process tree (Playwright tự kill cây tiến trình) thay vì kill theo tên node.exe.
       gracefulShutdown: { signal: 'SIGTERM', timeout: 5_000 },
     },

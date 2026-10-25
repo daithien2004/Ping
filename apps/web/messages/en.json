@@ -265,7 +265,8 @@
     "edited": "(edited)",
     "failed": "Failed to send",
     "emptyAction": "Send the first message",
-    "newDivider": "New"
+    "newDivider": "New",
+    "spoiler": "Hidden content, click to reveal"
   },
   "search": {
     "open": "Search in server",
