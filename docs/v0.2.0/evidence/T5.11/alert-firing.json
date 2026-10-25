@@ -1,0 +1,21 @@
+{
+  "status": "success",
+  "data": {
+    "alerts": [
+      {
+        "labels": {
+          "alertname": "PingAiBudgetWarning",
+          "job": "ping-api",
+          "severity": "ticket"
+        },
+        "annotations": {
+          "runbook": "docs/runbook/alerts.md#pingaibudgetwarning",
+          "summary": "Daily AI spending is above 80% of the configured budget"
+        },
+        "state": "firing",
+        "activeAt": "2026-10-25T16:04:14.991351044Z",
+        "value": "8.099999999999999e-01"
+      }
+    ]
+  }
+}

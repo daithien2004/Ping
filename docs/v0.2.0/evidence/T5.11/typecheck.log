@@ -1,0 +1,53 @@
+
+> ping@0.2.0 typecheck D:\discord\Ping-t5.11
+> turbo run typecheck
+
+
+   • turbo 2.11.9
+   • Packages in scope: @ping/eslint-config, @ping/shared, @ping/tsconfig, api, web
+   • Running typecheck in 5 packages
+   • Remote caching disabled, using shared worktree cache
+
+@ping/shared:build: cache hit, replaying logs 1ac6aab5dac37519
+@ping/shared:build: 
+@ping/shared:build: > @ping/shared@0.2.0 build D:\discord\Ping\packages\shared
+@ping/shared:build: > tsup
+@ping/shared:build: 
+@ping/shared:build: [34mCLI[39m Building entry: src/index.ts
+@ping/shared:build: [34mCLI[39m Using tsconfig: tsconfig.json
+@ping/shared:build: [34mCLI[39m tsup v9.0.0
+@ping/shared:build: [34mCLI[39m Using tsup config: D:\discord\Ping\packages\shared\tsup.config.ts
+@ping/shared:build: [34mCLI[39m Target: es2023
+@ping/shared:build: [34mCLI[39m Cleaning output folder
+@ping/shared:build: [34mCJS[39m Build start
+@ping/shared:build: [34mESM[39m Build start
+@ping/shared:build: [32mCJS[39m [1mdist\index.cjs [22m[32m11.56 KB[39m
+@ping/shared:build: [32mCJS[39m ⚡️ Build success in 1680ms
+@ping/shared:build: [32mESM[39m [1mdist\index.js [22m[32m8.59 KB[39m
+@ping/shared:build: [32mESM[39m ⚡️ Build success in 1685ms
+@ping/shared:build: [34mDTS[39m Build start
+@ping/shared:build: [32mDTS[39m ⚡️ Build success in 2517ms
+@ping/shared:build: [32mDTS[39m [1mdist\index.d.cts [22m[32m22.65 KB[39m
+@ping/shared:build: [32mDTS[39m [1mdist\index.d.ts  [22m[32m22.65 KB[39m
+web:typecheck: cache miss, executing 37d8868e602fa9bf
+api:typecheck: cache miss, executing e5930d008f452c0d
+@ping/shared:typecheck: cache hit, replaying logs f2e595a38df25229
+@ping/shared:typecheck: 
+@ping/shared:typecheck: > @ping/shared@0.2.0 typecheck D:\discord\Ping\packages\shared
+@ping/shared:typecheck: > tsc --noEmit
+@ping/shared:typecheck: 
+web:typecheck: 
+web:typecheck: > web@0.2.0 typecheck D:\discord\Ping-t5.11\apps\web
+web:typecheck: > next typegen && tsc --noEmit
+web:typecheck: 
+api:typecheck: 
+api:typecheck: > api@0.2.0 typecheck D:\discord\Ping-t5.11\apps\api
+api:typecheck: > tsc --noEmit
+api:typecheck: 
+web:typecheck: Generating route types...
+web:typecheck: ✓ Types generated successfully
+
+ Tasks:    4 successful, 4 total
+Cached:    2 cached, 4 total
+  Time:    12.959s 
+

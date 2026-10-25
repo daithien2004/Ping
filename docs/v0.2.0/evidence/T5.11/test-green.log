@@ -1,0 +1,9 @@
+
+ RUN  v4.1.12 D:/discord/Ping-t5.11/apps/api
+
+
+ Test Files  4 passed (4)
+      Tests  36 passed (36)
+   Start at  23:08:26
+   Duration  1.67s (transform 406ms, setup 0ms, import 3.74s, tests 185ms, environment 0ms)
+

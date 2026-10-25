@@ -1,0 +1,35 @@
+Command: DATABASE_URL=<isolated ping_t511 database>, E2E_REDIS_URL=redis://localhost:6379/11 pnpm --filter api test:e2e
+Raw HTTP request logs omitted; Vitest output follows.
+
+> api@0.2.0 test:e2e D:\discord\Ping-t5.11\apps\api
+> pnpm --filter @ping/shared build && vitest run --config ./vitest.config.e2e.ts
+
+
+> @ping/shared@0.2.0 build D:\discord\Ping-t5.11\packages\shared
+> tsup
+
+CLI Building entry: src/index.ts
+CLI Using tsconfig: tsconfig.json
+CLI tsup v9.0.0
+CLI Using tsup config: D:\discord\Ping-t5.11\packages\shared\tsup.config.ts
+CLI Target: es2023
+CLI Cleaning output folder
+CJS Build start
+ESM Build start
+CJS dist\index.cjs 11.56 KB
+CJS ⚡️ Build success in 14ms
+ESM dist\index.js 8.59 KB
+ESM ⚡️ Build success in 14ms
+DTS Build start
+DTS ⚡️ Build success in 835ms
+DTS dist\index.d.cts 22.65 KB
+DTS dist\index.d.ts  22.65 KB
+
+ RUN  v4.1.12 D:/discord/Ping-t5.11/apps/api
+
+
+ Test Files  29 passed (29)
+      Tests  190 passed (190)
+   Start at  23:03:42
+   Duration  230.28s (transform 2.73s, setup 0ms, import 135.99s, tests 86.09s, environment 3ms)
+

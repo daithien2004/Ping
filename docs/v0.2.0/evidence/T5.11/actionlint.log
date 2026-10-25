@@ -1,0 +1,2 @@
+Command: docker run --rm -v D:/discord/Ping-t5.11:/repo:ro -w /repo rhysd/actionlint:latest .github/workflows/ci.yml
+Exit: 0
