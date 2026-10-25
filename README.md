@@ -47,6 +47,10 @@ của pnpm (cấu hình PATH), không phải script của dự án.
 Đăng nhập thử bằng tài khoản seed (mật khẩu `password123`): `alice@ping.dev`, `bob@ping.dev`, `carol@ping.dev` — cả
 ba đã ở trong server "Ping Playground". Mở hai trình duyệt (hoặc một cửa sổ ẩn danh) để thấy tin nhắn realtime.
 
+Cần dữ liệu demo nhiều hơn (thử tìm kiếm, phân trang, badge unread): `pnpm seed:demo` — 3 server theo chủ đề
+(qua bàn cà phê / nhóm lập trình / sở thích), 9 kênh, 21.600 tin tiếng Việt, 360 mention cho alice; tài khoản
+`david@ping.dev` đi kèm. Chạy lại bao nhiêu lần cũng cho cùng dữ liệu (id và nội dung cố định).
+
 Tài liệu API (Swagger) ở http://localhost:4000/docs khi không chạy production.
 
 ### Nếu không chạy được
