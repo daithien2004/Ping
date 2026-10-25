@@ -2,6 +2,7 @@ import { useFormatter, useTranslations } from 'use-intl';
 import type { ClientMessage } from '../message-cache';
 import { useServerAbility } from '@/features/permissions/context';
 import { MessageActions, type MessageSelection } from './message-actions';
+import { MarkdownText } from './markdown-text';
 
 interface Props {
   message: ClientMessage;
@@ -38,8 +39,9 @@ export function MessageItem({ message, onRetry, onAction, highlighted }: Props) 
         )}
         <MessageActions message={message} onAction={onAction} />
       </header>
-      {/* Văn bản thuần: React tự escape nên an toàn XSS; không bao giờ dangerouslySetInnerHTML. */}
-      <p className="wrap-break-word whitespace-pre-wrap">{message.content}</p>
+      {/* Markdown tập qua AST (TG.4, ADR-0054): renderer chỉ dựng element từ allowlist,
+          không đường sinh HTML; tin optimistic đang gửi vẫn hiển thị như văn bản thường. */}
+      <MarkdownText content={message.content} />
       {message.status === 'failed' && (
         <p className="text-xs text-destructive">
           {t('messages.failed')} ·{' '}
