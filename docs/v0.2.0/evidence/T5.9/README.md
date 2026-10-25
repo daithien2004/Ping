@@ -64,14 +64,14 @@ Live dùng Groq free tier `openai/gpt-oss-20b` (key chỉ trong `.env`, không c
 | Injection offline               | như trên                                                                                              | **12/12 an toàn**, 12/12 vẫn trả lời đúng            | canary/URL/tiền tố system prompt đều không lọt               |
 | Golden live (Groq free tier)    | `pnpm --filter api exec tsx scripts/eval-qa.ts --live`                                                | **30/30**                                            | `qa-live.json`                                               |
 | Injection live                  | như trên                                                                                              | **12/12 an toàn**, 12/12 trả lời đúng                | không ca nào bị bỏ qua                                       |
-| Hạn mức lượt gọi live           | report `calls`                                                                                        | **42/42**, đúng trần khai báo                        | 16.755 prompt + 6.298 completion = 23.053 token              |
+| Hạn mức lượt gọi live           | report `calls`                                                                                        | **42/42**, đúng trần khai báo                        | 16.755 prompt + 6.342 completion = 23.097 token              |
 | Liên kết tài liệu               | `pnpm docs:check`                                                                                     | pass                                                 | hai link tới file này từng đỏ trước khi thêm README          |
 
 Tham chiếu trong report: `sourceCommit` = `c67171b` (base — worktree chưa commit nên không tuyên bố là
-commit chứa implementation), `promptVersion` = `ask-v2-strict-citations`. `qa-offline.json` ghi hash
-corpus `6e24933f…` — khớp hash của bộ fixture hiện tại; `qa-live.json` ghi `180b3781…`, tức hai report
-**không** chạy trên cùng byte fixture, nên chỉ đọc số trong từng report, không so chéo và không coi cặp
-report là một lần đo liên tục (cần chạy lại live trên fixture hiện tại nếu cần khớp hash).
+commit chứa implementation), `promptVersion` = `ask-v2-strict-citations`, hash corpus của **cả hai**
+report = `6e24933f…`, khớp byte của bộ fixture đang commit. Lần live đầu (25/10, 23:36) ghi hash
+`180b3781…` vì chạy trên bản fixture trước khi chốt; lần live thứ hai (25/10, 17:13 UTC) chạy lại
+trên fixture hiện tại và thay report cũ, nên hai report giờ đo cùng một bộ câu hỏi.
 
 ## Giới hạn
 
@@ -81,8 +81,8 @@ report là một lần đo liên tục (cần chạy lại live trên fixture hi
   end-to-end.
 - Chấm facts bằng chuỗi đã bỏ dấu/chuẩn hoá chữ: proxy có thể có false positive/negative, không phải
   kiểm chứng ngữ nghĩa. 30 golden chỉ phủ 50 tin demo của T5.1.
-- Một lần chạy live (42 lượt). 12 payload injection không chứng minh an toàn với mọi injection; lỗi
-  provider không được tính là phòng thủ thành công.
+- Hai lần chạy live (mỗi lần 42 lượt, lần sau trên fixture đang commit). 12 payload injection không
+  chứng minh an toàn với mọi injection; lỗi provider không được tính là phòng thủ thành công.
 - Script không xác minh trạng thái billing/ZDR của tài khoản; chỉ dùng free tier đã được OWNER duyệt.
   Chi phí 0 USD là do giá cấu hình 0, không phải cam kết chi phí production.
 - Chưa đo tỉ lệ cache hit của traffic thật, chưa có rate limit riêng cho AI (T6.5) và chưa có người nhận
