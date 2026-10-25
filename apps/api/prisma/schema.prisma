@@ -193,6 +193,11 @@ model Message {
   editedAt  DateTime?
   deletedAt DateTime? // soft delete: moderation + đồng bộ realtime
   nonce     String?   // idempotency key do client sinh (xem 16.1)
+  // T4.6 (ADR-0045): cột sinh ở tầng SQL (migration fts_search):
+  //   GENERATED ALWAYS AS (to_tsvector('simple', f_unaccent("content"))) STORED
+  // Prisma không sinh được generated column nên chỉ khai báo kiểu để migrate diff khớp;
+  // đọc/viết cột này chỉ qua $queryRaw trong SearchService, không qua client.
+  search    Unsupported("tsvector")? @default(dbgenerated("to_tsvector('simple'::regconfig, f_unaccent(content))"))
   createdAt DateTime  @default(now())
 
   channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
@@ -205,6 +210,8 @@ model Message {
 
   // Index quan trọng nhất hệ thống: phân trang cursor (keyset) theo tin mới nhất.
   @@index([channelId, id(sort: Desc)])
+  // T4.6 (ADR-0045): FTS trên cột sinh `search` (index thật do migration fts_search tạo).
+  @@index([search], type: Gin, map: "Message_search_key")
 
   mentions MessageMention[]
 }
