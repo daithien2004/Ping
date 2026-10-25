@@ -191,8 +191,16 @@ export function useChannelSync(channelId: string) {
         if (!page.hasMore || page.messages.length === 0) break;
         cursor = page.messages.at(-1)!.id;
       }
+      // T4.5: sự kiện có thể RỚT GÓI khi vẫn còn kết nối (tail đã vượt qua tin bị mất, vòng
+      // `?after=` không thấy nữa) — merge thêm trang mới nhất để vá lỗ hổng trong phạm vi 50
+      // tin cuối. `prune: false`: trang mới nhất không đại diện toàn bộ khoảng, không được
+      // dùng để kết luận "cached id nào đó đã bị xóa".
+      const newest = await listMessages(channelId);
+      const byId = new Map(fetched.map((message) => [message.id, message]));
+      for (const message of newest.messages) byId.set(message.id, message);
+      const combined = [...byId.values()].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
       queryClient.setQueryData<MessagesCache>(key, (old) =>
-        old ? patchGap(old, tail, fetched) : old,
+        old ? patchGap(old, tail, combined) : old,
       );
     } catch {
       await queryClient.invalidateQueries({ queryKey: key, exact: true });

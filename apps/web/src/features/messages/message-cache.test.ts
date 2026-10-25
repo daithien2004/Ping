@@ -208,3 +208,47 @@ describe('patchGap (T4.4, ADR-0044)', () => {
     expect(ids(patchGap(before, 'm2', []))).toEqual(ids(before));
   });
 });
+
+describe('chaos: đảo thứ tự / rớt gói / nonce trùng (T4.5)', () => {
+  it('đảo thứ tự create (m5 đến trước m4) vẫn hiển thị đúng thứ tự', () => {
+    const base = cache([msg('m3'), msg('m2')], [msg('m1')]);
+    const withM5 = upsertMessage(base, msg('m5'))!;
+    const withM4 = upsertMessage(withM5, msg('m4'))!;
+    // Trang 0 mới nhất trước: m5 đứng trên m4.
+    expect(ids(withM4)![0]).toEqual(['m5', 'm4', 'm3', 'm2']);
+    expect(oldestFirst(withM4).map((m) => m.id)).toEqual(['m1', 'm2', 'm3', 'm4', 'm5']);
+  });
+
+  it('rớt gói giữa chừng: merge trang-mới-nhất (prune=false) vá lại tin bị mất, không trùng', () => {
+    // Sự kiện m3 bị rớt nhưng m4, m5 vẫn đến → cache thiếu m3.
+    const dropped = upsertMessage(
+      upsertMessage(cache([msg('m2'), msg('m1')]), msg('m4'))!,
+      msg('m5'),
+    )!;
+    expect(oldestFirst(dropped).map((m) => m.id)).toEqual(['m1', 'm2', 'm4', 'm5']);
+    // Reconnect: trang mới nhất (desc → đảo thành asc) merge kiểu upsert-only.
+    const newestAsc = [msg('m1'), msg('m2'), msg('m3'), msg('m4'), msg('m5')];
+    const healed = patchGap(dropped, 'm5', newestAsc, { prune: false })!;
+    expect(oldestFirst(healed).map((m) => m.id)).toEqual(['m1', 'm2', 'm3', 'm4', 'm5']);
+  });
+
+  it('patchGap prune=false KHÔNG bỏ tin trong khoảng fetch mà server không trả', () => {
+    // Giữ nguyên ràng buộc cũ với prune mặc định; tắt prune phải giữ mọi cached id.
+    const before = cache([msg('m4'), msg('m3')], [msg('m2'), msg('m1')]);
+    const pruned = patchGap(before, 'm1', [msg('m2'), msg('m4')])!;
+    expect(oldestFirst(pruned).map((m) => m.id)).toEqual(['m1', 'm2', 'm4']);
+    const notPruned = patchGap(before, 'm1', [msg('m2'), msg('m4')], { prune: false })!;
+    expect(oldestFirst(notPruned).map((m) => m.id)).toEqual(['m1', 'm2', 'm3', 'm4']);
+  });
+
+  it('nonce trùng: optimistic đang gửi + patch fetch về cùng nonce → đúng một bản, hết trạng thái tạm', () => {
+    const pending = optimisticMessage({ content: 'hello', nonce: 'n1' }, author);
+    const base = upsertMessage(cache([msg('m2'), msg('m1')]), pending)!;
+    const real = msg('m9', 'n1', 'hello');
+    const healed = patchGap(base, 'm2', [real], { prune: false })!;
+    const shown = oldestFirst(healed);
+    expect(shown.filter((m) => m.nonce === 'n1')).toHaveLength(1);
+    expect(shown.find((m) => m.nonce === 'n1')?.status).toBeUndefined();
+    expect(shown.find((m) => m.nonce === 'n1')?.id).toBe('m9');
+  });
+});

@@ -1,6 +1,6 @@
 # Case 2 — Dual-write, outbox và giao tin at-least-once; gap recovery ở client
 
-Trạng thái: bản nhánh của T4.4 (2026-10-25) — sẽ hoàn thiện ở T4.5/T7.2. Mức độ: đầy đủ.
+Trạng thái: bản nhánh của T4.4/T4.5 (2026-10-25) — sẽ hoàn thiện số tải ở T7.2. Mức độ: đầy đủ.
 
 ## Bối cảnh và vấn đề
 
@@ -52,8 +52,13 @@ sequenceDiagram
   - đóng bridge WS), 100 tin từ 3 tài khoản (nhịp 400 ms/lần tránh 2 lớp rate limit), xóa 1 tin
     lúc offline, nối lại → 99 tin còn lại đầy đủ/đúng thứ tự/không trùng (kiểm mẫu bằng cuộn qua
     danh sách ảo hóa), banner mất kết nối tự biến mất. Chạy 2,4 phút, pass.
-- Số chưa đo (thuộc T4.5/T6.1): thời gian vá p95 theo độ dài khoảng trống, hành vi khi rớt
-  gói/đảo thứ tự/nonce trùng (T4.5), tải 10.000 tin (T6.1).
+- T4.5 (hỗn loạn nhẹ, đã có): chặn frame WebSocket server→page bằng `page.routeWebSocket`
+  — rớt 1 frame `message.created` + đảo thứ tự (giữ 1 frame thả sau tin kế tiếp): hiển thị
+  không trùng, thứ tự giữ đúng nhờ chèn theo id (insert-sorted); tin bị rớt được vá lại sau
+  reconnect bằng merge trang-mới-nhất (tail đã vượt qua nó, `?after=` không thấy nữa).
+  Nonce trùng đồng thời (hai POST song song) → cùng id, DB một hàng; optimistic + patch cùng
+  nonce → một bản hiển thị.
+- Số chưa đo (thuộc T6.1): thời gian vá p95 theo độ dài khoảng trống, tải 10.000 tin.
 
 ## Giới hạn và bài học
 

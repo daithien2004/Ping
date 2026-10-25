@@ -112,11 +112,24 @@ test('gap recovery: 100 messages sent while offline are patched in order after r
     // 100 tin khi viewer offline (chia đều 3 người gửi), đánh số để kiểm thứ tự.
     const TOTAL = 100;
     const sentIds: string[] = [];
+    // Vòng 100 request có thể văng lỗi mạng nhất thời (API watch restart giữa chừng):
+    // thử lại TỪNG request tối đa 2 lần — cùng nonce nên an toàn idempotent.
+    const postWithRetry = async (i: number) => {
+      for (let attempt = 0; ; attempt += 1) {
+        try {
+          return await senderContext.request.post(`${API}/channels/${channelId}/messages`, {
+            headers: senders[i % senders.length]!,
+            data: { content: `gap ${String(i).padStart(3, '0')} ${suffix}`, nonce: nonces[i]! },
+          });
+        } catch (error) {
+          if (attempt >= 2) throw error;
+          await page.waitForTimeout(1_000);
+        }
+      }
+    };
+    const nonces = Array.from({ length: TOTAL }, () => randomUUID());
     for (let i = 0; i < TOTAL; i += 1) {
-      const res = await senderContext.request.post(`${API}/channels/${channelId}/messages`, {
-        headers: senders[i % senders.length]!,
-        data: { content: `gap ${String(i).padStart(3, '0')} ${suffix}`, nonce: randomUUID() },
-      });
+      const res = await postWithRetry(i);
       expect(res.ok()).toBeTruthy();
       sentIds.push(((await res.json()) as { id: string }).id);
       // 400 ms/lần: mỗi người ~10 tin/12 s, IP ~85 req/phút — dưới hai trần rate limit.
