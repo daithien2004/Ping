@@ -26,6 +26,7 @@ export function oldestFirst(cache: { pages: ClientMessagePage[] } | undefined): 
 export function optimisticMessage(
   input: { content: string; nonce: string },
   author: MessageAuthor,
+  replyTo: MessageDto['replyTo'] = null,
 ): ClientMessage {
   return {
     id: `temp-${input.nonce}`,
@@ -35,6 +36,7 @@ export function optimisticMessage(
     createdAt: new Date().toISOString(),
     authorId: author.id,
     author,
+    replyTo,
     status: 'sending',
   };
 }

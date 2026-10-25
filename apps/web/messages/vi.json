@@ -266,7 +266,12 @@
     "failed": "Gửi thất bại",
     "emptyAction": "Gửi tin đầu tiên",
     "newDivider": "Tin mới",
-    "spoiler": "Nội dung bị che, bấm để xem"
+    "spoiler": "Nội dung bị che, bấm để xem",
+    "reply": "Trả lời",
+    "replyingTo": "Đang trả lời {author}",
+    "cancelReply": "Hủy trả lời",
+    "replyDeleted": "Tin nhắn đã bị xóa",
+    "jumpToOriginal": "Tới tin gốc của {author}"
   },
   "search": {
     "open": "Tìm trong server",

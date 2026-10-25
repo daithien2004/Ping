@@ -13,6 +13,7 @@ vi.mock('./api', async (original) => ({
   deleteMessageRequest: requests.remove,
 }));
 const message: MessageDto = {
+  replyTo: null,
   id: 'm1',
   authorId: 'u1',
   author: { id: 'u1', username: 'a', displayName: 'A', avatarUrl: null },

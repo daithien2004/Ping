@@ -226,7 +226,29 @@ export function useSendMessage(channelId: string) {
       await queryClient.cancelQueries({ queryKey: key });
       if (me) {
         // Gửi lại cùng nonce: tin "thất bại" được thay bằng tin "đang gửi" ngay tại chỗ.
-        update((old) => upsertMessage(old, optimisticMessage(input, me)));
+        // TG.1: dựng preview từ tin đích đang có trong cache (server trả preview chuẩn khi xong).
+        const target = input.replyToId
+          ? oldestFirst(queryClient.getQueryData<MessagesCache>(key)).find(
+              (message) => message.id === input.replyToId,
+            )
+          : undefined;
+        update((old) =>
+          upsertMessage(
+            old,
+            optimisticMessage(
+              input,
+              me,
+              target
+                ? {
+                    id: target.id,
+                    authorName: target.author.displayName,
+                    content: target.content.slice(0, 120),
+                    deleted: false,
+                  }
+                : null,
+            ),
+          ),
+        );
       }
     },
     onSuccess: (message) => update((old) => upsertMessage(old, message)),

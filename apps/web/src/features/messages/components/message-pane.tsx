@@ -51,6 +51,10 @@ export function MessagePane({
   // trạng thái mutation đổi (tránh vòng mutate → isPending → effect → mutate).
   const { mutate: mutateRead } = useMarkRead(channelId);
   const [selection, setSelection] = useState<MessageSelection | null>(null);
+  // TG.1: tin đang được trả lời (đích của khối trích dẫn trong composer).
+  const [replyTo, setReplyTo] = useState<ClientMessage | null>(null);
+  // TG.1: tin gốc vừa được bấm "nhảy tới" — tô sáng tạm thời.
+  const [jumpTarget, setJumpTarget] = useState<string | null>(null);
   const { ability, ready } = useServerAbility();
   const messages = useMemo(() => oldestFirst(data), [data]);
   const t = useTranslations('messages');
@@ -182,18 +186,19 @@ export function MessagePane({
       ? (messages.find((message) => message.id > dividerCursor.current!)?.id ?? null)
       : null;
 
-  function send(content: string, nonce: string) {
+  function send(content: string, nonce: string, replyToId?: string) {
     if (!ready || !ability.can('create', 'Message')) return;
-    sendMutation.mutate({ content, nonce });
+    sendMutation.mutate({ content, nonce, ...(replyToId ? { replyToId } : {}) });
   }
 
   // Tin của chính mình: luôn xuống đáy để thấy nó, kể cả khi đang đọc tin cũ. KHÔNG cuộn ngay:
   // tin optimistic chỉ vào cache sau `await cancelQueries()` trong onMutate, cuộn sớm thì dừng ở
   // tin cuối CŨ (e2e bắt được: lệch đúng một tin, chập chờn). Đánh dấu, cuộn khi danh sách dài ra.
   const scrollOnAppend = useRef(false);
-  function sendOwn(content: string, nonce: string) {
+  function sendOwn(content: string, nonce: string, replyToId?: string) {
     scrollOnAppend.current = true;
-    send(content, nonce);
+    send(content, nonce, replyToId);
+    setReplyTo(null);
   }
   useEffect(() => {
     if (!scrollOnAppend.current) {
@@ -204,8 +209,21 @@ export function MessagePane({
   }, [messages.length, virtualizer]);
 
   const retry = (message: ClientMessage) => {
-    if (message.nonce) send(message.content, message.nonce);
+    if (message.nonce) send(message.content, message.nonce, message.replyTo?.id);
   };
+
+  // TG.1: nhảy tới tin gốc nếu đang có trong cửa sổ đã tải; tin cũ hơn thuộc TG.5 (`?around=`).
+  function jumpTo(messageId: string) {
+    const index = messages.findIndex((message) => message.id === messageId);
+    if (index < 0) return;
+    virtualizer.scrollToIndex(index, { align: 'center' });
+    setJumpTarget(messageId);
+  }
+  useEffect(() => {
+    if (!jumpTarget) return;
+    const timer = setTimeout(() => setJumpTarget(null), 2000);
+    return () => clearTimeout(timer);
+  }, [jumpTarget]);
 
   // A background query error retains old data; hide it immediately on denied room ACK.
   if (roomDenied)
@@ -273,7 +291,9 @@ export function MessagePane({
                   message={message}
                   onRetry={retry}
                   onAction={setSelection}
-                  highlighted={message.id === focusId}
+                  onReply={setReplyTo}
+                  onJumpTo={jumpTo}
+                  highlighted={message.id === focusId || message.id === jumpTarget}
                 />
               </div>
             );
@@ -288,6 +308,17 @@ export function MessagePane({
       <MessageComposer
         channelId={channelId}
         channelName={channelName}
+        replyTo={
+          replyTo
+            ? {
+                id: replyTo.id,
+                authorName: replyTo.author.displayName,
+                content: replyTo.content.slice(0, 120),
+                deleted: false,
+              }
+            : null
+        }
+        onCancelReply={() => setReplyTo(null)}
         onSend={sendOwn}
         textareaRef={composerRef}
       />

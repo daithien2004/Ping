@@ -1,10 +1,10 @@
 'use client';
 
 import { createMessageSchema } from '@ping/shared';
-import { useState, type KeyboardEvent, type RefObject } from 'react';
+import { useEffect, useState, type KeyboardEvent, type RefObject } from 'react';
 import { useTranslations } from 'use-intl';
 import dynamic from 'next/dynamic';
-import { Smile } from 'lucide-react';
+import { Smile, X } from 'lucide-react';
 import { PingTextArea } from '@/components/ui/ping-textarea';
 import { useRealtime } from '@/features/realtime/context';
 import { useServerAbility } from '@/features/permissions/context';
@@ -24,18 +24,35 @@ function extractFragment(draft: string): string | null {
 }
 
 /**
+ * `PingTextArea` forward ref của antd `Input.TextArea` = `TextAreaRef` (bọc DOM trong
+ * `resizableTextArea.textArea`), không phải HTMLTextAreaElement — cần lấy DOM thật để đọc
+ * selection và `setSelectionRange` (TG.23 chỉ gọi `focus()` nên lỗi này ẩn).
+ */
+function resolveTextArea(ref: HTMLTextAreaElement | null): HTMLTextAreaElement | null {
+  if (!ref) return null;
+  const inner = (ref as unknown as { resizableTextArea?: { textArea?: HTMLTextAreaElement } })
+    .resizableTextArea?.textArea;
+  return inner ?? ref;
+}
+
+/**
  * Ô soạn tin. Giữ `draft` ở đây (không ở MessagePane): mỗi phần chỉ render lại ô soạn, không
  * render lại cả danh sách tin nhắn. <Activity> vẫn giữ nháp khi chuyển channel.
  */
 export function MessageComposer({
   channelId,
   channelName,
+  replyTo,
+  onCancelReply,
   onSend,
   textareaRef,
 }: {
   channelId: string;
   channelName: string;
-  onSend: (content: string, nonce: string) => void;
+  /** TG.1: tin đang được trả lời; null = tin thường. */
+  replyTo: { id: string; authorName: string; content: string; deleted: boolean } | null;
+  onCancelReply: () => void;
+  onSend: (content: string, nonce: string, replyToId?: string) => void;
   /** Ô nhập để empty state bấm "Gửi tin đầu tiên" đưa con trỏ về đây (TF.9). */
   textareaRef?: RefObject<HTMLTextAreaElement | null>;
 }) {
@@ -49,13 +66,19 @@ export function MessageComposer({
   const te = useTranslations('emoji');
   const label = t('composerLabel', { channel: channelName });
   const nearLimit = draft.length >= 3600;
+  const replyToId = replyTo?.id ?? null;
+
+  // Chọn trả lời: đưa con trỏ vào ô soạn để gõ ngay (đổi tin đích thì focus lại).
+  useEffect(() => {
+    if (replyToId) textareaRef?.current?.focus();
+  }, [replyToId, textareaRef]);
 
   // Gợi ý :ten: (TG.23): fragment từ draft; dataset tải động lần đầu gõ ':'.
   const fragment = extractFragment(draft);
   const suggestions = useEmojiSuggestions(fragment);
 
   function insertAtCursor(insert: string) {
-    const el = textareaRef?.current;
+    const el = resolveTextArea(textareaRef?.current ?? null);
     const start = el?.selectionStart ?? draft.length;
     const end = el?.selectionEnd ?? draft.length;
     const next = draft.slice(0, start) + insert + draft.slice(end);
@@ -108,11 +131,15 @@ export function MessageComposer({
     }
     event.preventDefault();
     // nonce sinh MỘT lần cho mỗi tin; gửi lại dùng đúng nonce này (server chặn trùng).
-    const parsed = createMessageSchema.safeParse({ content: draft, nonce: crypto.randomUUID() });
+    const parsed = createMessageSchema.safeParse({
+      content: draft,
+      nonce: crypto.randomUUID(),
+      ...(replyTo ? { replyToId: replyTo.id } : {}),
+    });
     if (!parsed.success) {
       return; // rỗng hoặc toàn khoảng trắng: không gửi
     }
-    onSend(parsed.data.content, parsed.data.nonce);
+    onSend(parsed.data.content, parsed.data.nonce, parsed.data.replyToId);
     setDraft('');
     setPickerOpen(false);
   }
@@ -121,6 +148,27 @@ export function MessageComposer({
     <div className="shrink-0 px-4 pb-4">
       {canSend ? (
         <>
+          {replyTo && (
+            <div
+              data-testid="reply-bar"
+              className="mb-1 flex items-center gap-2 rounded-lg border-l-2 border-primary bg-muted px-3 py-1.5 text-xs"
+            >
+              <div className="min-w-0 flex-1">
+                <p className="font-medium">{t('replyingTo', { author: replyTo.authorName })}</p>
+                <p className="truncate text-muted-foreground">
+                  {replyTo.deleted ? t('replyDeleted') : replyTo.content}
+                </p>
+              </div>
+              <button
+                type="button"
+                aria-label={t('cancelReply')}
+                onClick={onCancelReply}
+                className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+          )}
           {pickerOpen && (
             <div className="mb-2 flex justify-start">
               <EmojiPicker

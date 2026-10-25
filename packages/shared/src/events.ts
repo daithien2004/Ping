@@ -40,6 +40,8 @@ export interface MessageCreatedPayload {
   createdAt: string;
   /** Nonce của client gửi: khớp tin optimistic với tin thật. null với tin không có nonce. */
   nonce: string | null;
+  /** TG.1: xem trước tin gốc nếu đây là reply; null = tin thường. */
+  replyTo: import('./schemas/message').MessageReplyPreview | null;
 }
 
 export interface MessageUpdatedPayload {

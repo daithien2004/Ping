@@ -266,7 +266,12 @@
     "failed": "Failed to send",
     "emptyAction": "Send the first message",
     "newDivider": "New",
-    "spoiler": "Hidden content, click to reveal"
+    "spoiler": "Hidden content, click to reveal",
+    "reply": "Reply",
+    "replyingTo": "Replying to {author}",
+    "cancelReply": "Cancel reply",
+    "replyDeleted": "Message deleted",
+    "jumpToOriginal": "Jump to {author}'s message"
   },
   "search": {
     "open": "Search in server",
