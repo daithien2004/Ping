@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { expect, test } from '@playwright/test';
-import { type AuthResponse, type ServerDetail } from '@ping/shared';
+import { type ServerDetail } from '@ping/shared';
+import { pacedLogin } from './login-pace';
 
 const API = 'http://localhost:4000/api/v1';
 
@@ -12,11 +13,7 @@ test('search ui: find messages, filter by channel, jump to message', async ({ br
   test.setTimeout(240_000);
   const ownerContext = await browser.newContext();
   try {
-    const login = await ownerContext.request.post(`${API}/auth/login`, {
-      data: { email: 'alice@ping.dev', password: 'password123' },
-    });
-    expect(login.ok()).toBeTruthy();
-    const auth = (await login.json()) as AuthResponse;
+    const auth = await pacedLogin(ownerContext.request, 'alice@ping.dev', 'password123');
     const headers = { Authorization: `Bearer ${auth.accessToken}` };
 
     const suffix = randomUUID().slice(0, 8);

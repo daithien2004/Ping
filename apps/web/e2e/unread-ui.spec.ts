@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { expect, test } from '@playwright/test';
-import { type AuthResponse, type ServerDetail } from '@ping/shared';
+import { type ServerDetail } from '@ping/shared';
+import { pacedLogin } from './login-pace';
 
 const API = 'http://localhost:4000/api/v1';
 const SEED_PASSWORD = 'password123';
@@ -17,13 +18,8 @@ test('unread ui: server/channel badges, mention badge, title, divider and two-ta
   const ownerContext = await browser.newContext();
   const bobContext = await browser.newContext();
   try {
-    const login = async (context: typeof ownerContext, email: string, password: string) => {
-      const response = await context.request.post(`${API}/auth/login`, {
-        data: { email, password },
-      });
-      expect(response.ok()).toBeTruthy();
-      return (await response.json()) as AuthResponse;
-    };
+    const login = async (context: typeof ownerContext, email: string, password: string) =>
+      pacedLogin(context.request, email, password);
 
     const owner = await login(ownerContext, process.env.E2E_EMAIL!, process.env.E2E_PASSWORD!);
     const bobAuth = await login(bobContext, 'bob@ping.dev', SEED_PASSWORD);

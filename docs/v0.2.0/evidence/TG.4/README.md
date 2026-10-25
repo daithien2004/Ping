@@ -62,6 +62,12 @@ e2e: `WEB_PORT=3110 pnpm --filter web exec playwright test e2e/markdown.spec.ts`
   markdown spec); log chi tiết cần quyền admin nên chưa tải được. Không phải lỗi code
   (không có thay đổi API/DB; các spec fail không đụng markdown). Theo dõi ở run kế tiếp; nếu
   lặp lại thì chia mảng web-e2e trên CI (thay đổi .github/workflows — sẽ đề xuất riêng).
+- **Nguyên nhân thật đã tìm ra và sửa:** 4 spec cuối đều đăng nhập qua `POST /auth/login` KHÔNG
+  pacing — thêm markdown + chaos-gap đẩy tổng login vượt 10/phút/IP ở cụm cuối (429 → login
+  fail → sụp dây chuyền). Sửa: `pacedLogin(request, email, password)` trong `login-pace.ts`
+  (pace 6/60 giây, chừa chỗ cho global-setup) — áp dụng cho search, unread-ui, markdown,
+  chaos-gap; các spec khác dùng `paceLogin` sẵn có. 4/4 spec đó pass local sau sửa; full run
+  31 pass + 1 flake đơn lẻ (admin-invite, pass khi rerun — cùng mức flake đã ghi ở T3.3).
 
 ## Giới hạn và tiếp theo
 

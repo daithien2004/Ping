@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { expect, test } from '@playwright/test';
-import { type AuthResponse, type ServerDetail } from '@ping/shared';
+import { type ServerDetail } from '@ping/shared';
+import { pacedLogin } from './login-pace';
 
 const API = 'http://localhost:4000/api/v1';
 const SEED_PASSWORD = 'password123';
@@ -18,28 +19,25 @@ test('chaos: dropped and reordered message.created frames - no duplicates, order
   const viewerContext = await browser.newContext();
   const senderContext = await browser.newContext();
   try {
-    const login = async (context: typeof viewerContext, email: string, password: string) => {
-      const response = await context.request.post(`${API}/auth/login`, {
-        data: { email, password },
-      });
-      expect(response.ok()).toBeTruthy();
-      const auth = (await response.json()) as AuthResponse;
-      return { auth, headers: { Authorization: `Bearer ${auth.accessToken}` } };
-    };
-
-    const viewer = await login(viewerContext, process.env.E2E_EMAIL!, process.env.E2E_PASSWORD!);
-    const alice = await login(senderContext, 'alice@ping.dev', SEED_PASSWORD);
+    const viewer = await pacedLogin(
+      viewerContext.request,
+      process.env.E2E_EMAIL!,
+      process.env.E2E_PASSWORD!,
+    );
+    const viewerHeaders = { Authorization: `Bearer ${viewer.accessToken}` };
+    const alice = await pacedLogin(senderContext.request, 'alice@ping.dev', SEED_PASSWORD);
+    const aliceHeaders = { Authorization: `Bearer ${alice.accessToken}` };
 
     const suffix = randomUUID().slice(0, 8);
     const server = (await (
       await senderContext.request.post(`${API}/servers`, {
-        headers: alice.headers,
+        headers: aliceHeaders,
         data: { name: `Chaos ${suffix}` },
       })
     ).json()) as ServerDetail;
     const channelId = server.channels[0]!.id;
     const viewerJoined = await viewerContext.request.post(`${API}/servers/join`, {
-      headers: viewer.headers,
+      headers: viewerHeaders,
       data: { inviteCode: server.inviteCode },
     });
     expect(viewerJoined.ok()).toBeTruthy();
@@ -81,7 +79,7 @@ test('chaos: dropped and reordered message.created frames - no duplicates, order
 
     const send = (content: string) =>
       senderContext.request.post(`${API}/channels/${channelId}/messages`, {
-        headers: alice.headers,
+        headers: aliceHeaders,
         data: { content, nonce: randomUUID() },
       });
 
@@ -124,7 +122,7 @@ test('chaos: dropped and reordered message.created frames - no duplicates, order
     }
 
     const cleanup = await senderContext.request.delete(`${API}/servers/${server.id}`, {
-      headers: alice.headers,
+      headers: aliceHeaders,
     });
     expect(cleanup.ok()).toBeTruthy();
   } finally {
