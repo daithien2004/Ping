@@ -341,7 +341,7 @@ jobs:
       # Chỉ chặn lỗ hổng mức high trở lên trong dependency production.
       - run: pnpm audit --prod --audit-level=high
       - name: Secret scan (gitleaks)
-        run: docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:latest detect --source /repo --redact --no-banner
+        run: docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:latest detect --source /repo --config /repo/.gitleaks.toml --redact --no-banner
       - name: Alert rules syntax and behavior (promtool)
         run: |
           docker run --rm -v "$PWD/ops:/ops:ro" --entrypoint promtool prom/prometheus:v3.15.0 check rules /ops/alerts.yml

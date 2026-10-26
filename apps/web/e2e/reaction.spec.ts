@@ -55,6 +55,20 @@ test('reactions: pick, toggle, reactor list and realtime from another member', a
     const bobArticle = bobPage.locator(`article[data-message-id="${message.id}"]`);
     await expect(bobArticle).toBeVisible({ timeout: 45_000 });
 
+    // CI từng đỏ vì cảm xúc phát đi trước khi socket của bob vào room channel. `message.created`
+    // cũng chỉ tới room đó, nên gửi một tin đánh dấu rồi chờ nó hiện ở tab bob là bằng chứng bob
+    // đã join: trang bob đã tải xong danh sách tin trước đó, nên tin này chỉ đến được qua socket
+    // (hoặc sau một lần nối lại — khi đó client cũng join room trước khi vá khoảng trống).
+    const warmup = await ownerContext.request.post(`${API}/channels/${channelId}/messages`, {
+      headers,
+      data: { content: `warmup ${suffix}`, nonce: randomUUID() },
+    });
+    expect(warmup.ok()).toBeTruthy();
+    const warmupMessage = (await warmup.json()) as MessageDto;
+    await expect(bobPage.locator(`article[data-message-id="${warmupMessage.id}"]`)).toBeVisible({
+      timeout: 45_000,
+    });
+
     await test.step('chọn 👍 trong hộp chọn → viên thuốc hiện 1 và là của mình', async () => {
       await article.getByTestId('add-reaction').click();
       const picker = page.getByTestId('emoji-picker');
