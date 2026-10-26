@@ -2,7 +2,7 @@
 
 - Ngày: 2026-10-26 (Asia/Saigon).
 - Người thực hiện: Codex; nhánh `feat/tg2-reactions`.
-- Base: `a9ccdf8`; commit `(cập nhật sau commit)` trên nhánh, chưa merge/push, chưa có CI mới.
+- Base: `a9ccdf8`; commit `5e65a32` trên nhánh, chưa merge/push, chưa có CI mới.
 - Môi trường: Windows, Node 24.22.0, pnpm 10.26.0, Postgres 17, Redis 7, Chromium/Playwright
   1.63.0, Next.js 16.4.2 production build. API e2e dùng Redis DB 1 riêng với dev.
 - Thiết kế: [ADR-0064](../../../adr/0064-message-reactions.md), task TG.2 trong kế hoạch local.
@@ -82,8 +82,8 @@ pnpm --filter web test:e2e
 
 ## Giới hạn và tiếp theo
 
-- Trạng thái task: **done** — commit `(cập nhật sau commit)` trên `feat/tg2-reactions`, chưa
-  merge/push theo pattern phiên; CI remote chạy sau khi tạo PR.
+- Trạng thái task: **done** — commit `5e65a32` trên `feat/tg2-reactions`, chưa merge/push theo
+  pattern phiên; CI remote chạy sau khi tạo PR.
 - Socket vẫn best-effort; REST là nguồn đối soát. Chưa có số thứ tự phiên bản cho reaction
   event; không tuyên bố giao tin bền hay chống mọi trường hợp đảo thứ tự liên instance.
 - Không gọi LLM thật, không thêm dependency, không sửa migration đã merge.

@@ -1,7 +1,7 @@
 {
   "base": "a9ccdf80d369a730603aa68f68102088d31e9fbc",
   "branch": "feat/tg2-reactions",
-  "state": "uncommitted worktree",
+  "state": "5e65a32 on feat/tg2-reactions",
   "files": {
     "apps/api/prisma/migrations/20261025184500_message_reactions/migration.sql": "acefe08c3f6b7c54cc539154b95653338c7100bf124fbff7278090d5fc9a5161",
     "apps/api/prisma/migrations/20261026094000_message_reply_lookup/migration.sql": "d5f7727a7d72f72fc73ebbf190646f70b142d3d6d2dc0495ba8fc51945b4e99d",
