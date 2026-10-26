@@ -314,7 +314,18 @@ jobs:
           test "$code" = "0"
       - name: Logs on failure
         if: failure()
-        run: docker compose -p pingprod -f docker-compose.prod.example.yml -f docker-compose.prod.tls.yml --env-file .env.prod logs --tail 100
+        # Log job chỉ admin đọc được qua API; artifact để người không admin đối chiếu khi job đỏ.
+        run: |
+          dc="docker compose -p pingprod -f docker-compose.prod.example.yml -f docker-compose.prod.tls.yml --env-file .env.prod"
+          $dc ps -a
+          $dc logs --tail 100 > ping-docker-logs.txt 2>&1
+          cat ping-docker-logs.txt
+      - name: Upload docker logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ping-docker-logs
+          path: ping-docker-logs.txt
       - name: Vulnerability scan (high and critical)
         # Báo cáo, chưa bắt buộc (quyết định C trong kế hoạch H6): bỏ continue-on-error khi muốn chặn.
         continue-on-error: true
