@@ -54,6 +54,24 @@ khôi phục và gọi `/api/v1/ready` (phải 200). Dọn bản thử: `DROP DA
 
 ## Chưa làm
 
+### Tệp đính kèm v0.2.0 (TG.6)
+
+Backup phải lấy **Postgres cùng thư mục `ATTACHMENT_STORAGE_DIR`**. Dev mặc định `.uploads`
+ở gốc repo; compose production mẫu dùng named volume `uploads` ở `/app/uploads`, chung giữa API
+và worker. Không chỉ sao lưu thumbnail: cần cả `.ready`, `.thumb` và `.raw` còn trong queue.
+
+Để có snapshot nhất quán: tạm chặn ghi ở proxy, dừng API và worker; dump Postgres rồi sao lưu
+toàn bộ volume, ghi manifest hash. Giữ trạng thái dừng tới khi cả hai snapshot xong. Tạo bản sao
+trên đích mới, không ghi đè nguồn. Mã hóa trước khi đưa bản sao ra ngoài máy; khóa lưu riêng.
+Khôi phục vào **DB và volume mới**, bảo toàn quyền node UID 1000; trỏ cả API/worker vào cùng
+thư mục. Đối chiếu số hàng Attachment, hash file, thử tải ảnh/PDF có quyền và từ chối outsider;
+khởi động worker, xác nhận queue tiếp tục và tệp đã xóa không tải được.
+
+Docker copy dùng được khi container API đã dừng: `docker cp <api-container>:/app/uploads <backup-dir>`;
+dump dùng `docker exec <postgres-container> pg_dump -U ping -Fc -f /tmp/attachments.dump ping`
+rồi `docker cp` file dump ra đích. Không redirect nhị phân qua Windows PowerShell 5 vì có thể
+đổi encoding. Ghi lại thời gian dừng và kết quả restore; chưa có số đo restore staging TG.6.
+
 Chưa có lịch sao lưu tự động cho staging, retention hay bản sao ngoài máy đã được kiểm chứng.
 Các việc này thuộc v0.2.0 ([ADR-0037](../adr/0037-release-scope-v0.1.0.md)); runbook staging và
 chính sách backup riêng sẽ được chốt theo môi trường thực tế. Mục tiêu đã duyệt là RPO ≤ 24 giờ,

@@ -15,7 +15,7 @@ import { AllExceptionsFilter } from './all-exceptions.filter.js';
 
 vi.mock('../../infra/sentry/sentry.js', () => ({ captureServerError: vi.fn() }));
 
-function run(exception: unknown) {
+function run(exception: unknown, url = '/x', logs = { warn: vi.fn(), error: vi.fn() }) {
   const sent: { status?: number; body?: Record<string, unknown> } = {};
   const response = {
     status(code: number) {
@@ -29,10 +29,10 @@ function run(exception: unknown) {
   const host = {
     switchToHttp: () => ({
       getResponse: () => response,
-      getRequest: () => ({ id: 'req-1', url: '/x', user: { userId: 'u-9', username: 'x' } }),
+      getRequest: () => ({ id: 'req-1', url, user: { userId: 'u-9', username: 'x' } }),
     }),
   } as unknown as ArgumentsHost;
-  const logger = { warn: () => undefined, error: () => undefined } as unknown as Logger;
+  const logger = logs as unknown as Logger;
   const config = { get: () => 'test' } as unknown as ConfigService<Env>;
 
   new AllExceptionsFilter(logger, config).catch(exception, host);
@@ -56,6 +56,16 @@ describe('AllExceptionsFilter → Sentry', () => {
 });
 
 describe('AllExceptionsFilter', () => {
+  it('never logs signed URL query credentials for rejected or failed requests', () => {
+    const logs = { warn: vi.fn(), error: vi.fn() };
+    const url = '/attachments/file?signature=private-capability';
+    run(new BadRequestException(), url, logs);
+    run(new HttpException('down', 503), url, logs);
+    run(new Error('unexpected'), url, logs);
+    expect(JSON.stringify([logs.warn.mock.calls, logs.error.mock.calls])).not.toContain(
+      'private-capability',
+    );
+  });
   it('keeps a code from the ErrorCodes catalog', () => {
     const sent = run(new BadRequestException({ code: ErrorCodes.VALIDATION_ERROR, message: 'x' }));
     expect(sent).toMatchObject({

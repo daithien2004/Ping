@@ -6,6 +6,8 @@ import { Counter, Gauge, Histogram, Registry, collectDefaultMetrics } from 'prom
 import type { Env } from '../../config/env.schema.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { RedisProvider } from '../redis/redis.module.js';
+import { access, mkdir } from 'node:fs/promises';
+import { resolve } from 'node:path';
 
 /**
  * Kết quả một lượt hỏi AI — tập hữu hạn để nhãn Prometheus không nổ cardinality
@@ -31,6 +33,12 @@ export type AiRequestOutcome =
 @Injectable()
 export class MetricsService implements OnModuleDestroy {
   private readonly registry = new Registry();
+  readonly attachmentJobs = new Counter({
+    name: 'attachment_jobs_total',
+    help: 'Attachment processing outcomes',
+    labelNames: ['outcome'],
+    registers: [this.registry],
+  });
   private readonly httpDuration = new Histogram({
     name: 'http_request_duration_seconds',
     help: 'Thời gian xử lý request HTTP',
@@ -169,6 +177,14 @@ export class MetricsService implements OnModuleDestroy {
       collect: async () => {
         dependency.set({ name: 'postgres' }, (await this.postgresUp()) ? 1 : 0);
         dependency.set({ name: 'redis' }, (await this.redisUp()) ? 1 : 0);
+        try {
+          const root = resolve(config.get('ATTACHMENT_STORAGE_DIR', { infer: true }));
+          await mkdir(root, { recursive: true });
+          await access(root, 6);
+          dependency.set({ name: 'attachment_storage' }, 1);
+        } catch {
+          dependency.set({ name: 'attachment_storage' }, 0);
+        }
       },
     });
   }

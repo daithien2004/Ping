@@ -10,7 +10,10 @@ import type { InfiniteData } from '@tanstack/react-query';
  * Tin nhắn trong cache của trình duyệt. `status` chỉ tồn tại phía client: tin optimistic đang gửi
  * hoặc gửi thất bại. Tin đã được server xác nhận không có `status`.
  */
-export type ClientMessage = MessageDto & { status?: 'sending' | 'failed' };
+export type ClientMessage = MessageDto & {
+  status?: 'sending' | 'failed';
+  pendingAttachmentIds?: string[];
+};
 
 export interface ClientMessagePage {
   messages: ClientMessage[];
@@ -38,12 +41,13 @@ export function oldestFirst(cache: { pages: ClientMessagePage[] } | undefined): 
 }
 
 export function optimisticMessage(
-  input: { content: string; nonce: string },
+  input: { content: string; nonce: string; attachmentIds?: string[] },
   author: MessageAuthor,
   replyTo: MessageDto['replyTo'] = null,
 ): ClientMessage {
   return {
     id: `temp-${input.nonce}`,
+    ...(input.attachmentIds?.length ? { pendingAttachmentIds: input.attachmentIds } : {}),
     content: input.content,
     nonce: input.nonce,
     editedAt: null,

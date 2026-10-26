@@ -225,6 +225,52 @@ async function stream(
 
 /** `schema` (tùy chọn): parse response bằng zod ở những chỗ quan trọng (hướng dẫn 12.2). */
 export const api = {
+  /** Binary PUT with real upload progress; shares token refresh and API error handling. */
+  upload: async (
+    path: string,
+    file: File,
+    signal: AbortSignal,
+    progress: (percent: number) => void,
+  ): Promise<void> => {
+    const run = () =>
+      new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('PUT', `${apiBaseUrl}${path}`);
+        xhr.withCredentials = true;
+        xhr.setRequestHeader('Content-Type', 'application/octet-stream');
+        if (accessToken) xhr.setRequestHeader('Authorization', `Bearer ${accessToken}`);
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) progress(Math.round((event.loaded / event.total) * 100));
+        };
+        const abort = () => xhr.abort();
+        const cleanup = () => signal.removeEventListener('abort', abort);
+        xhr.onload = () => {
+          cleanup();
+          if (xhr.status >= 200 && xhr.status < 300) resolve();
+          else void toApiError(new Response(xhr.responseText, { status: xhr.status })).then(reject);
+        };
+        xhr.onerror = () => {
+          cleanup();
+          reject(new ApiError(0, ErrorCodes.SERVICE_UNAVAILABLE, 'Network error'));
+        };
+        xhr.onabort = () => {
+          cleanup();
+          reject(new DOMException('Aborted', 'AbortError'));
+        };
+        signal.addEventListener('abort', abort, { once: true });
+        if (signal.aborted) {
+          cleanup();
+          reject(new DOMException('Aborted', 'AbortError'));
+        } else xhr.send(file);
+      });
+    try {
+      await run();
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401 && (await refreshAccessToken()))
+        await run();
+      else throw error;
+    }
+  },
   get: <T>(path: string, schema?: ZodType<T>) => request<T>('GET', path, undefined, schema),
   post: <T>(path: string, body?: unknown, schema?: ZodType<T>) =>
     request<T>('POST', path, body, schema),

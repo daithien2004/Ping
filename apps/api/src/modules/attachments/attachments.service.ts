@@ -1,0 +1,240 @@
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+  StreamableFile,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import {
+  AttachmentLimits,
+  ErrorCodes,
+  type CreateUploadInput,
+  type SignedFileQuery,
+} from '@ping/shared';
+import { createHmac, timingSafeEqual } from 'node:crypto';
+import type { Request, Response } from 'express';
+import type { Env } from '../../config/env.schema.js';
+import { PrismaService } from '../../infra/prisma/prisma.service.js';
+import { AbilityFactory } from '../ability/ability.factory.js';
+import { Storage } from './local-storage.js';
+
+export const attachmentSelect = {
+  id: true,
+  filename: true,
+  mime: true,
+  sizeBytes: true,
+  width: true,
+  height: true,
+} as const;
+
+@Injectable()
+export class AttachmentsService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly config: ConfigService<Env, true>,
+    private readonly ability: AbilityFactory,
+    private readonly storage: Storage,
+  ) {}
+
+  async create(userId: string, input: CreateUploadInput) {
+    const channel = await this.prisma.channel.findUnique({ where: { id: input.channelId } });
+    if (!channel) throw new NotFoundException();
+    const ability = await this.ability.createForUserFresh(channel.serverId, userId);
+    if (!ability.can('create', 'Attachment')) throw new ForbiddenException();
+    return this.prisma.$transaction(async (tx) => {
+      // Consistent order: user then server. Both scopes include pending reservations.
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`upload-user:${userId}`}))`;
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`upload-server:${channel.serverId}`}))`;
+      const previous = await tx.attachment.findUnique({
+        where: { uploaderId_nonce: { uploaderId: userId, nonce: input.nonce } },
+      });
+      if (previous) {
+        if (
+          previous.channelId !== input.channelId ||
+          previous.filename !== input.filename ||
+          previous.sizeBytes !== input.sizeBytes
+        )
+          throw new BadRequestException();
+        return { id: previous.id, status: previous.status };
+      }
+      const active = ['pending', 'uploaded', 'queued', 'processing', 'ready', 'deleting'];
+      // Reserve original plus worst-case canonical image/thumbnail before accepting bytes.
+      const reservation = input.sizeBytes + AttachmentLimits.FILE_BYTES;
+      const [user, server] = await Promise.all([
+        tx.attachment.aggregate({
+          where: { uploaderId: userId, status: { in: active } },
+          _sum: { quotaBytes: true },
+        }),
+        tx.attachment.aggregate({
+          where: { serverId: channel.serverId, status: { in: active } },
+          _sum: { quotaBytes: true },
+        }),
+      ]);
+      if (
+        (user._sum.quotaBytes ?? 0) + reservation >
+          this.config.get('ATTACHMENT_USER_QUOTA_BYTES', { infer: true }) ||
+        (server._sum.quotaBytes ?? 0) + reservation >
+          this.config.get('ATTACHMENT_SERVER_QUOTA_BYTES', { infer: true })
+      ) {
+        throw new BadRequestException({
+          code: ErrorCodes.UPLOAD_QUOTA_EXCEEDED,
+          message: 'Attachment quota exceeded',
+        });
+      }
+      const row = await tx.attachment.create({
+        data: { ...input, quotaBytes: reservation, uploaderId: userId, serverId: channel.serverId },
+      });
+      return { id: row.id, status: row.status };
+    });
+  }
+
+  private async owned(id: string, userId: string) {
+    const row = await this.prisma.attachment.findUnique({ where: { id } });
+    if (!row || row.uploaderId !== userId) throw new NotFoundException();
+    const ability = await this.ability.createForUserFresh(row.serverId, userId);
+    if (!ability.can('create', 'Attachment')) throw new ForbiddenException();
+    return row;
+  }
+
+  async upload(id: string, userId: string, req: Request) {
+    const row = await this.owned(id, userId);
+    if (req.headers['content-type']?.split(';')[0] !== 'application/octet-stream')
+      throw new BadRequestException();
+    const chunks: Buffer[] = [];
+    let size = 0;
+    const timer = setTimeout(() => req.destroy(), 30_000);
+    try {
+      for await (const chunk of req) {
+        const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+        size += bytes.length;
+        if (size > row.sizeBytes || size > AttachmentLimits.FILE_BYTES)
+          throw new BadRequestException({
+            code: ErrorCodes.UPLOAD_INVALID,
+            message: 'Invalid upload size',
+          });
+        chunks.push(bytes);
+      }
+    } finally {
+      clearTimeout(timer);
+    }
+    if (size !== row.sizeBytes)
+      throw new BadRequestException({
+        code: ErrorCodes.UPLOAD_INVALID,
+        message: 'Invalid upload size',
+      });
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "Attachment" WHERE id = ${id}::uuid FOR UPDATE`;
+      const current = await tx.attachment.findUniqueOrThrow({ where: { id } });
+      if (current.status !== 'pending') {
+        if (['uploaded', 'queued', 'processing', 'ready'].includes(current.status))
+          return { id, status: current.status };
+        throw new BadRequestException();
+      }
+      if (current.createdAt.getTime() < Date.now() - 3_600_000) throw new BadRequestException();
+      await this.storage.write(`${id}.raw`, Buffer.concat(chunks));
+      // Upload is immutable from this point, including concurrent retries.
+      await tx.attachment.update({ where: { id }, data: { status: 'uploaded' } });
+      return { id, status: 'uploaded' };
+    });
+  }
+
+  async complete(id: string, userId: string) {
+    const row = await this.owned(id, userId);
+    if (row.status === 'pending')
+      throw new BadRequestException({
+        code: ErrorCodes.ATTACHMENT_NOT_READY,
+        message: 'Upload bytes first',
+      });
+    await this.prisma.attachment.updateMany({
+      where: { id, status: 'uploaded' },
+      data: { status: 'queued' },
+    });
+    return this.status(id, userId);
+  }
+
+  async status(id: string, userId: string) {
+    const row = await this.owned(id, userId);
+    const { id: attachmentId, filename, mime, sizeBytes, width, height } = row;
+    return {
+      id,
+      status: row.status,
+      attachment:
+        row.status === 'ready'
+          ? { id: attachmentId, filename, mime, sizeBytes, width, height }
+          : null,
+    };
+  }
+
+  async cancel(id: string, userId: string) {
+    await this.owned(id, userId);
+    await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "Attachment" WHERE id = ${id}::uuid FOR UPDATE`;
+      const row = await tx.attachment.findUniqueOrThrow({ where: { id } });
+      if (row.messageId) throw new BadRequestException();
+      if (row.status !== 'deleted')
+        await tx.attachment.update({ where: { id }, data: { status: 'deleting' } });
+    });
+    return { id };
+  }
+
+  private async downloadable(id: string, userId: string, thumbnail: boolean) {
+    const row = await this.prisma.attachment.findUnique({
+      where: { id },
+      include: { message: { select: { deletedAt: true } } },
+    });
+    if (
+      !row ||
+      row.status !== 'ready' ||
+      row.message?.deletedAt ||
+      (!row.messageId && row.uploaderId !== userId) ||
+      (thumbnail && !row.mime.startsWith('image/'))
+    )
+      throw new NotFoundException();
+    const channel = await this.prisma.channel.findUnique({ where: { id: row.channelId } });
+    if (!channel) throw new NotFoundException();
+    const ability = await this.ability.createForUserFresh(row.serverId, userId);
+    if (!ability.can('view', 'Attachment')) throw new ForbiddenException();
+    return row;
+  }
+
+  private sign(id: string, user: string, expires: number, thumbnail: boolean) {
+    return createHmac('sha256', this.config.get('JWT_ACCESS_SECRET', { infer: true }))
+      .update(`attachment-v1:${id}:${user}:${expires}:${thumbnail ? 'thumb' : 'ready'}`)
+      .digest('hex');
+  }
+  async link(id: string, userId: string, thumbnail: boolean) {
+    await this.downloadable(id, userId, thumbnail);
+    const expires = Math.floor(Date.now() / 1000) + AttachmentLimits.URL_SECONDS;
+    const signature = this.sign(id, userId, expires, thumbnail);
+    return {
+      url: `/api/v1/attachments/${id}/file?user=${userId}&expires=${expires}&signature=${signature}${thumbnail ? '&thumbnail=1' : ''}`,
+      expiresAt: new Date(expires * 1000).toISOString(),
+    };
+  }
+  async file(id: string, query: SignedFileQuery, res: Response) {
+    const thumbnail = query.thumbnail === '1';
+    const expected = this.sign(id, query.user, query.expires, thumbnail);
+    const now = Math.floor(Date.now() / 1000);
+    if (
+      query.expires <= now ||
+      query.expires > now + AttachmentLimits.URL_SECONDS ||
+      !timingSafeEqual(Buffer.from(query.signature), Buffer.from(expected))
+    )
+      throw new ForbiddenException();
+    // Signed URLs remain subject to current membership/permissions and deletion state.
+    const row = await this.downloadable(id, query.user, thumbnail);
+    const bytes = await this.storage.read(`${id}.${thumbnail ? 'thumb' : 'ready'}`);
+    const filename = `${row.filename.replace(/\.[^.]*$/, '')}.${row.mime.startsWith('image/') ? 'webp' : 'pdf'}`;
+    res.setHeader(
+      'Content-Disposition',
+      `${row.mime.startsWith('image/') ? 'inline' : 'attachment'}; filename="attachment"; filename*=UTF-8''${encodeURIComponent(filename).replace(/'/g, '%27')}`,
+    );
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.setHeader('Referrer-Policy', 'no-referrer');
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.setHeader('Content-Security-Policy', "default-src 'none'; sandbox");
+    return new StreamableFile(bytes, { type: row.mime, length: bytes.length });
+  }
+}

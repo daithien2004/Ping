@@ -7,6 +7,8 @@ export interface PingTextAreaProps {
   value?: string;
   onChange?: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
   onKeyDown?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
+  onDragOver?: (e: React.DragEvent<HTMLTextAreaElement>) => void;
+  onDrop?: (e: React.DragEvent<HTMLTextAreaElement>) => void;
   placeholder?: string;
   rows?: number;
   disabled?: boolean;
@@ -23,6 +25,8 @@ export const PingTextArea = forwardRef<HTMLTextAreaElement, PingTextAreaProps>(
       value,
       onChange,
       onKeyDown,
+      onDragOver,
+      onDrop,
       placeholder,
       rows = 3,
       disabled,
@@ -40,6 +44,8 @@ export const PingTextArea = forwardRef<HTMLTextAreaElement, PingTextAreaProps>(
         value={value}
         onChange={onChange}
         onKeyDown={onKeyDown}
+        onDragOver={onDragOver}
+        onDrop={onDrop}
         placeholder={placeholder}
         rows={rows}
         disabled={disabled}

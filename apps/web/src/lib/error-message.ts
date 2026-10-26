@@ -4,6 +4,9 @@ import { ApiError } from './api-client';
 
 /** Code có câu chung trong `errors.*` của messages/*.json. */
 const KNOWN = [
+  ErrorCodes.UPLOAD_INVALID,
+  ErrorCodes.UPLOAD_QUOTA_EXCEEDED,
+  ErrorCodes.ATTACHMENT_NOT_READY,
   ErrorCodes.VALIDATION_ERROR,
   ErrorCodes.BAD_REQUEST,
   ErrorCodes.UNAUTHORIZED,

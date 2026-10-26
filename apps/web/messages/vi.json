@@ -1,4 +1,15 @@
 {
+  "attachments": {
+    "choose": "Đính kèm tệp",
+    "files": "Tệp đính kèm (tối đa 5, mỗi tệp 10 MB)",
+    "ready": "Sẵn sàng gửi",
+    "processing": "Đang kiểm tra tệp…",
+    "progress": "Đang tải {percent}%",
+    "cancel": "Gỡ {name}",
+    "remove": "Gỡ",
+    "preview": "Xem trước {name}",
+    "loading": "Đang tải tệp đính kèm…"
+  },
   "realtime": {
     "connecting": "Đang kết nối…",
     "disconnected": "Mất kết nối. Đang thử kết nối lại…",
@@ -365,6 +376,9 @@
     "finalText": "Tạo tài khoản, tạo server đầu tiên và mời nhóm của bạn vào — mất chưa tới một phút."
   },
   "errors": {
+    "UPLOAD_INVALID": "Tệp không được hỗ trợ, không an toàn hoặc lớn hơn 10 MB.",
+    "UPLOAD_QUOTA_EXCEEDED": "Tài khoản hoặc server đã hết hạn mức lưu trữ.",
+    "ATTACHMENT_NOT_READY": "Tệp không khả dụng hoặc vẫn đang được kiểm tra.",
     "VALIDATION_ERROR": "Dữ liệu không hợp lệ hoặc đã vượt giới hạn cho phép.",
     "BAD_REQUEST": "Yêu cầu không hợp lệ.",
     "UNAUTHORIZED": "Phiên đăng nhập đã hết. Đăng nhập lại.",

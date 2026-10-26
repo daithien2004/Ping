@@ -12,6 +12,7 @@ export type Subjects =
   | 'Message'
   | 'Reaction'
   | 'Pin'
+  | 'Attachment'
   | 'Role'
   | 'Member'
   | 'AuditLog'
@@ -48,6 +49,8 @@ export function defineAbilityFor(ctx: AbilityContext): AppAbility {
   if (has(Permissions.VIEW_CHANNEL)) {
     can('view', 'Channel');
     can('view', 'Message');
+    can('view', 'Attachment');
+    if (has(Permissions.SEND_MESSAGES)) can('create', 'Attachment');
     // TG.2: thả cảm xúc cần thấy channel VÀ bit ADD_REACTIONS (ADR-0064).
     if (has(Permissions.ADD_REACTIONS)) {
       can('create', 'Reaction');

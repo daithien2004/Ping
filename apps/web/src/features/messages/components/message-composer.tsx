@@ -1,14 +1,17 @@
 'use client';
 
 import { createMessageSchema } from '@ping/shared';
-import { useEffect, useState, type KeyboardEvent, type RefObject } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent, type RefObject } from 'react';
 import { useTranslations } from 'use-intl';
 import dynamic from 'next/dynamic';
-import { Smile, X } from 'lucide-react';
+import { Paperclip, Smile, X } from 'lucide-react';
 import { PingTextArea } from '@/components/ui/ping-textarea';
 import { useRealtime } from '@/features/realtime/context';
 import { useServerAbility } from '@/features/permissions/context';
 import { useEmojiSuggestions } from '@/features/emoji/hooks';
+import { useAttachmentDrafts } from '@/features/attachments/hooks';
+import { useErrorMessage } from '@/lib/error-message';
+import { DraftPreview } from '@/features/attachments/components/draft-preview';
 
 // Picker chỉ tải khi người dùng bấm nút emoji (TG.23): dataset + lưới không nằm trong
 // bundle ban đầu (ADR-0058).
@@ -52,7 +55,7 @@ export function MessageComposer({
   /** TG.1: tin đang được trả lời; null = tin thường. */
   replyTo: { id: string; authorName: string; content: string; deleted: boolean } | null;
   onCancelReply: () => void;
-  onSend: (content: string, nonce: string, replyToId?: string) => void;
+  onSend: (content: string, nonce: string, replyToId?: string, attachmentIds?: string[]) => void;
   /** Ô nhập để empty state bấm "Gửi tin đầu tiên" đưa con trỏ về đây (TF.9). */
   textareaRef?: RefObject<HTMLTextAreaElement | null>;
 }) {
@@ -60,6 +63,10 @@ export function MessageComposer({
   const { ability, ready } = useServerAbility();
   const canSend = ability.can('create', 'Message');
   const [draft, setDraft] = useState('');
+  const uploads = useAttachmentDrafts(channelId);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const ta = useTranslations('attachments');
+  const errorMessage = useErrorMessage();
   const [pickerOpen, setPickerOpen] = useState(false);
   const [suggestionIndex, setSuggestionIndex] = useState(0);
   const t = useTranslations('messages');
@@ -125,7 +132,7 @@ export function MessageComposer({
         return;
       }
     }
-    if (!ready || !canSend) return;
+    if (!ready || !canSend || uploads.busy) return;
     if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing) {
       return; // Shift+Enter xuống dòng; đang gõ dấu (IME) thì Enter là chọn chữ, không phải gửi.
     }
@@ -134,20 +141,84 @@ export function MessageComposer({
     const parsed = createMessageSchema.safeParse({
       content: draft,
       nonce: crypto.randomUUID(),
+      ...(uploads.ids.length ? { attachmentIds: uploads.ids } : {}),
       ...(replyTo ? { replyToId: replyTo.id } : {}),
     });
     if (!parsed.success) {
       return; // rỗng hoặc toàn khoảng trắng: không gửi
     }
-    onSend(parsed.data.content, parsed.data.nonce, parsed.data.replyToId);
+    onSend(
+      parsed.data.content,
+      parsed.data.nonce,
+      parsed.data.replyToId,
+      parsed.data.attachmentIds,
+    );
+    uploads.sent();
     setDraft('');
     setPickerOpen(false);
   }
 
   return (
-    <div className="shrink-0 px-4 pb-4">
+    <div
+      className="shrink-0 px-4 pb-4"
+      role="group"
+      aria-label={label}
+      onPaste={(event) => {
+        const pasted = Array.from(event.clipboardData.files);
+        if (pasted.length && ready && canSend) {
+          event.preventDefault();
+          uploads.add(pasted);
+        }
+      }}
+    >
       {canSend ? (
         <>
+          <p className="mb-1 text-xs text-muted-foreground">{ta('files')}</p>
+          <input
+            ref={inputRef}
+            type="file"
+            multiple
+            accept="image/jpeg,image/png,image/webp,application/pdf"
+            className="sr-only"
+            aria-label={ta('choose')}
+            data-testid="attachment-input"
+            disabled={!ready || uploads.files.length >= 5}
+            onChange={(event) => {
+              uploads.add(Array.from(event.target.files ?? []));
+              event.target.value = '';
+            }}
+          />
+          {uploads.files.length > 0 && (
+            <ul aria-label={ta('files')} className="mb-2 flex flex-wrap gap-2">
+              {uploads.files.map((file) => (
+                <li
+                  key={file.key}
+                  className="max-w-xs rounded border bg-muted p-2 text-xs"
+                  data-testid="upload-draft"
+                >
+                  <DraftPreview file={file.file} />
+                  <p className="truncate">{file.file.name}</p>
+                  <p role="status">
+                    {file.error
+                      ? errorMessage(file.error)
+                      : file.ready
+                        ? ta('ready')
+                        : file.progress === 100
+                          ? ta('processing')
+                          : ta('progress', { percent: file.progress })}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => uploads.remove(file.key)}
+                    aria-label={ta('cancel', { name: file.file.name })}
+                    className="underline"
+                  >
+                    {ta('remove')}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
           {replyTo && (
             <div
               data-testid="reply-bar"
@@ -208,6 +279,15 @@ export function MessageComposer({
             </ul>
           )}
           <div className="flex items-end gap-1">
+            <button
+              type="button"
+              onClick={() => inputRef.current?.click()}
+              disabled={!ready || uploads.files.length >= 5}
+              aria-label={ta('choose')}
+              className="shrink-0 rounded-md p-2 text-muted-foreground hover:bg-accent disabled:opacity-50"
+            >
+              <Paperclip className="size-5" />
+            </button>
             <PingTextArea
               ref={textareaRef}
               disabled={!ready}
@@ -218,6 +298,13 @@ export function MessageComposer({
                 if (ready && event.target.value.trim()) realtime.type(channelId);
               }}
               onKeyDown={onKeyDown}
+              onDragOver={(event) => {
+                if (ready && canSend) event.preventDefault();
+              }}
+              onDrop={(event) => {
+                event.preventDefault();
+                if (ready && canSend) uploads.add(Array.from(event.dataTransfer.files));
+              }}
               autoSize={{ minRows: 1, maxRows: 8 }}
               maxLength={4000}
               placeholder={label}

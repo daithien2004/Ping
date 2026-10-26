@@ -6,6 +6,17 @@ import { z } from 'zod';
  * instead of surfacing as a runtime error mid-request (fail fast).
  */
 export const envSchema = z.object({
+  ATTACHMENT_STORAGE_DIR: z.string().min(1).default('../../.uploads'),
+  ATTACHMENT_USER_QUOTA_BYTES: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(100 * 1024 * 1024),
+  ATTACHMENT_SERVER_QUOTA_BYTES: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(1024 * 1024 * 1024),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().min(1).max(65535).default(4000),
   DATABASE_URL: z.url(),

@@ -6,3 +6,5 @@ services:
     image: ping-local-web:${PING_RELEASE:?Dat PING_RELEASE thanh tag phien ban local}
   migrate:
     image: ping-local-migrate:${PING_RELEASE:?Dat PING_RELEASE thanh tag phien ban local}
+  worker:
+    image: ping-local-api:${PING_RELEASE:?Dat PING_RELEASE thanh tag phien ban local}

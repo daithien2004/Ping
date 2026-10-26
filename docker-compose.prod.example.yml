@@ -46,8 +46,11 @@ services:
 
   api:
     build: { context: ., dockerfile: apps/api/Dockerfile, target: runner }
-    environment:
+    environment: &api-environment
       NODE_ENV: production
+      ATTACHMENT_STORAGE_DIR: /app/uploads
+      ATTACHMENT_USER_QUOTA_BYTES: ${ATTACHMENT_USER_QUOTA_BYTES:-104857600}
+      ATTACHMENT_SERVER_QUOTA_BYTES: ${ATTACHMENT_SERVER_QUOTA_BYTES:-1073741824}
       PORT: 4000
       DATABASE_URL: postgresql://ping:${POSTGRES_PASSWORD}@postgres:5432/ping
       REDIS_URL: redis://redis:6379
@@ -59,11 +62,25 @@ services:
       SENTRY_DSN: ${SENTRY_DSN:-}
       QDRANT_URL: http://qdrant:6333
       # METRICS_PORT cố ý không đặt: đặt thì chỉ mở trong mạng nội bộ của compose, KHÔNG publish ra ngoài.
+    volumes: ['uploads:/app/uploads']
     depends_on:
       migrate: { condition: service_completed_successfully }
       redis: { condition: service_healthy }
       qdrant: { condition: service_healthy }
     stop_grace_period: 40s # > SHUTDOWN_GRACE_MS + SHUTDOWN_TIMEOUT_MS thì docker mới không SIGKILL giữa chừng
+    restart: unless-stopped
+
+  worker:
+    build: { context: ., dockerfile: apps/api/Dockerfile, target: runner }
+    command: ['node', 'dist/worker.js']
+    environment: *api-environment
+    volumes: ['uploads:/app/uploads']
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+      qdrant: { condition: service_healthy }
+    healthcheck: { disable: true }
+    stop_grace_period: 40s
     restart: unless-stopped
 
   web:
@@ -91,3 +108,4 @@ services:
 volumes:
   pgdata:
   qdrantdata:
+  uploads:

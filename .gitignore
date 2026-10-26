@@ -29,3 +29,5 @@ docs/known-issues.md
 # Tài liệu đầu vào local cho v0.2.0 (chủ dự án yêu cầu không commit)
 docs/ping-v0.2.0-plan.md
 docs/project-overview-v0.1.0.md
+# TG.6 private attachment storage
+.uploads/

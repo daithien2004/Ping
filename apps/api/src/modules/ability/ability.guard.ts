@@ -65,6 +65,15 @@ export class AbilityGuard implements CanActivate {
 
   private async resolveServerId(request: Request): Promise<string | undefined> {
     const params = request.params as Record<string, string | undefined>;
+    const attachmentId = params.uploadId ?? params.attachmentId;
+    if (attachmentId) {
+      const attachment = await this.prisma.attachment.findUnique({
+        where: { id: attachmentId },
+        select: { serverId: true },
+      });
+      if (!attachment) throw new NotFoundException();
+      return attachment.serverId;
+    }
     if (params.serverId) {
       return params.serverId;
     }

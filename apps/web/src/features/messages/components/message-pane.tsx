@@ -205,18 +205,23 @@ export function MessagePane({
       ? (messages.find((message) => message.id > dividerCursor.current!)?.id ?? null)
       : null;
 
-  function send(content: string, nonce: string, replyToId?: string) {
+  function send(content: string, nonce: string, replyToId?: string, attachmentIds?: string[]) {
     if (!ready || !ability.can('create', 'Message')) return;
-    sendMutation.mutate({ content, nonce, ...(replyToId ? { replyToId } : {}) });
+    sendMutation.mutate({
+      content,
+      nonce,
+      ...(replyToId ? { replyToId } : {}),
+      ...(attachmentIds?.length ? { attachmentIds } : {}),
+    });
   }
 
   // Tin của chính mình: luôn xuống đáy để thấy nó, kể cả khi đang đọc tin cũ. KHÔNG cuộn ngay:
   // tin optimistic chỉ vào cache sau `await cancelQueries()` trong onMutate, cuộn sớm thì dừng ở
   // tin cuối CŨ (e2e bắt được: lệch đúng một tin, chập chờn). Đánh dấu, cuộn khi danh sách dài ra.
   const scrollOnAppend = useRef(false);
-  function sendOwn(content: string, nonce: string, replyToId?: string) {
+  function sendOwn(content: string, nonce: string, replyToId?: string, attachmentIds?: string[]) {
     scrollOnAppend.current = true;
-    send(content, nonce, replyToId);
+    send(content, nonce, replyToId, attachmentIds);
     setReplyTo(null);
   }
   useEffect(() => {
@@ -228,7 +233,13 @@ export function MessagePane({
   }, [messages.length, virtualizer]);
 
   const retry = (message: ClientMessage) => {
-    if (message.nonce) send(message.content, message.nonce, message.replyTo?.id);
+    if (message.nonce)
+      send(
+        message.content,
+        message.nonce,
+        message.replyTo?.id,
+        message.pendingAttachmentIds ?? message.attachments?.map((file) => file.id),
+      );
   };
 
   // Nhảy tới tin gốc của một reply. Tin đã có trong cửa sổ → cuộn + tô sáng; tin cũ hơn

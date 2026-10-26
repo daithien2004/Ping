@@ -3,6 +3,9 @@
  * client rẽ nhánh theo `code`, không theo `message` (message có thể đổi câu chữ).
  */
 export const ErrorCodes = {
+  UPLOAD_INVALID: 'UPLOAD_INVALID',
+  UPLOAD_QUOTA_EXCEEDED: 'UPLOAD_QUOTA_EXCEEDED',
+  ATTACHMENT_NOT_READY: 'ATTACHMENT_NOT_READY',
   VALIDATION_ERROR: 'VALIDATION_ERROR',
   BAD_REQUEST: 'BAD_REQUEST',
   UNAUTHORIZED: 'UNAUTHORIZED',
