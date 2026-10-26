@@ -50,6 +50,8 @@ trả phí. Task TG.7/TG.22/TG.24 sẽ tái sử dụng pipeline, nhưng chưa t
   bền qua restart, không quét lại mọi tệp đã ready. Backup nhất quán bao phủ DB + volume.
 - Metrics `attachment_jobs_total{outcome=ready|rejected|deleted|retry}` và
   `dependency_up{name="attachment_storage"}`. Không đưa filename/user/token vào label hay log.
+  Worker mở cổng metrics nội bộ `METRICS_PORT` (ADR-0031) và compose mẫu dùng nó làm healthcheck
+  cho service worker.
 
 ## Alternatives
 

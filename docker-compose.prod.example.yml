@@ -73,13 +73,22 @@ services:
   worker:
     build: { context: ., dockerfile: apps/api/Dockerfile, target: runner }
     command: ['node', 'dist/worker.js']
-    environment: *api-environment
+    environment:
+      <<: *api-environment
+      # Healthcheck thật (compose --wait coi service không có healthcheck là lỗi): worker mở
+      # cổng metrics nội bộ (ADR-0031), không publish ra ngoài; cổng 4000 của image không dùng.
+      METRICS_PORT: 4001
     volumes: ['uploads:/app/uploads']
     depends_on:
       migrate: { condition: service_completed_successfully }
       redis: { condition: service_healthy }
       qdrant: { condition: service_healthy }
-    healthcheck: { disable: true }
+    healthcheck:
+      test: ['CMD', 'node', '-e', "fetch('http://127.0.0.1:4001/metrics').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      start_period: 20s
+      retries: 3
     stop_grace_period: 40s
     restart: unless-stopped
 
