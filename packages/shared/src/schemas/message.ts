@@ -66,6 +66,28 @@ export interface MessageDto {
   replyTo: MessageReplyPreview | null;
   /** TG.2: cảm xúc đã tổng hợp (count + me), sắp theo số người giảm dần. */
   reactions: MessageReactionDto[];
+  /** TG.3: thời điểm ghim; null = chưa ghim (ADR-0066). */
+  pinnedAt: string | null;
+  /** TG.3: người ghim gần nhất; null = chưa ghim hoặc tài khoản đã bị xoá. */
+  pinnedById: string | null;
+}
+
+/**
+ * Một tin trong danh sách ghim của channel (TG.3). `pinnedBy` là người ghim; null khi tài
+ * khoản đó đã bị xoá. Danh sách có trần `Limits.PINS_PER_CHANNEL` nên trả mảng, không cursor.
+ */
+export interface PinnedMessageDto {
+  message: MessageDto;
+  pinnedAt: string;
+  pinnedBy: MessageAuthor | null;
+}
+
+/** Kết quả ghim/bỏ ghim (idempotent): trạng thái sau thao tác. */
+export interface MessagePinResult {
+  messageId: string;
+  channelId: string;
+  pinnedAt: string | null;
+  pinnedById: string | null;
 }
 
 /**

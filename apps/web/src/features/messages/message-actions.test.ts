@@ -28,6 +28,8 @@ const message: MessageDto = {
   nonce: null,
   createdAt: '2026-10-20T00:00:00.000Z',
   editedAt: null,
+  pinnedAt: null,
+  pinnedById: null,
   reactions: [],
 };
 const key = qk.messages('c1');

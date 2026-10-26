@@ -13,6 +13,7 @@ import {
   aroundWindow,
   prependNewer,
   applyReaction,
+  applyPin,
   reactionsOf,
   setReactions,
   toggleReaction,
@@ -25,6 +26,8 @@ const msg = (id: string, nonce: string | null = null, content = id): MessageDto 
   content,
   nonce,
   editedAt: null,
+  pinnedAt: null,
+  pinnedById: null,
   createdAt: '2026-10-20T00:00:00.000Z',
   authorId: author.id,
   author,
@@ -396,5 +399,25 @@ describe('reactions (TG.2)', () => {
       { emoji: '👍', count: 1, me: false },
     ]);
     expect(reactionsOf(next, 'm2')).toEqual([{ emoji: '🔥', count: 9, me: false }]);
+  });
+
+  it('applyPin chỉ đổi trạng thái ghim của đúng tin, cả hai chiều', () => {
+    const base = cache([msg('m1'), msg('m2')]);
+    const pinned = applyPin(base, {
+      messageId: 'm2',
+      pinnedAt: '2026-10-26T10:00:00.000Z',
+      pinnedById: 'u2',
+    })!;
+    expect(pinned.pages[0]!.messages.find((row) => row.id === 'm2')).toMatchObject({
+      pinnedAt: '2026-10-26T10:00:00.000Z',
+      pinnedById: 'u2',
+    });
+    expect(pinned.pages[0]!.messages.find((row) => row.id === 'm1')?.pinnedAt).toBeNull();
+    const unpinned = applyPin(pinned, { messageId: 'm2', pinnedAt: null, pinnedById: null })!;
+    expect(unpinned.pages[0]!.messages.find((row) => row.id === 'm2')?.pinnedAt).toBeNull();
+    // Chưa tải trang nào thì không tạo trang giả.
+    expect(
+      applyPin(undefined, { messageId: 'm2', pinnedAt: null, pinnedById: null }),
+    ).toBeUndefined();
   });
 });

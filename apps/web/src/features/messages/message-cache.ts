@@ -52,6 +52,8 @@ export function optimisticMessage(
     author,
     replyTo,
     reactions: [],
+    pinnedAt: null,
+    pinnedById: null,
     status: 'sending',
   };
 }
@@ -250,6 +252,28 @@ export function applyReaction(
             : sortReactions([...rest, { emoji: change.emoji, count: change.count, me }]);
         return { ...message, reactions };
       }),
+    })),
+  };
+}
+
+/**
+ * TG.3: đặt/ghỡ trạng thái ghim của một tin trong cache. `pinnedAt`/`pinnedById` luôn lấy từ
+ * server (event hoặc response của PUT/DELETE) — không tự đoán, nên hai tab không lệch trạng thái.
+ */
+export function applyPin(
+  cache: MessagesCache | undefined,
+  change: { messageId: string; pinnedAt: string | null; pinnedById: string | null },
+): MessagesCache | undefined {
+  if (!cache) return cache;
+  return {
+    ...cache,
+    pages: cache.pages.map((page) => ({
+      ...page,
+      messages: page.messages.map((message) =>
+        message.id === change.messageId
+          ? { ...message, pinnedAt: change.pinnedAt, pinnedById: change.pinnedById }
+          : message,
+      ),
     })),
   };
 }

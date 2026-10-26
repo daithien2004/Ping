@@ -1,6 +1,6 @@
 // Prisma 7: URL kết nối KHÔNG nằm ở đây nữa — nó ở prisma7.config.ts.
 generator client {
-  provider = "prisma-client"            // generator ESM-first, sinh code TS thật
+  provider = "prisma-client" // generator ESM-first, sinh code TS thật
   output   = "../src/generated/prisma" // relative tới file schema này
 }
 
@@ -18,25 +18,26 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  sessions     Session[]
-  members      Member[]
-  messages     Message[]
-  reactions    MessageReaction[]
-  ownedServers Server[]
-  invites      ServerInvite[]
+  sessions       Session[]
+  members        Member[]
+  messages       Message[]
+  reactions      MessageReaction[]
+  pinnedMessages Message[]         @relation("MessagePins")
+  ownedServers   Server[]
+  invites        ServerInvite[]
 }
 
 model Session {
-  id String @id @default(uuid(7)) @db.Uuid
-  userId String @db.Uuid
+  id               String    @id @default(uuid(7)) @db.Uuid
+  userId           String    @db.Uuid
   // Lookup refresh token theo hash phải là O(log n): mỗi request /refresh
   // tra bảng này. @unique cũng bất biến "mỗi token ứng đúng 1 session".
-  refreshTokenHash String @unique
+  refreshTokenHash String    @unique
   userAgent        String?
   ip               String?
   expiresAt        DateTime
   revokedAt        DateTime?
-  createdAt        DateTime @default(now())
+  createdAt        DateTime  @default(now())
 
   // Refresh token gắn với user: xóa user thì phiên đăng nhập phải chết theo.
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -45,18 +46,18 @@ model Session {
 }
 
 model Server {
-  id        String   @id @default(uuid(7)) @db.Uuid
-  name      String
-  iconUrl   String?
-  ownerId   String @db.Uuid
+  id         String   @id @default(uuid(7)) @db.Uuid
+  name       String
+  iconUrl    String?
+  ownerId    String   @db.Uuid
   // Mã mời rút gọn (guide 10.1 "tham gia bằng invite") — người chưa là member
   // vẫn join được khi có code này, không cần biết serverId.
-  inviteCode String  @unique
-  createdAt DateTime @default(now())
+  inviteCode String   @unique
+  createdAt  DateTime @default(now())
 
   // FK thật cho ownerId (guide chỉ để String trần): mặc định required relation
   // = Restrict — không thể xóa user đang sở hữu server, phải chuyển quyền trước.
-  owner    User      @relation(fields: [ownerId], references: [id])
+  owner    User           @relation(fields: [ownerId], references: [id])
   members  Member[]
   roles    Role[]
   channels Channel[]
@@ -68,32 +69,32 @@ model Server {
 // `Server.inviteCode` giữ làm bản sao Denormalized của mã đang hoạt động để
 // danh sách server/hiển thị không cần join; join (tham gia server) tra bảng này.
 model ServerInvite {
-  id          String   @id @default(uuid(7)) @db.Uuid
-  serverId    String   @db.Uuid
-  code        String   @unique
-  createdById String   @db.Uuid
-  createdAt   DateTime @default(now())
+  id          String    @id @default(uuid(7)) @db.Uuid
+  serverId    String    @db.Uuid
+  code        String    @unique
+  createdById String    @db.Uuid
+  createdAt   DateTime  @default(now())
   expiresAt   DateTime?
   revokedAt   DateTime?
 
-  server   Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
-  createdBy User  @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  server    Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  createdBy User   @relation(fields: [createdById], references: [id], onDelete: Restrict)
 
   // Tìm mã đang hoạt động của một server (hiển thị, regenerate revoke mã cũ).
   @@index([serverId, revokedAt])
 }
 
 model Role {
-  id          String   @id @default(uuid(7)) @db.Uuid
-  serverId    String @db.Uuid
-  name      String
+  id          String  @id @default(uuid(7)) @db.Uuid
+  serverId    String  @db.Uuid
+  name        String
   // Bitmask 64-bit — các h bit của Permission trong @ping/shared được OR vào đây.
-  permissions BigInt   @default(0)
-  position    Int      @default(0)
-  isDefault   Boolean  @default(false) // role @everyone: tạo kèm khi tạo server
+  permissions BigInt  @default(0)
+  position    Int     @default(0)
+  isDefault   Boolean @default(false) // role @everyone: tạo kèm khi tạo server
 
-  server  Server       @relation(fields: [serverId], references: [id], onDelete: Cascade)
-  members MemberRole[]
+  server   Server           @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  members  MemberRole[]
   mentions MessageMention[]
 
   @@index([serverId])
@@ -101,14 +102,14 @@ model Role {
 
 model Member {
   id       String   @id @default(uuid(7)) @db.Uuid
-  serverId String @db.Uuid
-  userId   String @db.Uuid
+  serverId String   @db.Uuid
+  userId   String   @db.Uuid
   nickname String?
   joinedAt DateTime @default(now())
 
-  server Server       @relation(fields: [serverId], references: [id], onDelete: Cascade)
-  user   User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  roles  MemberRole[]
+  server     Server             @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  user       User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roles      MemberRole[]
   readStates ChannelReadState[]
   mentions   MessageMention[]
 
@@ -140,14 +141,14 @@ model ChannelReadState {
 // PK composite như plan 5.1 vì Postgres không cho cột NULL trong primary key; dedup do
 // ứng dụng kiểm soát (parse ra tập duy nhất, sửa tin xoá rồi ghi lại).
 model MessageMention {
-  id                String   @id @default(uuid(7)) @db.Uuid
-  messageId         String   @db.Uuid
+  id                String  @id @default(uuid(7)) @db.Uuid
+  messageId         String  @db.Uuid
   // NULL khi là @everyone / @role.
-  mentionedMemberId String?  @db.Uuid
+  mentionedMemberId String? @db.Uuid
   kind              String // "user" | "role" | "everyone"
-  roleId            String?  @db.Uuid
+  roleId            String? @db.Uuid
 
-  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  message         Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
   mentionedMember Member? @relation(fields: [mentionedMemberId], references: [id], onDelete: Cascade)
   role            Role?   @relation(fields: [roleId], references: [id], onDelete: Cascade)
 
@@ -168,14 +169,14 @@ model MemberRole {
 
 model Channel {
   id        String      @id @default(uuid(7)) @db.Uuid
-  serverId  String @db.Uuid
+  serverId  String      @db.Uuid
   name      String
   type      ChannelType @default(TEXT)
   position  Int         @default(0)
   createdAt DateTime    @default(now())
 
-  server   Server    @relation(fields: [serverId], references: [id], onDelete: Cascade)
-  messages Message[]
+  server     Server             @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  messages   Message[]
   readStates ChannelReadState[]
 
   @@index([serverId])
@@ -187,42 +188,49 @@ enum ChannelType {
 }
 
 model Message {
-  id        String    @id @default(uuid(7)) @db.Uuid
-  channelId String @db.Uuid
-  authorId  String @db.Uuid
-  content   String
-  editedAt  DateTime?
-  deletedAt DateTime? // soft delete: moderation + đồng bộ realtime
-  nonce     String?   // idempotency key do client sinh (xem 16.1)
+  id         String                   @id @default(uuid(7)) @db.Uuid
+  channelId  String                   @db.Uuid
+  authorId   String                   @db.Uuid
+  content    String
+  editedAt   DateTime?
+  deletedAt  DateTime? // soft delete: moderation + đồng bộ realtime
+  nonce      String? // idempotency key do client sinh (xem 16.1)
   // TG.1: reply trỏ tới tin gốc CÙNG channel (service kiểm); SetNull khi tin gốc bị xóa cứng.
-  replyToId String?   @db.Uuid
+  replyToId  String?                  @db.Uuid
+  // TG.3 (ADR-0066): ghim. NULL ở pinnedAt = tin không được ghim; xóa mềm thì service gỡ ghim
+  // trong cùng transaction nên trần 50 không tính tin đã xóa.
+  pinnedAt   DateTime?
+  pinnedById String?                  @db.Uuid
   // T4.6 (ADR-0045): cột sinh ở tầng SQL (migration fts_search):
   //   GENERATED ALWAYS AS (to_tsvector('simple', f_unaccent("content"))) STORED
   // Prisma không sinh được generated column nên chỉ khai báo kiểu để migrate diff khớp;
   // đọc/viết cột này chỉ qua $queryRaw trong SearchService, không qua client.
-  search    Unsupported("tsvector")? @default(dbgenerated("to_tsvector('simple'::regconfig, f_unaccent(content))"))
-  createdAt DateTime  @default(now())
+  search     Unsupported("tsvector")? @default(dbgenerated("to_tsvector('simple'::regconfig, f_unaccent(content))"))
+  createdAt  DateTime                 @default(now())
 
-  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  channel  Channel   @relation(fields: [channelId], references: [id], onDelete: Cascade)
   // KHÔNG onDelete Cascade ở author: xóa user không được kéo sập tin nhắn.
-  author  User    @relation(fields: [authorId], references: [id])
+  author   User      @relation(fields: [authorId], references: [id])
   // TG.1: quan hệ tự thân cho reply; soft-delete vẫn giữ liên kết để hiện "tin đã xóa".
-  replyTo Message?  @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
-  replies Message[] @relation("MessageReplies")
+  replyTo  Message?  @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies  Message[] @relation("MessageReplies")
+  // TG.3: người ghim gần nhất; xóa tài khoản không được kéo sập tin đã ghim.
+  pinnedBy User?     @relation("MessagePins", fields: [pinnedById], references: [id], onDelete: SetNull)
+
+  mentions  MessageMention[]
+  reactions MessageReaction[]
 
   // Chống ghi trùng khi client retry. Postgres cho phép NULL lặp trong unique
   // nên tin không có nonce không bao giờ bị block bởi index này.
   @@unique([channelId, authorId, nonce])
-
   // Index quan trọng nhất hệ thống: phân trang cursor (keyset) theo tin mới nhất.
   @@index([channelId, id(sort: Desc)])
   // FK SET NULL must locate replies without scanning the entire message history per deletion.
   @@index([replyToId])
+  // TG.3: danh sách ghim của một channel, mới ghim trước (trần 50 ở service).
+  @@index([channelId, pinnedAt(sort: Desc)])
   // T4.6 (ADR-0045): FTS trên cột sinh `search` (index thật do migration fts_search tạo).
   @@index([search], type: Gin, map: "Message_search_key")
-
-  mentions MessageMention[]
-  reactions MessageReaction[]
 }
 
 /// Cảm xúc trên tin (TG.2, ADR-0064): một user thả một emoji trên một tin đúng một lần.
@@ -312,4 +320,6 @@ enum AuditAction {
   SERVER_DELETE
   SERVER_UPDATE
   SERVER_INVITE_REGENERATE
+  MESSAGE_PIN
+  MESSAGE_UNPIN
 }

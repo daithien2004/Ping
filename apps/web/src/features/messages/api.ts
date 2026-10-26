@@ -2,7 +2,9 @@ import type {
   CreateMessageInput,
   MessageDto,
   MessagePage,
+  MessagePinResult,
   MessageReactionSummary,
+  PinnedMessageDto,
   ReactionUsersPage,
   UpdateMessageInput,
 } from '@ping/shared';
@@ -56,3 +58,14 @@ export const listReactionUsers = (messageId: string, emoji: string, after?: stri
       after ? `?after=${encodeURIComponent(after)}` : ''
     }`,
   );
+
+/**
+ * TG.3: ghim/bỏ ghim — `PUT`/`DELETE` idempotent, trả trạng thái sau thao tác để client hoà giải
+ * thay vì tự đoán. Danh sách ghim có trần nên API trả mảng thẳng, không phân trang.
+ */
+export const pinMessage = (messageId: string) =>
+  api.put<MessagePinResult>(`/messages/${messageId}/pin`);
+export const unpinMessage = (messageId: string) =>
+  api.delete<MessagePinResult>(`/messages/${messageId}/pin`);
+export const listPins = (channelId: string) =>
+  api.get<PinnedMessageDto[]>(`/channels/${channelId}/pins`);

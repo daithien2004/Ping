@@ -6,6 +6,8 @@ import {
   type MessageCreatedPayload,
   type MessageUpdatedPayload,
   type MessageDeletedPayload,
+  type MessagePinnedPayload,
+  type MessageUnpinnedPayload,
   type ReactionChangedPayload,
   type UpdateMessageInput,
 } from '@ping/shared';
@@ -13,6 +15,7 @@ import { useEffect } from 'react';
 import type { RealtimeSession } from '@/features/realtime/session';
 import {
   useMutation,
+  useQuery,
   useQueryClient,
   useSuspenseInfiniteQuery,
   type QueryClient,
@@ -28,6 +31,9 @@ import {
   deleteMessageRequest,
   addReactionRequest,
   removeReactionRequest,
+  listPins,
+  pinMessage,
+  unpinMessage,
 } from './api';
 import { ApiError } from '@/lib/api-client';
 import { useServerAbility } from '@/features/permissions/context';
@@ -46,6 +52,7 @@ import {
   prependNewer,
   replaceWithWindow,
   applyReaction,
+  applyPin,
   reactionsOf,
   setReactions,
   toggleReaction,
@@ -219,6 +226,56 @@ export function useToggleReaction(channelId: string) {
   return useMutation({ mutationFn: createMessageActions(queryClient, serverId, channelId).react });
 }
 
+/**
+ * TG.3: danh sách ghim của channel — chỉ tải khi panel mở (trần 50 nên một request là đủ).
+ * Event `message.pinned`/`message.unpinned` invalidate key này để panel đang mở thấy ngay.
+ */
+export function usePins(channelId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: qk.pins(channelId),
+    queryFn: () => listPins(channelId),
+    enabled,
+  });
+}
+
+/**
+ * TG.3: ghim/bỏ ghim. Optimistic trên cache tin để menu phản hồi ngay; trạng thái server
+ * (response của PUT/DELETE) là nguồn chuẩn, và danh sách ghim được invalidate để đối soát.
+ */
+export function useSetPinned(channelId: string) {
+  const queryClient = useQueryClient();
+  const key = qk.messages(channelId);
+  return useMutation({
+    mutationFn: ({ messageId, pin }: { messageId: string; pin: boolean }) =>
+      pin ? pinMessage(messageId) : unpinMessage(messageId),
+    onMutate: async ({ messageId, pin }) => {
+      await queryClient.cancelQueries({ queryKey: key, exact: true });
+      const snapshot = queryClient.getQueryData<MessagesCache>(key);
+      queryClient.setQueryData<MessagesCache>(key, (old) =>
+        applyPin(old, {
+          messageId,
+          pinnedAt: pin ? new Date().toISOString() : null,
+          pinnedById: null,
+        }),
+      );
+      return { snapshot };
+    },
+    onSuccess: (result) => {
+      queryClient.setQueryData<MessagesCache>(key, (old) => applyPin(old, result));
+      void queryClient.invalidateQueries({ queryKey: qk.pins(channelId) });
+    },
+    onError: (_error, _variables, context) => {
+      // Bị từ chối vì quyền/trần: trạng thái thật có thể khác optimistic → đối soát bằng REST.
+      if (context?.snapshot) {
+        queryClient.setQueryData(key, context.snapshot);
+      } else {
+        void queryClient.invalidateQueries({ queryKey: key, exact: true });
+      }
+      void queryClient.invalidateQueries({ queryKey: qk.pins(channelId) });
+    },
+  });
+}
+
 /** The socket carries events; only domain hooks are allowed to write server cache. */
 export function useMessageEvents(session: RealtimeSession) {
   const queryClient = useQueryClient();
@@ -238,7 +295,13 @@ export function useMessageEvents(session: RealtimeSession) {
     };
     const created = (event: MessageCreatedPayload) =>
       void apply(event.channelId, (old) =>
-        upsertMessage(old, { ...event, editedAt: null, reactions: [] }),
+        upsertMessage(old, {
+          ...event,
+          editedAt: null,
+          reactions: [],
+          pinnedAt: null,
+          pinnedById: null,
+        }),
       );
     const updated = (event: MessageUpdatedPayload) =>
       void apply(event.channelId, (old) => updateMessage(old, event));
@@ -256,17 +319,32 @@ export function useMessageEvents(session: RealtimeSession) {
       );
     const reactionAdded = (event: ReactionChangedPayload) => reacted(event, true);
     const reactionRemoved = (event: ReactionChangedPayload) => reacted(event, false);
+    // TG.3: trạng thái ghim lấy nguyên từ event; panel ghim đang mở được invalidate để đối soát.
+    const pinned = (event: MessagePinnedPayload) => {
+      void apply(event.channelId, (old) => applyPin(old, event));
+      void queryClient.invalidateQueries({ queryKey: qk.pins(event.channelId) });
+    };
+    const unpinned = (event: MessageUnpinnedPayload) => {
+      void apply(event.channelId, (old) =>
+        applyPin(old, { messageId: event.messageId, pinnedAt: null, pinnedById: null }),
+      );
+      void queryClient.invalidateQueries({ queryKey: qk.pins(event.channelId) });
+    };
     session.socket.on(ServerEvents.MessageCreated, created);
     session.socket.on(ServerEvents.MessageUpdated, updated);
     session.socket.on(ServerEvents.MessageDeleted, deleted);
     session.socket.on(ServerEvents.ReactionAdded, reactionAdded);
     session.socket.on(ServerEvents.ReactionRemoved, reactionRemoved);
+    session.socket.on(ServerEvents.MessagePinned, pinned);
+    session.socket.on(ServerEvents.MessageUnpinned, unpinned);
     return () => {
       session.socket.off(ServerEvents.MessageCreated, created);
       session.socket.off(ServerEvents.MessageUpdated, updated);
       session.socket.off(ServerEvents.MessageDeleted, deleted);
       session.socket.off(ServerEvents.ReactionAdded, reactionAdded);
       session.socket.off(ServerEvents.ReactionRemoved, reactionRemoved);
+      session.socket.off(ServerEvents.MessagePinned, pinned);
+      session.socket.off(ServerEvents.MessageUnpinned, unpinned);
     };
   }, [session, queryClient, me]);
 }

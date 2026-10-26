@@ -14,6 +14,7 @@ const KNOWN = [
   ErrorCodes.SERVICE_UNAVAILABLE,
   ErrorCodes.REACTION_LIMIT_REACHED,
   ErrorCodes.REACTION_EMOJI_INVALID,
+  ErrorCodes.PIN_LIMIT_REACHED,
 ] as const;
 type KnownCode = (typeof KNOWN)[number];
 

@@ -7,6 +7,7 @@ import {
   reactionEmojiSchema,
   type AppAbility,
   type CreateMessageInput,
+  type MessagePinResult,
   type MessageReactionDto,
   type MessageReactionSummary,
   type ReactionUsersPage,
@@ -33,6 +34,9 @@ const messageWithAuthor = {
   createdAt: true,
   authorId: true,
   author: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
+  // TG.3: trạng thái ghim đi kèm mọi tin để UI hiện chỉ báo và menu Ghim/Bỏ ghim.
+  pinnedAt: true,
+  pinnedById: true,
   // TG.1: xem trước tin gốc cho khối trích dẫn (kể cả tin đã soft-delete — cờ `deleted`).
   replyTo: {
     select: {
@@ -432,7 +436,8 @@ export class MessagesService {
       await this.prisma.$transaction(async (tx) => {
         await tx.message.update({
           where: { id: message.id },
-          data: { deletedAt: new Date() },
+          // TG.3: tin bị xóa thì bỏ ghim luôn — trần 50 chỉ đếm tin còn sống.
+          data: { deletedAt: new Date(), pinnedAt: null, pinnedById: null },
         });
         await this.outbox.write(tx, {
           aggregateType: 'Message',
@@ -450,7 +455,7 @@ export class MessagesService {
       await this.prisma.$transaction(async (tx) => {
         await tx.message.update({
           where: { id: message.id },
-          data: { deletedAt: new Date() },
+          data: { deletedAt: new Date(), pinnedAt: null, pinnedById: null },
         });
         await this.audit.record(
           {
@@ -477,6 +482,142 @@ export class MessagesService {
     });
 
     return { id: message.id };
+  }
+
+  /**
+   * Ghim tin (TG.3, ADR-0066). Idempotent như cảm xúc: tin đã ghim trả trạng thái hiện tại,
+   * không ghi audit và không phát event lần hai. Trần `Limits.PINS_PER_CHANNEL` được giữ dưới
+   * advisory lock theo channel để hai instance không cùng vượt trần.
+   */
+  async pin(messageId: string, actorId: string): Promise<MessagePinResult> {
+    const target = await this.pinTarget(messageId);
+    const outcome = await this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${target.channelId}))`;
+      const current = await tx.message.findUniqueOrThrow({
+        where: { id: messageId },
+        select: { pinnedAt: true, pinnedById: true },
+      });
+      if (current.pinnedAt) {
+        return { changed: false, pinnedAt: current.pinnedAt, pinnedById: current.pinnedById };
+      }
+      const pinned = await tx.message.count({
+        where: { channelId: target.channelId, deletedAt: null, pinnedAt: { not: null } },
+      });
+      if (pinned >= Limits.PINS_PER_CHANNEL) {
+        throw new BadRequestException({
+          code: ErrorCodes.PIN_LIMIT_REACHED,
+          message: `At most ${Limits.PINS_PER_CHANNEL} pinned messages per channel`,
+        });
+      }
+      const pinnedAt = new Date();
+      await tx.message.update({
+        where: { id: messageId },
+        data: { pinnedAt, pinnedById: actorId },
+      });
+      await this.audit.record(
+        {
+          serverId: target.serverId,
+          actorId,
+          action: 'MESSAGE_PIN',
+          targetId: messageId,
+          metadata: { channelId: target.channelId },
+        },
+        tx,
+      );
+      return { changed: true, pinnedAt, pinnedById: actorId };
+    });
+
+    if (outcome.changed) {
+      this.realtime.emitToChannel(target.channelId, ServerEvents.MessagePinned, {
+        messageId,
+        channelId: target.channelId,
+        pinnedById: outcome.pinnedById ?? actorId,
+        pinnedAt: outcome.pinnedAt.toISOString(),
+      });
+    }
+    return {
+      messageId,
+      channelId: target.channelId,
+      pinnedAt: outcome.pinnedAt ? outcome.pinnedAt.toISOString() : null,
+      pinnedById: outcome.pinnedById,
+    };
+  }
+
+  /** Bỏ ghim (TG.3): idempotent — tin chưa ghim trả trạng thái hiện tại, không audit/event. */
+  async unpin(messageId: string, actorId: string): Promise<MessagePinResult> {
+    const target = await this.pinTarget(messageId);
+    const outcome = await this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${target.channelId}))`;
+      const current = await tx.message.findUniqueOrThrow({
+        where: { id: messageId },
+        select: { pinnedAt: true },
+      });
+      if (!current.pinnedAt) {
+        return { changed: false };
+      }
+      await tx.message.update({
+        where: { id: messageId },
+        data: { pinnedAt: null, pinnedById: null },
+      });
+      await this.audit.record(
+        {
+          serverId: target.serverId,
+          actorId,
+          action: 'MESSAGE_UNPIN',
+          targetId: messageId,
+          metadata: { channelId: target.channelId },
+        },
+        tx,
+      );
+      return { changed: true };
+    });
+
+    if (outcome.changed) {
+      this.realtime.emitToChannel(target.channelId, ServerEvents.MessageUnpinned, {
+        messageId,
+        channelId: target.channelId,
+      });
+    }
+    return { messageId, channelId: target.channelId, pinnedAt: null, pinnedById: null };
+  }
+
+  /**
+   * Danh sách ghim của channel (TG.3): mới ghim trước, tối đa `Limits.PINS_PER_CHANNEL` nên
+   * trả mảng thẳng (không cursor). Tin đã xóa mềm không bao giờ xuất hiện.
+   */
+  async listPins(channelId: string, viewerId: string) {
+    const rows = await this.prisma.message.findMany({
+      where: { channelId, deletedAt: null, pinnedAt: { not: null } },
+      orderBy: [{ pinnedAt: 'desc' }, { id: 'desc' }],
+      take: Limits.PINS_PER_CHANNEL,
+      select: {
+        ...messageWithAuthor,
+        pinnedBy: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
+      },
+    });
+    const reactions = await this.reactionMap(
+      rows.map((row) => row.id),
+      viewerId,
+    );
+    return rows.map(({ pinnedBy, ...row }) => ({
+      message: toMessageDto(row, reactions.get(row.id) ?? []),
+      pinnedAt: row.pinnedAt?.toISOString() ?? '',
+      pinnedBy: pinnedBy ?? null,
+    }));
+  }
+
+  /** Tin phải còn sống; trả channel + server để phát realtime, kiểm trần và ghi audit. */
+  private async pinTarget(
+    messageId: string,
+  ): Promise<{ id: string; channelId: string; serverId: string }> {
+    const message = await this.prisma.message.findFirst({
+      where: { id: messageId, deletedAt: null },
+      select: { id: true, channelId: true, channel: { select: { serverId: true } } },
+    });
+    if (!message) {
+      throw new NotFoundException('Message not found');
+    }
+    return { id: message.id, channelId: message.channelId, serverId: message.channel.serverId };
   }
 
   /**

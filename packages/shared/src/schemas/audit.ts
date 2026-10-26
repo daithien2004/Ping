@@ -16,6 +16,8 @@ export const AuditActions = {
   SERVER_DELETE: 'SERVER_DELETE',
   SERVER_UPDATE: 'SERVER_UPDATE',
   SERVER_INVITE_REGENERATE: 'SERVER_INVITE_REGENERATE',
+  MESSAGE_PIN: 'MESSAGE_PIN',
+  MESSAGE_UNPIN: 'MESSAGE_UNPIN',
 } as const;
 
 export const auditActionSchema = z.enum(AuditActions);

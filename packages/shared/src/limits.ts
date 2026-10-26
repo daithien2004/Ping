@@ -12,4 +12,6 @@ export const Limits = {
   SEARCH_QUERY_MAX: 200,
   /** Số loại cảm xúc khác nhau tối đa trên một tin (TG.2, ADR-0064). */
   REACTIONS_PER_MESSAGE: 20,
+  /** Số tin được ghim tối đa trong một channel (TG.3, ADR-0066). */
+  PINS_PER_CHANNEL: 50,
 } as const;

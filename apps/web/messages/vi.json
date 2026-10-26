@@ -156,6 +156,8 @@
       "memberRolesUpdate": "Đổi vai trò thành viên",
       "memberKick": "Đuổi thành viên",
       "messageDelete": "Xoá tin nhắn",
+      "messagePin": "Ghim tin nhắn",
+      "messageUnpin": "Bỏ ghim tin nhắn",
       "channelDelete": "Xoá channel",
       "serverDelete": "Xoá server",
       "unknown": "Hành động khác",
@@ -288,7 +290,16 @@
     "reactorsTitle": "Người đã thả {emoji}",
     "reactorsLoading": "Đang tải danh sách…",
     "reactorsEmpty": "Chưa ai thả cảm xúc này.",
-    "reactorsLoadMore": "Tải thêm người"
+    "reactorsLoadMore": "Tải thêm người",
+    "pin": "Ghim tin nhắn",
+    "unpin": "Bỏ ghim",
+    "pinnedBadge": "Tin đã ghim",
+    "pinnedTitle": "Tin đã ghim",
+    "pinnedShow": "Hiện tin đã ghim",
+    "pinnedHide": "Ẩn tin đã ghim",
+    "pinnedEmpty": "Chưa có tin nào được ghim.",
+    "pinnedBy": "Ghim bởi {name}",
+    "pinnedError": "Không tải được danh sách tin ghim."
   },
   "search": {
     "open": "Tìm trong server",
@@ -364,6 +375,7 @@
     "SERVICE_UNAVAILABLE": "Không kết nối được máy chủ.",
     "REACTION_LIMIT_REACHED": "Tin này đã có 20 loại cảm xúc khác nhau.",
     "REACTION_EMOJI_INVALID": "Emoji này không dùng làm cảm xúc được.",
+    "PIN_LIMIT_REACHED": "Kênh này đã có 50 tin được ghim. Bỏ ghim bớt trước khi ghim thêm.",
     "unknown": "Có lỗi xảy ra.",
     "unknownWithId": "Có lỗi xảy ra. Mã lỗi: {requestId}",
     "withReference": "{message} Mã lỗi: {requestId}"

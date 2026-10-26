@@ -2,7 +2,7 @@
 
 import { Suspense, use, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Users } from 'lucide-react';
+import { Pin, Users } from 'lucide-react';
 import { useTranslations } from 'use-intl';
 import { Button } from '@/components/ui/button';
 import { MessageListSkeleton } from '@/components/skeletons';
@@ -11,6 +11,7 @@ import { useMemberPanel } from '@/features/members/store';
 import { AskDialog } from '@/features/messages/components/ask-dialog';
 import { SearchDialog } from '@/features/search/components/search-dialog';
 import { MessagePane } from '@/features/messages/components/message-pane';
+import { PinnedPanel } from '@/features/messages/components/pinned-panel';
 import { messagePath } from '@/features/servers/navigation';
 import { useChannels } from '../hooks';
 
@@ -48,6 +49,7 @@ export function ChannelView({
   const panelOpen = useMemberPanel((state) => state.open);
   const togglePanel = useMemberPanel((state) => state.toggle);
   const [askOpen, setAskOpen] = useState(false);
+  const [pinsOpen, setPinsOpen] = useState(false);
 
   if (!channel) {
     return <p className="m-auto text-sm text-muted-foreground">{t('channels.notFound')}</p>;
@@ -65,6 +67,16 @@ export function ChannelView({
           <span className="mr-1.5 text-xl leading-none text-muted-foreground">#</span>
           {channel.name}
           <SearchDialog serverId={serverId} />
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-pressed={pinsOpen}
+            aria-label={t(pinsOpen ? 'messages.pinnedHide' : 'messages.pinnedShow')}
+            data-testid="pins-toggle"
+            onClick={() => setPinsOpen((open) => !open)}
+          >
+            <Pin />
+          </Button>
           <Button
             variant="ghost"
             size="icon"
@@ -95,6 +107,8 @@ export function ChannelView({
         </Suspense>
       </section>
       {panelOpen && <MemberPanel serverId={serverId} />}
+      {/* TG.3: panel ghim là sibling của pane tin nhắn (không nằm trong danh sách ảo hoá). */}
+      {pinsOpen && <PinnedPanel channelId={channel.id} onOpen={goToMessage} />}
     </div>
   );
 }

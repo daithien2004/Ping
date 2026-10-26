@@ -19,6 +19,8 @@ export const ErrorCodes = {
   REACTION_LIMIT_REACHED: 'REACTION_LIMIT_REACHED',
   /** Emoji không nằm trong allowlist reaction. */
   REACTION_EMOJI_INVALID: 'REACTION_EMOJI_INVALID',
+  /** Channel đã có 50 tin được ghim (TG.3, ADR-0066). */
+  PIN_LIMIT_REACHED: 'PIN_LIMIT_REACHED',
 } as const;
 
 export type ErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes];

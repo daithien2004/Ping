@@ -19,4 +19,6 @@ export const qk = {
   /** TG.2: danh sách người thả một emoji trên một tin (phân trang keyset). */
   reactionUsers: (messageId: string, emoji: string) =>
     ['messages', messageId, 'reactions', emoji] as const,
+  /** TG.3: danh sách tin đã ghim của một channel (trần 50, không phân trang). */
+  pins: (channelId: string) => ['channels', channelId, 'pins'] as const,
 };
