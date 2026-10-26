@@ -2,7 +2,8 @@
 
 - Ngày: 2026-10-26 (Asia/Saigon).
 - Người thực hiện: Codex; nhánh `feat/tg3-pins`.
-- Base: `a78984f`; commit `(cập nhật sau commit)` trên nhánh, chưa merge/push, chưa có CI mới.
+- Base: `a78984f`; commit `9fc6b88`, merge `278d7e0` trên `main`, đã push; CI `main` 12/12 job xanh
+  (run `40283015630`).
 - Thiết kế: [ADR-0066](../../../adr/0066-message-pins.md); hằng số trần ở `@ping/shared`
   (`Limits.PINS_PER_CHANNEL = 50`).
 
@@ -79,8 +80,8 @@ pnpm --filter web test:e2e
 
 ## Giới hạn và tiếp theo
 
-- Trạng thái task: **done** — commit `(cập nhật sau commit)` trên `feat/tg3-pins`, chưa merge/push.
-  CI remote sẽ chạy lại đủ bộ web e2e theo shard; kết quả ghi ở commit tài liệu sau.
+- Trạng thái task: **done** — commit `9fc6b88` (merge `278d7e0`) trên `main`, đã push; CI `main`
+  12/12 job xanh (run `40283015630`), gồm đủ bộ web e2e theo shard có `pin.spec`.
 - Event realtime vẫn best-effort (không số thứ tự phiên bản); REST là nguồn đối soát.
 - Panel ghim không có ảnh chụp trong evidence (không nằm trong tiêu chí nghiệm thu TG.3); axe sáng/tối
   và ảnh của TG.2 vẫn là mẫu chụp màn hình.
