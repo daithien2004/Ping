@@ -38,6 +38,12 @@ trong [CONTRIBUTING](../CONTRIBUTING.md).
 | `RealtimeService.refreshAccess` duyệt mọi thành viên của server          | [ADR-0006](adr/0006-realtime-authorization-and-presence.md)                                                                       | Chỉ duyệt thành viên mang role vừa đổi, hoặc đẩy vào hàng đợi, khi server lớn                        |
 | Xóa server/channel nhiều tin trả `500` do transaction quá hạn            | TG.5: xóa server có kênh 10.000 tin → `Transaction API error ... timeout ... 5000 ms` (`PG_QUERY_TIMEOUT_MS`), cascade không xong | Xóa theo lô (channel → message) hoặc nền + `202`; hoặc nâng timeout riêng cho câu DELETE lớn         |
 
+Cập nhật TG.2 (2026-10-26): đã bổ sung index `Message.replyToId` cho khóa ngoại `ON DELETE SET
+NULL` ([ADR-0065](adr/0065-message-reply-lookup-index.md)). Truy vấn dọn fixture từng timeout
+sau 5 giây nay đạt 403 ms (575 tin bị xóa thử trong transaction rollback, DB 467.578 tin).
+Chưa đo lại chính thao tác xóa server/channel có 10.000 tin trong mục P2 ở trên, nên chưa
+đóng toàn bộ nợ đó chỉ từ kết quả cleanup.
+
 Theo dõi thêm cho P2: **Playwright teardown Windows chờ API watch**. Lần kiểm Nginx có 22/22 bài
 xanh; runner thoát 0 sau khi dọn đúng cây API watch do nó tạo. Cần điều tra cách Playwright dừng
 cây tiến trình Nest watch trên Windows; không kill theo tên `node.exe` vì có thể ảnh hưởng ứng dụng khác.

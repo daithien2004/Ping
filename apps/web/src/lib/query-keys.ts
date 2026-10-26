@@ -16,4 +16,7 @@ export const qk = {
   unread: (serverId: string) => ['servers', serverId, 'unread'] as const,
   search: (serverId: string) => ['servers', serverId, 'search'] as const,
   messages: (channelId: string) => ['channels', channelId, 'messages'] as const,
+  /** TG.2: danh sách người thả một emoji trên một tin (phân trang keyset). */
+  reactionUsers: (messageId: string, emoji: string) =>
+    ['messages', messageId, 'reactions', emoji] as const,
 };

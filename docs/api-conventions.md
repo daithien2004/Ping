@@ -61,6 +61,12 @@ Retry an toàn: gửi tin nhắn dùng `nonce` (unique trong DB, retry trả l�
 event); tạo server/channel/role nhận header `Idempotency-Key` (UUID, lưu 24 giờ trên Redis; request
 trùng khi lần đầu còn đang chạy → 409).
 
+Reaction (TG.2, [ADR-0064](adr/0064-message-reactions.md)): `PUT` và `DELETE
+/messages/:messageId/reactions/:emoji` đều idempotent, trả **200** cùng
+`{ messageId, reactions: [{ emoji, count, me }] }` để client đối soát trạng thái sau thao tác.
+`GET` cùng URL trả `{ users, total, hasMore, nextCursor }`; cursor `after` là id hàng reaction,
+không phải id user. Danh sách tin kèm `reactions`, cờ `me` luôn tính theo người gọi API.
+
 ## 4. 403 hay 404
 
 - **Server**: không phải thành viên → **403**, kể cả server không tồn tại (không lộ server nào có thật).

@@ -1,3 +1,4 @@
+import { isAllowedReactionEmoji } from '@ping/shared';
 import { describe, expect, it } from 'vitest';
 import { SHORTCODE_TO_UNICODE as MARKDOWN_EMOJI } from './map.js';
 import { EMOJI_DATA, EMOJI_GROUPS, SKIN_MODIFIERS, SHORTCODE_TO_UNICODE } from './data.js';
@@ -54,5 +55,21 @@ describe('emoji dataset (TG.23, ADR-0057)', () => {
         }
       }
     }
+  });
+
+  it('allowlist cảm xúc của @ping/shared phủ đúng dataset picker (TG.2)', () => {
+    // API chỉ nhận emoji trong allowlist; lệch một entry là người dùng thấy emoji trong picker
+    // nhưng thả xuống bị 400. Test giữ hai nguồn sinh ra từ cùng bộ dữ liệu.
+    for (const entry of EMOJI_DATA) {
+      expect(isAllowedReactionEmoji(entry.unicode), entry.unicode).toBe(true);
+      if (entry.tone) {
+        for (const modifier of SKIN_MODIFIERS) {
+          expect(isAllowedReactionEmoji(entry.unicode + modifier), entry.shortcode).toBe(true);
+        }
+      }
+    }
+    // Văn bản/chuỗi lạ không lọt qua allowlist.
+    expect(isAllowedReactionEmoji('ping')).toBe(false);
+    expect(isAllowedReactionEmoji('<b>')).toBe(false);
   });
 });

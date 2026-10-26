@@ -11,6 +11,8 @@ export const Permissions = {
   VIEW_AUDIT_LOG: 256n,
   /** Được ping @everyone/@role trong tin nhắn (T4.1, ADR-0043). Không mặc định cho ai. */
   MENTION_EVERYONE: 512n,
+  /** Được thả cảm xúc lên tin nhắn (TG.2, ADR-0064). Mặc định có trong `@everyone`. */
+  ADD_REACTIONS: 1024n,
 } as const;
 
 export function hasPermission(value: bigint, flag: bigint): boolean {

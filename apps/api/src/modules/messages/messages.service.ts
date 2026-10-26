@@ -1,6 +1,17 @@
 import { ForbiddenError, subject } from '@casl/ability';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { ServerEvents, type AppAbility, type CreateMessageInput } from '@ping/shared';
+import {
+  ErrorCodes,
+  Limits,
+  ServerEvents,
+  reactionEmojiSchema,
+  type AppAbility,
+  type CreateMessageInput,
+  type MessageReactionDto,
+  type MessageReactionSummary,
+  type ReactionUsersPage,
+  type ReactionUsersQuery,
+} from '@ping/shared';
 import { isUniqueConstraintError } from '../../common/utils/prisma-errors.js';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
 import { OutboxService } from '../../infra/events/outbox.service.js';
@@ -8,6 +19,7 @@ import { AbilityFactory } from '../ability/ability.factory.js';
 import { AuditService } from '../audit/audit.service.js';
 import { RealtimeService } from '../realtime/realtime.service.js';
 import { MessageRateLimiter } from './message-rate-limiter.js';
+import { ReactionRateLimiter } from './reaction-rate-limiter.js';
 import { extractMentionTokens } from './mention-parser.js';
 import { resolveMentions } from './mention-resolver.js';
 import type { ListMessagesQuery } from './schemas.js';
@@ -50,10 +62,13 @@ function replyPreview(
   };
 }
 
-/** Hàng Prisma (select `messageWithAuthor`) → DTO: `replyTo` đổi sang dạng preview. */
-function toMessageDto<T extends { replyTo: Parameters<typeof replyPreview>[0] }>(row: T) {
+/** Hàng Prisma (select `messageWithAuthor`) → DTO: `replyTo` preview + cảm xúc đã tổng hợp. */
+function toMessageDto<T extends { replyTo: Parameters<typeof replyPreview>[0] }>(
+  row: T,
+  reactions: MessageReactionDto[] = [],
+) {
   const { replyTo, ...rest } = row;
-  return { ...rest, replyTo: replyPreview(replyTo) };
+  return { ...rest, replyTo: replyPreview(replyTo), reactions };
 }
 
 @Injectable()
@@ -63,6 +78,7 @@ export class MessagesService {
     private readonly realtime: RealtimeService,
     private readonly audit: AuditService,
     private readonly rateLimiter: MessageRateLimiter,
+    private readonly reactionLimiter: ReactionRateLimiter,
     private readonly outbox: OutboxService,
     private readonly abilityFactory: AbilityFactory,
   ) {}
@@ -80,9 +96,9 @@ export class MessagesService {
    * trang thường. Tin đích phải nằm trong CHÍNH channel và chưa bị xóa mềm, nếu không 404
    * (không phân biệt "không tồn tại" với "thuộc channel khác" để không lộ id).
    */
-  async list(channelId: string, query: ListMessagesQuery) {
+  async list(channelId: string, query: ListMessagesQuery, viewerId: string) {
     if (query.around !== undefined) {
-      return this.listAround(channelId, query.around, query.limit);
+      return this.listAround(channelId, query.around, query.limit, viewerId);
     }
     if (query.after !== undefined) {
       const messages = await this.prisma.message.findMany({
@@ -96,8 +112,13 @@ export class MessagesService {
         select: messageWithAuthor,
       });
       const hasMore = messages.length > query.limit;
+      const page = hasMore ? messages.slice(0, query.limit) : messages;
+      const reactions = await this.reactionMap(
+        page.map((message) => message.id),
+        viewerId,
+      );
       return {
-        messages: (hasMore ? messages.slice(0, query.limit) : messages).map(toMessageDto),
+        messages: page.map((message) => toMessageDto(message, reactions.get(message.id) ?? [])),
         hasMore,
       };
     }
@@ -115,8 +136,13 @@ export class MessagesService {
     });
 
     const hasMore = messages.length > query.limit;
+    const page = hasMore ? messages.slice(0, query.limit) : messages;
+    const reactions = await this.reactionMap(
+      page.map((message) => message.id),
+      viewerId,
+    );
     return {
-      messages: (hasMore ? messages.slice(0, query.limit) : messages).map(toMessageDto),
+      messages: page.map((message) => toMessageDto(message, reactions.get(message.id) ?? [])),
       hasMore,
     };
   }
@@ -126,7 +152,7 @@ export class MessagesService {
    * Hai truy vấn keyset độc lập dùng index `(channelId, id)` nên chi phí không phụ thuộc số
    * tin của channel; lấy dư 1 mỗi phía để biết còn tin cũ/mới hơn ngoài cửa sổ.
    */
-  private async listAround(channelId: string, aroundId: string, limit: number) {
+  private async listAround(channelId: string, aroundId: string, limit: number, viewerId: string) {
     const target = await this.prisma.message.findUnique({
       where: { id: aroundId },
       select: { id: true, channelId: true, deletedAt: true },
@@ -157,8 +183,13 @@ export class MessagesService {
     const older = olderRows.slice(0, olderLimit);
     // Trang trả về mới nhất trước (như mọi trang khác), nên nửa mới hơn phải đảo lại.
     const newer = newerRows.slice(0, newerLimit).reverse();
+    const page = [...newer, ...older];
+    const reactions = await this.reactionMap(
+      page.map((message) => message.id),
+      viewerId,
+    );
     return {
-      messages: [...newer, ...older].map(toMessageDto),
+      messages: page.map((message) => toMessageDto(message, reactions.get(message.id) ?? [])),
       hasMore,
       hasNewer,
     };
@@ -253,7 +284,7 @@ export class MessagesService {
       void this.notifyMentionedUsers(message.id, channelId, channel.serverId).catch(
         () => undefined,
       );
-      return toMessageDto(message);
+      return toMessageDto(message, []);
     } catch (error) {
       // Client retry (mạng chập chờn) gửi lại CÙNG nonce → unique
       // (channelId, authorId, nonce) chặn ghi trùng: trả đúng tin cũ thay vì lỗi.
@@ -263,13 +294,14 @@ export class MessagesService {
           where: { channelId_authorId_nonce: { channelId, authorId, nonce: input.nonce } },
           select: messageWithAuthor,
         });
-        return toMessageDto(existing);
+        const reactions = await this.reactionMap([existing.id], authorId);
+        return toMessageDto(existing, reactions.get(existing.id) ?? []);
       }
       throw error;
     }
   }
 
-  async update(messageId: string, ability: AppAbility, content: string) {
+  async update(messageId: string, ability: AppAbility, content: string, viewerId: string) {
     const message = await this.getMessage(messageId);
     // Tier 2 (guide 10.2): rule "update Message WHERE authorId = me" chỉ kiểm
     // tra được khi đã có đối tượng thật trong tay.
@@ -325,7 +357,8 @@ export class MessagesService {
       updatedAt: (updated.editedAt ?? updated.createdAt).toISOString(),
     });
 
-    return toMessageDto(updated);
+    const reactions = await this.reactionMap([updated.id], viewerId);
+    return toMessageDto(updated, reactions.get(updated.id) ?? []);
   }
 
   /**
@@ -444,6 +477,193 @@ export class MessagesService {
     });
 
     return { id: message.id };
+  }
+
+  /**
+   * Thêm cảm xúc (TG.2, ADR-0064). Idempotent: thả lại cùng emoji trả về tổng hợp hiện tại,
+   * không tạo hàng mới và không phát event lần hai. Chặn khi tin đã có 20 loại khác nhau.
+   */
+  async addReaction(
+    messageId: string,
+    userId: string,
+    rawEmoji: string,
+  ): Promise<MessageReactionSummary> {
+    const emoji = this.parseReactionEmoji(rawEmoji);
+    const message = await this.reactionTarget(messageId);
+    await this.reactionLimiter.consume(userId, message.channelId);
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      // Serialize all reaction writes for this message across API instances. The cap and
+      // resulting count must be computed after the preceding writer has committed.
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${messageId}))`;
+      const existing = await tx.messageReaction.groupBy({ by: ['emoji'], where: { messageId } });
+      const isNew = !existing.some((row) => row.emoji === emoji);
+      if (isNew && existing.length >= Limits.REACTIONS_PER_MESSAGE) {
+        throw new BadRequestException({
+          code: ErrorCodes.REACTION_LIMIT_REACHED,
+          message: `At most ${Limits.REACTIONS_PER_MESSAGE} distinct reactions per message`,
+        });
+      }
+      const inserted = await tx.messageReaction.createMany({
+        data: [{ messageId, userId, emoji }],
+        skipDuplicates: true,
+      });
+      const count = await tx.messageReaction.count({ where: { messageId, emoji } });
+      return { inserted: inserted.count, count };
+    });
+
+    if (result.inserted > 0) {
+      this.realtime.emitToChannel(message.channelId, ServerEvents.ReactionAdded, {
+        messageId,
+        channelId: message.channelId,
+        emoji,
+        userId,
+        count: result.count,
+      });
+    }
+    return { messageId, reactions: await this.reactionSummary(messageId, userId) };
+  }
+
+  /** Gỡ cảm xúc (TG.2): idempotent, chỉ phát event khi thực sự xóa được hàng. */
+  async removeReaction(
+    messageId: string,
+    userId: string,
+    rawEmoji: string,
+  ): Promise<MessageReactionSummary> {
+    const emoji = this.parseReactionEmoji(rawEmoji);
+    const message = await this.reactionTarget(messageId);
+    await this.reactionLimiter.consume(userId, message.channelId);
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${messageId}))`;
+      const deleted = await tx.messageReaction.deleteMany({ where: { messageId, userId, emoji } });
+      const count = await tx.messageReaction.count({ where: { messageId, emoji } });
+      return { deleted: deleted.count, count };
+    });
+
+    if (result.deleted > 0) {
+      this.realtime.emitToChannel(message.channelId, ServerEvents.ReactionRemoved, {
+        messageId,
+        channelId: message.channelId,
+        emoji,
+        userId,
+        count: result.count,
+      });
+    }
+    return { messageId, reactions: await this.reactionSummary(messageId, userId) };
+  }
+
+  /** Danh sách người thả một emoji, keyset tăng dần theo id + tổng số (TG.2). */
+  async reactionUsers(
+    messageId: string,
+    rawEmoji: string,
+    query: ReactionUsersQuery,
+  ): Promise<ReactionUsersPage> {
+    const emoji = this.parseReactionEmoji(rawEmoji);
+    const message = await this.reactionTarget(messageId);
+    const [rows, total] = await Promise.all([
+      this.prisma.messageReaction.findMany({
+        where: {
+          messageId: message.id,
+          emoji,
+          ...(query.after ? { id: { gt: query.after } } : {}),
+        },
+        orderBy: { id: 'asc' },
+        take: query.limit + 1,
+        select: {
+          id: true,
+          user: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
+        },
+      }),
+      this.prisma.messageReaction.count({ where: { messageId: message.id, emoji } }),
+    ]);
+    const hasMore = rows.length > query.limit;
+    const page = rows.slice(0, query.limit);
+    return {
+      users: page.map((row) => row.user),
+      hasMore,
+      total,
+      // Keyset theo id hàng cảm xúc (không phải id user) — client phải dùng đúng cursor này.
+      nextCursor: hasMore ? (page.at(-1)?.id ?? null) : null,
+    };
+  }
+
+  private parseReactionEmoji(rawEmoji: string): string {
+    const parsed = reactionEmojiSchema.safeParse(rawEmoji);
+    if (!parsed.success) {
+      throw new BadRequestException({
+        code: ErrorCodes.REACTION_EMOJI_INVALID,
+        message: 'Emoji is not allowed',
+      });
+    }
+    return parsed.data;
+  }
+
+  /** Tin phải còn sống; trả channel để phát realtime và giới hạn tần suất. */
+  private async reactionTarget(messageId: string): Promise<{ id: string; channelId: string }> {
+    const message = await this.prisma.message.findFirst({
+      where: { id: messageId, deletedAt: null },
+      select: { id: true, channelId: true },
+    });
+    if (!message) {
+      throw new NotFoundException('Message not found');
+    }
+    return message;
+  }
+
+  private async reactionSummary(
+    messageId: string,
+    viewerId: string,
+  ): Promise<MessageReactionDto[]> {
+    const map = await this.reactionMap([messageId], viewerId);
+    return map.get(messageId) ?? [];
+  }
+
+  /**
+   * Tổng hợp cảm xúc cho một trang tin bằng HAI truy vấn (không N+1): groupBy đếm theo
+   * (messageId, emoji) + một truy vấn lấy hàng của người xem cho cờ `me`. Sắp theo số người
+   * giảm dần rồi emoji để thứ tự ổn định giữa các client.
+   */
+  private async reactionMap(
+    messageIds: string[],
+    viewerId: string,
+  ): Promise<Map<string, MessageReactionDto[]>> {
+    const map = new Map<string, MessageReactionDto[]>();
+    if (messageIds.length === 0) {
+      return map;
+    }
+    const [counts, mine] = await Promise.all([
+      this.prisma.messageReaction.groupBy({
+        by: ['messageId', 'emoji'],
+        where: { messageId: { in: messageIds } },
+        _count: { _all: true },
+      }),
+      this.prisma.messageReaction.findMany({
+        where: { messageId: { in: messageIds }, userId: viewerId },
+        select: { messageId: true, emoji: true },
+      }),
+    ]);
+    const mineByMessage = new Map<string, Set<string>>();
+    for (const row of mine) {
+      const set = mineByMessage.get(row.messageId) ?? new Set<string>();
+      set.add(row.emoji);
+      mineByMessage.set(row.messageId, set);
+    }
+    for (const row of counts) {
+      const list = map.get(row.messageId) ?? [];
+      list.push({
+        emoji: row.emoji,
+        count: row._count._all,
+        me: mineByMessage.get(row.messageId)?.has(row.emoji) ?? false,
+      });
+      map.set(row.messageId, list);
+    }
+    for (const list of map.values()) {
+      list.sort(
+        (a, b) => b.count - a.count || (a.emoji < b.emoji ? -1 : a.emoji > b.emoji ? 1 : 0),
+      );
+    }
+    return map;
   }
 
   private async getMessage(messageId: string) {

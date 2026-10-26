@@ -1,4 +1,11 @@
-import type { CreateMessageInput, MessageDto, MessagePage, UpdateMessageInput } from '@ping/shared';
+import type {
+  CreateMessageInput,
+  MessageDto,
+  MessagePage,
+  MessageReactionSummary,
+  ReactionUsersPage,
+  UpdateMessageInput,
+} from '@ping/shared';
 import { api } from '@/lib/api-client';
 
 /** Một trang tin (mới nhất trước). `before` = id tin cũ nhất đang có → lấy trang cũ hơn (cursor). */
@@ -30,3 +37,22 @@ export const sendMessage = (channelId: string, input: CreateMessageInput) =>
 export const editMessageRequest = (id: string, input: UpdateMessageInput) =>
   api.patch<MessageDto>(`/messages/${id}`, input);
 export const deleteMessageRequest = (id: string) => api.delete<{ id: string }>(`/messages/${id}`);
+
+/**
+ * TG.2: thêm/gỡ cảm xúc — `PUT`/`DELETE` idempotent, trả TOÀN BỘ nhóm cảm xúc hiện tại của tin
+ * để client hoà giải thay vì tự đoán count.
+ */
+export const addReactionRequest = (messageId: string, emoji: string) =>
+  api.put<MessageReactionSummary>(`/messages/${messageId}/reactions/${encodeURIComponent(emoji)}`);
+export const removeReactionRequest = (messageId: string, emoji: string) =>
+  api.delete<MessageReactionSummary>(
+    `/messages/${messageId}/reactions/${encodeURIComponent(emoji)}`,
+  );
+
+/** Danh sách người thả một emoji, keyset bằng `nextCursor` của trang trước. */
+export const listReactionUsers = (messageId: string, emoji: string, after?: string) =>
+  api.get<ReactionUsersPage>(
+    `/messages/${messageId}/reactions/${encodeURIComponent(emoji)}${
+      after ? `?after=${encodeURIComponent(after)}` : ''
+    }`,
+  );

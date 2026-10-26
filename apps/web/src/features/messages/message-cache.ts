@@ -1,4 +1,9 @@
-import type { MessageAuthor, MessageDto, MessageUpdatedPayload } from '@ping/shared';
+import type {
+  MessageAuthor,
+  MessageDto,
+  MessageReactionDto,
+  MessageUpdatedPayload,
+} from '@ping/shared';
 import type { InfiniteData } from '@tanstack/react-query';
 
 /**
@@ -46,6 +51,7 @@ export function optimisticMessage(
     authorId: author.id,
     author,
     replyTo,
+    reactions: [],
     status: 'sending',
   };
 }
@@ -178,6 +184,90 @@ export function deleteMessage(
       messages: page.messages.filter((message) => message.id !== id),
     })),
   };
+}
+
+/** Thứ tự nhóm cảm xúc như API: nhiều người trước, hoà thì theo codepoint của emoji. */
+function sortReactions(reactions: MessageReactionDto[]): MessageReactionDto[] {
+  return [...reactions].sort(
+    (a, b) => b.count - a.count || (a.emoji < b.emoji ? -1 : a.emoji > b.emoji ? 1 : 0),
+  );
+}
+
+/** Cảm xúc hiện có của một tin trong cache (rỗng nếu tin không nằm trong trang đã tải). */
+export function reactionsOf(
+  cache: MessagesCache | undefined,
+  messageId: string,
+): MessageReactionDto[] {
+  for (const page of cache?.pages ?? []) {
+    const message = page.messages.find((row) => row.id === messageId);
+    if (message) return message.reactions ?? [];
+  }
+  return [];
+}
+
+/** Thay TOÀN BỘ nhóm cảm xúc của một tin bằng dữ liệu server (nguồn chuẩn, đã sắp xếp). */
+export function setReactions(
+  cache: MessagesCache | undefined,
+  messageId: string,
+  reactions: MessageReactionDto[],
+): MessagesCache | undefined {
+  if (!cache) return cache;
+  return {
+    ...cache,
+    pages: cache.pages.map((page) => ({
+      ...page,
+      messages: page.messages.map((message) =>
+        message.id === messageId ? { ...message, reactions } : message,
+      ),
+    })),
+  };
+}
+
+/**
+ * Áp một thay đổi ĐÃ TỔNG HỢP cho một emoji (event realtime hoặc response API). `count` là tổng
+ * sau thao tác; `me` bỏ trống nghĩa là giữ cờ của người xem hiện tại (event của người khác không
+ * được đổi "tôi đã thả chưa"). `count <= 0` → bỏ hẳn nhóm khỏi tin.
+ */
+export function applyReaction(
+  cache: MessagesCache | undefined,
+  messageId: string,
+  change: { emoji: string; count: number; me?: boolean },
+): MessagesCache | undefined {
+  if (!cache) return cache;
+  return {
+    ...cache,
+    pages: cache.pages.map((page) => ({
+      ...page,
+      messages: page.messages.map((message) => {
+        if (message.id !== messageId) return message;
+        const previous = message.reactions ?? [];
+        const existing = previous.find((row) => row.emoji === change.emoji);
+        const me = change.me ?? existing?.me ?? false;
+        const rest = previous.filter((row) => row.emoji !== change.emoji);
+        const reactions =
+          change.count <= 0
+            ? rest
+            : sortReactions([...rest, { emoji: change.emoji, count: change.count, me }]);
+        return { ...message, reactions };
+      }),
+    })),
+  };
+}
+
+/**
+ * Bật/tắt cảm xúc của CHÍNH người xem một cách optimistic: chỉ emoji đó đổi, các emoji khác giữ
+ * nguyên. Khi tắt mà không có cờ `me` thì không trừ (tránh làm sai đếm của người khác).
+ */
+export function toggleReaction(
+  cache: MessagesCache | undefined,
+  messageId: string,
+  emoji: string,
+  active: boolean,
+): MessagesCache | undefined {
+  const existing = reactionsOf(cache, messageId).find((row) => row.emoji === emoji);
+  const base = existing?.count ?? 0;
+  const count = active ? (existing?.me ? base : base + 1) : existing?.me ? base - 1 : base;
+  return applyReaction(cache, messageId, { emoji, count, me: active });
 }
 
 /** REST remains authoritative; only unconfirmed local sends survive a refetch. */

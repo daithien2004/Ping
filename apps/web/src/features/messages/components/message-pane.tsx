@@ -330,6 +330,7 @@ export function MessagePane({
                 )}
                 <MessageItem
                   message={message}
+                  channelId={channelId}
                   permalink={messagePath(serverId, channelId, message.id)}
                   onRetry={retry}
                   onAction={setSelection}

@@ -2,10 +2,13 @@ import { useFormatter, useTranslations } from 'use-intl';
 import type { ClientMessage } from '../message-cache';
 import { useServerAbility } from '@/features/permissions/context';
 import { MessageActions, type MessageSelection } from './message-actions';
+import { MessageReactions } from './message-reactions';
 import { MarkdownText } from './markdown-text';
 
 interface Props {
   message: ClientMessage;
+  /** TG.2: kênh chứa tin — mutation cảm xúc khoá theo (user, channel) và cache theo kênh. */
+  channelId: string;
   /** TG.5: permalink tương đối của tin (menu "Sao chép liên kết"). */
   permalink: string;
   onRetry: (message: ClientMessage) => void;
@@ -20,6 +23,7 @@ interface Props {
 
 export function MessageItem({
   message,
+  channelId,
   permalink,
   onRetry,
   onAction,
@@ -77,6 +81,7 @@ export function MessageItem({
       {/* Markdown tập qua AST (TG.4, ADR-0054): renderer chỉ dựng element từ allowlist,
           không đường sinh HTML; tin optimistic đang gửi vẫn hiển thị như văn bản thường. */}
       <MarkdownText content={message.content} />
+      <MessageReactions message={message} channelId={channelId} />
       {message.status === 'failed' && (
         <p className="text-xs text-destructive">
           {t('messages.failed')} ·{' '}

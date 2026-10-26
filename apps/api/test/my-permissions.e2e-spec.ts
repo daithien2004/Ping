@@ -80,7 +80,11 @@ describe('My permissions in a server (e2e)', () => {
     const res = await myPermissions(serverId, member).expect(200);
     const expected: MyServerPermissions = {
       isOwner: false,
-      permissions: (Permissions.VIEW_CHANNEL | Permissions.SEND_MESSAGES).toString(),
+      permissions: (
+        Permissions.VIEW_CHANNEL |
+        Permissions.SEND_MESSAGES |
+        Permissions.ADD_REACTIONS
+      ).toString(),
     };
     expect(res.body).toEqual(expected);
   });

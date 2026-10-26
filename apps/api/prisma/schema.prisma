@@ -21,6 +21,7 @@ model User {
   sessions     Session[]
   members      Member[]
   messages     Message[]
+  reactions    MessageReaction[]
   ownedServers Server[]
   invites      ServerInvite[]
 }
@@ -215,10 +216,34 @@ model Message {
 
   // Index quan trọng nhất hệ thống: phân trang cursor (keyset) theo tin mới nhất.
   @@index([channelId, id(sort: Desc)])
+  // FK SET NULL must locate replies without scanning the entire message history per deletion.
+  @@index([replyToId])
   // T4.6 (ADR-0045): FTS trên cột sinh `search` (index thật do migration fts_search tạo).
   @@index([search], type: Gin, map: "Message_search_key")
 
   mentions MessageMention[]
+  reactions MessageReaction[]
+}
+
+/// Cảm xúc trên tin (TG.2, ADR-0064): một user thả một emoji trên một tin đúng một lần.
+/// Không soft-delete: gỡ = xóa hàng; tin bị xóa cứng thì cảm xúc đi theo (Cascade).
+model MessageReaction {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  messageId String   @db.Uuid
+  userId    String   @db.Uuid
+  /// Emoji Unicode đã qua allowlist ở API (tối đa 32 ký tự).
+  emoji     String
+  createdAt DateTime @default(now())
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// Idempotent: thả lại cùng emoji không tạo hàng thứ hai.
+  @@unique([messageId, userId, emoji])
+  /// Tổng hợp count theo emoji cho một trang tin.
+  @@index([messageId, emoji])
+  /// Cờ "của tôi" theo người xem.
+  @@index([messageId, userId])
 }
 
 /// Lịch sử hành động nhạy cảm (CLAUDE.md quy tắc 11): chỉ ghi thêm, không sửa/xóa.

@@ -58,6 +58,14 @@ Tài liệu ngắn theo hướng dẫn mục 16.5. Mỗi kịch bản trỏ tớ
 
 ## 5. Việc còn lại liên quan
 
+- Reaction (TG.2): mọi route đọc/thả/gỡ kiểm membership theo server chứa `messageId`; thả/gỡ
+  cần cả `VIEW_CHANNEL` và `ADD_REACTIONS` qua CASL. Emoji đi qua allowlist Unicode, tối đa
+  20 loại/tin (khóa transaction trong Postgres), unique theo tin/người/emoji chống retry trùng.
+  Giới hạn 30 thao tác/10 giây/user/channel; Redis chết thì fail-open, trần số loại và unique
+  vẫn do Postgres bảo vệ. Event chỉ phát vào room channel sau commit. Người ngoài không đọc
+  được cả danh sách người thả; tin đã xóa mềm trả 404. Bằng chứng: `reactions`, `idor`,
+  `redis-outage` và `realtime` e2e; xem [ADR-0064](../adr/0064-message-reactions.md).
+
 - CI đã có `gitleaks`, `pnpm audit` và Trivy; Trivy hiện chỉ báo cáo. `main` đã push và CI xanh tại `41e8fd4`; branch protection đã bật.
 - Sentry thật API/web đã kiểm local ngày 2026-10-21; đối chiếu toàn tuyến và metrics/cảnh báo trên staging **chuyển v0.2.0** ([ADR-0037](../adr/0037-release-scope-v0.1.0.md)). OpenTelemetry vẫn được hoãn theo ADR-0031.
 - Rà lại tài liệu này mỗi khi thêm tính năng có dữ liệu hoặc quyền mới.

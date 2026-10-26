@@ -16,6 +16,8 @@ export const ServerEvents = {
   MemberRemoved: 'member.removed',
   ReadUpdated: 'read.updated',
   MentionCreated: 'mention.created',
+  ReactionAdded: 'reaction.added',
+  ReactionRemoved: 'reaction.removed',
 } as const;
 
 export const ClientEvents = {
@@ -54,6 +56,19 @@ export interface MessageUpdatedPayload {
 export interface MessageDeletedPayload {
   id: string;
   channelId: string;
+}
+
+/**
+ * Cảm xúc thêm/gỡ (TG.2, ADR-0064). `count` là tổng số người đã thả emoji này SAU thao
+ * tác — client lấy làm nguồn chuẩn thay vì tự cộng/trừ (hai tab không lệch đếm).
+ */
+export interface ReactionChangedPayload {
+  messageId: string;
+  channelId: string;
+  emoji: string;
+  /** Người vừa thêm/gỡ — tab khác của chính họ cập nhật cờ `me`. */
+  userId: string;
+  count: number;
 }
 
 /** Channel mới/đổi tên gửi tới room `server:<id>`; client cập nhật cache danh sách channel. */
@@ -142,6 +157,8 @@ export interface ServerToClientEvents {
   [ServerEvents.ReadUpdated]: (payload: ReadUpdatedPayload) => void;
   [ServerEvents.MentionCreated]: (payload: MentionCreatedPayload) => void;
   [ServerEvents.ChannelActivity]: (payload: ChannelActivityPayload) => void;
+  [ServerEvents.ReactionAdded]: (payload: ReactionChangedPayload) => void;
+  [ServerEvents.ReactionRemoved]: (payload: ReactionChangedPayload) => void;
 }
 
 export interface ClientToServerEvents {

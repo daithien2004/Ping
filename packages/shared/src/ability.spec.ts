@@ -140,6 +140,33 @@ describe('defineAbilityFor', () => {
     expect(ability.can('create', 'Message')).toBe(false);
   });
 
+  it('requires VIEW_CHANNEL and ADD_REACTIONS to react (TG.2)', () => {
+    const noView = defineAbilityFor({
+      userId: 'user-A',
+      isOwner: false,
+      permissions: Permissions.ADD_REACTIONS,
+    });
+    const noBit = defineAbilityFor({
+      userId: 'user-A',
+      isOwner: false,
+      permissions: memberPermissions,
+    });
+    const reactor = defineAbilityFor({
+      userId: 'user-A',
+      isOwner: false,
+      permissions: memberPermissions | Permissions.ADD_REACTIONS,
+    });
+
+    expect(noView.can('create', 'Reaction')).toBe(false);
+    expect(noBit.can('create', 'Reaction')).toBe(false);
+    expect(reactor.can('create', 'Reaction')).toBe(true);
+    // Thả cảm xúc không kéo theo quyền sửa/xóa tin của người khác.
+    expect(reactor.can('delete', subject('Message', { authorId: 'user-B' }))).toBe(false);
+    expect(
+      defineAbilityFor({ userId: 'o', isOwner: true, permissions: 0n }).can('create', 'Reaction'),
+    ).toBe(true);
+  });
+
   it('only grants the action log to roles with VIEW_AUDIT_LOG (TF.10)', () => {
     const member = defineAbilityFor({
       userId: 'user-A',

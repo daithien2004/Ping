@@ -32,6 +32,7 @@ export const permissionGroups = [
     labelKey: 'messages',
     options: [
       { bit: Permissions.SEND_MESSAGES, labelKey: 'sendMessages' },
+      { bit: Permissions.ADD_REACTIONS, labelKey: 'addReactions' },
       { bit: Permissions.MANAGE_MESSAGES, labelKey: 'manageMessages' },
       { bit: Permissions.MENTION_EVERYONE, labelKey: 'mentionEveryone' },
     ],
