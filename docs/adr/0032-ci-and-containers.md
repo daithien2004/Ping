@@ -23,7 +23,9 @@ The deployment work listed in the last section is **moved to v0.2.0** by
   - **Report-only for now:** `lighthouse` (thresholds need a few runs to settle) and the Trivy step
     (`continue-on-error`). Switch both to blocking once they are stable.
   - gitleaks flagged two false positives on its first run (a placeholder in `.env.prod.example`, a
-    public badge token in the Nest README); `.gitleaks.toml` allows exactly those two paths with the reason.
+    public badge token in the Nest README) and, from TG.2 on, an evidence source manifest whose
+    SHA-256 file hashes match the `generic-api-key` rule. `.gitleaks.toml` allows exactly those
+    paths with the reason; evidence manifests are the only directory pattern it exempts.
 - **Images.** `apps/api/Dockerfile` and `apps/web/Dockerfile`, built from the repo root: `turbo prune
 --docker` → install (cached layer) → build → runner, non-root `node` user, `HEALTHCHECK`.
   - API: the `runner` target holds production dependencies and `dist` only (via `pnpm deploy --legacy

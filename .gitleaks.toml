@@ -9,4 +9,8 @@ description = "Dương tính giả đã xem xét"
 paths = [
   '''^\.env\.prod\.example$''',
   '''^apps/api/README\.md$''',
+  # TG.2: manifest evidence ghi hash SHA-256 của từng file nguồn (không phải bí mật) nên
+  # khớp nhầm luật `generic-api-key`. Chỉ miễn đúng các manifest trong evidence, không miễn
+  # cả thư mục evidence.
+  '''^docs/v0\.2\.0/evidence/[^/]+/source-manifest\.json$''',
 ]
