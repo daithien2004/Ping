@@ -240,6 +240,14 @@ describe('API conventions (e2e)', () => {
       ['GET /servers/:id/channels', () => call('get', `/servers/${serverId}/channels`, alice)],
       ['GET /servers/:id/roles', () => call('get', `/servers/${serverId}/roles`, alice)],
       ['GET /channels/:id/messages', () => call('get', `/channels/${channelId}/messages`, alice)],
+      [
+        'PUT /messages/:id/reactions/:emoji',
+        () => call('put', `/messages/${messageId}/reactions/${encodeURIComponent('👍')}`, alice),
+      ],
+      [
+        'GET /messages/:id/reactions/:emoji',
+        () => call('get', `/messages/${messageId}/reactions/${encodeURIComponent('👍')}`, alice),
+      ],
     ];
 
     function walk(value: unknown, path: string, problems: string[]): void {
@@ -281,6 +289,24 @@ describe('API conventions (e2e)', () => {
   });
 
   describe('HTTP status per operation', () => {
+    it('reaction PUT and DELETE both answer 200 with the current summary', async () => {
+      const url = `/messages/${messageId}/reactions/${encodeURIComponent('👍')}`;
+      const added = await call('put', url, alice).expect(200);
+      expect(added.body).toEqual({ messageId, reactions: [{ emoji: '👍', count: 1, me: true }] });
+      const users = await call('get', `${url}?limit=1`, alice).expect(200);
+      expect(Object.keys(users.body).sort()).toEqual(['hasMore', 'nextCursor', 'total', 'users']);
+      expect(Object.keys(users.body.users[0]).sort()).toEqual([
+        'avatarUrl',
+        'displayName',
+        'id',
+        'username',
+      ]);
+      for (let retry = 0; retry < 2; retry += 1) {
+        const removed = await call('delete', url, alice).expect(200);
+        expect(removed.body).toEqual({ messageId, reactions: [] });
+      }
+    });
+
     it('create → 201; read and update → 200; relationship removal → 204; resource delete → 200 { id }', async () => {
       const server = await call('post', '/servers', dan, { name: `own-${runId}` });
       expect(server.status).toBe(201);

@@ -290,6 +290,27 @@ describe('Realtime across two instances (e2e)', () => {
     clientB.disconnect();
   });
 
+  it('reaction writes on instance A reach a viewer on instance B', async () => {
+    const watcher = await connectClient(portB, member.token);
+    const joined = await watcher.timeout(3000).emitWithAck('channel.join', { channelId });
+    expect(joined).toEqual({ ok: true });
+    const message = await postMessage(owner.token, 'cross-instance reaction');
+    const url = `/api/v1/messages/${message.body.id}/reactions/${encodeURIComponent('👍')}`;
+    const added = waitEvent(watcher, 'reaction.added');
+    await request(appA.getHttpServer())
+      .put(url)
+      .set('Authorization', `Bearer ${owner.token}`)
+      .expect(200);
+    expect(await added).toMatchObject({ messageId: message.body.id, count: 1, userId: owner.id });
+    const removed = waitEvent(watcher, 'reaction.removed');
+    await request(appA.getHttpServer())
+      .delete(url)
+      .set('Authorization', `Bearer ${owner.token}`)
+      .expect(200);
+    expect(await removed).toMatchObject({ messageId: message.body.id, count: 0 });
+    watcher.disconnect();
+  });
+
   it('typing phát từ client instance B được relay tới client instance A', async () => {
     const [clientA, clientB] = await Promise.all([
       connectClient(portA, member.token),
@@ -392,12 +413,15 @@ describe('Realtime across two instances (e2e)', () => {
     expect(payload.status).toBe('online');
 
     // Tab thứ hai ở instance khác: đóng một tab không được báo offline.
+    const secondTabOnline = waitEvent<{ userId: string; status: string }>(
+      watcherB,
+      'presence.updated',
+    );
     const secondTab = await connectClient(portB, bystander.token);
-    await settle();
+    expect(await secondTabOnline).toEqual({ userId: bystander.id, status: 'online' });
     bystanderSocket.disconnect();
-    // Xả cửa sổ gộp presence (1 giây) — event online trễ của bystander có thể đến muộn
-    // và assertNoEvent sẽ bắt nhầm nó; sau khi xả thì mọi event tiếp theo phải là offline.
-    await new Promise((resolve) => setTimeout(resolve, 1300));
+    // Wait for the actual online event before asserting its absence; a fixed sleep both
+    // races slow machines and wastes the test budget when PRESENCE_BATCH_MS=0 in e2e.
     await assertNoEvent(watcherB, 'presence.updated', 1500);
 
     const lastTabClosed = waitEvent<{ userId: string; status: string }>(

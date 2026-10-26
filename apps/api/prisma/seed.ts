@@ -85,7 +85,7 @@ async function main(): Promise<void> {
       serverId: server.id,
       name: '@everyone',
       isDefault: true,
-      permissions: Permissions.VIEW_CHANNEL | Permissions.SEND_MESSAGES,
+      permissions: Permissions.VIEW_CHANNEL | Permissions.SEND_MESSAGES | Permissions.ADD_REACTIONS,
     },
   });
   const adminRole = await prisma.role.upsert({

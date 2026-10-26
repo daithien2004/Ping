@@ -10,4 +10,6 @@ export const Limits = {
   MENTIONS_PER_MESSAGE: 20,
   /** Trần độ dài truy vấn tìm kiếm (T4.6, ADR-0045). */
   SEARCH_QUERY_MAX: 200,
+  /** Số loại cảm xúc khác nhau tối đa trên một tin (TG.2, ADR-0064). */
+  REACTIONS_PER_MESSAGE: 20,
 } as const;

@@ -6,6 +6,7 @@ import {
   type MessageCreatedPayload,
   type MessageUpdatedPayload,
   type MessageDeletedPayload,
+  type ReactionChangedPayload,
   type UpdateMessageInput,
 } from '@ping/shared';
 import { useEffect } from 'react';
@@ -25,6 +26,8 @@ import {
   sendMessage,
   editMessageRequest,
   deleteMessageRequest,
+  addReactionRequest,
+  removeReactionRequest,
 } from './api';
 import { ApiError } from '@/lib/api-client';
 import { useServerAbility } from '@/features/permissions/context';
@@ -42,6 +45,10 @@ import {
   oldestFirst,
   prependNewer,
   replaceWithWindow,
+  applyReaction,
+  reactionsOf,
+  setReactions,
+  toggleReaction,
 } from './message-cache';
 
 /** Lịch sử tin theo trang (cursor `before`). Trang 0 mới nhất; fetchNextPage() lấy trang cũ hơn. */
@@ -73,6 +80,13 @@ export function useMessages(channelId: string) {
 export interface EditMessageVariables extends UpdateMessageInput {
   id: string;
   beforeEditedAt: string | null;
+}
+
+/** TG.2: thả (`active`) hoặc gỡ cảm xúc của chính người xem. */
+export interface ReactVariables {
+  messageId: string;
+  emoji: string;
+  active: boolean;
 }
 
 /** Testable mutation operations; cache side effects stay in domain hooks. */
@@ -134,6 +148,55 @@ export function createMessageActions(
       }
       await update((old) => deleteMessage(old, id));
     },
+    /**
+     * TG.2: optimistic rồi hoà giải bằng response chuẩn (toàn bộ nhóm cảm xúc của tin). Lỗi
+     * mạng/5xx có thể đã ghi ở server → invalidate; lỗi 4xx (thiếu quyền, emoji sai, quá 20
+     * loại) thì hoàn tác đúng emoji đó, nhưng chỉ khi cache chưa bị writer khác sửa.
+     */
+    async react({ messageId, emoji, active }: ReactVariables) {
+      const before = reactionsOf(queryClient.getQueryData<MessagesCache>(key), messageId).find(
+        (row) => row.emoji === emoji,
+      );
+      const base = before?.count ?? 0;
+      const optimisticCount = active
+        ? before?.me
+          ? base
+          : base + 1
+        : before?.me
+          ? base - 1
+          : base;
+      await update((old) => toggleReaction(old, messageId, emoji, active));
+      const optimistic = reactionsOf(queryClient.getQueryData<MessagesCache>(key), messageId);
+      try {
+        const summary = active
+          ? await addReactionRequest(messageId, emoji)
+          : await removeReactionRequest(messageId, emoji);
+        let changed = false;
+        await update((old) => {
+          changed = reactionsOf(old, messageId) !== optimistic;
+          return changed ? old : setReactions(old, messageId, summary.reactions);
+        });
+        // A socket event or another mutation may have arrived after this HTTP snapshot.
+        if (changed) void queryClient.invalidateQueries({ queryKey: key, exact: true });
+        return summary;
+      } catch (error) {
+        if (error instanceof ApiError && (error.status === 0 || error.status >= 500)) {
+          void queryClient.invalidateQueries({ queryKey: key, exact: true });
+        } else {
+          let changed = false;
+          await update((old) => {
+            const current = reactionsOf(old, messageId).find((row) => row.emoji === emoji);
+            const untouched =
+              (current?.me ?? false) === active && (current?.count ?? 0) === optimisticCount;
+            changed = !untouched;
+            return untouched ? toggleReaction(old, messageId, emoji, !active) : old;
+          });
+          if (changed) void queryClient.invalidateQueries({ queryKey: key, exact: true });
+        }
+        failed(error);
+        throw error;
+      }
+    },
   };
 }
 
@@ -149,9 +212,17 @@ export function useDeleteMessage(channelId: string) {
   return useMutation({ mutationFn: createMessageActions(queryClient, serverId, channelId).remove });
 }
 
+/** TG.2: mutation thả/gỡ cảm xúc; UI disable đúng emoji đang chờ để đếm không nhảy loạn. */
+export function useToggleReaction(channelId: string) {
+  const { serverId } = useServerAbility();
+  const queryClient = useQueryClient();
+  return useMutation({ mutationFn: createMessageActions(queryClient, serverId, channelId).react });
+}
+
 /** The socket carries events; only domain hooks are allowed to write server cache. */
 export function useMessageEvents(session: RealtimeSession) {
   const queryClient = useQueryClient();
+  const { data: me } = useMe();
   useEffect(() => {
     const apply = async (
       channelId: string,
@@ -166,20 +237,38 @@ export function useMessageEvents(session: RealtimeSession) {
       if (fetching) void queryClient.invalidateQueries({ queryKey: key, exact: true });
     };
     const created = (event: MessageCreatedPayload) =>
-      void apply(event.channelId, (old) => upsertMessage(old, { ...event, editedAt: null }));
+      void apply(event.channelId, (old) =>
+        upsertMessage(old, { ...event, editedAt: null, reactions: [] }),
+      );
     const updated = (event: MessageUpdatedPayload) =>
       void apply(event.channelId, (old) => updateMessage(old, event));
     const deleted = (event: MessageDeletedPayload) =>
       void apply(event.channelId, (old) => deleteMessage(old, event.id));
+    // TG.2: count trong event là nguồn chuẩn. Chỉ đổi cờ `me` khi chính người xem là tác nhân —
+    // event của người khác không được biến "tôi đã thả" thành true/false.
+    const reacted = (event: ReactionChangedPayload, active: boolean) =>
+      void apply(event.channelId, (old) =>
+        applyReaction(old, event.messageId, {
+          emoji: event.emoji,
+          count: event.count,
+          me: me && event.userId === me.id ? active : undefined,
+        }),
+      );
+    const reactionAdded = (event: ReactionChangedPayload) => reacted(event, true);
+    const reactionRemoved = (event: ReactionChangedPayload) => reacted(event, false);
     session.socket.on(ServerEvents.MessageCreated, created);
     session.socket.on(ServerEvents.MessageUpdated, updated);
     session.socket.on(ServerEvents.MessageDeleted, deleted);
+    session.socket.on(ServerEvents.ReactionAdded, reactionAdded);
+    session.socket.on(ServerEvents.ReactionRemoved, reactionRemoved);
     return () => {
       session.socket.off(ServerEvents.MessageCreated, created);
       session.socket.off(ServerEvents.MessageUpdated, updated);
       session.socket.off(ServerEvents.MessageDeleted, deleted);
+      session.socket.off(ServerEvents.ReactionAdded, reactionAdded);
+      session.socket.off(ServerEvents.ReactionRemoved, reactionRemoved);
     };
-  }, [session, queryClient]);
+  }, [session, queryClient, me]);
 }
 
 /**

@@ -65,7 +65,8 @@ export class ServersService {
             create: {
               name: '@everyone',
               isDefault: true,
-              permissions: Permissions.VIEW_CHANNEL | Permissions.SEND_MESSAGES,
+              permissions:
+                Permissions.VIEW_CHANNEL | Permissions.SEND_MESSAGES | Permissions.ADD_REACTIONS,
             },
           },
           channels: { create: { name: 'general', position: 0 } },

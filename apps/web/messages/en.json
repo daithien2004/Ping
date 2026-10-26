@@ -136,7 +136,8 @@
       "manageServer": "Manage server",
       "viewAuditLog": "View the action log",
       "administrator": "Administrator",
-      "mentionEveryone": "Mention @everyone/@role"
+      "mentionEveryone": "Mention @everyone/@role",
+      "addReactions": "Add reactions"
     },
     "permissionGroups": {
       "channels": "Channels",
@@ -278,7 +279,16 @@
     "loadNewer": "Load newer messages",
     "loadingNewer": "Loading newer messages…",
     "focusLoading": "Finding the linked message…",
-    "focusMissing": "The linked message was not found (it may be deleted or you no longer have access)."
+    "focusMissing": "The linked message was not found (it may be deleted or you no longer have access).",
+    "addReaction": "Add reaction",
+    "pickReaction": "Pick a reaction",
+    "reactWith": "React with {emoji}",
+    "removeReaction": "Remove your {emoji} reaction",
+    "viewReactors": "View {count} people who reacted",
+    "reactorsTitle": "People who reacted with {emoji}",
+    "reactorsLoading": "Loading people…",
+    "reactorsEmpty": "No one has reacted with this emoji yet.",
+    "reactorsLoadMore": "Load more people"
   },
   "search": {
     "open": "Search in server",
@@ -352,6 +362,8 @@
     "CONFLICT": "This already exists.",
     "TOO_MANY_REQUESTS": "Too many attempts. Wait a while and try again.",
     "SERVICE_UNAVAILABLE": "Can't reach the server.",
+    "REACTION_LIMIT_REACHED": "This message already has 20 different reactions.",
+    "REACTION_EMOJI_INVALID": "That emoji can't be used as a reaction.",
     "unknown": "Something went wrong.",
     "unknownWithId": "Something went wrong. Error ID: {requestId}",
     "withReference": "{message} Error ID: {requestId}"

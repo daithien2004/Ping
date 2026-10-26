@@ -12,6 +12,10 @@ import {
   patchGap,
   aroundWindow,
   prependNewer,
+  applyReaction,
+  reactionsOf,
+  setReactions,
+  toggleReaction,
 } from './message-cache';
 
 const author = { id: 'u1', username: 'a', displayName: 'A', avatarUrl: null };
@@ -25,6 +29,7 @@ const msg = (id: string, nonce: string | null = null, content = id): MessageDto 
   authorId: author.id,
   author,
   replyTo: null,
+  reactions: [],
 });
 
 /** Trang 0 mới nhất; trong mỗi trang tin mới → cũ (đúng thứ tự API trả). */
@@ -37,6 +42,16 @@ const ids = (data: MessagesCache | undefined) =>
   data?.pages.map((page) => page.messages.map((message) => message.id));
 
 describe('message-cache', () => {
+  it('treats messages from the previous API version as having no reactions', () => {
+    const legacy = msg('m1');
+    // Reproduce a wire payload from the API before TG.2, during a rolling deploy.
+    Reflect.deleteProperty(legacy, 'reactions');
+    const before = cache([legacy]);
+    expect(reactionsOf(before, 'm1')).toEqual([]);
+    expect(reactionsOf(applyReaction(before, 'm1', { emoji: '👍', count: 1 }), 'm1')).toEqual([
+      { emoji: '👍', count: 1, me: false },
+    ]);
+  });
   it('keeps the reply preview on the optimistic row until the server confirms it (TG.1)', () => {
     const preview = { id: 'm1', authorName: 'A', content: 'gốc', deleted: false };
     const pending = optimisticMessage({ content: 'hi', nonce: 'n1' }, author, preview);
@@ -320,5 +335,66 @@ describe('chaos: đảo thứ tự / rớt gói / nonce trùng (T4.5)', () => {
     expect(replaced.window).toEqual({ aroundId: 'm9', hasNewer: false });
     // Cache thường (không có window) không bị thêm metadata.
     expect(preserveLocalMessages(undefined, fetchedOlder).window).toBeUndefined();
+  });
+});
+
+describe('reactions (TG.2)', () => {
+  const withReactions = (id: string, reactions: MessageDto['reactions']) => ({
+    ...msg(id),
+    reactions,
+  });
+
+  it('toggleReaction chỉ đổi đúng emoji của người xem, giữ emoji khác và thứ tự count', () => {
+    const base = cache([
+      withReactions('m1', [
+        { emoji: '🔥', count: 3, me: false },
+        { emoji: '👍', count: 1, me: false },
+      ]),
+    ]);
+    const added = toggleReaction(base, 'm1', '👍', true)!;
+    expect(reactionsOf(added, 'm1')).toEqual([
+      { emoji: '🔥', count: 3, me: false },
+      { emoji: '👍', count: 2, me: true },
+    ]);
+    const removed = toggleReaction(added, 'm1', '👍', false)!;
+    expect(reactionsOf(removed, 'm1')).toEqual([
+      { emoji: '🔥', count: 3, me: false },
+      { emoji: '👍', count: 1, me: false },
+    ]);
+    // Gỡ emoji duy nhất → nhóm biến mất, không còn "0 người".
+    const single = toggleReaction(
+      cache([withReactions('m1', [{ emoji: '👍', count: 1, me: true }])]),
+      'm1',
+      '👍',
+      false,
+    )!;
+    expect(reactionsOf(single, 'm1')).toEqual([]);
+  });
+
+  it('applyReaction lấy count của event làm chuẩn và giữ cờ `me` khi người khác thả', () => {
+    const base = cache([withReactions('m1', [{ emoji: '👍', count: 1, me: true }])]);
+    const other = applyReaction(base, 'm1', { emoji: '👍', count: 2 })!;
+    expect(reactionsOf(other, 'm1')).toEqual([{ emoji: '👍', count: 2, me: true }]);
+    // Chính người xem gỡ: count 0 → bỏ nhóm.
+    const own = applyReaction(other, 'm1', { emoji: '👍', count: 0, me: false })!;
+    expect(reactionsOf(own, 'm1')).toEqual([]);
+    // Tin không có trong trang đã tải: không tạo hàng giả.
+    expect(ids(applyReaction(base, 'missing', { emoji: '👍', count: 1 }))).toEqual(ids(base));
+  });
+
+  it('setReactions thay toàn bộ nhóm bằng response chuẩn, không đụng tin khác', () => {
+    const base = cache([
+      withReactions('m2', [{ emoji: '🔥', count: 9, me: false }]),
+      withReactions('m1', [{ emoji: '👍', count: 1, me: true }]),
+    ]);
+    const next = setReactions(base, 'm1', [
+      { emoji: '🎉', count: 2, me: true },
+      { emoji: '👍', count: 1, me: false },
+    ])!;
+    expect(reactionsOf(next, 'm1')).toEqual([
+      { emoji: '🎉', count: 2, me: true },
+      { emoji: '👍', count: 1, me: false },
+    ]);
+    expect(reactionsOf(next, 'm2')).toEqual([{ emoji: '🔥', count: 9, me: false }]);
   });
 });

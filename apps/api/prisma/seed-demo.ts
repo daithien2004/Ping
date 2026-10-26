@@ -224,7 +224,7 @@ async function main(): Promise<void> {
     });
     userIdOf.set(user.n, actual.id);
   }
-  const everyonePermissions = 3n; // VIEW_CHANNEL | SEND_MESSAGES — như seed dev
+  const everyonePermissions = 1027n; // VIEW_CHANNEL | SEND_MESSAGES | ADD_REACTIONS (TG.2)
 
   for (const server of SERVERS) {
     const serverId = demoId('2', server.n);

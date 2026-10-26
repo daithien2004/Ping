@@ -6,14 +6,17 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Query,
   UseGuards,
 } from '@nestjs/common';
 import {
   createMessageSchema,
+  reactionUsersQuerySchema,
   updateMessageSchema,
   type AppAbility,
   type CreateMessageInput,
+  type ReactionUsersQuery,
   type UpdateMessageInput,
 } from '@ping/shared';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe.js';
@@ -50,10 +53,11 @@ export class MessagesController {
   @Get('channels/:channelId/messages')
   @CheckAbility(['view', 'Message'])
   list(
+    @CurrentUser() user: AuthenticatedUser,
     @Param('channelId') channelId: string,
     @Query(new ZodValidationPipe(listMessagesQuerySchema)) query: ListMessagesQuery,
   ) {
-    return this.messagesService.list(channelId, query);
+    return this.messagesService.list(channelId, query, user.userId);
   }
 
   @Post('channels/:channelId/messages')
@@ -73,11 +77,12 @@ export class MessagesController {
    */
   @Patch('messages/:messageId')
   update(
+    @CurrentUser() user: AuthenticatedUser,
     @CurrentAbility() ability: AppAbility,
     @Param('messageId') messageId: string,
     @Body(new ZodValidationPipe(updateMessageSchema)) body: UpdateMessageInput,
   ) {
-    return this.messagesService.update(messageId, ability, body.content);
+    return this.messagesService.update(messageId, ability, body.content, user.userId);
   }
 
   @Delete('messages/:messageId')
@@ -87,5 +92,40 @@ export class MessagesController {
     @Param('messageId') messageId: string,
   ) {
     return this.messagesService.remove(messageId, user.userId, ability);
+  }
+
+  /**
+   * TG.2 (ADR-0064): cảm xúc. `PUT`/`DELETE` idempotent — thả/gỡ lại cùng emoji không đổi
+   * trạng thái và không phát event lần hai. Emoji đi qua allowlist của `@ping/shared` trong
+   * service (param `:emoji` đã được Express giải mã URL).
+   */
+  @Get('messages/:messageId/reactions/:emoji')
+  @CheckAbility(['view', 'Message'])
+  reactionUsers(
+    @Param('messageId') messageId: string,
+    @Param('emoji') emoji: string,
+    @Query(new ZodValidationPipe(reactionUsersQuerySchema)) query: ReactionUsersQuery,
+  ) {
+    return this.messagesService.reactionUsers(messageId, emoji, query);
+  }
+
+  @Put('messages/:messageId/reactions/:emoji')
+  @CheckAbility(['create', 'Reaction'])
+  addReaction(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('messageId') messageId: string,
+    @Param('emoji') emoji: string,
+  ) {
+    return this.messagesService.addReaction(messageId, user.userId, emoji);
+  }
+
+  @Delete('messages/:messageId/reactions/:emoji')
+  @CheckAbility(['create', 'Reaction'])
+  removeReaction(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('messageId') messageId: string,
+    @Param('emoji') emoji: string,
+  ) {
+    return this.messagesService.removeReaction(messageId, user.userId, emoji);
   }
 }

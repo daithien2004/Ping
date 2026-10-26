@@ -7,7 +7,15 @@ export type Actions = 'view' | 'create' | 'update' | 'delete' | 'manage';
 export type MessageSubject = { authorId: string } & ForcedSubject<'Message'>;
 
 export type Subjects =
-  'Server' | 'Channel' | 'Message' | 'Role' | 'Member' | 'AuditLog' | 'all' | MessageSubject;
+  | 'Server'
+  | 'Channel'
+  | 'Message'
+  | 'Reaction'
+  | 'Role'
+  | 'Member'
+  | 'AuditLog'
+  | 'all'
+  | MessageSubject;
 
 export type AppAbility = MongoAbility<[Actions, Subjects]>;
 
@@ -39,6 +47,10 @@ export function defineAbilityFor(ctx: AbilityContext): AppAbility {
   if (has(Permissions.VIEW_CHANNEL)) {
     can('view', 'Channel');
     can('view', 'Message');
+    // TG.2: thả cảm xúc cần thấy channel VÀ bit ADD_REACTIONS (ADR-0064).
+    if (has(Permissions.ADD_REACTIONS)) {
+      can('create', 'Reaction');
+    }
   }
 
   if (has(Permissions.SEND_MESSAGES)) {

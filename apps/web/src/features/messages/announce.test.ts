@@ -11,6 +11,7 @@ const message = (overrides: Partial<ClientMessage> = {}): ClientMessage => ({
   authorId: 'other',
   author: { id: 'other', username: 'bob', displayName: 'Bob', avatarUrl: null },
   replyTo: null,
+  reactions: [],
   ...overrides,
 });
 

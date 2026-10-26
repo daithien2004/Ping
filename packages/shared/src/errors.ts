@@ -15,6 +15,10 @@ export const ErrorCodes = {
   INVITE_EXPIRED: 'INVITE_EXPIRED',
   INVITE_REVOKED: 'INVITE_REVOKED',
   SEARCH_QUERY_INVALID: 'SEARCH_QUERY_INVALID',
+  /** Tin đã có 20 loại cảm xúc khác nhau (TG.2, ADR-0064). */
+  REACTION_LIMIT_REACHED: 'REACTION_LIMIT_REACHED',
+  /** Emoji không nằm trong allowlist reaction. */
+  REACTION_EMOJI_INVALID: 'REACTION_EMOJI_INVALID',
 } as const;
 
 export type ErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes];

@@ -12,6 +12,8 @@ const KNOWN = [
   ErrorCodes.CONFLICT,
   ErrorCodes.TOO_MANY_REQUESTS,
   ErrorCodes.SERVICE_UNAVAILABLE,
+  ErrorCodes.REACTION_LIMIT_REACHED,
+  ErrorCodes.REACTION_EMOJI_INVALID,
 ] as const;
 type KnownCode = (typeof KNOWN)[number];
 

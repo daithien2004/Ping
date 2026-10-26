@@ -47,6 +47,9 @@ const ID_ROUTES: Array<[Verb, string]> = [
   ['get', '/servers/:id/unread'],
   ['patch', '/messages/:id'],
   ['delete', '/messages/:id'],
+  ['get', '/messages/:id/reactions/:emoji'],
+  ['put', '/messages/:id/reactions/:emoji'],
+  ['delete', '/messages/:id/reactions/:emoji'],
   ['post', '/servers/:id/ask'],
 ];
 
@@ -355,6 +358,25 @@ describe('IDOR (e2e)', () => {
       () => `/messages/${carolMessage}`,
       outsider,
     );
+    // TG.2: người ngoài không đọc/ghi được cảm xúc của tin thuộc server A.
+    add(
+      'GET /messages/:messageId/reactions/:emoji (tin của A)',
+      'get',
+      () => `/messages/${aliceMessage}/reactions/${encodeURIComponent('👍')}`,
+      outsider,
+    );
+    add(
+      'PUT /messages/:messageId/reactions/:emoji (tin của A)',
+      'put',
+      () => `/messages/${aliceMessage}/reactions/${encodeURIComponent('👍')}`,
+      outsider,
+    );
+    add(
+      'DELETE /messages/:messageId/reactions/:emoji (tin của A)',
+      'delete',
+      () => `/messages/${aliceMessage}/reactions/${encodeURIComponent('👍')}`,
+      outsider,
+    );
 
     // Trộn ID chéo server: bob là chủ B, dùng serverId của MÌNH nhưng ID tài nguyên của server A.
     add(
@@ -424,12 +446,18 @@ describe('IDOR (e2e)', () => {
     await as(carol, 'patch', `/messages/${carolMessage}`)
       .send({ content: 'carol edits her own' })
       .expect(200);
+    // TG.2: thành viên có ADD_REACTIONS vẫn thả được cảm xúc (đối chứng cho bảng tấn công).
+    await as(
+      carol,
+      'put',
+      `/messages/${aliceMessage}/reactions/${encodeURIComponent('👍')}`,
+    ).expect(200);
     await as(alice, 'get', `/servers/${serverA}/roles`).expect(200);
   });
 
   it('no token → 401 on every endpoint that takes an id', async () => {
     const uuid = randomUUID();
-    expect(ID_ROUTES).toHaveLength(26);
+    expect(ID_ROUTES).toHaveLength(29);
     for (const [verb, template] of ID_ROUTES) {
       const url = template.replaceAll(':id', uuid);
       const res = await as(undefined, verb, url).send({});

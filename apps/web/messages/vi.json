@@ -136,7 +136,8 @@
       "manageServer": "Quản lý server",
       "viewAuditLog": "Xem nhật ký hành động",
       "administrator": "Quản trị viên",
-      "mentionEveryone": "Nhắc @everyone/@role"
+      "mentionEveryone": "Nhắc @everyone/@role",
+      "addReactions": "Thả cảm xúc"
     },
     "permissionGroups": {
       "channels": "Kênh",
@@ -278,7 +279,16 @@
     "loadNewer": "Tải tin mới hơn",
     "loadingNewer": "Đang tải tin mới hơn…",
     "focusLoading": "Đang tìm tin nhắn trong liên kết…",
-    "focusMissing": "Không tìm thấy tin nhắn trong liên kết (có thể đã bị xóa hoặc bạn không còn quyền xem)."
+    "focusMissing": "Không tìm thấy tin nhắn trong liên kết (có thể đã bị xóa hoặc bạn không còn quyền xem).",
+    "addReaction": "Thêm cảm xúc",
+    "pickReaction": "Chọn cảm xúc",
+    "reactWith": "Thả {emoji}",
+    "removeReaction": "Gỡ cảm xúc {emoji} của bạn",
+    "viewReactors": "Xem {count} người đã thả",
+    "reactorsTitle": "Người đã thả {emoji}",
+    "reactorsLoading": "Đang tải danh sách…",
+    "reactorsEmpty": "Chưa ai thả cảm xúc này.",
+    "reactorsLoadMore": "Tải thêm người"
   },
   "search": {
     "open": "Tìm trong server",
@@ -352,6 +362,8 @@
     "CONFLICT": "Dữ liệu bị trùng.",
     "TOO_MANY_REQUESTS": "Thử quá nhiều lần. Đợi một lúc rồi thử lại.",
     "SERVICE_UNAVAILABLE": "Không kết nối được máy chủ.",
+    "REACTION_LIMIT_REACHED": "Tin này đã có 20 loại cảm xúc khác nhau.",
+    "REACTION_EMOJI_INVALID": "Emoji này không dùng làm cảm xúc được.",
     "unknown": "Có lỗi xảy ra.",
     "unknownWithId": "Có lỗi xảy ra. Mã lỗi: {requestId}",
     "withReference": "{message} Mã lỗi: {requestId}"

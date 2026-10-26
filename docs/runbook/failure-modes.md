@@ -32,6 +32,10 @@ orchestrator restart process khỏe mãi mà không sửa được gì.
 Thêm chỗ gọi Redis trên đường request thì **bắt buộc chọn một chính sách** (CLAUDE.md, quy tắc 17):
 dùng `failOpen()` hoặc ném `redisUnavailable()` trong `infra/redis/redis-policy.ts`.
 
+Reaction (TG.2): rate limit riêng 30 thao tác/10 giây/user/channel cũng **fail-open** qua
+`ReactionRateLimiter`. Redis chết vẫn thả/gỡ được; unique và trần 20 loại/tin nằm trong Postgres
+nên không mất bảo vệ khi rate limiter suy giảm. Kiểm bằng `redis-outage.e2e-spec.ts`.
+
 ## Cách điều tra
 
 - Log của Redis chết: tìm `"dependency":"redis"` (kèm `policy`: `rate-limit`, `ability-cache`,

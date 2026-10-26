@@ -4,13 +4,20 @@ import { ApiError } from '@/lib/api-client';
 import { ErrorCodes, type MessageDto } from '@ping/shared';
 import { qk } from '@/lib/query-keys';
 import { createMessageActions } from './hooks';
-import { deleteMessage, updateMessage, type MessagesCache } from './message-cache';
+import { applyReaction, deleteMessage, updateMessage, type MessagesCache } from './message-cache';
 
-const requests = vi.hoisted(() => ({ edit: vi.fn(), remove: vi.fn() }));
+const requests = vi.hoisted(() => ({
+  edit: vi.fn(),
+  remove: vi.fn(),
+  addReaction: vi.fn(),
+  removeReaction: vi.fn(),
+}));
 vi.mock('./api', async (original) => ({
   ...(await original<object>()),
   editMessageRequest: requests.edit,
   deleteMessageRequest: requests.remove,
+  addReactionRequest: requests.addReaction,
+  removeReactionRequest: requests.removeReaction,
 }));
 const message: MessageDto = {
   replyTo: null,
@@ -21,6 +28,7 @@ const message: MessageDto = {
   nonce: null,
   createdAt: '2026-10-20T00:00:00.000Z',
   editedAt: null,
+  reactions: [],
 };
 const key = qk.messages('c1');
 let client: QueryClient;
@@ -103,5 +111,94 @@ describe('message actions converge with realtime', () => {
     await createMessageActions(client, 's1', 'c1').remove('m1');
     expect(current()).toEqual([]);
     expect(client.getQueryData<MessagesCache>(key)?.deletedIds).toContain('m1');
+  });
+});
+
+describe('reaction actions (TG.2)', () => {
+  const summary = (reactions: MessageDto['reactions']) => ({ messageId: 'm1', reactions });
+
+  it('applies the toggle optimistically, then adopts the authoritative summary', async () => {
+    requests.addReaction.mockImplementation(async () => {
+      // Trước khi response về, cache đã hiện cảm xúc của mình (không chờ mạng).
+      expect(current()?.[0]?.reactions).toEqual([{ emoji: '👍', count: 1, me: true }]);
+      return summary([{ emoji: '👍', count: 3, me: true }]);
+    });
+    await createMessageActions(client, 's1', 'c1').react({
+      messageId: 'm1',
+      emoji: '👍',
+      active: true,
+    });
+    expect(current()?.[0]?.reactions).toEqual([{ emoji: '👍', count: 3, me: true }]);
+    expect(requests.addReaction).toHaveBeenCalledWith('m1', '👍');
+  });
+
+  it('rolls back a rejected toggle (e.g. 20-emoji limit) without touching other emoji', async () => {
+    client.setQueryData<MessagesCache>(key, {
+      pages: [
+        {
+          messages: [{ ...message, reactions: [{ emoji: '🔥', count: 2, me: false }] }],
+          hasMore: false,
+        },
+      ],
+      pageParams: [undefined],
+    });
+    requests.addReaction.mockRejectedValue(
+      new ApiError(400, ErrorCodes.REACTION_LIMIT_REACHED, 'limit'),
+    );
+    await expect(
+      createMessageActions(client, 's1', 'c1').react({
+        messageId: 'm1',
+        emoji: '👍',
+        active: true,
+      }),
+    ).rejects.toMatchObject({ code: ErrorCodes.REACTION_LIMIT_REACHED });
+    expect(current()?.[0]?.reactions).toEqual([{ emoji: '🔥', count: 2, me: false }]);
+  });
+
+  it('refetches instead of rolling back when the server may have applied the change', async () => {
+    requests.removeReaction.mockRejectedValue(
+      new ApiError(0, ErrorCodes.SERVICE_UNAVAILABLE, 'offline'),
+    );
+    await expect(
+      createMessageActions(client, 's1', 'c1').react({
+        messageId: 'm1',
+        emoji: '👍',
+        active: false,
+      }),
+    ).rejects.toMatchObject({ status: 0 });
+    expect(client.getQueryState(key)?.isInvalidated).toBe(true);
+  });
+
+  it('reconciles a rejected toggle when a concurrent event has replaced its count', async () => {
+    requests.addReaction.mockImplementation(async () => {
+      client.setQueryData<MessagesCache>(key, (old) =>
+        applyReaction(old, 'm1', { emoji: '👍', count: 2 }),
+      );
+      throw new ApiError(403, ErrorCodes.FORBIDDEN, 'denied');
+    });
+    await expect(
+      createMessageActions(client, 's1', 'c1').react({
+        messageId: 'm1',
+        emoji: '👍',
+        active: true,
+      }),
+    ).rejects.toMatchObject({ status: 403 });
+    expect(client.getQueryState(key)?.isInvalidated).toBe(true);
+  });
+
+  it('does not overwrite a newer realtime count with a delayed HTTP summary', async () => {
+    requests.addReaction.mockImplementation(async () => {
+      client.setQueryData<MessagesCache>(key, (old) =>
+        applyReaction(old, 'm1', { emoji: '👍', count: 2 }),
+      );
+      return summary([{ emoji: '👍', count: 1, me: true }]);
+    });
+    await createMessageActions(client, 's1', 'c1').react({
+      messageId: 'm1',
+      emoji: '👍',
+      active: true,
+    });
+    expect(current()?.[0]?.reactions).toEqual([{ emoji: '👍', count: 2, me: true }]);
+    expect(client.getQueryState(key)?.isInvalidated).toBe(true);
   });
 });

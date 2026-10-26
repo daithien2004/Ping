@@ -21,7 +21,7 @@ describe('Redis outage (e2e)', () => {
   let channelId = '';
   let existingMessageId = '';
 
-  const asUser = (method: 'get' | 'post' | 'patch' | 'delete', url: string) =>
+  const asUser = (method: 'get' | 'post' | 'patch' | 'put' | 'delete', url: string) =>
     request(down.getHttpServer())[method](url).set('Authorization', `Bearer ${token}`);
 
   beforeAll(async () => {
@@ -83,6 +83,16 @@ describe('Redis outage (e2e)', () => {
     expect(res.status).toBe(200);
     expect(res.body.members).toHaveLength(1);
     expect(res.body.members[0].online).toBe(false);
+  });
+
+  it('adding and removing reactions still work with Redis unavailable', async () => {
+    const url = `/api/v1/messages/${existingMessageId}/reactions/${encodeURIComponent('👍')}`;
+    const added = await timed(() => asUser('put', url));
+    expect(added.status).toBe(200);
+    expect(added.body.reactions).toEqual([{ emoji: '👍', count: 1, me: true }]);
+    const removed = await timed(() => asUser('delete', url));
+    expect(removed.status).toBe(200);
+    expect(removed.body.reactions).toEqual([]);
   });
 
   it('sending, editing and deleting a message still work (saved in Postgres)', async () => {

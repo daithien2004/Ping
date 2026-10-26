@@ -21,6 +21,37 @@ export interface MessageReplyPreview {
 export const updateMessageSchema = z.object({ content: z.string().trim().min(1).max(4000) });
 export type UpdateMessageInput = z.infer<typeof updateMessageSchema>;
 
+/** Một loại cảm xúc trên tin (TG.2, ADR-0064): tổng số + người xem đã thả chưa. */
+export interface MessageReactionDto {
+  emoji: string;
+  count: number;
+  me: boolean;
+}
+
+/** Kết quả thêm/gỡ cảm xúc: toàn bộ nhóm cảm xúc hiện tại của tin (để client hoà giải). */
+export interface MessageReactionSummary {
+  messageId: string;
+  reactions: MessageReactionDto[];
+}
+
+/**
+ * Danh sách người thả một cảm xúc, keyset tăng dần theo id; `total` = tổng số người.
+ * `nextCursor` là id hàng cảm xúc cuối trang (không phải id user) — truyền lại qua `after`
+ * để lấy trang kế; `null` khi hết.
+ */
+export interface ReactionUsersPage {
+  users: MessageAuthor[];
+  hasMore: boolean;
+  total: number;
+  nextCursor: string | null;
+}
+
+export const reactionUsersQuerySchema = z.object({
+  after: z.uuid().optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+});
+export type ReactionUsersQuery = z.infer<typeof reactionUsersQuerySchema>;
+
 /** Tin nhắn từ API (GET danh sách, POST gửi). Ngày giờ là chuỗi ISO 8601 qua JSON. */
 export interface MessageDto {
   id: string;
@@ -33,6 +64,8 @@ export interface MessageDto {
   author: MessageAuthor;
   /** TG.1: tin gốc nếu đây là reply; null = tin thường. */
   replyTo: MessageReplyPreview | null;
+  /** TG.2: cảm xúc đã tổng hợp (count + me), sắp theo số người giảm dần. */
+  reactions: MessageReactionDto[];
 }
 
 /**
