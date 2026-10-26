@@ -156,6 +156,8 @@
       "memberRolesUpdate": "Member roles changed",
       "memberKick": "Member kicked",
       "messageDelete": "Message deleted",
+      "messagePin": "Message pinned",
+      "messageUnpin": "Message unpinned",
       "channelDelete": "Channel deleted",
       "serverDelete": "Server deleted",
       "unknown": "Other action",
@@ -288,7 +290,16 @@
     "reactorsTitle": "People who reacted with {emoji}",
     "reactorsLoading": "Loading people…",
     "reactorsEmpty": "No one has reacted with this emoji yet.",
-    "reactorsLoadMore": "Load more people"
+    "reactorsLoadMore": "Load more people",
+    "pin": "Pin message",
+    "unpin": "Unpin",
+    "pinnedBadge": "Pinned message",
+    "pinnedTitle": "Pinned messages",
+    "pinnedShow": "Show pinned messages",
+    "pinnedHide": "Hide pinned messages",
+    "pinnedEmpty": "No pinned messages yet.",
+    "pinnedBy": "Pinned by {name}",
+    "pinnedError": "Could not load pinned messages."
   },
   "search": {
     "open": "Search in server",
@@ -364,6 +375,7 @@
     "SERVICE_UNAVAILABLE": "Can't reach the server.",
     "REACTION_LIMIT_REACHED": "This message already has 20 different reactions.",
     "REACTION_EMOJI_INVALID": "That emoji can't be used as a reaction.",
+    "PIN_LIMIT_REACHED": "This channel already has 50 pinned messages. Unpin one first.",
     "unknown": "Something went wrong.",
     "unknownWithId": "Something went wrong. Error ID: {requestId}",
     "withReference": "{message} Error ID: {requestId}"

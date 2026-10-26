@@ -11,6 +11,7 @@ export type Subjects =
   | 'Channel'
   | 'Message'
   | 'Reaction'
+  | 'Pin'
   | 'Role'
   | 'Member'
   | 'AuditLog'
@@ -61,6 +62,11 @@ export function defineAbilityFor(ctx: AbilityContext): AppAbility {
 
   if (has(Permissions.MANAGE_MESSAGES)) {
     can('delete', 'Message');
+    // TG.3: ghim là hành động quản lý tin (ADR-0066) nhưng vẫn phải thấy channel. Không
+    // cấp `update Message` cho MANAGE_MESSAGES — sửa tin của người khác vẫn là của tác giả.
+    if (has(Permissions.VIEW_CHANNEL)) {
+      can(['create', 'delete'], 'Pin');
+    }
   }
 
   if (has(Permissions.MANAGE_CHANNELS)) {

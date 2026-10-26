@@ -95,6 +95,29 @@ export class MessagesController {
   }
 
   /**
+   * TG.3 (ADR-0066): ghim tin trong channel. `PUT`/`DELETE` idempotent, trả trạng thái sau thao
+   * tác; danh sách ghim có trần `Limits.PINS_PER_CHANNEL` nên trả mảng thẳng, không phân trang.
+   * Quyền: `MANAGE_MESSAGES` + `VIEW_CHANNEL` (subject `Pin` trong `defineAbilityFor`).
+   */
+  @Get('channels/:channelId/pins')
+  @CheckAbility(['view', 'Message'])
+  pins(@CurrentUser() user: AuthenticatedUser, @Param('channelId') channelId: string) {
+    return this.messagesService.listPins(channelId, user.userId);
+  }
+
+  @Put('messages/:messageId/pin')
+  @CheckAbility(['create', 'Pin'])
+  pin(@CurrentUser() user: AuthenticatedUser, @Param('messageId') messageId: string) {
+    return this.messagesService.pin(messageId, user.userId);
+  }
+
+  @Delete('messages/:messageId/pin')
+  @CheckAbility(['delete', 'Pin'])
+  unpin(@CurrentUser() user: AuthenticatedUser, @Param('messageId') messageId: string) {
+    return this.messagesService.unpin(messageId, user.userId);
+  }
+
+  /**
    * TG.2 (ADR-0064): cảm xúc. `PUT`/`DELETE` idempotent — thả/gỡ lại cùng emoji không đổi
    * trạng thái và không phát event lần hai. Emoji đi qua allowlist của `@ping/shared` trong
    * service (param `:emoji` đã được Express giải mã URL).

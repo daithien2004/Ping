@@ -12,6 +12,8 @@ const message = (overrides: Partial<ClientMessage> = {}): ClientMessage => ({
   author: { id: 'other', username: 'bob', displayName: 'Bob', avatarUrl: null },
   replyTo: null,
   reactions: [],
+  pinnedAt: null,
+  pinnedById: null,
   ...overrides,
 });
 

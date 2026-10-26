@@ -67,6 +67,11 @@ Reaction (TG.2, [ADR-0064](adr/0064-message-reactions.md)): `PUT` và `DELETE
 `GET` cùng URL trả `{ users, total, hasMore, nextCursor }`; cursor `after` là id hàng reaction,
 không phải id user. Danh sách tin kèm `reactions`, cờ `me` luôn tính theo người gọi API.
 
+Ghim (TG.3, [ADR-0066](adr/0066-message-pins.md)): `PUT`/`DELETE /messages/:messageId/pin` idempotent,
+trả **200** cùng `{ messageId, channelId, pinnedAt, pinnedById }` (`pinnedAt: null` khi đã bỏ ghim);
+`GET /channels/:channelId/pins` trả **mảng** `[{ message, pinnedAt, pinnedBy }]` mới ghim trước, tối
+đa 50 phần tử — không phân trang. Mọi `MessageDto` có thêm `pinnedAt`/`pinnedById`.
+
 ## 4. 403 hay 404
 
 - **Server**: không phải thành viên → **403**, kể cả server không tồn tại (không lộ server nào có thật).
@@ -82,10 +87,12 @@ không phải id user. Danh sách tin kèm `reactions`, cờ `me` luôn tính th
   - tin nhắn: `GET /channels/:id/messages?before=<id>` — mới → cũ;
   - thành viên: `GET /servers/:id/members?after=<id>` — cũ → mới; mỗi phần tử có `online` (ADR-0030).
 - `limit` ngoài khoảng hoặc không phải số → 400 `VALIDATION_ERROR`. Tham số lạ (như `offset`) bị bỏ qua.
-- Danh sách **bị chặn bằng trần** trả mảng thuần (channel, role, server của tôi). Trần ở
-  `@ping/shared` `Limits`: 200 channel/server, 100 role/server, 100 server/user; vượt → 400
-  `VALIDATION_ERROR` với `details[0] = { path: "channels", code: "too_big" }`. Trần channel chính xác
-  (đếm trong advisory lock); trần role và server là trần mềm (tạo đồng thời có thể vượt vài đơn vị).
+- Danh sách **bị chặn bằng trần** trả mảng thuần (channel, role, server của tôi, tin ghim của
+  channel). Trần ở `@ping/shared` `Limits`: 200 channel/server, 100 role/server, 100 server/user,
+  50 tin ghim/channel; vượt → 400 `VALIDATION_ERROR` với `details[0] = { path: "channels", code:
+"too_big" }`. Trần channel và trần ghim là trần chính xác (đếm trong advisory lock); trần role và
+  server là trần mềm (tạo đồng thời có thể vượt vài đơn vị). Ghim vượt trần trả mã riêng
+  `PIN_LIMIT_REACHED` để web báo đúng lý do.
 
 ## 6. Giới hạn tần suất
 

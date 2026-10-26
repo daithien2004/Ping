@@ -1,5 +1,5 @@
 'use client';
-import { Link2, MoreHorizontal, Pencil, Reply, Trash2 } from 'lucide-react';
+import { Link2, MoreHorizontal, Pencil, Pin, PinOff, Reply, Trash2 } from 'lucide-react';
 import { useTranslations } from 'use-intl';
 import { Button } from '@/components/ui/button';
 import {
@@ -12,6 +12,7 @@ import { pingToast } from '@/components/ui/ping-toast';
 import { useServerAbility } from '@/features/permissions/context';
 import { messageSubject } from '@/features/permissions/ability';
 import type { ClientMessage } from '../message-cache';
+import { useSetPinned } from '../hooks';
 
 export interface MessageSelection {
   kind: 'edit' | 'delete';
@@ -19,11 +20,14 @@ export interface MessageSelection {
 }
 export function MessageActions({
   message,
+  channelId,
   permalink,
   onAction,
   onReply,
 }: {
   message: ClientMessage;
+  /** TG.3: kênh chứa tin — cache tin và danh sách ghim đều khoá theo kênh. */
+  channelId: string;
   /** TG.5: đường dẫn tương đối của tin — "Sao chép liên kết" ghép với origin hiện tại. */
   permalink: string;
   onAction: (selection: MessageSelection) => void;
@@ -32,10 +36,13 @@ export function MessageActions({
 }) {
   const { ability, ready } = useServerAbility();
   const t = useTranslations('messages');
+  const setPinned = useSetPinned(channelId);
   const target = messageSubject(message);
   const canEdit = ability.can('update', target);
   const canDelete = ability.can('delete', target);
   const canReply = ability.can('create', 'Message');
+  // TG.3: ghim là quyền quản lý tin (MANAGE_MESSAGES + VIEW_CHANNEL), không phải quyền tác giả.
+  const canPin = ability.can('create', 'Pin');
   // Tin optimistic chưa có id thật → chưa có permalink.
   if (message.status) return null;
   async function copyLink() {
@@ -75,6 +82,16 @@ export function MessageActions({
           <DropdownMenuItem onSelect={() => onAction({ kind: 'edit', messageId: message.id })}>
             <Pencil />
             {t('edit')}
+          </DropdownMenuItem>
+        )}
+        {canPin && (
+          <DropdownMenuItem
+            disabled={!ready || setPinned.isPending}
+            data-testid={message.pinnedAt ? 'unpin' : 'pin'}
+            onSelect={() => setPinned.mutate({ messageId: message.id, pin: !message.pinnedAt })}
+          >
+            {message.pinnedAt ? <PinOff /> : <Pin />}
+            {message.pinnedAt ? t('unpin') : t('pin')}
           </DropdownMenuItem>
         )}
         {canDelete && (

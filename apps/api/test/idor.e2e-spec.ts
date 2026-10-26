@@ -50,6 +50,9 @@ const ID_ROUTES: Array<[Verb, string]> = [
   ['get', '/messages/:id/reactions/:emoji'],
   ['put', '/messages/:id/reactions/:emoji'],
   ['delete', '/messages/:id/reactions/:emoji'],
+  ['get', '/channels/:id/pins'],
+  ['put', '/messages/:id/pin'],
+  ['delete', '/messages/:id/pin'],
   ['post', '/servers/:id/ask'],
 ];
 
@@ -377,6 +380,25 @@ describe('IDOR (e2e)', () => {
       () => `/messages/${aliceMessage}/reactions/${encodeURIComponent('👍')}`,
       outsider,
     );
+    // TG.3: danh sách ghim đọc theo channel của A; ghim/bỏ ghim cần MANAGE_MESSAGES.
+    add(
+      'GET /channels/:channelId/pins (channel của A)',
+      'get',
+      () => `/channels/${channelA}/pins`,
+      outsider,
+    );
+    add(
+      'PUT /messages/:messageId/pin (tin của A)',
+      'put',
+      () => `/messages/${aliceMessage}/pin`,
+      lowPriv,
+    );
+    add(
+      'DELETE /messages/:messageId/pin (tin của A)',
+      'delete',
+      () => `/messages/${aliceMessage}/pin`,
+      lowPriv,
+    );
 
     // Trộn ID chéo server: bob là chủ B, dùng serverId của MÌNH nhưng ID tài nguyên của server A.
     add(
@@ -457,7 +479,7 @@ describe('IDOR (e2e)', () => {
 
   it('no token → 401 on every endpoint that takes an id', async () => {
     const uuid = randomUUID();
-    expect(ID_ROUTES).toHaveLength(29);
+    expect(ID_ROUTES).toHaveLength(32);
     for (const [verb, template] of ID_ROUTES) {
       const url = template.replaceAll(':id', uuid);
       const res = await as(undefined, verb, url).send({});

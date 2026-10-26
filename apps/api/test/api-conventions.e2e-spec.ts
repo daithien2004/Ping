@@ -248,6 +248,9 @@ describe('API conventions (e2e)', () => {
         'GET /messages/:id/reactions/:emoji',
         () => call('get', `/messages/${messageId}/reactions/${encodeURIComponent('👍')}`, alice),
       ],
+      // TG.3: trạng thái ghim + danh sách ghim (mảng có trần, không phân trang).
+      ['PUT /messages/:id/pin', () => call('put', `/messages/${messageId}/pin`, alice)],
+      ['GET /channels/:id/pins', () => call('get', `/channels/${channelId}/pins`, alice)],
     ];
 
     function walk(value: unknown, path: string, problems: string[]): void {

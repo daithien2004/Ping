@@ -1,3 +1,4 @@
+import { Pin } from 'lucide-react';
 import { useFormatter, useTranslations } from 'use-intl';
 import type { ClientMessage } from '../message-cache';
 import { useServerAbility } from '@/features/permissions/context';
@@ -57,8 +58,17 @@ export function MessageItem({
         {message.editedAt && (
           <span className="text-xs text-muted-foreground">{t('messages.edited')}</span>
         )}
+        {message.pinnedAt && (
+          <Pin
+            role="img"
+            aria-label={t('messages.pinnedBadge')}
+            data-testid="pin-indicator"
+            className="size-3 shrink-0 self-center text-muted-foreground"
+          />
+        )}
         <MessageActions
           message={message}
+          channelId={channelId}
           permalink={permalink}
           onAction={onAction}
           onReply={onReply}

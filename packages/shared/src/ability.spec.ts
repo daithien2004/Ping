@@ -61,6 +61,26 @@ describe('defineAbilityFor', () => {
     expect(ability.can('manage', 'Role')).toBe(false);
   });
 
+  it('cho phép người có MANAGE_MESSAGES ghim tin, thành viên thường thì không (TG.3)', () => {
+    const moderator = defineAbilityFor({
+      userId: 'moderator-A',
+      isOwner: false,
+      permissions: memberPermissions | Permissions.MANAGE_MESSAGES,
+    });
+    const plain = defineAbilityFor({
+      userId: 'user-A',
+      isOwner: false,
+      permissions: memberPermissions,
+    });
+
+    expect(moderator.can('create', 'Pin')).toBe(true);
+    expect(moderator.can('delete', 'Pin')).toBe(true);
+    expect(plain.can('create', 'Pin')).toBe(false);
+    expect(plain.can('delete', 'Pin')).toBe(false);
+    // Ghim KHÔNG mở quyền sửa tin của người khác.
+    expect(moderator.can('update', subject('Message', { authorId: 'user-B' }))).toBe(false);
+  });
+
   it('grants server owners all permissions without role permissions', () => {
     const ability = defineAbilityFor({
       userId: 'owner-A',

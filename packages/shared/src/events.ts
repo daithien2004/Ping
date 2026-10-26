@@ -18,6 +18,8 @@ export const ServerEvents = {
   MentionCreated: 'mention.created',
   ReactionAdded: 'reaction.added',
   ReactionRemoved: 'reaction.removed',
+  MessagePinned: 'message.pinned',
+  MessageUnpinned: 'message.unpinned',
 } as const;
 
 export const ClientEvents = {
@@ -136,6 +138,20 @@ export interface ChannelActivityPayload {
   authorId: string;
 }
 
+/** Gửi tới room `channel:<id>` khi một tin được ghim (TG.3, ADR-0066). `pinnedAt` là nguồn chuẩn. */
+export interface MessagePinnedPayload {
+  messageId: string;
+  channelId: string;
+  pinnedById: string;
+  pinnedAt: string;
+}
+
+/** Gửi tới room `channel:<id>` khi một tin được bỏ ghim (TG.3). */
+export interface MessageUnpinnedPayload {
+  messageId: string;
+  channelId: string;
+}
+
 /** Payload client gửi lên chỉ là dữ liệu chưa tin cậy: gateway parse bằng schema này. */
 export const channelEventSchema = z.object({ channelId: z.uuid() });
 export type ChannelJoinPayload = z.infer<typeof channelEventSchema>;
@@ -159,6 +175,8 @@ export interface ServerToClientEvents {
   [ServerEvents.ChannelActivity]: (payload: ChannelActivityPayload) => void;
   [ServerEvents.ReactionAdded]: (payload: ReactionChangedPayload) => void;
   [ServerEvents.ReactionRemoved]: (payload: ReactionChangedPayload) => void;
+  [ServerEvents.MessagePinned]: (payload: MessagePinnedPayload) => void;
+  [ServerEvents.MessageUnpinned]: (payload: MessageUnpinnedPayload) => void;
 }
 
 export interface ClientToServerEvents {

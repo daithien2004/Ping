@@ -19,6 +19,8 @@ const ACTION_KEYS = {
   MEMBER_ROLES_UPDATE: 'memberRolesUpdate',
   MEMBER_KICK: 'memberKick',
   MESSAGE_DELETE: 'messageDelete',
+  MESSAGE_PIN: 'messagePin',
+  MESSAGE_UNPIN: 'messageUnpin',
   CHANNEL_DELETE: 'channelDelete',
   CHANNEL_UPDATE: 'channelUpdate',
   SERVER_DELETE: 'serverDelete',
