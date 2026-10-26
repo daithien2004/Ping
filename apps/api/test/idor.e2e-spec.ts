@@ -54,6 +54,12 @@ const ID_ROUTES: Array<[Verb, string]> = [
   ['put', '/messages/:id/pin'],
   ['delete', '/messages/:id/pin'],
   ['post', '/servers/:id/ask'],
+  ['put', '/uploads/:id/content'],
+  ['post', '/uploads/:id/complete'],
+  ['get', '/uploads/:id'],
+  ['delete', '/uploads/:id'],
+  ['get', '/attachments/:id/download'],
+  ['get', '/attachments/:id/file'],
 ];
 
 /** Quét controller của app qua metadata của Nest: các route có tham số `:...Id`, dạng `verb /path/:id`, đã sắp xếp. */
@@ -109,6 +115,7 @@ describe('IDOR (e2e)', () => {
   let bobMemberB = '';
   let aliceMessage = '';
   let carolMessage = '';
+  let uploadId = '';
 
   const SECRET = `secret-${runId}`; // xuất hiện trong dữ liệu của server A; không được rò ra
   const http = () => request(app.getHttpServer());
@@ -201,9 +208,15 @@ describe('IDOR (e2e)', () => {
         .send({ content: `carol ${SECRET}`, nonce: randomUUID() })
         .expect(201)
     ).body.id;
+    uploadId = (
+      await as(alice, 'post', '/uploads')
+        .send({ channelId: channelA, filename: 'a.pdf', sizeBytes: 10, nonce: randomUUID() })
+        .expect(201)
+    ).body.id;
   });
 
   afterAll(async () => {
+    await prisma.attachment.deleteMany({ where: { serverId: serverA } });
     const users = await prisma.user.findMany({
       where: { email: { in: emails } },
       select: { id: true },
@@ -237,6 +250,32 @@ describe('IDOR (e2e)', () => {
       accept: number[] = [403, 404],
     ) => who.forEach((by) => out.push({ name, by, verb, url, body, accept }));
     const outsider = [() => dan, () => bob]; // người ngoài + chủ server khác
+    for (const [verb, suffix] of [
+      ['get', ''],
+      ['delete', ''],
+      ['post', '/complete'],
+      ['put', '/content'],
+    ] as const) {
+      add(`${verb} upload A`, verb, () => `/uploads/${uploadId}${suffix}`, [
+        ...outsider,
+        () => carol,
+      ]);
+    }
+    add('attachment download A', 'get', () => `/attachments/${uploadId}/download`, outsider);
+    add(
+      'signed attachment with forged signature',
+      'get',
+      () =>
+        `/attachments/${uploadId}/file?user=${alice.id}&expires=${Math.floor(Date.now() / 1000) + 30}&signature=${'0'.repeat(64)}`,
+      outsider,
+    );
+    add(
+      'create upload in another server',
+      'post',
+      () => '/uploads',
+      outsider,
+      () => ({ channelId: channelA, filename: 'secret.pdf', sizeBytes: 10, nonce: randomUUID() }),
+    );
     const lowPriv = [() => dan, () => bob, () => carol]; // + thành viên thiếu quyền
 
     add('GET /servers/:serverId', 'get', () => `/servers/${serverA}`, outsider);
@@ -479,11 +518,14 @@ describe('IDOR (e2e)', () => {
 
   it('no token → 401 on every endpoint that takes an id', async () => {
     const uuid = randomUUID();
-    expect(ID_ROUTES).toHaveLength(32);
+    expect(ID_ROUTES).toHaveLength(38);
     for (const [verb, template] of ID_ROUTES) {
       const url = template.replaceAll(':id', uuid);
       const res = await as(undefined, verb, url).send({});
-      expect(res.status, `${verb.toUpperCase()} ${url}`).toBe(401);
+      // File capabilities use signed query authentication; missing credentials fail validation.
+      expect(res.status, `${verb.toUpperCase()} ${url}`).toBe(
+        template.endsWith('/file') ? 400 : 401,
+      );
     }
   });
 

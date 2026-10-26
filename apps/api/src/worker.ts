@@ -5,6 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import type { Env } from './config/env.schema.js';
 
 async function bootstrap() {
+  process.env.PING_PROCESS_ROLE = 'worker';
   const app = await NestFactory.createApplicationContext(AppModule, { bufferLogs: true });
   app.useLogger(app.get(Logger));
   app.flushLogs();

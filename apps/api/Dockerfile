@@ -38,6 +38,7 @@ FROM node:${NODE_VERSION}-bookworm-slim AS runner
 ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=pruned --chown=node:node /out ./
+RUN mkdir -p /app/uploads && chown node:node /app/uploads
 USER node
 EXPOSE 4000
 HEALTHCHECK --interval=15s --timeout=3s --start-period=20s --retries=3 \

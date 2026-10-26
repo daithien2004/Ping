@@ -114,7 +114,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     if (stack !== undefined) {
       // Not an HttpException: something crashed unexpectedly — keep the stack.
       this.logger.error(
-        { requestId, status, code, path: request.url, stack },
+        { requestId, status, code, path: request.url.split('?')[0], stack },
         'unhandled exception',
       );
       // Chỉ lỗi bất ngờ (bug) lên Sentry; 503 do hạ tầng đã có metrics và cảnh báo.
@@ -123,11 +123,14 @@ export class AllExceptionsFilter implements ExceptionFilter {
       // Deliberate 5xx (e.g. readiness probe while a dependency is down):
       // error-level because it matters, but no stack — nothing was unhandled.
       this.logger.error(
-        { requestId, status, code, path: request.url, ...logContext },
+        { requestId, status, code, path: request.url.split('?')[0], ...logContext },
         'server error',
       );
     } else {
-      this.logger.warn({ requestId, status, code, path: request.url }, 'request rejected');
+      this.logger.warn(
+        { requestId, status, code, path: request.url.split('?')[0] },
+        'request rejected',
+      );
     }
 
     const payload: ApiErrorBody & { stack?: string } = { code, message, requestId };

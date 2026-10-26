@@ -21,7 +21,7 @@ const csp = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${isProduction ? '' : " 'unsafe-eval'"}`,
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' blob: data:",
+  `img-src 'self' blob: data: ${apiOrigin}`,
   "font-src 'self'",
   `connect-src 'self' ${apiOrigin} ${wsOrigin}${sentryOrigin}`,
   "object-src 'none'",

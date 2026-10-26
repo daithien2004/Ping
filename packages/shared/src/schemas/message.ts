@@ -1,13 +1,17 @@
 import { z } from 'zod';
 import type { MessageAuthor } from '../events';
+import { AttachmentLimits, type AttachmentDto } from './attachment';
 
-export const createMessageSchema = z.object({
-  content: z.string().trim().min(1).max(4000),
-  // The client reuses this nonce when retrying the same message.
-  nonce: z.uuid(),
-  // TG.1: reply — tin gốc CÙNG channel (service kiểm); bỏ qua = tin thường.
-  replyToId: z.uuid().optional(),
-});
+export const createMessageSchema = z
+  .object({
+    content: z.string().trim().max(4000),
+    // The client reuses this nonce when retrying the same message.
+    nonce: z.uuid(),
+    // TG.1: reply — tin gốc CÙNG channel (service kiểm); bỏ qua = tin thường.
+    replyToId: z.uuid().optional(),
+    attachmentIds: z.array(z.uuid()).max(AttachmentLimits.PER_MESSAGE).optional(),
+  })
+  .refine((input) => input.content.length > 0 || (input.attachmentIds?.length ?? 0) > 0);
 export type CreateMessageInput = z.infer<typeof createMessageSchema>;
 
 /** Xem trước tin gốc trong reply (TG.1): đoạn trích 120 ký tự; `deleted` khi tin gốc soft-delete. */
@@ -54,6 +58,7 @@ export type ReactionUsersQuery = z.infer<typeof reactionUsersQuerySchema>;
 
 /** Tin nhắn từ API (GET danh sách, POST gửi). Ngày giờ là chuỗi ISO 8601 qua JSON. */
 export interface MessageDto {
+  attachments?: AttachmentDto[];
   id: string;
   content: string;
   /** Nonce client sinh khi gửi (null với tin không có). Dùng khớp tin optimistic với tin thật. */

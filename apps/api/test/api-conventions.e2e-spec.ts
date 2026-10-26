@@ -36,6 +36,7 @@ describe('API conventions (e2e)', () => {
   let channelId = '';
   let roleId = '';
   let messageId = '';
+  let uploadId = '';
   let carolMemberId = '';
 
   const http = () => request(app.getHttpServer());
@@ -70,6 +71,14 @@ describe('API conventions (e2e)', () => {
     serverId = server.body.id;
     inviteCode = server.body.inviteCode;
     channelId = server.body.channels[0].id;
+    uploadId = (
+      await call('post', '/uploads', alice, {
+        channelId,
+        filename: 'sample.png',
+        sizeBytes: 100,
+        nonce: randomUUID(),
+      }).expect(201)
+    ).body.id;
     roleId = (
       await call('post', `/servers/${serverId}/roles`, alice, {
         name: 'mod',
@@ -88,6 +97,7 @@ describe('API conventions (e2e)', () => {
   });
 
   afterAll(async () => {
+    await prisma.attachment.deleteMany({ where: { serverId } });
     const users = await prisma.user.findMany({
       where: { email: { in: emails } },
       select: { id: true },
@@ -229,6 +239,7 @@ describe('API conventions (e2e)', () => {
 
   describe('data: camelCase keys, ISO 8601 UTC dates, uuid ids, bigint as string', () => {
     const samples: Array<[string, () => Promise<request.Response>]> = [
+      ['GET /uploads/:id', () => call('get', `/uploads/${uploadId}`, alice)],
       ['GET /users/me', () => call('get', '/users/me', alice)],
       ['GET /servers', () => call('get', '/servers', alice)],
       ['GET /servers/:id', () => call('get', `/servers/${serverId}`, alice)],

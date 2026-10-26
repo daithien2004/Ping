@@ -219,6 +219,7 @@ model Message {
 
   mentions  MessageMention[]
   reactions MessageReaction[]
+  attachments Attachment[]
 
   // Chống ghi trùng khi client retry. Postgres cho phép NULL lặp trong unique
   // nên tin không có nonce không bao giờ bị block bởi index này.
@@ -235,6 +236,34 @@ model Message {
 
 /// Cảm xúc trên tin (TG.2, ADR-0064): một user thả một emoji trên một tin đúng một lần.
 /// Không soft-delete: gỡ = xóa hàng; tin bị xóa cứng thì cảm xúc đi theo (Cascade).
+/// Durable quarantine/processing queue and quota reservations. Scope IDs survive
+/// channel/user deletion so the worker can remove physical files afterwards.
+model Attachment {
+  id String @id @default(uuid(7)) @db.Uuid
+  uploaderId String @db.Uuid
+  channelId String @db.Uuid
+  serverId String @db.Uuid
+  messageId String? @db.Uuid
+  nonce String @db.Uuid
+  filename String
+  sizeBytes Int
+  quotaBytes Int
+  rawRemoved Boolean @default(false)
+  nextRetryAt DateTime @default(now())
+  mime String @default("application/octet-stream")
+  width Int?
+  height Int?
+  status String @default("pending")
+  createdAt DateTime @default(now())
+  message Message? @relation(fields: [messageId], references: [id], onDelete: SetNull)
+
+  @@unique([uploaderId, nonce])
+  @@index([uploaderId, status])
+  @@index([serverId, status])
+  @@index([status, createdAt])
+  @@index([messageId])
+}
+
 model MessageReaction {
   id        String   @id @default(uuid(7)) @db.Uuid
   messageId String   @db.Uuid

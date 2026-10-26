@@ -8,6 +8,7 @@ import { MetricsModule } from './infra/metrics/metrics.module.js';
 import { LoggerModule } from 'nestjs-pino';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
+import { AttachmentsModule } from './modules/attachments/attachments.module.js';
 // Side-effect: dạy JSON.stringify serialize BigInt (Role.permissions) thành string.
 import './common/bigint-json.js';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter.js';
@@ -50,6 +51,9 @@ import { UsersModule } from './modules/users/users.module.js';
         genReqId: (req) => requestIdFrom(req.headers['x-request-id']),
         redact: LOG_REDACT_PATHS,
         customProps: (req) => ({ requestId: (req as { id?: string }).id }),
+        serializers: {
+          req: (req) => ({ id: req.id, method: req.method, url: req.url?.split('?')[0] }),
+        },
       },
     }),
     ClsModule.forRoot({
@@ -87,6 +91,7 @@ import { UsersModule } from './modules/users/users.module.js';
     ChannelsModule,
     RolesModule,
     MessagesModule,
+    AttachmentsModule,
     RealtimeModule,
     AiModule,
   ],

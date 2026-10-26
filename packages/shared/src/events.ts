@@ -36,6 +36,7 @@ export interface MessageAuthor {
 }
 
 export interface MessageCreatedPayload {
+  attachments?: import('./schemas/attachment').AttachmentDto[];
   id: string;
   channelId: string;
   authorId: string;

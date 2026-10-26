@@ -5,6 +5,7 @@ import { useServerAbility } from '@/features/permissions/context';
 import { MessageActions, type MessageSelection } from './message-actions';
 import { MessageReactions } from './message-reactions';
 import { MarkdownText } from './markdown-text';
+import { AttachmentList } from '@/features/attachments/components/attachment-list';
 
 interface Props {
   message: ClientMessage;
@@ -91,6 +92,7 @@ export function MessageItem({
       {/* Markdown tập qua AST (TG.4, ADR-0054): renderer chỉ dựng element từ allowlist,
           không đường sinh HTML; tin optimistic đang gửi vẫn hiển thị như văn bản thường. */}
       <MarkdownText content={message.content} />
+      {message.attachments?.length ? <AttachmentList attachments={message.attachments} /> : null}
       <MessageReactions message={message} channelId={channelId} />
       {message.status === 'failed' && (
         <p className="text-xs text-destructive">

@@ -24,6 +24,7 @@ import { ReactionRateLimiter } from './reaction-rate-limiter.js';
 import { extractMentionTokens } from './mention-parser.js';
 import { resolveMentions } from './mention-resolver.js';
 import type { ListMessagesQuery } from './schemas.js';
+import { attachmentSelect } from '../attachments/attachments.service.js';
 
 /** Chỉ các trường client cần — không bao giờ trả bản ghi thô (guide 10.3). */
 const messageWithAuthor = {
@@ -33,6 +34,7 @@ const messageWithAuthor = {
   editedAt: true,
   createdAt: true,
   authorId: true,
+  attachments: { select: attachmentSelect, where: { status: 'ready' as const } },
   author: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
   // TG.3: trạng thái ghim đi kèm mọi tin để UI hiện chỉ báo và menu Ghim/Bỏ ghim.
   pinnedAt: true,
@@ -201,6 +203,15 @@ export class MessagesService {
 
   async create(channelId: string, authorId: string, input: CreateMessageInput) {
     await this.rateLimiter.consume(authorId, channelId);
+    const previous = await this.prisma.message.findUnique({
+      where: { channelId_authorId_nonce: { channelId, authorId, nonce: input.nonce } },
+      select: messageWithAuthor,
+    });
+    if (previous)
+      return toMessageDto(
+        previous,
+        (await this.reactionMap([previous.id], authorId)).get(previous.id) ?? [],
+      );
     // Bối cảnh server để kiểm MENTION_EVERYONE khi parse mention (ADR-0043); guard đã
     // xác nhận người gửi là thành viên nên channel luôn tồn tại ở bước này.
     const channel = await this.prisma.channel.findUnique({
@@ -213,6 +224,23 @@ export class MessagesService {
     const actor = await this.abilityFactory.contextFor(channel.serverId, authorId);
     try {
       const message = await this.prisma.$transaction(async (tx) => {
+        const attachmentIds = [...new Set(input.attachmentIds ?? [])].sort();
+        for (const id of attachmentIds) {
+          await tx.$queryRaw`SELECT id FROM "Attachment" WHERE id = ${id}::uuid FOR UPDATE`;
+          const attachment = await tx.attachment.findUnique({ where: { id } });
+          if (
+            !attachment ||
+            attachment.channelId !== channelId ||
+            attachment.uploaderId !== authorId ||
+            attachment.status !== 'ready' ||
+            attachment.messageId !== null
+          ) {
+            throw new BadRequestException({
+              code: ErrorCodes.ATTACHMENT_NOT_READY,
+              message: 'Attachment unavailable',
+            });
+          }
+        }
         // TG.1: tin gốc phải nằm trong CÙNG channel (chốt IDOR); soft-delete vẫn cho reply.
         let replyToId: string | undefined;
         if (input.replyToId !== undefined) {
@@ -232,6 +260,9 @@ export class MessagesService {
             authorId,
             content: input.content,
             nonce: input.nonce,
+            ...(attachmentIds.length
+              ? { attachments: { connect: attachmentIds.map((id) => ({ id })) } }
+              : {}),
             ...(replyToId !== undefined ? { replyToId } : {}),
           },
           select: messageWithAuthor,
@@ -260,6 +291,7 @@ export class MessagesService {
             createdAt: created.createdAt.toISOString(),
             nonce: created.nonce,
             replyTo: replyPreview(created.replyTo),
+            attachments: created.attachments,
           },
         });
         return created;
@@ -273,6 +305,7 @@ export class MessagesService {
         createdAt: message.createdAt.toISOString(),
         nonce: message.nonce,
         replyTo: replyPreview(message.replyTo),
+        attachments: message.attachments,
       });
       // T4.3: metadata (không nội dung) tới room server để badge unread của kênh không
       // đang xem tăng realtime; người xem kênh nhận cả hai event nhưng bỏ qua event này.

@@ -1,4 +1,15 @@
 {
+  "attachments": {
+    "choose": "Attach files",
+    "files": "Attachments (up to 5, 10 MB each)",
+    "ready": "Ready to send",
+    "processing": "Checking file…",
+    "progress": "Uploading {percent}%",
+    "cancel": "Remove {name}",
+    "remove": "Remove",
+    "preview": "Preview {name}",
+    "loading": "Loading attachment…"
+  },
   "realtime": {
     "connecting": "Connecting…",
     "disconnected": "Connection lost. Reconnecting…",
@@ -365,6 +376,9 @@
     "finalText": "Create an account, spin up your first server and invite your team — it takes less than a minute."
   },
   "errors": {
+    "UPLOAD_INVALID": "Unsupported or unsafe file, or larger than 10 MB.",
+    "UPLOAD_QUOTA_EXCEEDED": "Your account or server has reached its storage limit.",
+    "ATTACHMENT_NOT_READY": "The attachment is unavailable or still being checked.",
     "VALIDATION_ERROR": "Invalid data, or a limit has been reached.",
     "BAD_REQUEST": "Invalid request.",
     "UNAUTHORIZED": "Your session has expired. Please sign in again.",
