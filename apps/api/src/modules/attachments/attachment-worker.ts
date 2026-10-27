@@ -49,9 +49,12 @@ export class AttachmentWorker implements OnModuleInit, OnModuleDestroy {
         async (tx) => {
           // TG.7/TG.22: điều kiện dọn theo scope — tin bị xóa/kênh mất chỉ áp dụng cho tệp tin
           // nhắn; serverIcon dọn khi server mất, avatar dọn khi uploader không còn, sticker dọn
-          // khi server mất; pending quá 1 giờ chưa gắn (mọi scope) đều là mồ côi.
+          // khi server mất; pending quá 1 giờ chưa gắn (mọi scope) đều là mồ côi. Sticker của
+          // GÓI HỆ THỐNG (serverId NULL, seed tạo — TG.22) không thuộc server nào nên loại khỏi
+          // mọi nhánh dọn: vòng đời của nó là "sống mãi" theo seed.
           const rows = await tx.$queryRaw<Array<{ id: string }>>`
-        SELECT id FROM "Attachment" a WHERE "nextRetryAt" <= NOW() AND (
+        SELECT id FROM "Attachment" a WHERE "nextRetryAt" <= NOW() AND
+          NOT (scope = 'sticker' AND "serverId" IS NULL) AND (
           status IN ('queued', 'deleting') OR (status IN ('ready', 'rejected') AND NOT "rawRemoved") OR
           (status NOT IN ('deleted', 'rejected') AND (
             ("messageId" IS NULL AND "createdAt" < NOW() - INTERVAL '1 hour') OR
@@ -61,7 +64,7 @@ export class AttachmentWorker implements OnModuleInit, OnModuleDestroy {
             )) OR
             (scope = 'serverIcon' AND NOT EXISTS (SELECT 1 FROM "Server" s WHERE s.id = a."serverId")) OR
             (scope = 'avatar' AND NOT EXISTS (SELECT 1 FROM "User" u WHERE u.id = a."uploaderId")) OR
-            (scope = 'sticker' AND NOT EXISTS (SELECT 1 FROM "Server" s WHERE s.id = a."serverId"))
+            (scope = 'sticker' AND "serverId" IS NOT NULL AND NOT EXISTS (SELECT 1 FROM "Server" s WHERE s.id = a."serverId"))
           )))
         ORDER BY "createdAt" LIMIT 1 FOR UPDATE SKIP LOCKED`;
           if (!rows[0]) return;
@@ -92,9 +95,9 @@ export class AttachmentWorker implements OnModuleInit, OnModuleDestroy {
           const profileGone =
             row.scope === 'avatar'
               ? !(await tx.user.findUnique({ where: { id: row.uploaderId }, select: { id: true } }))
-              : row.scope === 'serverIcon' || row.scope === 'sticker'
+              : (row.scope === 'serverIcon' || row.scope === 'sticker') && row.serverId !== null
                 ? !(await tx.server.findUnique({
-                    where: { id: row.serverId! },
+                    where: { id: row.serverId },
                     select: { id: true },
                   }))
                 : false;
