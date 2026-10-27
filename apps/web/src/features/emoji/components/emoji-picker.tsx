@@ -35,14 +35,9 @@ function saveRecent(list: string[]): void {
   }
 }
 
-/** Chuẩn hóa chuỗi tìm kiếm: bỏ dấu tiếng Việt để "cuoi" cũng trúng "cười". */
-function foldVi(text: string): string {
-  return text
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/đ/g, 'd')
-    .replace(/Đ/g, 'D');
-}
+import { foldVi } from '../fold-vi';
+// Tái dùng từ nơi khác (sticker picker TG.22): re-export giữ đường import cũ.
+export { foldVi };
 
 export function matchesSearch(entry: EmojiEntry, query: string): boolean {
   const q = foldVi(query.trim().toLowerCase());

@@ -148,7 +148,8 @@
       "viewAuditLog": "Xem nhật ký hành động",
       "administrator": "Quản trị viên",
       "mentionEveryone": "Nhắc @everyone/@role",
-      "addReactions": "Thả cảm xúc"
+      "addReactions": "Thả cảm xúc",
+      "manageExpressions": "Quản lý sticker của server"
     },
     "permissionGroups": {
       "channels": "Kênh",
@@ -158,7 +159,8 @@
       "members": "Thành viên",
       "server": "Server",
       "audit": "Nhật ký",
-      "admin": "Quản trị"
+      "admin": "Quản trị",
+      "expressions": "Biểu cảm"
     },
     "auditActions": {
       "roleCreate": "Tạo vai trò",
@@ -174,14 +176,29 @@
       "unknown": "Hành động khác",
       "serverUpdate": "Đổi tên server",
       "serverInviteRegenerate": "Tạo mã mời mới",
-      "channelUpdate": "Đổi tên channel"
+      "channelUpdate": "Đổi tên channel",
+      "stickerDelete": "Xoá sticker"
     },
     "channels": "Kênh",
     "channelActions": "Thao tác",
     "serverIconChange": "Đổi icon server",
     "serverIconSaved": "Đã cập nhật icon server",
     "serverIconProcessing": "Đang kiểm định ảnh…",
-    "serverIconUploading": "Đang tải {percent}%"
+    "serverIconUploading": "Đang tải {percent}%",
+    "stickers": "Sticker",
+    "stickerHint": "Tải sticker lên cho server — tối đa 30 ({count}/30). Nhận PNG/WebP ≤ 512 KB; ảnh động được giữ lại, ảnh tĩnh tối đa 512×512.",
+    "stickerUpload": "Tải sticker lên",
+    "stickerUploading": "Đang tải lên… {percent}%",
+    "stickerProcessing": "Đang kiểm định tệp…",
+    "stickerName": "Tên sticker",
+    "stickerTags": "Thẻ tìm kiếm (cách nhau bằng dấu phẩy)",
+    "stickerCreate": "Thêm sticker",
+    "stickerCreated": "Đã thêm sticker.",
+    "stickerDeleted": "Đã xóa sticker.",
+    "stickersEmpty": "Server chưa có sticker nào.",
+    "stickerDeleteTitle": "Xóa sticker “{name}”?",
+    "stickerDeleteDescription": "Các tin cũ sẽ hiển thị khung “sticker đã bị xóa”.",
+    "stickerDelete": "Xóa sticker {name}"
   },
   "app": {
     "accessDenied": "Không truy cập được",
@@ -397,7 +414,8 @@
     "PIN_LIMIT_REACHED": "Kênh này đã có 50 tin được ghim. Bỏ ghim bớt trước khi ghim thêm.",
     "unknown": "Có lỗi xảy ra.",
     "unknownWithId": "Có lỗi xảy ra. Mã lỗi: {requestId}",
-    "withReference": "{message} Mã lỗi: {requestId}"
+    "withReference": "{message} Mã lỗi: {requestId}",
+    "STICKER_LIMIT_REACHED": "Server này đã có đủ 30 sticker. Xoá bớt trước khi thêm."
   },
   "ask": {
     "title": "Hỏi AI về lịch sử kênh",
@@ -432,5 +450,18 @@
     "uploading": "Đang tải {percent}%",
     "processing": "Đang kiểm định ảnh…",
     "save": "Lưu"
+  },
+  "stickers": {
+    "open": "Chọn sticker",
+    "search": "Tìm sticker",
+    "searchPlaceholder": "Tìm theo tên hoặc thẻ…",
+    "tabsLabel": "Nhóm sticker",
+    "tabRecent": "Gần đây",
+    "tabSystem": "Hệ thống",
+    "tabServer": "Của server",
+    "loading": "Đang tải sticker…",
+    "noResults": "Không tìm thấy sticker nào.",
+    "pickSticker": "Gửi sticker {name}",
+    "deleted": "Sticker đã bị xóa"
   }
 }

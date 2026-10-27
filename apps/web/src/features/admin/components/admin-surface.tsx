@@ -24,6 +24,7 @@ import { ChannelManager } from './channel-manager';
 import { RoleEditor } from './role-editor';
 import { RoleTag } from './role-tag';
 import { ServerNameForm } from './server-name-form';
+import { StickerManager } from './sticker-manager';
 
 // Drawer chỉ cần khi mở chi tiết một thành viên: tách khỏi chunk của trang cài đặt và chỉ tải
 // khi thực sự mở (giữ bundle ban đầu theo ngân sách, xem ADR-0058).
@@ -57,6 +58,8 @@ export function AdminSurface({ params }: { params: Promise<{ serverId: string }>
   const canManageServer = ability.can('update', 'Server');
   const canManageChannels = ability.can('manage', 'Channel');
   const canKick = ability.can('delete', 'Member');
+  // TG.22: quản lý sticker của server (MANAGE_EXPRESSIONS).
+  const canManageStickers = ability.can('manage', 'Sticker');
   const isOwner = permissions?.isOwner ?? false;
   const actor: AbilityContext | null =
     permissions && me
@@ -68,7 +71,13 @@ export function AdminSurface({ params }: { params: Promise<{ serverId: string }>
       : null;
   // Không có quyền quản trị nào thì không mở bề mặt quản trị (API vẫn kiểm tra lại).
   const hasAdminAccess =
-    canManageRoles || canViewAudit || canManageServer || canManageChannels || canKick || isOwner;
+    canManageRoles ||
+    canViewAudit ||
+    canManageServer ||
+    canManageChannels ||
+    canKick ||
+    canManageStickers ||
+    isOwner;
 
   function removeServer() {
     deleteMutation.mutate(serverId, {
@@ -90,6 +99,7 @@ export function AdminSurface({ params }: { params: Promise<{ serverId: string }>
       {canManageServer && <ServerNameForm server={server} />}
       {canManageServer && <InviteSection server={server} />}
       {canManageChannels && <ChannelManager serverId={serverId} />}
+      {canManageStickers && <StickerManager serverId={serverId} />}
       <RolesSection serverId={serverId} enabled={canManageRoles} />
       {hasAdminAccess ? (
         <MembersSection

@@ -26,6 +26,7 @@ const ACTION_KEYS = {
   SERVER_DELETE: 'serverDelete',
   SERVER_UPDATE: 'serverUpdate',
   SERVER_INVITE_REGENERATE: 'serverInviteRegenerate',
+  STICKER_DELETE: 'stickerDelete',
 } as const satisfies Record<AuditAction, string>;
 
 function formatTime(value: string, locale: string): string {

@@ -76,8 +76,12 @@ export interface ProfileUpload {
 /**
  * Upload một tệp hồ sơ qua pipeline TG.6 (ADR-0053): reserve → PUT nhị phân → complete →
  * poll tới `ready`. Luồng đi qua cùng khoá hạn mức, cùng worker kiểm định như tệp tin nhắn.
+ * TG.22: scope `sticker` tái dùng đúng luồng này cho màn quản trị sticker của server.
  */
-export function useProfileUpload(scope: 'avatar' | 'serverIcon', serverId?: string): ProfileUpload {
+export function useProfileUpload(
+  scope: 'avatar' | 'serverIcon' | 'sticker',
+  serverId?: string,
+): ProfileUpload {
   const [state, setState] = useState<{
     busy: boolean;
     progress: number;

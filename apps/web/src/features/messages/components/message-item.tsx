@@ -2,6 +2,7 @@ import { Pin } from 'lucide-react';
 import { useFormatter, useTranslations } from 'use-intl';
 import type { ClientMessage } from '../message-cache';
 import { useServerAbility } from '@/features/permissions/context';
+import { StickerMessage } from '@/features/stickers/components/sticker-message';
 import { MessageActions, type MessageSelection } from './message-actions';
 import { MessageReactions } from './message-reactions';
 import { MarkdownText } from './markdown-text';
@@ -89,10 +90,18 @@ export function MessageItem({
           </span>
         </button>
       )}
-      {/* Markdown tập qua AST (TG.4, ADR-0054): renderer chỉ dựng element từ allowlist,
-          không đường sinh HTML; tin optimistic đang gửi vẫn hiển thị như văn bản thường. */}
-      <MarkdownText content={message.content} />
-      {message.attachments?.length ? <AttachmentList attachments={message.attachments} /> : null}
+      {/* TG.22: tin sticker render ảnh thay vì markdown/attachment; tin văn bản đi qua AST
+          allowlist (TG.4, ADR-0054) — không đường sinh HTML; tin optimistic vẫn hiện thường. */}
+      {message.kind === 'sticker' ? (
+        <StickerMessage sticker={message.sticker ?? null} />
+      ) : (
+        <>
+          <MarkdownText content={message.content} />
+          {message.attachments?.length ? (
+            <AttachmentList attachments={message.attachments} />
+          ) : null}
+        </>
+      )}
       <MessageReactions message={message} channelId={channelId} />
       {message.status === 'failed' && (
         <p className="text-xs text-destructive">

@@ -420,4 +420,63 @@ describe('reactions (TG.2)', () => {
       applyPin(undefined, { messageId: 'm2', pinnedAt: null, pinnedById: null }),
     ).toBeUndefined();
   });
+  it('optimisticMessage với sticker: kind=sticker + preview đi kèm (TG.22)', () => {
+    const preview = {
+      id: 's1',
+      name: 'party-parrot',
+      deleted: false,
+      url: '/api/v1/attachments/att/file?expires=1&signature=a',
+      previewUrl: '/api/v1/attachments/att/file?expires=1&signature=b&thumbnail=1',
+      width: 256,
+      height: 256,
+    };
+    const pending = optimisticMessage(
+      { content: '', nonce: 'n9', stickerId: 's1', sticker: preview },
+      author,
+    );
+    expect(pending.kind).toBe('sticker');
+    expect(pending.sticker).toEqual(preview);
+    expect(pending.content).toBe('');
+    // Tin văn bản vẫn giữ hành vi cũ: không kind, không sticker.
+    const plain = optimisticMessage({ content: 'hi', nonce: 'n10' }, author);
+    expect(plain.kind).toBeUndefined();
+    expect(plain.sticker).toBeUndefined();
+  });
+
+  it('upsertMessage hợp nhất tin sticker từ event với tin optimistic cùng nonce (TG.22)', () => {
+    const pending = optimisticMessage(
+      {
+        content: '',
+        nonce: 'n11',
+        stickerId: 's1',
+        sticker: {
+          id: 's1',
+          name: 'x',
+          deleted: false,
+          url: 'u',
+          previewUrl: 'p',
+          width: 8,
+          height: 8,
+        },
+      },
+      author,
+    );
+    const confirmed = msg('m9', 'n11', '');
+    confirmed.kind = 'sticker';
+    confirmed.sticker = {
+      id: 's1',
+      name: 'x',
+      deleted: false,
+      url: '/signed',
+      previewUrl: '/signed-thumb',
+      width: 64,
+      height: 64,
+    };
+    const next = upsertMessage(cache([pending]), confirmed)!;
+    expect(ids(next)).toEqual([['m9']]);
+    const row = next.pages[0]!.messages[0]!;
+    expect(row.kind).toBe('sticker');
+    expect(row.sticker).toEqual(confirmed.sticker);
+    expect(row.status).toBeUndefined();
+  });
 });

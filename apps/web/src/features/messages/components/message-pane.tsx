@@ -4,6 +4,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'use-intl';
+import type { StickerDto } from '@ping/shared';
 import { Button } from '@/components/ui/button';
 import { useChannelRealtime } from '@/features/realtime/hooks';
 import { TypingIndicator } from '@/features/realtime/components/typing-indicator';
@@ -18,6 +19,7 @@ import { MessageItem } from './message-item';
 import type { MessageSelection } from './message-actions';
 import { MessageDialogs } from './message-dialogs';
 import { useServerAbility } from '@/features/permissions/context';
+import { stickerPreviewOf } from '@/features/stickers/hooks';
 
 /** Chiều cao phần đầu danh sách ("Đây là đầu channel" / "Đang tải tin cũ…"). */
 const HEADER_HEIGHT = 48;
@@ -215,6 +217,21 @@ export function MessagePane({
     });
   }
 
+  // TG.22: gửi tin sticker — preview của sticker vừa chọn đi kèm để tin optimistic render
+  // ảnh ngay (response của API sẽ thay bằng preview chuẩn có URL ký mới).
+  function sendSticker(sticker: StickerDto, nonce: string, replyToId?: string) {
+    if (!ready || !ability.can('create', 'Message')) return;
+    scrollOnAppend.current = true;
+    sendMutation.mutate({
+      content: '',
+      nonce,
+      stickerId: sticker.id,
+      ...(replyToId ? { replyToId } : {}),
+      stickerPreview: stickerPreviewOf(sticker),
+    });
+    setReplyTo(null);
+  }
+
   // Tin của chính mình: luôn xuống đáy để thấy nó, kể cả khi đang đọc tin cũ. KHÔNG cuộn ngay:
   // tin optimistic chỉ vào cache sau `await cancelQueries()` trong onMutate, cuộn sớm thì dừng ở
   // tin cuối CŨ (e2e bắt được: lệch đúng một tin, chập chờn). Đánh dấu, cuộn khi danh sách dài ra.
@@ -233,13 +250,25 @@ export function MessagePane({
   }, [messages.length, virtualizer]);
 
   const retry = (message: ClientMessage) => {
-    if (message.nonce)
-      send(
-        message.content,
-        message.nonce,
-        message.replyTo?.id,
-        message.pendingAttachmentIds ?? message.attachments?.map((file) => file.id),
-      );
+    if (!message.nonce) return;
+    // TG.22: gửi lại tin sticker giữ đúng sticker (preview có sẵn trong cache).
+    if (message.kind === 'sticker') {
+      scrollOnAppend.current = true;
+      sendMutation.mutate({
+        content: '',
+        nonce: message.nonce,
+        ...(message.replyTo?.id ? { replyToId: message.replyTo.id } : {}),
+        stickerId: message.sticker?.id,
+        stickerPreview: message.sticker ?? null,
+      });
+      return;
+    }
+    send(
+      message.content,
+      message.nonce,
+      message.replyTo?.id,
+      message.pendingAttachmentIds ?? message.attachments?.map((file) => file.id),
+    );
   };
 
   // Nhảy tới tin gốc của một reply. Tin đã có trong cửa sổ → cuộn + tô sáng; tin cũ hơn
@@ -376,6 +405,7 @@ export function MessagePane({
         {announcement}
       </div>
       <MessageComposer
+        serverId={serverId}
         channelId={channelId}
         channelName={channelName}
         replyTo={
@@ -390,6 +420,7 @@ export function MessagePane({
         }
         onCancelReply={() => setReplyTo(null)}
         onSend={sendOwn}
+        onSendSticker={sendSticker}
         textareaRef={composerRef}
       />
       <MessageDialogs
