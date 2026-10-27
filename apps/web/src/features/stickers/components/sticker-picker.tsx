@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'use-intl';
 import { useStickers, flattenStickers } from '../hooks';
 import { pushRecentSticker, saveRecentStickers, stickerMatchesSearch } from '../sticker-utils';
+import { profileImageUrl } from '@/features/profile/hooks';
 import { PingInput } from '@/components/ui/ping-input';
 
 export type StickerTab = 'recent' | 'system' | 'server';
@@ -140,7 +141,7 @@ export function StickerPicker({
               className="rounded p-1.5 transition-colors hover:bg-accent focus-visible:bg-accent focus-visible:outline-none"
             >
               <img
-                src={sticker.url}
+                src={profileImageUrl(sticker.url)}
                 alt=""
                 width={sticker.width ?? undefined}
                 height={sticker.height ?? undefined}
