@@ -12,6 +12,7 @@ import {
   ErrorCodes,
   Limits,
   Permissions,
+  ServerEvents,
   type ListMembersQuery,
   type MyServerPermissions,
   type RegenerateInviteInput,
@@ -23,6 +24,7 @@ import { isUniqueConstraintError } from '../../common/utils/prisma-errors.js';
 import type { Prisma } from '../../generated/prisma/client.js';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
 import { AbilityFactory } from '../ability/ability.factory.js';
+import { AttachmentsService } from '../attachments/attachments.service.js';
 import { AuditService } from '../audit/audit.service.js';
 import { RealtimeService } from '../realtime/realtime.service.js';
 
@@ -38,6 +40,7 @@ export class ServersService {
     private readonly abilityFactory: AbilityFactory,
     private readonly realtime: RealtimeService,
     private readonly audit: AuditService,
+    private readonly attachments: AttachmentsService,
   ) {}
 
   /** Trần mềm số server mỗi user tham gia (tính cả server tự tạo). */
@@ -66,7 +69,10 @@ export class ServersService {
               name: '@everyone',
               isDefault: true,
               permissions:
-                Permissions.VIEW_CHANNEL | Permissions.SEND_MESSAGES | Permissions.ADD_REACTIONS,
+                Permissions.VIEW_CHANNEL |
+                Permissions.SEND_MESSAGES |
+                Permissions.ADD_REACTIONS |
+                Permissions.CHANGE_NICKNAME,
             },
           },
           channels: { create: { name: 'general', position: 0 } },
@@ -132,37 +138,90 @@ export class ServersService {
   }
 
   /**
-   * Đổi tên server (T3.1). Guard đã xác nhận `update Server`; ở đây chỉ đọc tên cũ để
-   * audit có before/after, rồi cập nhật và ghi audit trong cùng một transaction.
+   * Đổi tên/icon server (T3.1, TG.7). Guard đã xác nhận `update Server`; ở đây đọc giá trị cũ
+   * để audit có before/after, rồi cập nhật và ghi audit trong cùng một transaction. Icon gắn
+   * bằng attachment `scope=serverIcon` đã ready; icon cũ chuyển `deleting` cho worker dọn.
    */
   async update(
     serverId: string,
     actorId: string,
-    name: string,
-  ): Promise<{ id: string; name: string }> {
+    input: { name?: string; iconAttachmentId?: string },
+  ): Promise<{ id: string; name: string; iconUrl: string | null }> {
     const current = await this.prisma.server.findUnique({
       where: { id: serverId },
-      select: { name: true },
+      select: { name: true, iconUrl: true },
     });
     if (!current) {
       throw new NotFoundException('Server not found');
     }
-
-    const [server] = await this.prisma.$transaction([
-      this.prisma.server.update({
-        where: { id: serverId },
-        data: { name },
-        select: { id: true, name: true },
-      }),
-      this.audit.record({
-        serverId,
-        actorId,
-        action: 'SERVER_UPDATE',
-        targetId: serverId,
-        metadata: { from: current.name, to: name },
-      }),
-    ]);
+    const server = await this.prisma.$transaction(async (tx) => {
+      let iconUrl = current.iconUrl;
+      if (input.iconAttachmentId) {
+        await this.attachments.claimProfileAttachment(
+          tx,
+          actorId,
+          input.iconAttachmentId,
+          'serverIcon',
+        );
+        iconUrl = (await this.attachments.profileLink(input.iconAttachmentId, true)).url;
+        await this.attachments.releaseProfileAttachment(tx, current.iconUrl);
+      }
+      const [row] = await Promise.all([
+        tx.server.update({
+          where: { id: serverId },
+          data: { ...(input.name !== undefined ? { name: input.name } : {}), iconUrl },
+          select: { id: true, name: true, iconUrl: true },
+        }),
+        this.audit.record({
+          serverId,
+          actorId,
+          action: 'SERVER_UPDATE',
+          targetId: serverId,
+          metadata: {
+            ...(input.name !== undefined && input.name !== current.name
+              ? { from: current.name, to: input.name }
+              : {}),
+            ...(input.iconAttachmentId ? { iconChanged: true } : {}),
+          },
+        }),
+      ]);
+      return row;
+    });
+    this.realtime.emitToServer(serverId, ServerEvents.ServerUpdated, {
+      id: server.id,
+      name: server.name,
+      iconUrl: server.iconUrl,
+    });
     return server;
+  }
+
+  /**
+   * TG.7: tự đặt biệt danh của chính mình. Guard đã xác nhận `update Member`
+   * (bit CHANGE_NICKNAME); endpoint `/members/me` chỉ chạm đúng member của caller.
+   */
+  async updateMyNickname(serverId: string, userId: string, nickname: string | null) {
+    const member = await this.prisma.member.findUnique({
+      where: { serverId_userId: { serverId, userId } },
+      select: { id: true },
+    });
+    if (!member) throw new NotFoundException('Member not found');
+    const updated = await this.prisma.member.update({
+      where: { id: member.id },
+      data: { nickname },
+      select: {
+        id: true,
+        serverId: true,
+        nickname: true,
+        user: { select: { id: true, displayName: true, avatarUrl: true } },
+      },
+    });
+    this.realtime.emitToServer(serverId, ServerEvents.MemberUpdated, {
+      serverId,
+      memberId: updated.id,
+      nickname: updated.nickname,
+      user: updated.user,
+    });
+    return updated;
   }
 
   /** Dùng lại AbilityFactory (có cache, đã cộng @everyone): một nơi duy nhất tính quyền. */

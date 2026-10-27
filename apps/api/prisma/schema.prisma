@@ -241,9 +241,15 @@ model Message {
 model Attachment {
   id String @id @default(uuid(7)) @db.Uuid
   uploaderId String @db.Uuid
-  channelId String @db.Uuid
-  serverId String @db.Uuid
+  // `message` scope (TG.6): channel + server bắt buộc. `avatar`/`serverIcon` (TG.7): channel
+  // luôn null; serverIcon mang serverId, avatar không thuộc server nào.
+  channelId String? @db.Uuid
+  serverId  String? @db.Uuid
   messageId String? @db.Uuid
+  /// 'message' | 'avatar' | 'serverIcon' (TG.7). Mặc định 'message' cho các hàng cũ.
+  scope String @default("message")
+  /// Thời điểm avatar/icon được gắn vào hồ sơ/server: một tệp hồ sơ chỉ gắn một lần (TG.7).
+  boundAt DateTime?
   nonce String @db.Uuid
   filename String
   sizeBytes Int
@@ -262,6 +268,7 @@ model Attachment {
   @@index([serverId, status])
   @@index([status, createdAt])
   @@index([messageId])
+  @@index([scope, status])
 }
 
 model MessageReaction {

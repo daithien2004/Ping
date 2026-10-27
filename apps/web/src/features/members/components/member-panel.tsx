@@ -2,40 +2,79 @@
 
 import type { MemberDto } from '@ping/shared';
 import { useTranslations } from 'use-intl';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { PingModal } from '@/components/ui/ping-modal';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useMe } from '@/features/auth/hooks';
+import { MemberProfileCard } from '@/features/profile/components/profile-popover';
+import { UserAvatar } from '@/features/profile/components/user-avatar';
 import { errorReference } from '@/lib/error-reference';
 import { useErrorMessage } from '@/lib/error-message';
-import { initials } from '@/lib/initials';
 import { groupByPresence } from '../member-cache';
 import { useMembers } from '../hooks';
 
-function MemberRow({ member }: { member: MemberDto }) {
+function MemberRow({
+  member,
+  serverId,
+  self,
+}: {
+  member: MemberDto;
+  serverId: string;
+  self: boolean;
+}) {
   const t = useTranslations('members');
+  const tp = useTranslations('profile');
   const name = member.nickname ?? member.user.displayName;
+  const [open, setOpen] = useState(false);
   return (
-    <li className="flex items-center gap-2 rounded-md px-2 py-1.5">
-      <span className="relative">
-        <Avatar size="sm">
-          <AvatarFallback className="text-[10px]">{initials(name)}</AvatarFallback>
-        </Avatar>
-        <span
-          aria-hidden
-          className={`absolute -right-0.5 -bottom-0.5 size-2.5 rounded-full ring-2 ring-sidebar ${
-            member.online ? 'bg-online' : 'bg-muted-foreground'
-          }`}
-        />
-      </span>
-      <span className={`truncate text-sm ${member.online ? '' : 'text-muted-foreground'}`}>
-        {name}
-      </span>
-      <span className="sr-only">{member.online ? t('statusOnline') : t('statusOffline')}</span>
+    <li className="flex items-center rounded-md px-2 py-1.5">
+      {/* TG.7: bấm thành viên mở thẻ hồ sơ (modal — avatar/role/ngày tham gia; riêng mình có đổi biệt danh). */}
+      <button
+        type="button"
+        data-testid="member-row"
+        aria-haspopup="dialog"
+        className="flex w-full items-center gap-2 rounded-md text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        onClick={() => setOpen(true)}
+      >
+        <span className="relative">
+          <UserAvatar name={name} avatarUrl={member.user.avatarUrl} size="sm" />
+          <span
+            aria-hidden
+            className={`absolute -right-0.5 -bottom-0.5 size-2.5 rounded-full ring-2 ring-sidebar ${
+              member.online ? 'bg-online' : 'bg-muted-foreground'
+            }`}
+          />
+        </span>
+        <span className={`truncate text-sm ${member.online ? '' : 'text-muted-foreground'}`}>
+          {name}
+        </span>
+        <span className="sr-only">{member.online ? t('statusOnline') : t('statusOffline')}</span>
+      </button>
+      <PingModal
+        title={tp('selfTitle', { name })}
+        open={open}
+        onCancel={() => setOpen(false)}
+        footer={null}
+        destroyOnHidden
+      >
+        <MemberProfileCard member={member} serverId={serverId} self={self} />
+      </PingModal>
     </li>
   );
 }
 
-function Group({ label, members }: { label: string; members: MemberDto[] }) {
+function Group({
+  label,
+  members,
+  serverId,
+  selfId,
+}: {
+  label: string;
+  members: MemberDto[];
+  serverId: string;
+  selfId: string | undefined;
+}) {
   if (members.length === 0) return null;
   return (
     <section aria-label={label} className="flex flex-col gap-0.5">
@@ -44,7 +83,12 @@ function Group({ label, members }: { label: string; members: MemberDto[] }) {
       </h2>
       <ul>
         {members.map((member) => (
-          <MemberRow key={member.id} member={member} />
+          <MemberRow
+            key={member.id}
+            member={member}
+            serverId={serverId}
+            self={member.userId === selfId}
+          />
         ))}
       </ul>
     </section>
@@ -58,6 +102,7 @@ export function MemberPanel({ serverId }: { serverId: string }) {
   const tc = useTranslations('common');
   const errorMessage = useErrorMessage();
   const query = useMembers(serverId);
+  const { data: me } = useMe();
   const members = query.data?.pages.flatMap((page) => page.members) ?? [];
   const { online, offline } = groupByPresence(members);
   const message = query.isError ? errorMessage(query.error) : '';
@@ -109,8 +154,18 @@ export function MemberPanel({ serverId }: { serverId: string }) {
           </Button>
         </div>
       )}
-      <Group label={t('online', { count: online.length })} members={online} />
-      <Group label={t('offline', { count: offline.length })} members={offline} />
+      <Group
+        label={t('online', { count: online.length })}
+        members={online}
+        serverId={serverId}
+        selfId={me?.id}
+      />
+      <Group
+        label={t('offline', { count: offline.length })}
+        members={offline}
+        serverId={serverId}
+        selfId={me?.id}
+      />
       {query.hasNextPage && (
         <Button
           variant="ghost"

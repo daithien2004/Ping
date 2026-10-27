@@ -5,18 +5,50 @@ export const AttachmentLimits = {
   FILE_BYTES: 10 * 1024 * 1024,
   IMAGE_PIXELS: 16_000_000,
   URL_SECONDS: 60,
+  /** URL hồ sơ (avatar/icon) sống lâu để event `user.updated` render được ở mọi client (TG.7). */
+  PROFILE_URL_SECONDS: 30 * 24 * 60 * 60,
 } as const;
 
-export const createUploadSchema = z.object({
-  channelId: z.uuid(),
-  nonce: z.uuid(),
-  filename: z
-    .string()
-    .min(1)
-    .max(180)
-    .refine((name) => !/[\\/\u0000-\u001f\u007f]/.test(name)),
-  sizeBytes: z.number().int().min(1).max(AttachmentLimits.FILE_BYTES),
-});
+/** TG.7: đích của một upload. `message` là luồng TG.6; avatar/icon tái dùng pipeline (ADR-0053). */
+export type UploadScope = 'message' | 'avatar' | 'serverIcon';
+
+export const uploadScopes = ['message', 'avatar', 'serverIcon'] as const;
+export const uploadScopeSchema = z.enum(uploadScopes);
+
+/** Ảnh hồ sơ nhỏ hơn tệp tin nhắn: vẫn đi qua cùng giới hạn 10 MiB của pipeline. */
+export const PROFILE_FILE_BYTES = 5 * 1024 * 1024;
+
+/**
+ * Luồng TG.6: `message` bắt buộc channelId (không kèm serverId — server suy từ channel);
+ * `avatar` không thuộc server/channel nào; `serverIcon` gắn server, không qua channel.
+ */
+export const createUploadSchema = z
+  .object({
+    scope: uploadScopeSchema.default('message'),
+    channelId: z.uuid().optional(),
+    serverId: z.uuid().optional(),
+    nonce: z.uuid(),
+    filename: z
+      .string()
+      .min(1)
+      .max(180)
+      .refine((name) => !/[\\/\u0000-\u001f\u007f]/.test(name)),
+    sizeBytes: z.number().int().min(1).max(AttachmentLimits.FILE_BYTES),
+  })
+  .superRefine((value, ctx) => {
+    if (value.scope === 'message') {
+      if (!value.channelId) ctx.addIssue({ code: 'custom', message: 'channelId required' });
+      if (value.serverId) ctx.addIssue({ code: 'custom', message: 'serverId forbidden' });
+      return;
+    }
+    if (value.channelId) ctx.addIssue({ code: 'custom', message: 'channelId forbidden' });
+    if (value.sizeBytes > PROFILE_FILE_BYTES)
+      ctx.addIssue({ code: 'custom', message: 'profile file too large' });
+    if (value.scope === 'avatar' && value.serverId)
+      ctx.addIssue({ code: 'custom', message: 'serverId forbidden' });
+    if (value.scope === 'serverIcon' && !value.serverId)
+      ctx.addIssue({ code: 'custom', message: 'serverId required' });
+  });
 export type CreateUploadInput = z.infer<typeof createUploadSchema>;
 
 export interface AttachmentDto {
@@ -46,7 +78,8 @@ export interface AttachmentLink {
 }
 export const downloadQuerySchema = z.object({ thumbnail: z.enum(['1']).optional() });
 export const signedFileQuerySchema = z.object({
-  user: z.uuid(),
+  /** Có `user` = URL tin nhắn (ràng buộc người xem, 60 giây); không có = URL hồ sơ TG.7. */
+  user: z.uuid().optional(),
   expires: z.coerce.number().int().positive(),
   signature: z.string().regex(/^[a-f0-9]{64}$/),
   thumbnail: z.enum(['1']).optional(),

@@ -41,6 +41,11 @@ export class AbilityGuard implements CanActivate {
     );
 
     const serverId = await this.resolveServerId(request);
+    if (serverId === null) {
+      // TG.7: attachment hồ sơ (avatar/serverIcon) không thuộc server — quyền do
+      // AttachmentsService.owned() kiểm (chỉ uploader; serverIcon cần `update Server`).
+      return true;
+    }
     if (serverId === undefined) {
       // Fail closed: route đòi quyền mà không xác định được server là lỗi cấu hình
       // route — từ chối thay vì cho qua (lỗ IDOR /roles/:roleId từng nằm ở đây).
@@ -63,15 +68,17 @@ export class AbilityGuard implements CanActivate {
     return true;
   }
 
-  private async resolveServerId(request: Request): Promise<string | undefined> {
+  /** null = attachment hồ sơ không thuộc server (bỏ qua kiểm quyền theo server); undefined = không rõ bối cảnh. */
+  private async resolveServerId(request: Request): Promise<string | null | undefined> {
     const params = request.params as Record<string, string | undefined>;
     const attachmentId = params.uploadId ?? params.attachmentId;
     if (attachmentId) {
       const attachment = await this.prisma.attachment.findUnique({
         where: { id: attachmentId },
-        select: { serverId: true },
+        select: { serverId: true, scope: true },
       });
       if (!attachment) throw new NotFoundException();
+      if (attachment.scope !== 'message') return null;
       return attachment.serverId;
     }
     if (params.serverId) {

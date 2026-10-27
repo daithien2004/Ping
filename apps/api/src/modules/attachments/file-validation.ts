@@ -5,12 +5,21 @@ import sharp from 'sharp';
 export class InvalidFile extends Error {}
 
 /** Conservative binary allowlist. Originals never become publicly reachable. */
-export async function validateFile(bytes: Buffer) {
+export async function validateFile(
+  bytes: Buffer,
+  // TG.7: avatar/icon chỉ nhận ảnh tĩnh — PDF chỉ hợp lệ cho tệp tin nhắn.
+  { kinds = ['image', 'pdf'] as Array<'image' | 'pdf'> }: { kinds?: Array<'image' | 'pdf'> } = {},
+) {
   try {
     if (!bytes.length || bytes.length > AttachmentLimits.FILE_BYTES) throw new InvalidFile();
     const type = await fileTypeFromBuffer(bytes);
-    if (!type || !['image/jpeg', 'image/png', 'image/webp', 'application/pdf'].includes(type.mime))
-      throw new InvalidFile();
+    const allowedMimes = [
+      ...(['image' as const].some((k) => kinds.includes(k))
+        ? ['image/jpeg', 'image/png', 'image/webp']
+        : []),
+      ...(kinds.includes('pdf') ? ['application/pdf'] : []),
+    ];
+    if (!type || !allowedMimes.includes(type.mime)) throw new InvalidFile();
     if (type.mime === 'application/pdf') {
       const text = bytes.toString('latin1');
       // Reject active documents, embedded/encrypted content, escaped names and appended payloads.

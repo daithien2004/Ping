@@ -13,6 +13,8 @@ export const Permissions = {
   MENTION_EVERYONE: 512n,
   /** Được thả cảm xúc lên tin nhắn (TG.2, ADR-0064). Mặc định có trong `@everyone`. */
   ADD_REACTIONS: 1024n,
+  /** Được tự đặt biệt danh của chính mình trong server (TG.7). Mặc định có trong `@everyone`. */
+  CHANGE_NICKNAME: 2048n,
 } as const;
 
 export function hasPermission(value: bigint, flag: bigint): boolean {

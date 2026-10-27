@@ -220,7 +220,7 @@ describe('Servers, channels & roles (e2e)', () => {
     const updated = await api('patch', `/api/v1/servers/${serverId}`, owner.token)
       .send({ name: 'Ping Đổi Tên' })
       .expect(200);
-    expect(updated.body).toEqual({ id: serverId, name: 'Ping Đổi Tên' });
+    expect(updated.body).toEqual({ id: serverId, name: 'Ping Đổi Tên', iconUrl: null });
 
     const detail = await api('get', `/api/v1/servers/${serverId}`, plain.token).expect(200);
     expect(detail.body.name).toBe('Ping Đổi Tên');

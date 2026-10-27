@@ -7,11 +7,15 @@ import { useParams } from 'next/navigation';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslations } from 'use-intl';
 import { LanguageSwitcher } from '@/components/language-switcher';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { PingBadge } from '@/components/ui/ping-badge';
+import { PingModal } from '@/components/ui/ping-modal';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useLogout, useMe } from '@/features/auth/hooks';
+import { SelfProfileCard } from '@/features/profile/components/profile-popover';
+import { profileImageUrl } from '@/features/profile/hooks';
+import { UserAvatar } from '@/features/profile/components/user-avatar';
 import { useRealtime } from '@/features/realtime/context';
 import { useUnread, useUnreadTitle } from '@/features/unread/hooks';
 import { totals } from '@/features/unread/unread-cache';
@@ -56,6 +60,7 @@ export function ServerRail() {
   const { data: me } = useMe();
   const logoutMutation = useLogout();
   const [wizard, setWizard] = useState<OnboardingMode | null>(null);
+  const [profileOpen, setProfileOpen] = useState(false);
   const t = useTranslations();
   // Tab title theo tổng mention mọi server (T4.3).
   useUnreadTitle(
@@ -73,6 +78,7 @@ export function ServerRail() {
           key={server.id}
           serverId={server.id}
           name={server.name}
+          iconUrl={server.iconUrl}
           active={server.id === serverId}
         />
       ))}
@@ -104,9 +110,18 @@ export function ServerRail() {
 
       <div className="mt-auto flex flex-col items-center gap-2">
         <LanguageSwitcher compact />
-        <Avatar className="size-9" title={me?.displayName}>
-          <AvatarFallback className="text-xs">{me ? initials(me.displayName) : ''}</AvatarFallback>
-        </Avatar>
+        {/* TG.7: bấm vào avatar mở thẻ hồ sơ (PingModal — đặt vị trí của popover bị lệch trong
+            layout rail); đổi ảnh đại diện/tên hiển thị không cần trang cài đặt. */}
+        <button
+          type="button"
+          aria-label={me ? t('profile.openSelfProfile') : undefined}
+          aria-haspopup="dialog"
+          data-testid="self-avatar"
+          className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          onClick={() => setProfileOpen(true)}
+        >
+          <UserAvatar name={me?.displayName ?? ''} avatarUrl={me?.avatarUrl} className="size-9" />
+        </button>
         <RailItem label={t('auth.signOut')}>
           <Button
             variant="ghost"
@@ -126,6 +141,17 @@ export function ServerRail() {
         onClose={() => setWizard(null)}
       />
 
+      {/* TG.7: thẻ hồ sơ của chính mình trong modal — luôn nằm trong viewport. */}
+      <PingModal
+        title={me ? t('profile.selfTitle', { name: me.displayName }) : undefined}
+        open={profileOpen}
+        onCancel={() => setProfileOpen(false)}
+        footer={null}
+        destroyOnHidden
+      >
+        <SelfProfileCard />
+      </PingModal>
+
       {/* T4.3: mình được nhắc ở kênh không đang xem — trình đọc màn hình đọc lên một lần. */}
       <MentionAnnouncer />
     </nav>
@@ -139,10 +165,12 @@ export function ServerRail() {
 function ServerRailItem({
   serverId,
   name,
+  iconUrl,
   active,
 }: {
   serverId: string;
   name: string;
+  iconUrl: string | null;
   active: boolean;
 }) {
   const t = useTranslations('servers');
@@ -172,9 +200,11 @@ function ServerRailItem({
             count={unreadTotal > 0 && mentionTotal === 0 ? unreadTotal : 0}
             offset={[-4, 4]}
           >
+            {/* TG.7: icon server (nếu có) đè lên fallback chữ cái; ảnh reencode WebP qua pipeline TG.6. */}
             <Avatar
               className={`size-12 transition-all ${active ? 'rounded-2xl' : 'rounded-3xl hover:rounded-2xl'}`}
             >
+              <AvatarImage src={profileImageUrl(iconUrl)} alt={name} />
               <AvatarFallback
                 className={`rounded-[inherit] text-sm font-semibold ${
                   active ? 'bg-primary text-primary-foreground' : 'bg-background'

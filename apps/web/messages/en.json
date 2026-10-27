@@ -177,7 +177,11 @@
       "channelUpdate": "Renamed channel"
     },
     "channels": "Channels",
-    "channelActions": "Actions"
+    "channelActions": "Actions",
+    "serverIconChange": "Change server icon",
+    "serverIconSaved": "Server icon updated",
+    "serverIconProcessing": "Validating image…",
+    "serverIconUploading": "Uploading {percent}%"
   },
   "app": {
     "accessDenied": "Can't open this page",
@@ -255,7 +259,8 @@
     "statusOnline": "Online",
     "statusOffline": "Offline",
     "loadMore": "Load more",
-    "empty": "No members yet."
+    "empty": "No members yet.",
+    "nicknamePlaceholder": "Leave empty to use the display name"
   },
   "messages": {
     "actions": "Message actions",
@@ -410,5 +415,22 @@
     "quotaExceeded": "You have used all your AI questions for today. Please try again tomorrow.",
     "budgetExhausted": "Today's AI budget is exhausted. Please try again tomorrow.",
     "error": "An error occurred. Please try again later."
+  },
+  "profile": {
+    "selfTitle": "{name}'s profile",
+    "openSelfProfile": "Open your profile card",
+    "changeAvatar": "Change avatar",
+    "avatarSaved": "Avatar updated",
+    "displayName": "Display name",
+    "profileSaved": "Profile saved",
+    "nickname": "Nickname in server",
+    "nicknameSaved": "Nickname saved",
+    "removeNickname": "Remove nickname",
+    "joined": "Joined {date}",
+    "sendMessage": "Message",
+    "sendMessageSoon": "Direct messages are coming later (TG.9)",
+    "uploading": "Uploading {percent}%",
+    "processing": "Validating image…",
+    "save": "Save"
   }
 }

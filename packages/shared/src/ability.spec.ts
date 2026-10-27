@@ -277,3 +277,23 @@ describe('kick', () => {
     expect(canKickMember(admin, kicker)).toBe(true);
   });
 });
+
+describe('TG.7 nickname', () => {
+  it('grants update Member with CHANGE_NICKNAME but not without it', () => {
+    const without = defineAbilityFor({
+      userId: 'user-A',
+      isOwner: false,
+      permissions: memberPermissions,
+    });
+    const withBit = defineAbilityFor({
+      userId: 'user-A',
+      isOwner: false,
+      permissions: memberPermissions | Permissions.CHANGE_NICKNAME,
+    });
+    expect(without.can('update', 'Member')).toBe(false);
+    expect(withBit.can('update', 'Member')).toBe(true);
+    // Endpoint /members/me chỉ chạm member của chính caller (service tự chặn); rule không
+    // kéo theo kick/xóa member của người khác.
+    expect(withBit.can('delete', 'Member')).toBe(false);
+  });
+});

@@ -15,6 +15,7 @@ import {
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import type { Request, Response } from 'express';
 import type { Env } from '../../config/env.schema.js';
+import type { Prisma } from '../../generated/prisma/client.js';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
 import { AbilityFactory } from '../ability/ability.factory.js';
 import { Storage } from './local-storage.js';
@@ -38,20 +39,33 @@ export class AttachmentsService {
   ) {}
 
   async create(userId: string, input: CreateUploadInput) {
-    const channel = await this.prisma.channel.findUnique({ where: { id: input.channelId } });
-    if (!channel) throw new NotFoundException();
-    const ability = await this.ability.createForUserFresh(channel.serverId, userId);
-    if (!ability.can('create', 'Attachment')) throw new ForbiddenException();
+    // TG.7: avatar/icon tái dùng cùng pipeline nhưng không có bối cảnh channel; quyền và
+    // hạn mức theo đích (avatar: user, serverIcon: server với `update Server`).
+    let serverId: string | null = null;
+    if (input.scope === 'message') {
+      const channel = await this.prisma.channel.findUnique({ where: { id: input.channelId } });
+      if (!channel) throw new NotFoundException();
+      serverId = channel.serverId;
+      const ability = await this.ability.createForUserFresh(channel.serverId, userId);
+      if (!ability.can('create', 'Attachment')) throw new ForbiddenException();
+    } else if (input.scope === 'serverIcon') {
+      serverId = input.serverId!;
+      const ability = await this.ability.createForUserFresh(serverId, userId);
+      if (!ability.can('update', 'Server')) throw new ForbiddenException();
+    }
     return this.prisma.$transaction(async (tx) => {
       // Consistent order: user then server. Both scopes include pending reservations.
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`upload-user:${userId}`}))`;
-      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`upload-server:${channel.serverId}`}))`;
+      if (serverId)
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`upload-server:${serverId}`}))`;
       const previous = await tx.attachment.findUnique({
         where: { uploaderId_nonce: { uploaderId: userId, nonce: input.nonce } },
       });
       if (previous) {
         if (
-          previous.channelId !== input.channelId ||
+          previous.channelId !== (input.channelId ?? null) ||
+          previous.serverId !== serverId ||
+          previous.scope !== input.scope ||
           previous.filename !== input.filename ||
           previous.sizeBytes !== input.sizeBytes
         )
@@ -62,14 +76,19 @@ export class AttachmentsService {
       // Reserve original plus worst-case canonical image/thumbnail before accepting bytes.
       const reservation = input.sizeBytes + AttachmentLimits.FILE_BYTES;
       const [user, server] = await Promise.all([
-        tx.attachment.aggregate({
-          where: { uploaderId: userId, status: { in: active } },
-          _sum: { quotaBytes: true },
-        }),
-        tx.attachment.aggregate({
-          where: { serverId: channel.serverId, status: { in: active } },
-          _sum: { quotaBytes: true },
-        }),
+        // Avatar tính vào hạn mức của người upload; serverIcon chỉ tính vào hạn mức server.
+        input.scope === 'serverIcon'
+          ? Promise.resolve({ _sum: { quotaBytes: 0 } })
+          : tx.attachment.aggregate({
+              where: { uploaderId: userId, status: { in: active } },
+              _sum: { quotaBytes: true },
+            }),
+        serverId === null
+          ? Promise.resolve({ _sum: { quotaBytes: 0 } })
+          : tx.attachment.aggregate({
+              where: { serverId, status: { in: active } },
+              _sum: { quotaBytes: true },
+            }),
       ]);
       if (
         (user._sum.quotaBytes ?? 0) + reservation >
@@ -83,7 +102,13 @@ export class AttachmentsService {
         });
       }
       const row = await tx.attachment.create({
-        data: { ...input, quotaBytes: reservation, uploaderId: userId, serverId: channel.serverId },
+        data: {
+          ...input,
+          channelId: input.scope === 'message' ? input.channelId : null,
+          serverId,
+          quotaBytes: reservation,
+          uploaderId: userId,
+        },
       });
       return { id: row.id, status: row.status };
     });
@@ -92,7 +117,13 @@ export class AttachmentsService {
   private async owned(id: string, userId: string) {
     const row = await this.prisma.attachment.findUnique({ where: { id } });
     if (!row || row.uploaderId !== userId) throw new NotFoundException();
-    const ability = await this.ability.createForUserFresh(row.serverId, userId);
+    if (row.scope === 'avatar') return row; // Chỉ uploader đụng được upload avatar của chính mình.
+    if (row.scope === 'serverIcon') {
+      const ability = await this.ability.createForUserFresh(row.serverId!, userId);
+      if (!ability.can('update', 'Server')) throw new ForbiddenException();
+      return row;
+    }
+    const ability = await this.ability.createForUserFresh(row.serverId!, userId);
     if (!ability.can('create', 'Attachment')) throw new ForbiddenException();
     return row;
   }
@@ -171,11 +202,52 @@ export class AttachmentsService {
     await this.prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT id FROM "Attachment" WHERE id = ${id}::uuid FOR UPDATE`;
       const row = await tx.attachment.findUniqueOrThrow({ where: { id } });
-      if (row.messageId) throw new BadRequestException();
+      if (row.messageId || row.boundAt) throw new BadRequestException();
       if (row.status !== 'deleted')
         await tx.attachment.update({ where: { id }, data: { status: 'deleting' } });
     });
     return { id };
+  }
+
+  /**
+   * TG.7: đánh dấu attachment hồ sơ đã bị "gắn" — một tệp avatar/icon chỉ dùng đúng một lần,
+   * trong transaction của caller (cùng transaction với việc cập nhật hồ sơ/server).
+   */
+  async claimProfileAttachment(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    attachmentId: string,
+    scope: 'avatar' | 'serverIcon',
+  ) {
+    await tx.$queryRaw`SELECT id FROM "Attachment" WHERE id = ${attachmentId}::uuid FOR UPDATE`;
+    const row = await tx.attachment.findUnique({ where: { id: attachmentId } });
+    if (
+      !row ||
+      row.scope !== scope ||
+      row.uploaderId !== userId ||
+      row.status !== 'ready' ||
+      row.boundAt
+    )
+      throw new BadRequestException({
+        code: row && row.boundAt ? ErrorCodes.ATTACHMENT_ALREADY_BOUND : ErrorCodes.BAD_REQUEST,
+        message: 'Attachment is not claimable',
+      });
+    await tx.attachment.update({
+      where: { id: attachmentId },
+      data: { boundAt: new Date() },
+    });
+    return row;
+  }
+
+  /** Attachment đang được tham chiếu bởi avatarUrl/iconUrl cũ → worker dọn tệp và giải phóng hạn mức. */
+  async releaseProfileAttachment(tx: Prisma.TransactionClient, url: string | null) {
+    if (!url) return;
+    const id = /\/api\/v1\/attachments\/([0-9a-f-]{36})\/file/.exec(url)?.[1];
+    if (!id) return;
+    await tx.attachment.updateMany({
+      where: { id, boundAt: { not: null } },
+      data: { status: 'deleting' },
+    });
   }
 
   private async downloadable(id: string, userId: string, thumbnail: boolean) {
@@ -191,9 +263,9 @@ export class AttachmentsService {
       (thumbnail && !row.mime.startsWith('image/'))
     )
       throw new NotFoundException();
-    const channel = await this.prisma.channel.findUnique({ where: { id: row.channelId } });
+    const channel = await this.prisma.channel.findUnique({ where: { id: row.channelId! } });
     if (!channel) throw new NotFoundException();
-    const ability = await this.ability.createForUserFresh(row.serverId, userId);
+    const ability = await this.ability.createForUserFresh(row.serverId!, userId);
     if (!ability.can('view', 'Attachment')) throw new ForbiddenException();
     return row;
   }
@@ -212,10 +284,56 @@ export class AttachmentsService {
       expiresAt: new Date(expires * 1000).toISOString(),
     };
   }
+
+  /**
+   * URL hồ sơ sống lâu (TG.7): ràng buộc attachment + variant + hạn, KHÔNG ràng buộc người xem —
+   * payload event và cache client render được ngay bằng <img>. Chỉ scope avatar/serverIcon,
+   * chỉ dùng cho ảnh đã reencode; bearer capability như URL tin nhắn (ADR-0053).
+   */
+  private profileSign(id: string, expires: number, thumbnail: boolean) {
+    return createHmac('sha256', this.config.get('JWT_ACCESS_SECRET', { infer: true }))
+      .update(`attachment-profile-v1:${id}:${expires}:${thumbnail ? 'thumb' : 'ready'}`)
+      .digest('hex');
+  }
+  async profileLink(id: string, thumbnail: boolean) {
+    const row = await this.prisma.attachment.findUnique({ where: { id } });
+    if (!row || row.scope === 'message' || row.status !== 'ready') throw new NotFoundException();
+    const expires = Math.floor(Date.now() / 1000) + AttachmentLimits.PROFILE_URL_SECONDS;
+    const signature = this.profileSign(id, expires, thumbnail);
+    return {
+      url: `/api/v1/attachments/${id}/file?expires=${expires}&signature=${signature}${thumbnail ? '&thumbnail=1' : ''}`,
+      expiresAt: new Date(expires * 1000).toISOString(),
+    };
+  }
+
+  private async profileRow(id: string, thumbnail: boolean) {
+    const row = await this.prisma.attachment.findUnique({ where: { id } });
+    if (
+      !row ||
+      row.scope === 'message' ||
+      row.status !== 'ready' ||
+      (thumbnail && !row.mime.startsWith('image/'))
+    )
+      throw new NotFoundException();
+    return row;
+  }
+
   async file(id: string, query: SignedFileQuery, res: Response) {
     const thumbnail = query.thumbnail === '1';
-    const expected = this.sign(id, query.user, query.expires, thumbnail);
     const now = Math.floor(Date.now() / 1000);
+    if (query.user === undefined) {
+      // TG.7: URL hồ sơ — chữ ký tự kiểm, không có bước kiểm quyền theo người xem.
+      const expected = this.profileSign(id, query.expires, thumbnail);
+      if (
+        query.expires <= now ||
+        query.expires > now + AttachmentLimits.PROFILE_URL_SECONDS ||
+        !timingSafeEqual(Buffer.from(query.signature), Buffer.from(expected))
+      )
+        throw new ForbiddenException();
+      const row = await this.profileRow(id, thumbnail);
+      return this.stream(row, thumbnail, res);
+    }
+    const expected = this.sign(id, query.user, query.expires, thumbnail);
     if (
       query.expires <= now ||
       query.expires > now + AttachmentLimits.URL_SECONDS ||
@@ -224,7 +342,15 @@ export class AttachmentsService {
       throw new ForbiddenException();
     // Signed URLs remain subject to current membership/permissions and deletion state.
     const row = await this.downloadable(id, query.user, thumbnail);
-    const bytes = await this.storage.read(`${id}.${thumbnail ? 'thumb' : 'ready'}`);
+    return this.stream(row, thumbnail, res);
+  }
+
+  private async stream(
+    row: { id: string; filename: string; mime: string },
+    thumbnail: boolean,
+    res: Response,
+  ) {
+    const bytes = await this.storage.read(`${row.id}.${thumbnail ? 'thumb' : 'ready'}`);
     const filename = `${row.filename.replace(/\.[^.]*$/, '')}.${row.mime.startsWith('image/') ? 'webp' : 'pdf'}`;
     res.setHeader(
       'Content-Disposition',

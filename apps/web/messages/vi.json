@@ -177,7 +177,11 @@
       "channelUpdate": "Đổi tên channel"
     },
     "channels": "Kênh",
-    "channelActions": "Thao tác"
+    "channelActions": "Thao tác",
+    "serverIconChange": "Đổi icon server",
+    "serverIconSaved": "Đã cập nhật icon server",
+    "serverIconProcessing": "Đang kiểm định ảnh…",
+    "serverIconUploading": "Đang tải {percent}%"
   },
   "app": {
     "accessDenied": "Không truy cập được",
@@ -255,7 +259,8 @@
     "statusOnline": "Đang online",
     "statusOffline": "Offline",
     "loadMore": "Xem thêm",
-    "empty": "Chưa có thành viên nào."
+    "empty": "Chưa có thành viên nào.",
+    "nicknamePlaceholder": "Để trống là dùng tên hiển thị"
   },
   "messages": {
     "actions": "Thao tác tin nhắn",
@@ -410,5 +415,22 @@
     "quotaExceeded": "Bạn đã dùng hết số lượt hỏi AI hôm nay. Vui lòng thử lại vào ngày mai.",
     "budgetExhausted": "Ngân sách AI hôm nay đã hết. Vui lòng thử lại vào ngày mai.",
     "error": "Có lỗi xảy ra. Vui lòng thử lại sau."
+  },
+  "profile": {
+    "selfTitle": "Hồ sơ của {name}",
+    "openSelfProfile": "Mở thẻ hồ sơ của bạn",
+    "changeAvatar": "Đổi ảnh đại diện",
+    "avatarSaved": "Đã cập nhật ảnh đại diện",
+    "displayName": "Tên hiển thị",
+    "profileSaved": "Đã lưu hồ sơ",
+    "nickname": "Biệt danh trong server",
+    "nicknameSaved": "Đã lưu biệt danh",
+    "removeNickname": "Xóa biệt danh",
+    "joined": "Đã tham gia {date}",
+    "sendMessage": "Nhắn tin",
+    "sendMessageSoon": "Tin nhắn trực tiếp sẽ ra mắt sau (TG.9)",
+    "uploading": "Đang tải {percent}%",
+    "processing": "Đang kiểm định ảnh…",
+    "save": "Lưu"
   }
 }

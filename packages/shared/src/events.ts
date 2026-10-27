@@ -20,6 +20,9 @@ export const ServerEvents = {
   ReactionRemoved: 'reaction.removed',
   MessagePinned: 'message.pinned',
   MessageUnpinned: 'message.unpinned',
+  UserUpdated: 'user.updated',
+  MemberUpdated: 'member.updated',
+  ServerUpdated: 'server.updated',
 } as const;
 
 export const ClientEvents = {
@@ -153,6 +156,33 @@ export interface MessageUnpinnedPayload {
   channelId: string;
 }
 
+/**
+ * Hồ sơ người dùng vừa đổi (TG.7): phát tới room `user:<id>` (các tab của chính họ) và room
+ * `server:<id>` của từng server họ thuộc về. `avatarUrl` là URL hồ sơ sống lâu (30 ngày) nên
+ * mọi client nhận được đều render được ngay không cần gọi API thêm.
+ */
+export interface UserUpdatedPayload {
+  id: string;
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+}
+
+/** Biệt danh của một thành viên vừa đổi (TG.7); phát tới room `server:<id>`. */
+export interface MemberUpdatedPayload {
+  serverId: string;
+  memberId: string;
+  nickname: string | null;
+  user: { id: string; displayName: string; avatarUrl: string | null };
+}
+
+/** Tên/icon server vừa đổi (TG.7); phát tới room `server:<id>`. */
+export interface ServerUpdatedPayload {
+  id: string;
+  name: string;
+  iconUrl: string | null;
+}
+
 /** Payload client gửi lên chỉ là dữ liệu chưa tin cậy: gateway parse bằng schema này. */
 export const channelEventSchema = z.object({ channelId: z.uuid() });
 export type ChannelJoinPayload = z.infer<typeof channelEventSchema>;
@@ -178,6 +208,9 @@ export interface ServerToClientEvents {
   [ServerEvents.ReactionRemoved]: (payload: ReactionChangedPayload) => void;
   [ServerEvents.MessagePinned]: (payload: MessagePinnedPayload) => void;
   [ServerEvents.MessageUnpinned]: (payload: MessageUnpinnedPayload) => void;
+  [ServerEvents.UserUpdated]: (payload: UserUpdatedPayload) => void;
+  [ServerEvents.MemberUpdated]: (payload: MemberUpdatedPayload) => void;
+  [ServerEvents.ServerUpdated]: (payload: ServerUpdatedPayload) => void;
 }
 
 export interface ClientToServerEvents {
