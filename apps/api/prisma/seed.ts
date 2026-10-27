@@ -276,7 +276,10 @@ async function seedSystemStickers(): Promise<number> {
     const stickerId = `019c0000-0000-7000-8000-0000000001${String(index).padStart(2, '0')}`;
     const filename = `${slug}.webp`;
     const bytes = await readFile(join(publicDir, filename));
+    // Cả hai variant giống worker: `.ready` (bản chính) và `.thumb` (khung tĩnh cho
+    // prefers-reduced-motion) — thiếu `.thumb` thì sticker hệ thống vỡ ảnh khi reduced-motion.
     await copyFile(join(publicDir, filename), join(storageDir, `${attachmentId}.ready`));
+    await copyFile(join(publicDir, filename), join(storageDir, `${attachmentId}.thumb`));
     await prisma.attachment.upsert({
       where: { id: attachmentId },
       update: { status: 'ready', boundAt: new Date() },
