@@ -57,11 +57,12 @@ model Server {
 
   // FK thật cho ownerId (guide chỉ để String trần): mặc định required relation
   // = Restrict — không thể xóa user đang sở hữu server, phải chuyển quyền trước.
-  owner    User           @relation(fields: [ownerId], references: [id])
-  members  Member[]
-  roles    Role[]
-  channels Channel[]
-  invites  ServerInvite[]
+  owner        User           @relation(fields: [ownerId], references: [id])
+  members      Member[]
+  roles        Role[]
+  channels     Channel[]
+  invites      ServerInvite[]
+  stickerPacks StickerPack[]
 }
 
 // T3.6: mã mời là bản ghi riêng thay vì chỉ cột `inviteCode` trên Server, để
@@ -195,6 +196,13 @@ model Message {
   editedAt   DateTime?
   deletedAt  DateTime? // soft delete: moderation + đồng bộ realtime
   nonce      String? // idempotency key do client sinh (xem 16.1)
+  // TG.22 (ADR-0067): loại tin — 'text' mặc định cho tin cũ (expand an toàn rolling deploy),
+  // 'sticker' khi tin mang đúng một sticker (content rỗng, không kèm attachment tin nhắn).
+  // Kiểu String (không enum) khớp cách `Attachment.scope` đặt tên nhánh pipeline.
+  kind       String                   @default("text")
+  // TG.22: sticker của tin; xóa cứng sticker (cascade từ gói khi server xóa) → SetNull,
+  // tin cũ render khung "sticker đã bị xóa" theo deletedAt của Sticker còn theo id.
+  stickerId  String?                  @db.Uuid
   // TG.1: reply trỏ tới tin gốc CÙNG channel (service kiểm); SetNull khi tin gốc bị xóa cứng.
   replyToId  String?                  @db.Uuid
   // TG.3 (ADR-0066): ghim. NULL ở pinnedAt = tin không được ghim; xóa mềm thì service gỡ ghim
@@ -216,6 +224,8 @@ model Message {
   replies  Message[] @relation("MessageReplies")
   // TG.3: người ghim gần nhất; xóa tài khoản không được kéo sập tin đã ghim.
   pinnedBy User?     @relation("MessagePins", fields: [pinnedById], references: [id], onDelete: SetNull)
+  // TG.22: sticker của tin (null với tin văn bản); sticker bị xóa cứng → tin còn, preview mất.
+  sticker  Sticker?  @relation(fields: [stickerId], references: [id], onDelete: SetNull)
 
   mentions  MessageMention[]
   reactions MessageReaction[]
@@ -228,6 +238,8 @@ model Message {
   @@index([channelId, id(sort: Desc)])
   // FK SET NULL must locate replies without scanning the entire message history per deletion.
   @@index([replyToId])
+  // TG.22: cùng lý do @@index([replyToId]) — SetNull của stickerId cần định vị nhanh.
+  @@index([stickerId])
   // TG.3: danh sách ghim của một channel, mới ghim trước (trần 50 ở service).
   @@index([channelId, pinnedAt(sort: Desc)])
   // T4.6 (ADR-0045): FTS trên cột sinh `search` (index thật do migration fts_search tạo).
@@ -262,6 +274,8 @@ model Attachment {
   status String @default("pending")
   createdAt DateTime @default(now())
   message Message? @relation(fields: [messageId], references: [id], onDelete: SetNull)
+  // TG.22: sticker duy nhất dùng tệp này (claim một-lần qua `boundAt`).
+  sticker Sticker?
 
   @@unique([uploaderId, nonce])
   @@index([uploaderId, status])
@@ -269,6 +283,46 @@ model Attachment {
   @@index([status, createdAt])
   @@index([messageId])
   @@index([scope, status])
+}
+
+/// Gói sticker (TG.22, ADR-0067). `serverId` NULL = gói hệ thống do dự án cung cấp (seed,
+/// tài sản tự vẽ — nguồn giấy phép trong ASSETS_LICENSES.md); gói của server thì cascade
+/// theo server. Sticker KHÔNG có serverId riêng: server suy qua pack, tệp dọn theo
+/// `Attachment.scope='sticker'` như avatar (ADR-0067).
+model StickerPack {
+  id       String  @id @default(uuid(7)) @db.Uuid
+  serverId String? @db.Uuid
+  name     String
+  position Int     @default(0)
+
+  server   Server?   @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  stickers Sticker[]
+
+  // Danh sách gói của một server (mỗi server chỉ có một gói được tạo ngầm) + seed hệ thống.
+  @@index([serverId, position])
+}
+
+/// Một sticker (TG.22, ADR-0067). Soft-delete: tin cũ cần biết sticker từng tồn tại để
+/// render khung "sticker đã bị xóa". `createdBy` là cột trần (không FK) như
+/// `Attachment.uploaderId` — metadata còn nguyên kể cả khi tài khoản bị xóa.
+model Sticker {
+  id           String    @id @default(uuid(7)) @db.Uuid
+  packId       String    @db.Uuid
+  name         String
+  /// Thẻ tìm kiếm không dấu do client tự fold khi lọc.
+  tags         String[]
+  /// Tệp WebP đã kiểm định; một tệp chỉ tạo được một sticker (unique + boundAt).
+  attachmentId String    @unique @db.Uuid
+  createdBy    String    @db.Uuid
+  deletedAt    DateTime?
+  createdAt    DateTime  @default(now())
+
+  pack       StickerPack @relation(fields: [packId], references: [id], onDelete: Cascade)
+  attachment Attachment  @relation(fields: [attachmentId], references: [id], onDelete: Restrict)
+  messages   Message[]
+
+  // Picker quản trị hiển thị theo thứ tự tạo; trần 30 giữ ở service (advisory lock).
+  @@index([packId, deletedAt, createdAt])
 }
 
 model MessageReaction {
@@ -358,4 +412,5 @@ enum AuditAction {
   SERVER_INVITE_REGENERATE
   MESSAGE_PIN
   MESSAGE_UNPIN
+  STICKER_DELETE
 }

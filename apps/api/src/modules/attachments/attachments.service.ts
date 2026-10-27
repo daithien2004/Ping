@@ -52,6 +52,11 @@ export class AttachmentsService {
       serverId = input.serverId!;
       const ability = await this.ability.createForUserFresh(serverId, userId);
       if (!ability.can('update', 'Server')) throw new ForbiddenException();
+    } else if (input.scope === 'sticker') {
+      // TG.22: sticker thuộc server; upload cần `manage Sticker` (MANAGE_EXPRESSIONS).
+      serverId = input.serverId!;
+      const ability = await this.ability.createForUserFresh(serverId, userId);
+      if (!ability.can('manage', 'Sticker')) throw new ForbiddenException();
     }
     return this.prisma.$transaction(async (tx) => {
       // Consistent order: user then server. Both scopes include pending reservations.
@@ -117,7 +122,9 @@ export class AttachmentsService {
   private async owned(id: string, userId: string) {
     const row = await this.prisma.attachment.findUnique({ where: { id } });
     if (!row || row.uploaderId !== userId) throw new NotFoundException();
-    if (row.scope === 'avatar') return row; // Chỉ uploader đụng được upload avatar của chính mình.
+    // Chỉ uploader đụng được upload avatar/sticker của chính mình (sticker: claim lại kiểm
+    // quyền `manage Sticker` ở StickersService nên không cần tra ability ở đây).
+    if (row.scope === 'avatar' || row.scope === 'sticker') return row;
     if (row.scope === 'serverIcon') {
       const ability = await this.ability.createForUserFresh(row.serverId!, userId);
       if (!ability.can('update', 'Server')) throw new ForbiddenException();
@@ -217,7 +224,7 @@ export class AttachmentsService {
     tx: Prisma.TransactionClient,
     userId: string,
     attachmentId: string,
-    scope: 'avatar' | 'serverIcon',
+    scope: 'avatar' | 'serverIcon' | 'sticker',
   ) {
     await tx.$queryRaw`SELECT id FROM "Attachment" WHERE id = ${attachmentId}::uuid FOR UPDATE`;
     const row = await tx.attachment.findUnique({ where: { id: attachmentId } });
@@ -237,6 +244,15 @@ export class AttachmentsService {
       data: { boundAt: new Date() },
     });
     return row;
+  }
+
+  /**
+   * TG.22: claim attachment đã kiểm định làm sticker — cùng pattern `claimProfileAttachment`:
+   * đúng scope 'sticker', uploader là người gọi, đã `ready`, chưa gắn; set `boundAt` trong
+   * transaction của caller (cùng transaction với việc tạo hàng Sticker và kiểm trần 30).
+   */
+  async claimStickerAttachment(tx: Prisma.TransactionClient, userId: string, attachmentId: string) {
+    return this.claimProfileAttachment(tx, userId, attachmentId, 'sticker');
   }
 
   /** Attachment đang được tham chiếu bởi avatarUrl/iconUrl cũ → worker dọn tệp và giải phóng hạn mức. */
@@ -304,6 +320,42 @@ export class AttachmentsService {
       url: `/api/v1/attachments/${id}/file?expires=${expires}&signature=${signature}${thumbnail ? '&thumbnail=1' : ''}`,
       expiresAt: new Date(expires * 1000).toISOString(),
     };
+  }
+
+  /**
+   * TG.22: cặp URL cho sticker — bản chính (động nếu sticker động) và khung tĩnh
+   * (thumbnail = khung đầu). Cùng mốc hạn 30 ngày; mỗi variant chữ ký riêng vì cờ
+   * `thumbnail` nằm trong HMAC.
+   */
+  async stickerUrls(id: string): Promise<{ url: string; previewUrl: string }> {
+    const row = await this.prisma.attachment.findUnique({ where: { id } });
+    if (!row || row.scope !== 'sticker' || row.status !== 'ready') throw new NotFoundException();
+    const expires = Math.floor(Date.now() / 1000) + AttachmentLimits.PROFILE_URL_SECONDS;
+    return {
+      url: `/api/v1/attachments/${id}/file?expires=${expires}&signature=${this.profileSign(id, expires, false)}`,
+      previewUrl: `/api/v1/attachments/${id}/file?expires=${expires}&signature=${this.profileSign(id, expires, true)}&thumbnail=1`,
+    };
+  }
+
+  /**
+   * TG.22: cặp URL cho NHIỀU sticker bằng MỘT truy vấn (danh sách picker có thể vài chục
+   * hàng) — sticker thiếu/tệp chưa ready bị bỏ khỏi map, caller không nhận URL của chúng.
+   */
+  async stickerUrlsMany(ids: string[]): Promise<Map<string, { url: string; previewUrl: string }>> {
+    const map = new Map<string, { url: string; previewUrl: string }>();
+    if (ids.length === 0) return map;
+    const rows = await this.prisma.attachment.findMany({
+      where: { id: { in: ids }, scope: 'sticker', status: 'ready' },
+      select: { id: true },
+    });
+    const expires = Math.floor(Date.now() / 1000) + AttachmentLimits.PROFILE_URL_SECONDS;
+    for (const { id } of rows) {
+      map.set(id, {
+        url: `/api/v1/attachments/${id}/file?expires=${expires}&signature=${this.profileSign(id, expires, false)}`,
+        previewUrl: `/api/v1/attachments/${id}/file?expires=${expires}&signature=${this.profileSign(id, expires, true)}&thumbnail=1`,
+      });
+    }
+    return map;
   }
 
   private async profileRow(id: string, thumbnail: boolean) {

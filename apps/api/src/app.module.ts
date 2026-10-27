@@ -32,6 +32,7 @@ import { MessagesModule } from './modules/messages/messages.module.js';
 import { RealtimeModule } from './modules/realtime/realtime.module.js';
 import { RolesModule } from './modules/roles/roles.module.js';
 import { ServersModule } from './modules/servers/servers.module.js';
+import { StickersModule } from './modules/stickers/stickers.module.js';
 import { UsersModule } from './modules/users/users.module.js';
 
 @Module({
@@ -91,6 +92,7 @@ import { UsersModule } from './modules/users/users.module.js';
     ChannelsModule,
     RolesModule,
     MessagesModule,
+    StickersModule,
     AttachmentsModule,
     RealtimeModule,
     AiModule,

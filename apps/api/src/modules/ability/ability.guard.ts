@@ -114,6 +114,18 @@ export class AbilityGuard implements CanActivate {
       }
       return role.serverId;
     }
+    if (params.stickerId) {
+      // TG.22: server của sticker suy qua gói; gói hệ thống (serverId null) không thuộc
+      // server nào — bỏ qua kiểm quyền theo server, service chặn xóa sticker hệ thống.
+      const sticker = await this.prisma.sticker.findUnique({
+        where: { id: params.stickerId },
+        select: { pack: { select: { serverId: true } } },
+      });
+      if (!sticker) {
+        throw new NotFoundException('Sticker not found');
+      }
+      return sticker.pack.serverId;
+    }
     return undefined;
   }
 }
