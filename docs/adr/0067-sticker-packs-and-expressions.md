@@ -1,6 +1,6 @@
 # ADR-0067: Sticker theo gói và hàng đợi biểu cảm của server
 
-Status: proposed — chờ OWNER duyệt (TG.22)
+Status: accepted — kế hoạch TG.22 được OWNER duyệt trong phiên 2026-10-27 (bắt đầu triển khai ngay trong phiên)
 Date: 2026-10-27
 
 ## Context

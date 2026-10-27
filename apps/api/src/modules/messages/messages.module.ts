@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module.js';
+import { AttachmentsModule } from '../attachments/attachments.module.js';
 import { EventsModule } from '../../infra/events/events.module.js';
 import { RealtimeModule } from '../realtime/realtime.module.js';
 import { MessageRateLimiter } from './message-rate-limiter.js';
@@ -9,7 +10,7 @@ import { MessagesService } from './messages.service.js';
 import { SearchService } from './search.service.js';
 
 @Module({
-  imports: [AuthModule, EventsModule, RealtimeModule],
+  imports: [AuthModule, AttachmentsModule, EventsModule, RealtimeModule],
   controllers: [MessagesController],
   providers: [MessagesService, MessageRateLimiter, ReactionRateLimiter, SearchService],
 })

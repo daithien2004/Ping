@@ -14,4 +14,6 @@ export const Limits = {
   REACTIONS_PER_MESSAGE: 20,
   /** Số tin được ghim tối đa trong một channel (TG.3, ADR-0066). */
   PINS_PER_CHANNEL: 50,
+  /** Số sticker còn sống tối đa mỗi server (TG.22, ADR-0067); xóa mềm thì giải phóng chỉ tiêu. */
+  STICKERS_PER_SERVER: 30,
 } as const;

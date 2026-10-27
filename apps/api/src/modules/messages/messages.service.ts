@@ -10,6 +10,7 @@ import {
   type MessagePinResult,
   type MessageReactionDto,
   type MessageReactionSummary,
+  type MessageStickerPreview,
   type ReactionUsersPage,
   type ReactionUsersQuery,
 } from '@ping/shared';
@@ -24,7 +25,7 @@ import { ReactionRateLimiter } from './reaction-rate-limiter.js';
 import { extractMentionTokens } from './mention-parser.js';
 import { resolveMentions } from './mention-resolver.js';
 import type { ListMessagesQuery } from './schemas.js';
-import { attachmentSelect } from '../attachments/attachments.service.js';
+import { attachmentSelect, AttachmentsService } from '../attachments/attachments.service.js';
 
 /** Chỉ các trường client cần — không bao giờ trả bản ghi thô (guide 10.3). */
 const messageWithAuthor = {
@@ -34,11 +35,21 @@ const messageWithAuthor = {
   editedAt: true,
   createdAt: true,
   authorId: true,
+  kind: true,
   attachments: { select: attachmentSelect, where: { status: 'ready' as const } },
   author: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
   // TG.3: trạng thái ghim đi kèm mọi tin để UI hiện chỉ báo và menu Ghim/Bỏ ghim.
   pinnedAt: true,
   pinnedById: true,
+  // TG.22: sticker của tin (null với tin văn bản); preview dựng ở toMessageDto.
+  sticker: {
+    select: {
+      id: true,
+      name: true,
+      deletedAt: true,
+      attachment: { select: { id: true, width: true, height: true } },
+    },
+  },
   // TG.1: xem trước tin gốc cho khối trích dẫn (kể cả tin đã soft-delete — cờ `deleted`).
   replyTo: {
     select: {
@@ -68,13 +79,66 @@ function replyPreview(
   };
 }
 
+/** Select `sticker` trong `messageWithAuthor`. */
+type StickerSelect = {
+  id: string;
+  name: string;
+  deletedAt: Date | null;
+  attachment: { id: string; width: number | null; height: number | null };
+};
+
+/**
+ * Preview sticker trong tin (TG.22): sticker đã xóa mềm vẫn giữ tên nhưng mất URL —
+ * client render khung "sticker đã bị xóa" (pattern `replyTo.deleted` của TG.1).
+ */
+function stickerPreview(
+  sticker: StickerSelect | null,
+  urls: ReadonlyMap<string, { url: string; previewUrl: string }>,
+): MessageStickerPreview | null {
+  if (!sticker) return null;
+  if (sticker.deletedAt !== null) {
+    return {
+      id: sticker.id,
+      name: sticker.name,
+      deleted: true,
+      url: null,
+      previewUrl: null,
+      width: null,
+      height: null,
+    };
+  }
+  const pair = urls.get(sticker.attachment.id);
+  return {
+    id: sticker.id,
+    name: sticker.name,
+    deleted: false,
+    url: pair?.url ?? null,
+    previewUrl: pair?.previewUrl ?? null,
+    width: sticker.attachment.width,
+    height: sticker.attachment.height,
+  };
+}
+
+/** `Message.kind` là cột String — chuẩn hóa về hai giá trị DTO biết trước khi phát payload. */
+function messageKind(kind: string | null | undefined): 'text' | 'sticker' {
+  return kind === 'sticker' ? 'sticker' : 'text';
+}
+
 /** Hàng Prisma (select `messageWithAuthor`) → DTO: `replyTo` preview + cảm xúc đã tổng hợp. */
-function toMessageDto<T extends { replyTo: Parameters<typeof replyPreview>[0] }>(
+function toMessageDto<
+  T extends { replyTo: Parameters<typeof replyPreview>[0]; sticker: StickerSelect | null },
+>(
   row: T,
   reactions: MessageReactionDto[] = [],
+  stickerUrls: ReadonlyMap<string, { url: string; previewUrl: string }> = new Map(),
 ) {
-  const { replyTo, ...rest } = row;
-  return { ...rest, replyTo: replyPreview(replyTo), reactions };
+  const { replyTo, sticker, ...rest } = row;
+  return {
+    ...rest,
+    replyTo: replyPreview(replyTo),
+    reactions,
+    ...(sticker ? { sticker: stickerPreview(sticker, stickerUrls) } : {}),
+  };
 }
 
 @Injectable()
@@ -87,7 +151,25 @@ export class MessagesService {
     private readonly reactionLimiter: ReactionRateLimiter,
     private readonly outbox: OutboxService,
     private readonly abilityFactory: AbilityFactory,
+    private readonly attachments: AttachmentsService,
   ) {}
+
+  /**
+   * Cặp URL sticker (TG.22) cho một trang tin: gom distinct attachmentId của các tin
+   * sticker CHƯA xóa rồi ký một lượt — trang 50 tin chỉ thêm một truy vấn.
+   */
+  private async stickerUrlsFor(
+    rows: Array<{ sticker: StickerSelect | null }>,
+  ): Promise<ReadonlyMap<string, { url: string; previewUrl: string }>> {
+    const ids = [
+      ...new Set(
+        rows
+          .filter((row): row is { sticker: StickerSelect } => row.sticker?.deletedAt === null)
+          .map((row) => row.sticker.attachment.id),
+      ),
+    ];
+    return this.attachments.stickerUrlsMany(ids);
+  }
 
   /**
    * Phân trang cursor/keyset (guide 10.3): WHERE id < before ORDER BY id DESC.
@@ -119,12 +201,17 @@ export class MessagesService {
       });
       const hasMore = messages.length > query.limit;
       const page = hasMore ? messages.slice(0, query.limit) : messages;
-      const reactions = await this.reactionMap(
-        page.map((message) => message.id),
-        viewerId,
-      );
+      const [reactions, stickerUrls] = await Promise.all([
+        this.reactionMap(
+          page.map((message) => message.id),
+          viewerId,
+        ),
+        this.stickerUrlsFor(page),
+      ]);
       return {
-        messages: page.map((message) => toMessageDto(message, reactions.get(message.id) ?? [])),
+        messages: page.map((message) =>
+          toMessageDto(message, reactions.get(message.id) ?? [], stickerUrls),
+        ),
         hasMore,
       };
     }
@@ -143,12 +230,17 @@ export class MessagesService {
 
     const hasMore = messages.length > query.limit;
     const page = hasMore ? messages.slice(0, query.limit) : messages;
-    const reactions = await this.reactionMap(
-      page.map((message) => message.id),
-      viewerId,
-    );
+    const [reactions, stickerUrls] = await Promise.all([
+      this.reactionMap(
+        page.map((message) => message.id),
+        viewerId,
+      ),
+      this.stickerUrlsFor(page),
+    ]);
     return {
-      messages: page.map((message) => toMessageDto(message, reactions.get(message.id) ?? [])),
+      messages: page.map((message) =>
+        toMessageDto(message, reactions.get(message.id) ?? [], stickerUrls),
+      ),
       hasMore,
     };
   }
@@ -190,12 +282,17 @@ export class MessagesService {
     // Trang trả về mới nhất trước (như mọi trang khác), nên nửa mới hơn phải đảo lại.
     const newer = newerRows.slice(0, newerLimit).reverse();
     const page = [...newer, ...older];
-    const reactions = await this.reactionMap(
-      page.map((message) => message.id),
-      viewerId,
-    );
+    const [reactions, stickerUrls] = await Promise.all([
+      this.reactionMap(
+        page.map((message) => message.id),
+        viewerId,
+      ),
+      this.stickerUrlsFor(page),
+    ]);
     return {
-      messages: page.map((message) => toMessageDto(message, reactions.get(message.id) ?? [])),
+      messages: page.map((message) =>
+        toMessageDto(message, reactions.get(message.id) ?? [], stickerUrls),
+      ),
       hasMore,
       hasNewer,
     };
@@ -211,6 +308,7 @@ export class MessagesService {
       return toMessageDto(
         previous,
         (await this.reactionMap([previous.id], authorId)).get(previous.id) ?? [],
+        await this.stickerUrlsFor([previous]),
       );
     // Bối cảnh server để kiểm MENTION_EVERYONE khi parse mention (ADR-0043); guard đã
     // xác nhận người gửi là thành viên nên channel luôn tồn tại ở bước này.
@@ -241,6 +339,27 @@ export class MessagesService {
             });
           }
         }
+        // TG.22: tin sticker mang đúng MỘT sticker của server mình thuộc hoặc gói hệ thống
+        // (ADR-0067); sticker đã xóa mềm không gửi được nữa. Schema đã chặn content rỗng.
+        if (input.stickerId !== undefined) {
+          const sticker = await tx.sticker.findUnique({
+            where: { id: input.stickerId },
+            select: {
+              deletedAt: true,
+              pack: { select: { serverId: true } },
+            },
+          });
+          if (
+            !sticker ||
+            sticker.deletedAt !== null ||
+            (sticker.pack.serverId !== null && sticker.pack.serverId !== channel.serverId)
+          ) {
+            throw new BadRequestException({
+              code: ErrorCodes.BAD_REQUEST,
+              message: 'Sticker unavailable',
+            });
+          }
+        }
         // TG.1: tin gốc phải nằm trong CÙNG channel (chốt IDOR); soft-delete vẫn cho reply.
         let replyToId: string | undefined;
         if (input.replyToId !== undefined) {
@@ -262,6 +381,9 @@ export class MessagesService {
             nonce: input.nonce,
             ...(attachmentIds.length
               ? { attachments: { connect: attachmentIds.map((id) => ({ id })) } }
+              : {}),
+            ...(input.stickerId !== undefined
+              ? { kind: 'sticker', stickerId: input.stickerId }
               : {}),
             ...(replyToId !== undefined ? { replyToId } : {}),
           },
@@ -290,12 +412,17 @@ export class MessagesService {
             content: created.content,
             createdAt: created.createdAt.toISOString(),
             nonce: created.nonce,
+            kind: messageKind(created.kind),
+            ...(created.sticker
+              ? { sticker: stickerPreview(created.sticker, await this.stickerUrlsFor([created])) }
+              : {}),
             replyTo: replyPreview(created.replyTo),
             attachments: created.attachments,
           },
         });
         return created;
       });
+      const stickerUrls = await this.stickerUrlsFor([message]);
       this.realtime.emitToChannel(channelId, ServerEvents.MessageCreated, {
         id: message.id,
         channelId,
@@ -304,6 +431,8 @@ export class MessagesService {
         content: message.content,
         createdAt: message.createdAt.toISOString(),
         nonce: message.nonce,
+        kind: messageKind(message.kind),
+        ...(message.sticker ? { sticker: stickerPreview(message.sticker, stickerUrls) } : {}),
         replyTo: replyPreview(message.replyTo),
         attachments: message.attachments,
       });
@@ -321,7 +450,7 @@ export class MessagesService {
       void this.notifyMentionedUsers(message.id, channelId, channel.serverId).catch(
         () => undefined,
       );
-      return toMessageDto(message, []);
+      return toMessageDto(message, [], stickerUrls);
     } catch (error) {
       // Client retry (mạng chập chờn) gửi lại CÙNG nonce → unique
       // (channelId, authorId, nonce) chặn ghi trùng: trả đúng tin cũ thay vì lỗi.
@@ -331,8 +460,11 @@ export class MessagesService {
           where: { channelId_authorId_nonce: { channelId, authorId, nonce: input.nonce } },
           select: messageWithAuthor,
         });
-        const reactions = await this.reactionMap([existing.id], authorId);
-        return toMessageDto(existing, reactions.get(existing.id) ?? []);
+        const [reactions, stickerUrls] = await Promise.all([
+          this.reactionMap([existing.id], authorId),
+          this.stickerUrlsFor([existing]),
+        ]);
+        return toMessageDto(existing, reactions.get(existing.id) ?? [], stickerUrls);
       }
       throw error;
     }
@@ -343,6 +475,11 @@ export class MessagesService {
     // Tier 2 (guide 10.2): rule "update Message WHERE authorId = me" chỉ kiểm
     // tra được khi đã có đối tượng thật trong tay.
     ForbiddenError.from(ability).throwUnlessCan('update', subject('Message', message));
+
+    // TG.22: tin sticker không có nội dung để sửa — sửa là đổi loại tin, chặn thẳng.
+    if (message.kind === 'sticker') {
+      throw new BadRequestException('Sticker messages cannot be edited');
+    }
 
     // Sửa tin = parse lại mention: xoá toàn bộ hàng cũ rồi ghi lại từ nội dung mới
     // (ADR-0043), trong cùng transaction với cập nhật tin.
@@ -395,7 +532,11 @@ export class MessagesService {
     });
 
     const reactions = await this.reactionMap([updated.id], viewerId);
-    return toMessageDto(updated, reactions.get(updated.id) ?? []);
+    return toMessageDto(
+      updated,
+      reactions.get(updated.id) ?? [],
+      await this.stickerUrlsFor([updated]),
+    );
   }
 
   /**
@@ -628,12 +769,15 @@ export class MessagesService {
         pinnedBy: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
       },
     });
-    const reactions = await this.reactionMap(
-      rows.map((row) => row.id),
-      viewerId,
-    );
+    const [reactions, stickerUrls] = await Promise.all([
+      this.reactionMap(
+        rows.map((row) => row.id),
+        viewerId,
+      ),
+      this.stickerUrlsFor(rows),
+    ]);
     return rows.map(({ pinnedBy, ...row }) => ({
-      message: toMessageDto(row, reactions.get(row.id) ?? []),
+      message: toMessageDto(row, reactions.get(row.id) ?? [], stickerUrls),
       pinnedAt: row.pinnedAt?.toISOString() ?? '',
       pinnedBy: pinnedBy ?? null,
     }));

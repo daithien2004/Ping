@@ -1,10 +1,10 @@
 'use client';
 
-import { createMessageSchema } from '@ping/shared';
+import { createMessageSchema, type StickerDto } from '@ping/shared';
 import { useEffect, useRef, useState, type KeyboardEvent, type RefObject } from 'react';
 import { useTranslations } from 'use-intl';
 import dynamic from 'next/dynamic';
-import { Paperclip, Smile, X } from 'lucide-react';
+import { Paperclip, Smile, Sticker, X } from 'lucide-react';
 import { PingTextArea } from '@/components/ui/ping-textarea';
 import { useRealtime } from '@/features/realtime/context';
 import { useServerAbility } from '@/features/permissions/context';
@@ -12,11 +12,16 @@ import { useEmojiSuggestions } from '@/features/emoji/hooks';
 import { useAttachmentDrafts } from '@/features/attachments/hooks';
 import { useErrorMessage } from '@/lib/error-message';
 import { DraftPreview } from '@/features/attachments/components/draft-preview';
+import { loadRecentStickers, pushRecentSticker } from '@/features/stickers/sticker-utils';
 
 // Picker chỉ tải khi người dùng bấm nút emoji (TG.23): dataset + lưới không nằm trong
-// bundle ban đầu (ADR-0058).
+// bundle ban đầu (ADR-0058). Sticker picker (TG.22) tải động vì cùng lý do.
 const EmojiPicker = dynamic(
   () => import('@/features/emoji/components/emoji-picker').then((m) => m.EmojiPicker),
+  { ssr: false },
+);
+const StickerPicker = dynamic(
+  () => import('@/features/stickers/components/sticker-picker').then((m) => m.StickerPicker),
   { ssr: false },
 );
 
@@ -43,19 +48,24 @@ function resolveTextArea(ref: HTMLTextAreaElement | null): HTMLTextAreaElement |
  * render lại cả danh sách tin nhắn. <Activity> vẫn giữ nháp khi chuyển channel.
  */
 export function MessageComposer({
+  serverId,
   channelId,
   channelName,
   replyTo,
   onCancelReply,
   onSend,
+  onSendSticker,
   textareaRef,
 }: {
+  serverId: string;
   channelId: string;
   channelName: string;
   /** TG.1: tin đang được trả lời; null = tin thường. */
   replyTo: { id: string; authorName: string; content: string; deleted: boolean } | null;
   onCancelReply: () => void;
   onSend: (content: string, nonce: string, replyToId?: string, attachmentIds?: string[]) => void;
+  /** TG.22: chọn sticker trong picker là gửi ngay một tin `kind='sticker'`. */
+  onSendSticker: (sticker: StickerDto, nonce: string, replyToId?: string) => void;
   /** Ô nhập để empty state bấm "Gửi tin đầu tiên" đưa con trỏ về đây (TF.9). */
   textareaRef?: RefObject<HTMLTextAreaElement | null>;
 }) {
@@ -68,9 +78,16 @@ export function MessageComposer({
   const ta = useTranslations('attachments');
   const errorMessage = useErrorMessage();
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [stickerOpen, setStickerOpen] = useState(false);
+  // "Gần đây" của sticker: state ở composer (picker bấm là GỬI ngay nên composer phải
+  // cập nhật lại danh sách để lần mở sau hiển thị đúng, khớp cách emoji picker tự lưu).
+  const [recentStickers, setRecentStickers] = useState<string[]>(() =>
+    typeof window === 'undefined' ? [] : loadRecentStickers(),
+  );
   const [suggestionIndex, setSuggestionIndex] = useState(0);
   const t = useTranslations('messages');
   const te = useTranslations('emoji');
+  const ts = useTranslations('stickers');
   const label = t('composerLabel', { channel: channelName });
   const nearLimit = draft.length >= 3600;
   const replyToId = replyTo?.id ?? null;
@@ -250,6 +267,19 @@ export function MessageComposer({
               />
             </div>
           )}
+          {stickerOpen && (
+            <div className="mb-2 flex justify-start">
+              <StickerPicker
+                serverId={serverId}
+                recent={recentStickers}
+                onPick={(sticker) => {
+                  setRecentStickers((prev) => pushRecentSticker(prev, sticker.id));
+                  setStickerOpen(false);
+                  onSendSticker(sticker, crypto.randomUUID(), replyTo?.id);
+                }}
+              />
+            </div>
+          )}
           {suggestions.length > 0 && fragment !== null && (
             <ul
               role="listbox"
@@ -316,10 +346,26 @@ export function MessageComposer({
               aria-label={te('open')}
               aria-expanded={pickerOpen}
               data-testid="emoji-button"
-              onClick={() => setPickerOpen((open) => !open)}
+              onClick={() => {
+                setPickerOpen((open) => !open);
+                setStickerOpen(false);
+              }}
               className="shrink-0 rounded-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
             >
               <Smile className="size-5" />
+            </button>
+            <button
+              type="button"
+              aria-label={ts('open')}
+              aria-expanded={stickerOpen}
+              data-testid="sticker-button"
+              onClick={() => {
+                setStickerOpen((open) => !open);
+                setPickerOpen(false);
+              }}
+              className="shrink-0 rounded-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            >
+              <Sticker className="size-5" />
             </button>
           </div>
           {nearLimit ? (

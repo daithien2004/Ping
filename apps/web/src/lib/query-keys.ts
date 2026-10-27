@@ -21,4 +21,6 @@ export const qk = {
     ['messages', messageId, 'reactions', emoji] as const,
   /** TG.3: danh sách tin đã ghim của một channel (trần 50, không phân trang). */
   pins: (channelId: string) => ['channels', channelId, 'pins'] as const,
+  /** TG.22: gói sticker (hệ thống + của server) cho picker và màn quản trị. */
+  stickers: (serverId: string) => ['servers', serverId, 'stickers'] as const,
 };

@@ -37,6 +37,11 @@ export const permissionGroups = [
       { bit: Permissions.MENTION_EVERYONE, labelKey: 'mentionEveryone' },
     ],
   },
+  // TG.22: sticker của server — KHÔNG mặc định cho `@everyone` (ADR-0067), nhóm riêng.
+  {
+    labelKey: 'expressions',
+    options: [{ bit: Permissions.MANAGE_EXPRESSIONS, labelKey: 'manageExpressions' }],
+  },
   {
     labelKey: 'channelsManage',
     options: [{ bit: Permissions.MANAGE_CHANNELS, labelKey: 'manageChannels' }],

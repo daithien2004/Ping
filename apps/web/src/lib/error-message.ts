@@ -18,6 +18,7 @@ const KNOWN = [
   ErrorCodes.REACTION_LIMIT_REACHED,
   ErrorCodes.REACTION_EMOJI_INVALID,
   ErrorCodes.PIN_LIMIT_REACHED,
+  ErrorCodes.STICKER_LIMIT_REACHED,
 ] as const;
 type KnownCode = (typeof KNOWN)[number];
 

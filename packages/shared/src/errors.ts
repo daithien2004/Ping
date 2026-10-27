@@ -26,6 +26,8 @@ export const ErrorCodes = {
   PIN_LIMIT_REACHED: 'PIN_LIMIT_REACHED',
   /** Attachment hồ sơ đã được gắn vào avatar/icon trước đó — một tệp chỉ dùng một lần (TG.7). */
   ATTACHMENT_ALREADY_BOUND: 'ATTACHMENT_ALREADY_BOUND',
+  /** Server đã có 30 sticker (TG.22, ADR-0067). */
+  STICKER_LIMIT_REACHED: 'STICKER_LIMIT_REACHED',
 } as const;
 
 export type ErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes];

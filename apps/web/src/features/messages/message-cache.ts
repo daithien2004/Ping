@@ -41,13 +41,21 @@ export function oldestFirst(cache: { pages: ClientMessagePage[] } | undefined): 
 }
 
 export function optimisticMessage(
-  input: { content: string; nonce: string; attachmentIds?: string[] },
+  input: {
+    content: string;
+    nonce: string;
+    attachmentIds?: string[];
+    /** TG.22: tin sticker — gửi kèm preview của sticker vừa chọn để render ngay. */
+    stickerId?: string;
+    sticker?: MessageDto['sticker'];
+  },
   author: MessageAuthor,
   replyTo: MessageDto['replyTo'] = null,
 ): ClientMessage {
   return {
     id: `temp-${input.nonce}`,
     ...(input.attachmentIds?.length ? { pendingAttachmentIds: input.attachmentIds } : {}),
+    ...(input.stickerId ? { kind: 'sticker' as const, sticker: input.sticker ?? null } : {}),
     content: input.content,
     nonce: input.nonce,
     editedAt: null,

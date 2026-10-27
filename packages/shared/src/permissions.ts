@@ -15,6 +15,8 @@ export const Permissions = {
   ADD_REACTIONS: 1024n,
   /** Được tự đặt biệt danh của chính mình trong server (TG.7). Mặc định có trong `@everyone`. */
   CHANGE_NICKNAME: 2048n,
+  /** Quản lý sticker của server (TG.22, ADR-0067). KHÔNG mặc định cho ai — chỉ role được cấp. */
+  MANAGE_EXPRESSIONS: 4096n,
 } as const;
 
 export function hasPermission(value: bigint, flag: bigint): boolean {

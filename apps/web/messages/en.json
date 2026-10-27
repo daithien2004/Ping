@@ -148,7 +148,8 @@
       "viewAuditLog": "View the action log",
       "administrator": "Administrator",
       "mentionEveryone": "Mention @everyone/@role",
-      "addReactions": "Add reactions"
+      "addReactions": "Add reactions",
+      "manageExpressions": "Manage server stickers"
     },
     "permissionGroups": {
       "channels": "Channels",
@@ -158,7 +159,8 @@
       "members": "Members",
       "server": "Server",
       "audit": "Action log",
-      "admin": "Administration"
+      "admin": "Administration",
+      "expressions": "Expressions"
     },
     "auditActions": {
       "roleCreate": "Role created",
@@ -174,14 +176,29 @@
       "unknown": "Other action",
       "serverUpdate": "Renamed server",
       "serverInviteRegenerate": "Created new invite code",
-      "channelUpdate": "Renamed channel"
+      "channelUpdate": "Renamed channel",
+      "stickerDelete": "Sticker deleted"
     },
     "channels": "Channels",
     "channelActions": "Actions",
     "serverIconChange": "Change server icon",
     "serverIconSaved": "Server icon updated",
     "serverIconProcessing": "Validating image…",
-    "serverIconUploading": "Uploading {percent}%"
+    "serverIconUploading": "Uploading {percent}%",
+    "stickers": "Stickers",
+    "stickerHint": "Upload stickers for this server — up to 30 ({count}/30). Accepts PNG/WebP up to 512 KB; animation is kept, static images up to 512×512.",
+    "stickerUpload": "Upload sticker",
+    "stickerUploading": "Uploading… {percent}%",
+    "stickerProcessing": "Validating file…",
+    "stickerName": "Sticker name",
+    "stickerTags": "Search tags (comma-separated)",
+    "stickerCreate": "Add sticker",
+    "stickerCreated": "Sticker added.",
+    "stickerDeleted": "Sticker deleted.",
+    "stickersEmpty": "No stickers yet.",
+    "stickerDeleteTitle": "Delete sticker “{name}”?",
+    "stickerDeleteDescription": "Older messages will show a “sticker was deleted” frame.",
+    "stickerDelete": "Delete sticker {name}"
   },
   "app": {
     "accessDenied": "Can't open this page",
@@ -397,7 +414,8 @@
     "PIN_LIMIT_REACHED": "This channel already has 50 pinned messages. Unpin one first.",
     "unknown": "Something went wrong.",
     "unknownWithId": "Something went wrong. Error ID: {requestId}",
-    "withReference": "{message} Error ID: {requestId}"
+    "withReference": "{message} Error ID: {requestId}",
+    "STICKER_LIMIT_REACHED": "This server already has 30 stickers. Delete some before adding more."
   },
   "ask": {
     "title": "Ask AI about channel history",
@@ -432,5 +450,18 @@
     "uploading": "Uploading {percent}%",
     "processing": "Validating image…",
     "save": "Save"
+  },
+  "stickers": {
+    "open": "Pick a sticker",
+    "search": "Search stickers",
+    "searchPlaceholder": "Search by name or tag…",
+    "tabsLabel": "Sticker tabs",
+    "tabRecent": "Recent",
+    "tabSystem": "System",
+    "tabServer": "Server",
+    "loading": "Loading stickers…",
+    "noResults": "No stickers found.",
+    "pickSticker": "Send sticker {name}",
+    "deleted": "Sticker was deleted"
   }
 }

@@ -6,6 +6,9 @@
 import { Permissions } from '@ping/shared';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { argon2id, hash } from 'argon2';
+import { copyFile, mkdir, readFile } from 'node:fs/promises';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { PrismaClient } from '../src/generated/prisma/client.js';
 
 // Prisma 7: client không tự đọc DATABASE_URL nữa — phải trao driver adapter.
@@ -219,11 +222,100 @@ async function main(): Promise<void> {
     await prisma.message.upsert({ where: { id: message.id }, update: {}, create: message });
   }
 
+  const stickerCount = await seedSystemStickers();
+
   console.log(
-    'Seed xong: 3 users / 1 server / 3 roles / 3 members / 3 channels / %d messages.',
+    'Seed xong: 3 users / 1 server / 3 roles / 3 members / 3 channels / %d messages / %d sticker hệ thống.',
     messages.length,
+    stickerCount,
   );
   console.log('Đăng nhập dev: alice@ping.dev (hoặc bob@, carol@) / mật khẩu "%s".', PASSWORD);
+}
+
+/**
+ * Gói sticker hệ thống (TG.22, ADR-0067): tài sản tự vẽ của dự án (nguồn giấy phép ở
+ * ASSETS_LICENSES.md ở gốc repo). `serverId` null = gói hệ thống, mọi member dùng được.
+ * Tệp được phục vụ từ `<ATTACHMENT_STORAGE_DIR>/<attachmentId>.ready` — seed copy file WebP
+ * từ apps/web/public/stickers sang đó, nên api + worker không phải xử lý gì thêm.
+ */
+const SYSTEM_PACK_ID = '019c0000-0000-7000-8000-000000000001';
+const SYSTEM_UPLOADER_ID = '019c0000-0000-7000-8000-000000000000';
+
+const SYSTEM_STICKERS: Array<{ slug: string; name: string; tags: string[] }> = [
+  { slug: 'smile', name: 'Cười', tags: ['cuoi', 'smile', 'happy', 'vui'] },
+  { slug: 'laugh', name: 'Cười lăn', tags: ['cuoi', 'laugh', 'lol', 'cuoi-lan'] },
+  { slug: 'heart', name: 'Tim', tags: ['tim', 'heart', 'love', 'thuong'] },
+  { slug: 'fire', name: 'Lửa', tags: ['lua', 'fire', 'hot', 'chay'] },
+  { slug: 'star', name: 'Sao', tags: ['sao', 'star', 'ngoi-sao'] },
+  { slug: 'cloud-rain', name: 'Mưa', tags: ['mua', 'rain', 'may', 'cloud'] },
+  { slug: 'cat', name: 'Mèo', tags: ['meo', 'cat', 'meo-con'] },
+  { slug: 'pizza', name: 'Pizza', tags: ['pizza', 'an', 'do-an'] },
+  { slug: 'coffee', name: 'Cà phê', tags: ['ca-phe', 'coffee', 'caphe'] },
+  { slug: 'rocket', name: 'Tên lửa', tags: ['ten-lua', 'rocket', 'phong'] },
+];
+
+async function seedSystemStickers(): Promise<number> {
+  const publicDir = resolve(
+    dirname(fileURLToPath(import.meta.url)),
+    '../../../apps/web/public/stickers',
+  );
+  // API default `../../.uploads` tính từ cwd (apps/api) — seed chạy cùng cwd nên khớp.
+  const storageDir = resolve(process.env.ATTACHMENT_STORAGE_DIR ?? '../../.uploads');
+  await mkdir(storageDir, { recursive: true });
+
+  const pack = await prisma.stickerPack.upsert({
+    where: { id: SYSTEM_PACK_ID },
+    update: {},
+    create: { id: SYSTEM_PACK_ID, serverId: null, name: 'Ping', position: 0 },
+  });
+
+  let index = 0;
+  for (const { slug, name, tags } of SYSTEM_STICKERS) {
+    index += 1;
+    const attachmentId = `019c0000-0000-7000-8000-0000000002${String(index).padStart(2, '0')}`;
+    const stickerId = `019c0000-0000-7000-8000-0000000001${String(index).padStart(2, '0')}`;
+    const filename = `${slug}.webp`;
+    const bytes = await readFile(join(publicDir, filename));
+    // Cả hai variant giống worker: `.ready` (bản chính) và `.thumb` (khung tĩnh cho
+    // prefers-reduced-motion) — thiếu `.thumb` thì sticker hệ thống vỡ ảnh khi reduced-motion.
+    await copyFile(join(publicDir, filename), join(storageDir, `${attachmentId}.ready`));
+    await copyFile(join(publicDir, filename), join(storageDir, `${attachmentId}.thumb`));
+    await prisma.attachment.upsert({
+      where: { id: attachmentId },
+      update: { status: 'ready', boundAt: new Date() },
+      create: {
+        id: attachmentId,
+        uploaderId: SYSTEM_UPLOADER_ID,
+        scope: 'sticker',
+        channelId: null,
+        serverId: null, // gói hệ thống không thuộc server nào
+        messageId: null,
+        boundAt: new Date(),
+        nonce: `019c0000-0000-7000-8000-0000000003${String(index).padStart(2, '0')}`,
+        filename,
+        sizeBytes: bytes.length,
+        quotaBytes: 0,
+        rawRemoved: true,
+        mime: 'image/webp',
+        width: 512,
+        height: 512,
+        status: 'ready',
+      },
+    });
+    await prisma.sticker.upsert({
+      where: { id: stickerId },
+      update: { deletedAt: null },
+      create: {
+        id: stickerId,
+        packId: pack.id,
+        name,
+        tags,
+        attachmentId,
+        createdBy: SYSTEM_UPLOADER_ID,
+      },
+    });
+  }
+  return SYSTEM_STICKERS.length;
 }
 
 main()

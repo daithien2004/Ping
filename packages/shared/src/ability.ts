@@ -13,6 +13,7 @@ export type Subjects =
   | 'Reaction'
   | 'Pin'
   | 'Attachment'
+  | 'Sticker'
   | 'Role'
   | 'Member'
   | 'AuditLog'
@@ -45,6 +46,8 @@ export function defineAbilityFor(ctx: AbilityContext): AppAbility {
   // mà không cần thêm bit quyền nào.
   can('view', 'Server');
   can('view', 'Member');
+  // TG.22: mọi member dùng được picker sticker (gói hệ thống + gói server mình thuộc).
+  can('view', 'Sticker');
 
   if (has(Permissions.VIEW_CHANNEL)) {
     can('view', 'Channel');
@@ -82,6 +85,12 @@ export function defineAbilityFor(ctx: AbilityContext): AppAbility {
 
   if (has(Permissions.MANAGE_SERVER)) {
     can('update', 'Server');
+  }
+
+  // TG.22: tải lên/xóa sticker của server cần MANAGE_EXPRESSIONS — KHÔNG mặc định cho
+  // `@everyone` (ADR-0067), chỉ role được cấp bit này mới quản lý biểu cảm.
+  if (has(Permissions.MANAGE_EXPRESSIONS)) {
+    can('manage', 'Sticker');
   }
 
   if (has(Permissions.KICK_MEMBERS)) {

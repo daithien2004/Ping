@@ -4,6 +4,7 @@ import {
   ServerEvents,
   type CreateMessageInput,
   type MessageCreatedPayload,
+  type MessageStickerPreview,
   type MessageUpdatedPayload,
   type MessageDeletedPayload,
   type MessagePinnedPayload,
@@ -415,7 +416,13 @@ export function useChannelSync(channelId: string) {
 /**
  * Gửi tin optimistic (hướng dẫn 12.3, 16.1). Người gọi sinh `nonce` MỘT lần cho mỗi tin và dùng
  * lại khi gửi lại: server chặn trùng theo (channel, author, nonce), cache khớp tin theo nonce.
+ * TG.22: tin sticker kèm `stickerPreview` để render ngay khi đang gửi — trường này chỉ dùng
+ * nội bộ client, không gửi lên API (schema của server tự strip key lạ).
  */
+export type SendMessageVariables = CreateMessageInput & {
+  stickerPreview?: MessageStickerPreview | null;
+};
+
 export function useSendMessage(channelId: string) {
   const queryClient = useQueryClient();
   const { data: me } = useMe();
@@ -424,8 +431,9 @@ export function useSendMessage(channelId: string) {
     queryClient.setQueryData<MessagesCache>(key, fn);
 
   return useMutation({
-    mutationFn: (input: CreateMessageInput) => sendMessage(channelId, input),
-    onMutate: async (input) => {
+    mutationFn: ({ stickerPreview: _preview, ...input }: SendMessageVariables) =>
+      sendMessage(channelId, input),
+    onMutate: async ({ stickerPreview, ...input }) => {
       // Hủy refetch đang chạy: nó có thể trả về dữ liệu cũ và ghi đè mất tin tạm.
       await queryClient.cancelQueries({ queryKey: key });
       if (me) {
@@ -440,7 +448,7 @@ export function useSendMessage(channelId: string) {
           upsertMessage(
             old,
             optimisticMessage(
-              input,
+              { ...input, ...(input.stickerId ? { sticker: stickerPreview ?? null } : {}) },
               me,
               target
                 ? {

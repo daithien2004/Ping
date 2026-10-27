@@ -61,6 +61,10 @@ const ID_ROUTES: Array<[Verb, string]> = [
   ['delete', '/uploads/:id'],
   ['get', '/attachments/:id/download'],
   ['get', '/attachments/:id/file'],
+  // TG.22: sticker — tạo/xem theo server, xóa theo chính sticker.
+  ['post', '/servers/:id/stickers'],
+  ['get', '/servers/:id/stickers'],
+  ['delete', '/stickers/:id'],
 ];
 
 /** Quét controller của app qua metadata của Nest: các route có tham số `:...Id`, dạng `verb /path/:id`, đã sắp xếp. */
@@ -117,6 +121,8 @@ describe('IDOR (e2e)', () => {
   let aliceMessage = '';
   let carolMessage = '';
   let uploadId = '';
+  let stickerA = ''; // sticker của server A (TG.22) cho bảng tấn công
+  let stickerPackA = '';
 
   const SECRET = `secret-${runId}`; // xuất hiện trong dữ liệu của server A; không được rò ra
   const http = () => request(app.getHttpServer());
@@ -214,9 +220,49 @@ describe('IDOR (e2e)', () => {
         .send({ channelId: channelA, filename: 'a.pdf', sizeBytes: 10, nonce: randomUUID() })
         .expect(201)
     ).body.id;
+
+    // TG.22: một sticker của server A cho bảng tấn công — chèn thẳng DB để không cần
+    // pipeline upload; rawRemoved sẵn + server tồn tại để worker quét không đụng hàng này.
+    const packA = await prisma.stickerPack.create({
+      data: { serverId: serverA, name: `pack-${runId}` },
+    });
+    stickerPackA = packA.id;
+    const attA = await prisma.attachment.create({
+      data: {
+        uploaderId: alice.id,
+        nonce: randomUUID(),
+        filename: 'sticker.webp',
+        sizeBytes: 64,
+        quotaBytes: 64,
+        scope: 'sticker',
+        serverId: serverA,
+        status: 'ready',
+        boundAt: new Date(),
+        rawRemoved: true,
+        mime: 'image/webp',
+        width: 8,
+        height: 8,
+      },
+    });
+    stickerA = (
+      await prisma.sticker.create({
+        data: {
+          packId: packA.id,
+          name: 'idor-sticker',
+          tags: [],
+          attachmentId: attA.id,
+          createdBy: alice.id,
+        },
+      })
+    ).id;
   });
 
   afterAll(async () => {
+    // TG.22: sticker khóa attachment (Restrict) — dọn sticker + gói trước attachment.
+    if (stickerPackA) {
+      await prisma.sticker.deleteMany({ where: { packId: stickerPackA } });
+      await prisma.stickerPack.deleteMany({ where: { id: stickerPackA } });
+    }
     await prisma.attachment.deleteMany({ where: { serverId: serverA } });
     const users = await prisma.user.findMany({
       where: { email: { in: emails } },
@@ -488,6 +534,18 @@ describe('IDOR (e2e)', () => {
       [() => bob],
       () => ({ content: 'from B', nonce: randomUUID() }),
     );
+
+    // TG.22: sticker của server A — kẻ ngoài không xem được picker, member thường thiếu
+    // MANAGE_EXPRESSIONS (ADR-0067), và chủ server khác không xóa được sticker của A.
+    add('GET /servers/:serverId/stickers', 'get', () => `/servers/${serverA}/stickers`, outsider);
+    add(
+      'POST /servers/:serverId/stickers',
+      'post',
+      () => `/servers/${serverA}/stickers`,
+      lowPriv,
+      () => ({ attachmentId: randomUUID(), name: 'x' }),
+    );
+    add('DELETE /stickers/<sticker của A>', 'delete', () => `/stickers/${stickerA}`, outsider);
     return out;
   };
 
@@ -525,7 +583,7 @@ describe('IDOR (e2e)', () => {
 
   it('no token → 401 on every endpoint that takes an id', async () => {
     const uuid = randomUUID();
-    expect(ID_ROUTES).toHaveLength(39);
+    expect(ID_ROUTES).toHaveLength(42);
     for (const [verb, template] of ID_ROUTES) {
       const url = template.replaceAll(':id', uuid);
       const res = await as(undefined, verb, url).send({});
