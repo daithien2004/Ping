@@ -26,6 +26,7 @@ const ID_ROUTES: Array<[Verb, string]> = [
   ['patch', '/servers/:id'],
   ['get', '/servers/:id/me/permissions'],
   ['get', '/servers/:id/members'],
+  ['patch', '/servers/:id/members/me'],
   ['post', '/servers/:id/leave'],
   ['delete', '/servers/:id/members/:id'],
   ['delete', '/servers/:id'],
@@ -286,6 +287,12 @@ describe('IDOR (e2e)', () => {
       outsider,
     );
     add('GET /servers/:serverId/members', 'get', () => `/servers/${serverA}/members`, outsider);
+    add(
+      'PATCH /servers/:serverId/members/me',
+      'patch',
+      () => `/servers/${serverA}/members/me`,
+      outsider,
+    );
     add('POST /servers/:serverId/leave', 'post', () => `/servers/${serverA}/leave`, outsider);
     add(
       'DELETE /servers/:serverId/members/:memberId',
@@ -518,7 +525,7 @@ describe('IDOR (e2e)', () => {
 
   it('no token → 401 on every endpoint that takes an id', async () => {
     const uuid = randomUUID();
-    expect(ID_ROUTES).toHaveLength(38);
+    expect(ID_ROUTES).toHaveLength(39);
     for (const [verb, template] of ID_ROUTES) {
       const url = template.replaceAll(':id', uuid);
       const res = await as(undefined, verb, url).send({});

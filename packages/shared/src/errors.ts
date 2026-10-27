@@ -24,6 +24,8 @@ export const ErrorCodes = {
   REACTION_EMOJI_INVALID: 'REACTION_EMOJI_INVALID',
   /** Channel đã có 50 tin được ghim (TG.3, ADR-0066). */
   PIN_LIMIT_REACHED: 'PIN_LIMIT_REACHED',
+  /** Attachment hồ sơ đã được gắn vào avatar/icon trước đó — một tệp chỉ dùng một lần (TG.7). */
+  ATTACHMENT_ALREADY_BOUND: 'ATTACHMENT_ALREADY_BOUND',
 } as const;
 
 export type ErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes];

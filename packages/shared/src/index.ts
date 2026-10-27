@@ -12,3 +12,4 @@ export * from './errors';
 export * from './emoji';
 export * from './http';
 export * from './limits';
+export * from './schemas/user';

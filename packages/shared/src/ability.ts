@@ -88,6 +88,11 @@ export function defineAbilityFor(ctx: AbilityContext): AppAbility {
     can('delete', 'Member');
   }
 
+  // TG.7: tự đổi biệt danh của chính mình (`/members/me` chỉ chạm đúng hàng member của caller).
+  if (has(Permissions.CHANGE_NICKNAME)) {
+    can('update', 'Member');
+  }
+
   // Nhật ký hành động: chỉ role được cấp VIEW_AUDIT_LOG mới xem được (TF.10).
   if (has(Permissions.VIEW_AUDIT_LOG)) {
     can('view', 'AuditLog');

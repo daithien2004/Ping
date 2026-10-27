@@ -16,11 +16,13 @@ import {
   joinServerSchema,
   listMembersQuerySchema,
   regenerateInviteSchema,
+  updateNicknameSchema,
   updateServerSchema,
   type CreateServerInput,
   type JoinServerInput,
   type ListMembersQuery,
   type RegenerateInviteInput,
+  type UpdateNicknameInput,
   type UpdateServerInput,
 } from '@ping/shared';
 import { IdempotencyInterceptor } from '../../common/interceptors/idempotency.interceptor.js';
@@ -65,7 +67,7 @@ export class ServersController {
     return this.serversService.detail(serverId);
   }
 
-  /** Đổi tên server: cần `update Server` (MANAGE_SERVER); service ghi audit trong transaction. */
+  /** Đổi tên/icon server: cần `update Server` (MANAGE_SERVER); service ghi audit trong transaction. */
   @Patch(':serverId')
   @CheckAbility(['update', 'Server'])
   update(
@@ -73,7 +75,21 @@ export class ServersController {
     @Param('serverId') serverId: string,
     @Body(new ZodValidationPipe(updateServerSchema)) body: UpdateServerInput,
   ) {
-    return this.serversService.update(serverId, user.userId, body.name);
+    return this.serversService.update(serverId, user.userId, body);
+  }
+
+  /**
+   * TG.7: tự đặt biệt danh của chính mình — cần `update Member` (CHANGE_NICKNAME);
+   * service chỉ chạm member của caller và phát `member.updated` tới room server.
+   */
+  @Patch(':serverId/members/me')
+  @CheckAbility(['update', 'Member'])
+  updateMyNickname(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('serverId') serverId: string,
+    @Body(new ZodValidationPipe(updateNicknameSchema)) body: UpdateNicknameInput,
+  ) {
+    return this.serversService.updateMyNickname(serverId, user.userId, body.nickname);
   }
 
   /**

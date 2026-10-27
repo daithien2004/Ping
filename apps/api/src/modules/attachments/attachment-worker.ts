@@ -47,13 +47,20 @@ export class AttachmentWorker implements OnModuleInit, OnModuleDestroy {
     try {
       await this.prisma.$transaction(
         async (tx) => {
+          // TG.7: điều kiện dọn theo scope — tin bị xóa/kênh mất chỉ áp dụng cho tệp tin nhắn;
+          // serverIcon dọn khi server mất, avatar dọn khi uploader không còn; pending quá 1 giờ
+          // chưa gắn (mọi scope) đều là mồ côi.
           const rows = await tx.$queryRaw<Array<{ id: string }>>`
         SELECT id FROM "Attachment" a WHERE "nextRetryAt" <= NOW() AND (
           status IN ('queued', 'deleting') OR (status IN ('ready', 'rejected') AND NOT "rawRemoved") OR
           (status NOT IN ('deleted', 'rejected') AND (
             ("messageId" IS NULL AND "createdAt" < NOW() - INTERVAL '1 hour') OR
-            EXISTS (SELECT 1 FROM "Message" m WHERE m.id = a."messageId" AND m."deletedAt" IS NOT NULL) OR
-            NOT EXISTS (SELECT 1 FROM "Channel" c WHERE c.id = a."channelId")
+            (scope = 'message' AND (
+              EXISTS (SELECT 1 FROM "Message" m WHERE m.id = a."messageId" AND m."deletedAt" IS NOT NULL) OR
+              NOT EXISTS (SELECT 1 FROM "Channel" c WHERE c.id = a."channelId")
+            )) OR
+            (scope = 'serverIcon' AND NOT EXISTS (SELECT 1 FROM "Server" s WHERE s.id = a."serverId")) OR
+            (scope = 'avatar' AND NOT EXISTS (SELECT 1 FROM "User" u WHERE u.id = a."uploaderId"))
           )))
         ORDER BY "createdAt" LIMIT 1 FOR UPDATE SKIP LOCKED`;
           if (!rows[0]) return;
@@ -62,10 +69,13 @@ export class AttachmentWorker implements OnModuleInit, OnModuleDestroy {
             where: { id: rows[0].id },
             include: { message: { select: { deletedAt: true } } },
           });
-          const channel = await tx.channel.findUnique({
-            where: { id: row.channelId },
-            select: { id: true },
-          });
+          const channel =
+            row.scope === 'message'
+              ? await tx.channel.findUnique({
+                  where: { id: row.channelId! },
+                  select: { id: true },
+                })
+              : null;
           const expired = !row.messageId && row.createdAt.getTime() < Date.now() - 3_600_000;
           if (row.status === 'rejected') {
             for (const suffix of ['raw', 'ready', 'thumb'])
@@ -76,7 +86,18 @@ export class AttachmentWorker implements OnModuleInit, OnModuleDestroy {
             });
             return;
           }
-          if (row.status === 'deleting' || row.message?.deletedAt || !channel || expired) {
+          const messageGone =
+            row.scope === 'message' && (Boolean(row.message?.deletedAt) || !channel || expired);
+          const profileGone =
+            row.scope === 'avatar'
+              ? !(await tx.user.findUnique({ where: { id: row.uploaderId }, select: { id: true } }))
+              : row.scope === 'serverIcon'
+                ? !(await tx.server.findUnique({
+                    where: { id: row.serverId! },
+                    select: { id: true },
+                  }))
+                : false;
+          if (row.status === 'deleting' || messageGone || profileGone) {
             for (const suffix of ['raw', 'ready', 'thumb'])
               await this.storage.remove(`${row.id}.${suffix}`);
             await tx.attachment.update({ where: { id: row.id }, data: { status: 'deleted' } });
@@ -92,7 +113,10 @@ export class AttachmentWorker implements OnModuleInit, OnModuleDestroy {
             return;
           }
           try {
-            const result = await validateFile(await this.storage.read(`${row.id}.raw`));
+            const result = await validateFile(await this.storage.read(`${row.id}.raw`), {
+              // Avatar/icon chỉ nhận ảnh tĩnh; tệp tin nhắn giữ nguyên bộ lọc bảo thủ (ADR-0053).
+              kinds: row.scope === 'message' ? ['image', 'pdf'] : ['image'],
+            });
             await this.storage.write(`${row.id}.ready`, result.bytes);
             if (result.thumbnail) await this.storage.write(`${row.id}.thumb`, result.thumbnail);
             await tx.attachment.update({

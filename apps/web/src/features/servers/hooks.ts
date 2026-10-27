@@ -27,8 +27,8 @@ export function useServer(serverId: string) {
 }
 
 /**
- * Đổi tên server (T3.1). Ghi thẳng tên mới vào cache chi tiết + danh sách server để
- * rail và sidebar đổi ngay, không phải gọi lại API.
+ * Đổi tên/icon server (T3.1, TG.7). Ghi thẳng tên/icon mới vào cache chi tiết + danh sách
+ * server để rail và sidebar đổi ngay, không phải gọi lại API.
  */
 export function useUpdateServer(serverId: string) {
   const queryClient = useQueryClient();
@@ -36,10 +36,12 @@ export function useUpdateServer(serverId: string) {
     mutationFn: (input: UpdateServerInput) => updateServer(serverId, input),
     onSuccess: (server) => {
       queryClient.setQueryData<ServerDetail>(qk.server(serverId), (old) =>
-        old ? { ...old, name: server.name } : old,
+        old ? { ...old, name: server.name, iconUrl: server.iconUrl } : old,
       );
       queryClient.setQueryData<ServerSummary[]>(qk.servers, (old) =>
-        old?.map((item) => (item.id === server.id ? { ...item, name: server.name } : item)),
+        old?.map((item) =>
+          item.id === server.id ? { ...item, name: server.name, iconUrl: server.iconUrl } : item,
+        ),
       );
     },
   });

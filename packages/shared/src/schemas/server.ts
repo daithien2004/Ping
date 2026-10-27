@@ -11,16 +11,25 @@ export const joinServerSchema = z.object({
 });
 export type JoinServerInput = z.infer<typeof joinServerSchema>;
 
-/** PATCH /servers/:serverId — hiện chỉ đổi tên; dùng cùng luật với lúc tạo server. */
-export const updateServerSchema = z.object({
-  name: z.string().trim().min(1).max(100),
-});
+/**
+ * PATCH /servers/:serverId (TG.3 đổi tên; TG.7 thêm icon): ít nhất một trong hai trường.
+ * `iconAttachmentId` là attachment `scope=serverIcon` đã `ready` qua pipeline TG.6.
+ */
+export const updateServerSchema = z
+  .object({
+    name: z.string().trim().min(1).max(100).optional(),
+    iconAttachmentId: z.uuid().optional(),
+  })
+  .refine((value) => value.name !== undefined || value.iconAttachmentId !== undefined, {
+    message: 'nothing to update',
+  });
 export type UpdateServerInput = z.infer<typeof updateServerSchema>;
 
 /** PATCH /servers/:serverId trả về trường vừa đổi (đủ để cập nhật cache, không kèm channel/role). */
 export interface UpdateServerResult {
   id: string;
   name: string;
+  iconUrl: string | null;
 }
 
 /**

@@ -83,7 +83,8 @@ describe('My permissions in a server (e2e)', () => {
       permissions: (
         Permissions.VIEW_CHANNEL |
         Permissions.SEND_MESSAGES |
-        Permissions.ADD_REACTIONS
+        Permissions.ADD_REACTIONS |
+        Permissions.CHANGE_NICKNAME
       ).toString(),
     };
     expect(res.body).toEqual(expected);
