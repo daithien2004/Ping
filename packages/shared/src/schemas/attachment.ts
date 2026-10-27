@@ -9,18 +9,23 @@ export const AttachmentLimits = {
   PROFILE_URL_SECONDS: 30 * 24 * 60 * 60,
 } as const;
 
-/** TG.7: đích của một upload. `message` là luồng TG.6; avatar/icon tái dùng pipeline (ADR-0053). */
-export type UploadScope = 'message' | 'avatar' | 'serverIcon';
+/** TG.7: đích của một upload. `message` là luồng TG.6; avatar/icon tái dùng pipeline (ADR-0053);
+ *  `sticker` là tài nguyên biểu cảm của server (TG.22, ADR-0067). */
+export type UploadScope = 'message' | 'avatar' | 'serverIcon' | 'sticker';
 
-export const uploadScopes = ['message', 'avatar', 'serverIcon'] as const;
+export const uploadScopes = ['message', 'avatar', 'serverIcon', 'sticker'] as const;
 export const uploadScopeSchema = z.enum(uploadScopes);
 
 /** Ảnh hồ sơ nhỏ hơn tệp tin nhắn: vẫn đi qua cùng giới hạn 10 MiB của pipeline. */
 export const PROFILE_FILE_BYTES = 5 * 1024 * 1024;
 
+/** Sticker nhỏ hơn nữa (ADR-0067): tệp gốc tối đa 512 KiB, worker xuất WebP ≤ 512×512. */
+export const STICKER_FILE_BYTES = 512 * 1024;
+
 /**
  * Luồng TG.6: `message` bắt buộc channelId (không kèm serverId — server suy từ channel);
- * `avatar` không thuộc server/channel nào; `serverIcon` gắn server, không qua channel.
+ * `avatar` không thuộc server/channel nào; `serverIcon` gắn server, không qua channel;
+ * `sticker` gắn server (người upload phải có `manage Sticker` của server đó).
  */
 export const createUploadSchema = z
   .object({
@@ -42,6 +47,12 @@ export const createUploadSchema = z
       return;
     }
     if (value.channelId) ctx.addIssue({ code: 'custom', message: 'channelId forbidden' });
+    if (value.scope === 'sticker') {
+      if (!value.serverId) ctx.addIssue({ code: 'custom', message: 'serverId required' });
+      if (value.sizeBytes > STICKER_FILE_BYTES)
+        ctx.addIssue({ code: 'custom', message: 'sticker file too large' });
+      return;
+    }
     if (value.sizeBytes > PROFILE_FILE_BYTES)
       ctx.addIssue({ code: 'custom', message: 'profile file too large' });
     if (value.scope === 'avatar' && value.serverId)

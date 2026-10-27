@@ -297,3 +297,32 @@ describe('TG.7 nickname', () => {
     expect(withBit.can('delete', 'Member')).toBe(false);
   });
 });
+describe('TG.22 sticker (ADR-0067)', () => {
+  const abilityFor = (permissions: bigint) =>
+    defineAbilityFor({ userId: 'user-A', isOwner: false, permissions });
+
+  it('lets every member view stickers but manage nothing without MANAGE_EXPRESSIONS', () => {
+    const member = abilityFor(memberPermissions);
+    expect(member.can('view', 'Sticker')).toBe(true);
+    expect(member.can('create', 'Sticker')).toBe(false);
+    expect(member.can('delete', 'Sticker')).toBe(false);
+    // Member đã xác nhận membership luôn xem được sticker (như view Server/Member) —
+    // kể cả không có bit nào; MANAGE_EXPRESSIONS KHÔNG mặc định cho @everyone (ADR-0067).
+    expect(abilityFor(0n).can('view', 'Sticker')).toBe(true);
+    expect(abilityFor(0n).can('create', 'Sticker')).toBe(false);
+  });
+
+  it('grants manage Sticker (create/delete) only with MANAGE_EXPRESSIONS', () => {
+    const manager = abilityFor(memberPermissions | Permissions.MANAGE_EXPRESSIONS);
+    expect(manager.can('create', 'Sticker')).toBe(true);
+    expect(manager.can('delete', 'Sticker')).toBe(true);
+    // Cấp quản lý sticker không kéo theo quyền khác.
+    expect(manager.can('manage', 'Channel')).toBe(false);
+    expect(manager.can('update', 'Server')).toBe(false);
+  });
+
+  it('owner/administrator manages everything including stickers', () => {
+    const owner = defineAbilityFor({ userId: 'user-A', isOwner: true, permissions: 0n });
+    expect(owner.can('manage', 'Sticker')).toBe(true);
+  });
+});

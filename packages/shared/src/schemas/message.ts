@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { MessageAuthor } from '../events';
 import { AttachmentLimits, type AttachmentDto } from './attachment';
+import type { MessageStickerPreview } from './sticker';
 
 export const createMessageSchema = z
   .object({
@@ -10,8 +11,21 @@ export const createMessageSchema = z
     // TG.1: reply — tin gốc CÙNG channel (service kiểm); bỏ qua = tin thường.
     replyToId: z.uuid().optional(),
     attachmentIds: z.array(z.uuid()).max(AttachmentLimits.PER_MESSAGE).optional(),
+    // TG.22: gửi sticker — tin `kind='sticker'`, nội dung bắt buộc rỗng, không kèm tệp tin nhắn.
+    stickerId: z.uuid().optional(),
   })
-  .refine((input) => input.content.length > 0 || (input.attachmentIds?.length ?? 0) > 0);
+  .refine(
+    (input) =>
+      input.content.length > 0 ||
+      (input.attachmentIds?.length ?? 0) > 0 ||
+      input.stickerId !== undefined,
+  )
+  .refine((input) => input.stickerId === undefined || input.content === '', {
+    message: 'Sticker message must have empty content',
+  })
+  .refine((input) => input.stickerId === undefined || (input.attachmentIds?.length ?? 0) === 0, {
+    message: 'Sticker message cannot carry message attachments',
+  });
 export type CreateMessageInput = z.infer<typeof createMessageSchema>;
 
 /** Xem trước tin gốc trong reply (TG.1): đoạn trích 120 ký tự; `deleted` khi tin gốc soft-delete. */
@@ -56,8 +70,15 @@ export const reactionUsersQuerySchema = z.object({
 });
 export type ReactionUsersQuery = z.infer<typeof reactionUsersQuerySchema>;
 
-/** Tin nhắn từ API (GET danh sách, POST gửi). Ngày giờ là chuỗi ISO 8601 qua JSON. */
+/**
+ * Tin nhắn từ API (GET danh sách, POST gửi). Ngày giờ là chuỗi ISO 8601 qua JSON.
+ * `kind`/`sticker` (TG.22): tin sticker có `kind='sticker'` kèm preview; tin cũ trước
+ * bản deploy không có `kind` — client coi thiếu `kind` là `'text'`.
+ */
 export interface MessageDto {
+  kind?: 'text' | 'sticker';
+  /** Xem trước sticker khi `kind='sticker'`; tin văn bản không có. */
+  sticker?: MessageStickerPreview | null;
   attachments?: AttachmentDto[];
   id: string;
   content: string;

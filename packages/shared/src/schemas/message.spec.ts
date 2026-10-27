@@ -31,3 +31,28 @@ describe('message editing contracts', () => {
     expect(myServerPermissionsSchema.safeParse({ permissions: '1' }).success).toBe(false);
   });
 });
+
+describe('sticker messages (TG.22, ADR-0067)', () => {
+  const nonce = '01900000-0000-7000-8000-000000000002';
+  const stickerId = '01900000-0000-7000-8000-000000000003';
+
+  it('accepts a sticker message with empty content', () => {
+    const parsed = createMessageSchema.parse({ content: '', nonce, stickerId });
+    expect(parsed.stickerId).toBe(stickerId);
+  });
+
+  it('rejects sticker messages carrying text or message attachments', () => {
+    expect(createMessageSchema.safeParse({ content: 'chào', nonce, stickerId }).success).toBe(
+      false,
+    );
+    expect(
+      createMessageSchema.safeParse({ content: '', nonce, stickerId, attachmentIds: [nonce] })
+        .success,
+    ).toBe(false);
+  });
+
+  it('keeps text messages intact without stickerId', () => {
+    expect(createMessageSchema.safeParse({ content: 'chào', nonce }).success).toBe(true);
+    expect(createMessageSchema.safeParse({ content: '', nonce }).success).toBe(false);
+  });
+});

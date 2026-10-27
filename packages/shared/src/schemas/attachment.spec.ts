@@ -24,4 +24,42 @@ describe('attachment contracts', () => {
         false,
       );
   });
+
+  it('sticker uploads require a serverId, forbid channelId and cap at 512 KiB (TG.22)', () => {
+    const base = { scope: 'sticker', filename: 's.webp', sizeBytes: 100, nonce };
+    expect(createUploadSchema.safeParse({ ...base, serverId: nonce }).success).toBe(true);
+    // Không serverId → từ chối; kèm channelId → từ chối (sticker thuộc server).
+    expect(createUploadSchema.safeParse(base).success).toBe(false);
+    expect(
+      createUploadSchema.safeParse({ ...base, serverId: nonce, channelId: nonce }).success,
+    ).toBe(false);
+    // Trần riêng 512 KiB chặt hơn trần hồ sơ 5 MiB.
+    const oversized = {
+      ...base,
+      serverId: nonce,
+      sizeBytes: 512 * 1024 + 1,
+    };
+    expect(createUploadSchema.safeParse(oversized).success).toBe(false);
+  });
+
+  it('profile uploads keep the 5 MiB cap while sticker uses its own 512 KiB cap', () => {
+    const fiveMiB = 5 * 1024 * 1024;
+    expect(
+      createUploadSchema.safeParse({
+        scope: 'avatar',
+        filename: 'a.png',
+        sizeBytes: fiveMiB,
+        nonce,
+      }).success,
+    ).toBe(true);
+    expect(
+      createUploadSchema.safeParse({
+        scope: 'sticker',
+        filename: 's.webp',
+        sizeBytes: fiveMiB,
+        serverId: nonce,
+        nonce,
+      }).success,
+    ).toBe(false);
+  });
 });

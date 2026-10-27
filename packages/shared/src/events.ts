@@ -39,6 +39,9 @@ export interface MessageAuthor {
 }
 
 export interface MessageCreatedPayload {
+  kind?: 'text' | 'sticker';
+  /** TG.22: preview sticker khi đây là tin sticker; tin văn bản không có. */
+  sticker?: import('./schemas/sticker').MessageStickerPreview | null;
   attachments?: import('./schemas/attachment').AttachmentDto[];
   id: string;
   channelId: string;
