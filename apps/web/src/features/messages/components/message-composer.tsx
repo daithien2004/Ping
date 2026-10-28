@@ -1,6 +1,11 @@
 'use client';
 
-import { createMessageSchema, customEmojiToken, type StickerDto } from '@ping/shared';
+import {
+  createMessageSchema,
+  customEmojiToken,
+  type GifPayload,
+  type StickerDto,
+} from '@ping/shared';
 import { useEffect, useRef, useState, type KeyboardEvent, type RefObject } from 'react';
 import { useTranslations } from 'use-intl';
 import dynamic from 'next/dynamic';
@@ -13,6 +18,8 @@ import { useAttachmentDrafts } from '@/features/attachments/hooks';
 import { useErrorMessage } from '@/lib/error-message';
 import { DraftPreview } from '@/features/attachments/components/draft-preview';
 import { loadRecentStickers, pushRecentSticker } from '@/features/stickers/sticker-utils';
+import { loadRecentGifs, pushRecentGif, saveRecentGifs } from '@/features/gifs/gif-utils';
+import { useMe } from '@/features/auth/hooks';
 import { profileImageUrl } from '@/features/profile/hooks';
 
 // Picker chỉ tải khi người dùng bấm nút emoji (TG.23): dataset + lưới không nằm trong
@@ -56,6 +63,7 @@ export function MessageComposer({
   onCancelReply,
   onSend,
   onSendSticker,
+  onSendGif,
   textareaRef,
 }: {
   serverId: string;
@@ -67,6 +75,8 @@ export function MessageComposer({
   onSend: (content: string, nonce: string, replyToId?: string, attachmentIds?: string[]) => void;
   /** TG.22: chọn sticker trong picker là gửi ngay một tin `kind='sticker'`. */
   onSendSticker: (sticker: StickerDto, nonce: string, replyToId?: string) => void;
+  /** TG.25: chọn GIF trong tab GIF là gửi ngay một tin `kind='gif'` (không content). */
+  onSendGif: (gif: GifPayload, nonce: string, replyToId?: string) => void;
   /** Ô nhập để empty state bấm "Gửi tin đầu tiên" đưa con trỏ về đây (TF.9). */
   textareaRef?: RefObject<HTMLTextAreaElement | null>;
 }) {
@@ -84,6 +94,12 @@ export function MessageComposer({
   // cập nhật lại danh sách để lần mở sau hiển thị đúng, khớp cách emoji picker tự lưu).
   const [recentStickers, setRecentStickers] = useState<string[]>(() =>
     typeof window === 'undefined' ? [] : loadRecentStickers(),
+  );
+  // TG.25: "Gần đây" của GIF lưu THEO USER (khóa localStorage có userId) nên composer cần
+  // người xem hiện tại; pane đã chờ `me` tải xong trước khi render composer (useSuspense).
+  const { data: me } = useMe();
+  const [recentGifs, setRecentGifs] = useState<GifPayload[]>(() =>
+    me ? loadRecentGifs(me.id) : [],
   );
   const [suggestionIndex, setSuggestionIndex] = useState(0);
   const t = useTranslations('messages');
@@ -283,10 +299,19 @@ export function MessageComposer({
               <StickerPicker
                 serverId={serverId}
                 recent={recentStickers}
+                recentGifs={recentGifs}
                 onPick={(sticker) => {
                   setRecentStickers((prev) => pushRecentSticker(prev, sticker.id));
                   setStickerOpen(false);
                   onSendSticker(sticker, crypto.randomUUID(), replyTo?.id);
+                }}
+                onPickGif={(gif) => {
+                  // TG.25: bấm GIF là gửi ngay; composer tự lưu "Gần đây" (khóa theo user).
+                  const next = pushRecentGif(recentGifs, gif);
+                  setRecentGifs(next);
+                  if (me) saveRecentGifs(me.id, next);
+                  setStickerOpen(false);
+                  onSendGif(gif, crypto.randomUUID(), replyTo?.id);
                 }}
               />
             </div>

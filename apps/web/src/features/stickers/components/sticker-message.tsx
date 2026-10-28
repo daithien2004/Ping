@@ -1,27 +1,9 @@
 'use client';
 import type { MessageStickerPreview } from '@ping/shared';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useTranslations } from 'use-intl';
 import { profileImageUrl } from '@/features/profile/hooks';
-
-/**
- * `prefers-reduced-motion` đọc một lần lúc mount rồi nghe thay đổi: state đồng bộ với hệ
- * điều hành (bên ngoài) qua effect — không tính dữ liệu trong render.
- */
-function usePrefersReducedMotion(): boolean {
-  const [reduced, setReduced] = useState(
-    () =>
-      typeof window !== 'undefined' &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches,
-  );
-  useEffect(() => {
-    const query = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const onChange = (event: MediaQueryListEvent) => setReduced(event.matches);
-    query.addEventListener('change', onChange);
-    return () => query.removeEventListener('change', onChange);
-  }, []);
-  return reduced;
-}
+import { usePrefersReducedMotion } from '@/features/gifs/use-prefers-reduced-motion';
 
 /**
  * Thân tin sticker (TG.22, ADR-0067): ảnh ≤160px, sticker động tự tĩnh lại khi người dùng

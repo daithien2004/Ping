@@ -482,5 +482,21 @@
     "noResults": "No stickers found.",
     "pickSticker": "Send sticker {name}",
     "deleted": "Sticker was deleted"
+  },
+  "gifs": {
+    "tab": "GIF",
+    "search": "Search GIFs",
+    "searchPlaceholder": "Search GIFs by keyword…",
+    "loading": "Loading GIFs…",
+    "trending": "Trending",
+    "recent": "Recent",
+    "searchResults": "Search results",
+    "noResults": "No GIFs found.",
+    "unavailable": "GIFs are temporarily unavailable. Please try again later.",
+    "pickGif": "Send GIF {n}",
+    "play": "Play GIF",
+    "placeholder": "GIF",
+    "broken": "This GIF is no longer available.",
+    "attribution": "GIFs by Tenor"
   }
 }

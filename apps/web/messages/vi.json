@@ -482,5 +482,21 @@
     "noResults": "Không tìm thấy sticker nào.",
     "pickSticker": "Gửi sticker {name}",
     "deleted": "Sticker đã bị xóa"
+  },
+  "gifs": {
+    "tab": "GIF",
+    "search": "Tìm GIF",
+    "searchPlaceholder": "Tìm GIF theo từ khóa…",
+    "loading": "Đang tải GIF…",
+    "trending": "Thịnh hành",
+    "recent": "Gần đây",
+    "searchResults": "Kết quả tìm kiếm",
+    "noResults": "Không tìm thấy GIF nào.",
+    "unavailable": "Tính năng GIF tạm thời chưa khả dụng. Thử lại sau nhé.",
+    "pickGif": "Gửi GIF {n}",
+    "play": "Phát GIF",
+    "placeholder": "GIF",
+    "broken": "GIF không còn xem được.",
+    "attribution": "GIFs by Tenor"
   }
 }

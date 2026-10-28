@@ -8,11 +8,13 @@ import type { InfiniteData } from '@tanstack/react-query';
 
 /**
  * Tin nhắn trong cache của trình duyệt. `status` chỉ tồn tại phía client: tin optimistic đang gửi
- * hoặc gửi thất bại. Tin đã được server xác nhận không có `status`.
+ * hoặc gửi thất bại. Tin đã được server xác nhận không có `status`. `gifId` cũng chỉ phía client:
+ * id GIF payload để GỬI LẠI tin gif thất bại (preview `gif` của server không có id — TG.25).
  */
 export type ClientMessage = MessageDto & {
   status?: 'sending' | 'failed';
   pendingAttachmentIds?: string[];
+  gifId?: string;
 };
 
 export interface ClientMessagePage {
@@ -48,6 +50,9 @@ export function optimisticMessage(
     /** TG.22: tin sticker — gửi kèm preview của sticker vừa chọn để render ngay. */
     stickerId?: string;
     sticker?: MessageDto['sticker'];
+    /** TG.25: tin gif — preview để render ngay + `gifId` giữ lại id payload để gửi lại. */
+    gif?: MessageDto['gif'];
+    gifId?: string;
   },
   author: MessageAuthor,
   replyTo: MessageDto['replyTo'] = null,
@@ -56,6 +61,9 @@ export function optimisticMessage(
     id: `temp-${input.nonce}`,
     ...(input.attachmentIds?.length ? { pendingAttachmentIds: input.attachmentIds } : {}),
     ...(input.stickerId ? { kind: 'sticker' as const, sticker: input.sticker ?? null } : {}),
+    ...(input.gif
+      ? { kind: 'gif' as const, gif: input.gif, ...(input.gifId ? { gifId: input.gifId } : {}) }
+      : {}),
     content: input.content,
     nonce: input.nonce,
     editedAt: null,

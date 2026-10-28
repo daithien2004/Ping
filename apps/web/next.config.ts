@@ -21,7 +21,11 @@ const csp = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${isProduction ? '' : " 'unsafe-eval'"}`,
   "style-src 'self' 'unsafe-inline'",
-  `img-src 'self' blob: data: ${apiOrigin}`,
+  // TG.25 (ADR-0069): ảnh GIF là nguồn ngoài duy nhất được nhúng vào tin — backend là cổng duy
+  // nhất gọi nhà cung cấp, URL trả về chỉ được nhận khi thuộc host allowlist
+  // `GIF_IMAGE_HOSTS` (packages/shared/src/schemas/gif.ts, hiện: media.tenor.com của Tenor).
+  // CSP là lớp chặn sau; không mở wildcard — cần origin nào mới thêm đúng origin đó.
+  `img-src 'self' blob: data: ${apiOrigin} https://media.tenor.com`,
   "font-src 'self'",
   `connect-src 'self' ${apiOrigin} ${wsOrigin}${sentryOrigin}`,
   "object-src 'none'",

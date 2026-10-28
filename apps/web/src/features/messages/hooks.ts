@@ -4,6 +4,7 @@ import {
   ServerEvents,
   type CreateMessageInput,
   type MessageCreatedPayload,
+  type MessageGifPreview,
   type MessageStickerPreview,
   type MessageUpdatedPayload,
   type MessageDeletedPayload,
@@ -417,10 +418,12 @@ export function useChannelSync(channelId: string) {
  * Gửi tin optimistic (hướng dẫn 12.3, 16.1). Người gọi sinh `nonce` MỘT lần cho mỗi tin và dùng
  * lại khi gửi lại: server chặn trùng theo (channel, author, nonce), cache khớp tin theo nonce.
  * TG.22: tin sticker kèm `stickerPreview` để render ngay khi đang gửi — trường này chỉ dùng
- * nội bộ client, không gửi lên API (schema của server tự strip key lạ).
+ * nội bộ client, không gửi lên API (schema của server tự strip key lạ). TG.25: tin gif kèm
+ * `gifPreview` cùng mục đích; `gif` (payload có id) vẫn gửi lên API như schema cho phép.
  */
 export type SendMessageVariables = CreateMessageInput & {
   stickerPreview?: MessageStickerPreview | null;
+  gifPreview?: MessageGifPreview | null;
 };
 
 export function useSendMessage(channelId: string) {
@@ -431,9 +434,9 @@ export function useSendMessage(channelId: string) {
     queryClient.setQueryData<MessagesCache>(key, fn);
 
   return useMutation({
-    mutationFn: ({ stickerPreview: _preview, ...input }: SendMessageVariables) =>
+    mutationFn: ({ stickerPreview: _sticker, gifPreview: _gif, ...input }: SendMessageVariables) =>
       sendMessage(channelId, input),
-    onMutate: async ({ stickerPreview, ...input }) => {
+    onMutate: async ({ stickerPreview, gifPreview, gif, ...input }) => {
       // Hủy refetch đang chạy: nó có thể trả về dữ liệu cũ và ghi đè mất tin tạm.
       await queryClient.cancelQueries({ queryKey: key });
       if (me) {
@@ -448,7 +451,12 @@ export function useSendMessage(channelId: string) {
           upsertMessage(
             old,
             optimisticMessage(
-              { ...input, ...(input.stickerId ? { sticker: stickerPreview ?? null } : {}) },
+              {
+                ...input,
+                ...(input.stickerId ? { sticker: stickerPreview ?? null } : {}),
+                // TG.25: preview cho render ngay; gifId giữ lại để gửi lại tin thất bại.
+                ...(gif ? { gif: gifPreview ?? null, gifId: gif.id } : {}),
+              },
               me,
               target
                 ? {
