@@ -19,6 +19,7 @@ export const AuditActions = {
   MESSAGE_PIN: 'MESSAGE_PIN',
   MESSAGE_UNPIN: 'MESSAGE_UNPIN',
   STICKER_DELETE: 'STICKER_DELETE',
+  EMOJI_DELETE: 'EMOJI_DELETE',
 } as const;
 
 export const auditActionSchema = z.enum(AuditActions);

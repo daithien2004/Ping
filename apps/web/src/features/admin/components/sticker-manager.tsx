@@ -1,6 +1,6 @@
 'use client';
 
-import type { StickerDto } from '@ping/shared';
+import { CUSTOM_EMOJI_NAME, type CustomEmojiDto, type StickerDto } from '@ping/shared';
 import { useRef } from 'react';
 import { useTranslations } from 'use-intl';
 import { z } from 'zod';
@@ -11,6 +11,8 @@ import { PingPopconfirm } from '@/components/ui/ping-popconfirm';
 import { pingToast } from '@/components/ui/ping-toast';
 import { useProfileUpload } from '@/features/profile/hooks';
 import { useCreateSticker, useDeleteSticker, useStickers } from '@/features/stickers/hooks';
+import { suggestEmojiName } from '@/features/emojis/emoji-utils';
+import { useCreateEmoji, useDeleteEmoji, useEmojis } from '@/features/emojis/hooks';
 import { useErrorMessage } from '@/lib/error-message';
 import { profileImageUrl } from '@/features/profile/hooks';
 
@@ -21,9 +23,10 @@ const createStickerFormSchema = z.object({
 });
 
 /**
- * Quản lý sticker của server (TG.22, ADR-0067): tải lên qua pipeline TG.6 với scope
- * `sticker` (worker kiểm định — từ chối SVG/JPEG/ảnh tĩnh quá 512×512), đặt tên + thẻ rồi
- * claim; xóa có Popconfirm. Ẩn/hiện theo ability `manage Sticker` — API vẫn kiểm tra lại.
+ * Quản lý biểu cảm của server (TG.22 + TG.24, ADR-0067/0068): khối sticker rồi khối emoji —
+ * cùng section vì cùng nhóm quyền `manage Sticker` (MANAGE_EXPRESSIONS). Cả hai tải lên qua
+ * pipeline TG.6 với scope riêng (worker kiểm định), xóa có Popconfirm. Ẩn/hiện theo ability
+ * — API vẫn kiểm tra lại.
  */
 export function StickerManager({ serverId }: { serverId: string }) {
   const t = useTranslations('admin');
@@ -211,6 +214,191 @@ export function StickerManager({ serverId }: { serverId: string }) {
           ))}
         </ul>
       )}
+      <EmojiManager serverId={serverId} />
     </section>
+  );
+}
+
+/**
+ * Quản lý emoji tùy chỉnh của server (TG.24, ADR-0068): upload scope `customEmoji`
+ * (PNG/WebP ≤ 256 KB — worker xuất WebP ≤ 128×128, trần 50 tĩnh + 50 động), đặt tên
+ * `[a-z0-9_]` rồi claim; xóa mềm — tin cũ hiển thị placeholder `:ten:`.
+ */
+function EmojiManager({ serverId }: { serverId: string }) {
+  const t = useTranslations('admin');
+  const tc = useTranslations('common');
+  const errorMessage = useErrorMessage();
+  const { data } = useEmojis(serverId);
+  const createMutation = useCreateEmoji(serverId);
+  const deleteMutation = useDeleteEmoji(serverId);
+  const upload = useProfileUpload('customEmoji', serverId);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [form] = usePingForm<{ name: string }>();
+  // Schema trong component để nhắn lỗi qua i18n (`emojiInvalidName`) — cùng luật shared.
+  const rules = zodFormRules(
+    z.object({
+      name: z
+        .string()
+        .trim()
+        .min(2, t('emojiInvalidName'))
+        .max(32, t('emojiInvalidName'))
+        .refine((value) => CUSTOM_EMOJI_NAME.test(value), t('emojiInvalidName')),
+    }),
+    () => form.getFieldsValue(),
+  );
+  const emojis = data?.emojis ?? [];
+
+  function chooseFile(file: File | undefined) {
+    if (!file) return;
+    // Tên gợi ý từ tên tệp (thường hóa, không dấu, [a-z0-9_]) — người dùng sửa lại trong form.
+    form.setFieldsValue({ name: suggestEmojiName(file.name) });
+    upload.choose(file);
+  }
+
+  function resetUpload() {
+    upload.reset();
+    form.resetFields();
+    createMutation.reset();
+  }
+
+  function create(values: { name: string }) {
+    if (!upload.attachmentId) return;
+    createMutation.mutate(
+      { attachmentId: upload.attachmentId, name: values.name.trim() },
+      {
+        onSuccess: () => {
+          pingToast.success(t('emojiCreated'));
+          resetUpload();
+        },
+        onError: (error) => pingToast.error(errorMessage(error)),
+      },
+    );
+  }
+
+  function remove(emoji: CustomEmojiDto) {
+    deleteMutation.mutate(emoji.id, {
+      onSuccess: () => pingToast.success(t('emojiDeleted')),
+      onError: (error) => pingToast.error(errorMessage(error)),
+    });
+  }
+
+  return (
+    <div className="flex flex-col gap-3" aria-label={t('emojis')} data-testid="emoji-section">
+      <h3 className="text-base font-semibold">{t('emojis')}</h3>
+      <p className="text-sm text-muted-foreground">{t('emojiHint')}</p>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/png,image/webp"
+        className="sr-only"
+        aria-label={t('emojiUpload')}
+        data-testid="emoji-upload-input"
+        disabled={upload.busy}
+        onChange={(event) => {
+          chooseFile(event.target.files?.[0]);
+          event.target.value = '';
+        }}
+      />
+      {!upload.attachmentId ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <PingButton
+            variant="secondary"
+            onClick={() => inputRef.current?.click()}
+            loading={upload.busy}
+            disabled={upload.busy}
+            data-testid="emoji-upload-button"
+          >
+            {upload.busy
+              ? upload.progress === 100
+                ? t('emojiProcessing')
+                : t('emojiUploading', { percent: upload.progress })
+              : t('emojiUpload')}
+          </PingButton>
+          {upload.error ? (
+            <p role="alert" className="text-sm text-destructive">
+              {errorMessage(upload.error)}
+            </p>
+          ) : null}
+        </div>
+      ) : (
+        <PingForm
+          name="emoji-create"
+          form={form}
+          layout="vertical"
+          onFinish={create}
+          onValuesChange={() => createMutation.reset()}
+          disabled={createMutation.isPending}
+          className="max-w-md"
+        >
+          <PingFormItem label={t('emojiName')} name="name" rules={rules.name}>
+            <PingInput maxLength={32} autoComplete="off" data-testid="emoji-name-input" />
+          </PingFormItem>
+          {createMutation.isError && (
+            <p role="alert" className="mb-2 text-sm text-destructive">
+              {errorMessage(createMutation.error)}
+            </p>
+          )}
+          <div className="flex gap-2">
+            <PingButton
+              htmlType="submit"
+              loading={createMutation.isPending}
+              disabled={createMutation.isPending}
+              data-testid="emoji-create-submit"
+            >
+              {createMutation.isPending ? tc('processing') : t('emojiCreate')}
+            </PingButton>
+            <PingButton
+              variant="secondary"
+              onClick={resetUpload}
+              disabled={createMutation.isPending}
+            >
+              {tc('cancel')}
+            </PingButton>
+          </div>
+        </PingForm>
+      )}
+      {emojis.length === 0 ? (
+        <p className="text-sm text-muted-foreground">{t('emojisEmpty')}</p>
+      ) : (
+        <ul aria-label={t('emojis')} className="flex flex-wrap gap-3">
+          {emojis.map((emoji) => (
+            <li
+              key={emoji.id}
+              data-testid="emoji-item"
+              className="flex w-24 flex-col items-center gap-1 rounded-lg border bg-muted/40 p-2"
+            >
+              {/* TG.24: dùng url gốc — emoji động giữ chuyển động ngay trong quản trị. */}
+              <img
+                src={profileImageUrl(emoji.url)}
+                alt={emoji.name}
+                width={emoji.width ?? undefined}
+                height={emoji.height ?? undefined}
+                loading="lazy"
+                className="h-12 w-12 object-contain"
+              />
+              <p className="w-full truncate text-center text-xs font-medium">{emoji.name}</p>
+              <PingPopconfirm
+                title={t('emojiDeleteTitle', { name: emoji.name })}
+                description={t('emojiDeleteDescription')}
+                okText={t('delete')}
+                cancelText={tc('cancel')}
+                onConfirm={() => remove(emoji)}
+                disabled={deleteMutation.isPending}
+              >
+                <PingButton
+                  variant="danger"
+                  size="sm"
+                  aria-label={t('emojiDelete', { name: emoji.name })}
+                  disabled={deleteMutation.isPending}
+                  data-testid="emoji-delete-button"
+                >
+                  {t('delete')}
+                </PingButton>
+              </PingPopconfirm>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }

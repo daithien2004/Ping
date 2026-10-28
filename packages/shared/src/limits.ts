@@ -16,4 +16,7 @@ export const Limits = {
   PINS_PER_CHANNEL: 50,
   /** Số sticker còn sống tối đa mỗi server (TG.22, ADR-0067); xóa mềm thì giải phóng chỉ tiêu. */
   STICKERS_PER_SERVER: 30,
+  /** Trần emoji tùy chỉnh mỗi server theo loại (TG.24, ADR-0068): xóa mềm giải phóng chỉ tiêu. */
+  EMOJIS_STATIC_PER_SERVER: 50,
+  EMOJIS_ANIMATED_PER_SERVER: 50,
 } as const;

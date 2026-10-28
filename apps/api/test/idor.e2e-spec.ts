@@ -65,6 +65,10 @@ const ID_ROUTES: Array<[Verb, string]> = [
   ['post', '/servers/:id/stickers'],
   ['get', '/servers/:id/stickers'],
   ['delete', '/stickers/:id'],
+  // TG.24: emoji tùy chỉnh — tạo/xem theo server, xóa theo chính emoji.
+  ['post', '/servers/:id/emojis'],
+  ['get', '/servers/:id/emojis'],
+  ['delete', '/emojis/:id'],
 ];
 
 /** Quét controller của app qua metadata của Nest: các route có tham số `:...Id`, dạng `verb /path/:id`, đã sắp xếp. */
@@ -123,6 +127,7 @@ describe('IDOR (e2e)', () => {
   let uploadId = '';
   let stickerA = ''; // sticker của server A (TG.22) cho bảng tấn công
   let stickerPackA = '';
+  let emojiA = ''; // emoji của server A (TG.24) cho bảng tấn công
 
   const SECRET = `secret-${runId}`; // xuất hiện trong dữ liệu của server A; không được rò ra
   const http = () => request(app.getHttpServer());
@@ -147,7 +152,7 @@ describe('IDOR (e2e)', () => {
 
   /** Ảnh chụp DB phần thuộc server A: nếu cuộc tấn công làm đổi gì thì so sánh sẽ lệch. */
   async function snapshotA() {
-    const [server, members, roles, channels, messages, memberRoles, carolSessions] =
+    const [server, members, roles, channels, messages, memberRoles, carolSessions, emojis] =
       await Promise.all([
         prisma.server.findUnique({ where: { id: serverA } }),
         prisma.member.findMany({ where: { serverId: serverA }, orderBy: { id: 'asc' } }),
@@ -162,10 +167,11 @@ describe('IDOR (e2e)', () => {
           orderBy: [{ memberId: 'asc' }, { roleId: 'asc' }],
         }),
         prisma.member.count({ where: { userId: bob.id } }),
+        prisma.customEmoji.findMany({ where: { serverId: serverA }, orderBy: { id: 'asc' } }),
       ]);
     return JSON.parse(
       JSON.stringify(
-        { server, members, roles, channels, messages, memberRoles, carolSessions },
+        { server, members, roles, channels, messages, memberRoles, carolSessions, emojis },
         (_k, v) => (typeof v === 'bigint' ? v.toString() : v),
       ),
     );
@@ -255,6 +261,36 @@ describe('IDOR (e2e)', () => {
         },
       })
     ).id;
+
+    // TG.24: một emoji của server A cho bảng tấn công — chèn thẳng DB như sticker trên.
+    const emojiAttA = await prisma.attachment.create({
+      data: {
+        uploaderId: alice.id,
+        nonce: randomUUID(),
+        filename: 'emoji.webp',
+        sizeBytes: 64,
+        quotaBytes: 64,
+        scope: 'customEmoji',
+        serverId: serverA,
+        status: 'ready',
+        boundAt: new Date(),
+        rawRemoved: true,
+        mime: 'image/webp',
+        width: 8,
+        height: 8,
+      },
+    });
+    emojiA = (
+      await prisma.customEmoji.create({
+        data: {
+          serverId: serverA,
+          name: 'idoremoji',
+          animated: false,
+          attachmentId: emojiAttA.id,
+          createdBy: alice.id,
+        },
+      })
+    ).id;
   });
 
   afterAll(async () => {
@@ -263,6 +299,8 @@ describe('IDOR (e2e)', () => {
       await prisma.sticker.deleteMany({ where: { packId: stickerPackA } });
       await prisma.stickerPack.deleteMany({ where: { id: stickerPackA } });
     }
+    // TG.24: emoji cũng khóa attachment (Restrict) — xóa emoji trước attachment.
+    if (serverA) await prisma.customEmoji.deleteMany({ where: { serverId: serverA } });
     await prisma.attachment.deleteMany({ where: { serverId: serverA } });
     const users = await prisma.user.findMany({
       where: { email: { in: emails } },
@@ -546,6 +584,16 @@ describe('IDOR (e2e)', () => {
       () => ({ attachmentId: randomUUID(), name: 'x' }),
     );
     add('DELETE /stickers/<sticker của A>', 'delete', () => `/stickers/${stickerA}`, outsider);
+    // TG.24: emoji của server A — kẻ ngoài không xóa được emoji của server người khác, member
+    // thường thiếu MANAGE_EXPRESSIONS (ADR-0068 tái dùng bit sticker TG.22) nên không tạo được.
+    add('DELETE /emojis/<emoji của A>', 'delete', () => `/emojis/${emojiA}`, outsider);
+    add(
+      'POST /servers/:serverId/emojis',
+      'post',
+      () => `/servers/${serverA}/emojis`,
+      lowPriv,
+      () => ({ attachmentId: randomUUID(), name: 'nope' }),
+    );
     return out;
   };
 
@@ -583,7 +631,7 @@ describe('IDOR (e2e)', () => {
 
   it('no token → 401 on every endpoint that takes an id', async () => {
     const uuid = randomUUID();
-    expect(ID_ROUTES).toHaveLength(42);
+    expect(ID_ROUTES).toHaveLength(45);
     for (const [verb, template] of ID_ROUTES) {
       const url = template.replaceAll(':id', uuid);
       const res = await as(undefined, verb, url).send({});

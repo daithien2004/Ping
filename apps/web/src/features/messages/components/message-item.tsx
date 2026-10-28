@@ -12,6 +12,8 @@ interface Props {
   message: ClientMessage;
   /** TG.2: kênh chứa tin — mutation cảm xúc khoá theo (user, channel) và cache theo kênh. */
   channelId: string;
+  /** TG.24: server chứa kênh — resolve emoji tùy chỉnh `:ten:<id>` trong nội dung tin. */
+  serverId: string;
   /** TG.5: permalink tương đối của tin (menu "Sao chép liên kết"). */
   permalink: string;
   onRetry: (message: ClientMessage) => void;
@@ -27,6 +29,7 @@ interface Props {
 export function MessageItem({
   message,
   channelId,
+  serverId,
   permalink,
   onRetry,
   onAction,
@@ -96,7 +99,7 @@ export function MessageItem({
         <StickerMessage sticker={message.sticker ?? null} />
       ) : (
         <>
-          <MarkdownText content={message.content} />
+          <MarkdownText content={message.content} serverId={serverId} />
           {message.attachments?.length ? (
             <AttachmentList attachments={message.attachments} />
           ) : null}

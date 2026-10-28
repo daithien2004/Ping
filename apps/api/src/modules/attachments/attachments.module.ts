@@ -14,6 +14,6 @@ import { LocalStorage, Storage } from './local-storage.js';
     LocalStorage,
     { provide: Storage, useExisting: LocalStorage },
   ],
-  exports: [AttachmentsService],
+  exports: [AttachmentsService, Storage],
 })
 export class AttachmentsModule {}

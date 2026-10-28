@@ -63,6 +63,7 @@ model Server {
   channels     Channel[]
   invites      ServerInvite[]
   stickerPacks StickerPack[]
+  customEmojis CustomEmoji[]
 }
 
 // T3.6: mã mời là bản ghi riêng thay vì chỉ cột `inviteCode` trên Server, để
@@ -276,6 +277,8 @@ model Attachment {
   message Message? @relation(fields: [messageId], references: [id], onDelete: SetNull)
   // TG.22: sticker duy nhất dùng tệp này (claim một-lần qua `boundAt`).
   sticker Sticker?
+  // TG.24: custom emoji duy nhất dùng tệp này.
+  customEmoji CustomEmoji?
 
   @@unique([uploaderId, nonce])
   @@index([uploaderId, status])
@@ -323,6 +326,26 @@ model Sticker {
 
   // Picker quản trị hiển thị theo thứ tự tạo; trần 30 giữ ở service (advisory lock).
   @@index([packId, deletedAt, createdAt])
+}
+
+/// Emoji tùy chỉnh theo server (TG.24, ADR-0068): tên token `:ten:<id>` trong tin, `c:<id>`
+/// trong reaction. Soft-delete để tin cũ render placeholder; trần 50 tĩnh + 50 động giữ ở
+/// service (advisory lock). `createdBy` cột trần như Attachment.uploaderId.
+model CustomEmoji {
+  id           String    @id @default(uuid(7)) @db.Uuid
+  serverId     String    @db.Uuid
+  name         String
+  /// Ảnh động được giữ lại (worker reencode WebP động) — trần 50/50 tính theo cờ này.
+  animated     Boolean   @default(false)
+  attachmentId String    @unique @db.Uuid
+  createdBy    String    @db.Uuid
+  deletedAt    DateTime?
+  createdAt    DateTime  @default(now())
+
+  server     Server     @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  attachment Attachment @relation(fields: [attachmentId], references: [id], onDelete: Restrict)
+
+  @@index([serverId, deletedAt, createdAt])
 }
 
 model MessageReaction {
@@ -413,4 +436,5 @@ enum AuditAction {
   MESSAGE_PIN
   MESSAGE_UNPIN
   STICKER_DELETE
+  EMOJI_DELETE
 }

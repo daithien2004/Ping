@@ -35,6 +35,44 @@ describe('parseMarkdown — tập con markdown (TG.4)', () => {
     expect(emoji?.type === 'emoji' && emoji.unicode).toBe('😄');
   });
 
+  it('token emoji tùy chỉnh (TG.24) thành customEmoji node, đúng name và id', () => {
+    const id = '3fa85f64-5717-4562-b3fc-2c963f66afa6';
+    const [p] = parseMarkdown(`chào :cuoi:${id} nhé`) as [
+      { type: 'paragraph'; children: MarkdownNode[] },
+    ];
+    expect(p.children.map((node) => node.type)).toEqual(['text', 'customEmoji', 'text']);
+    const node = p.children[1]!;
+    expect(node.type === 'customEmoji' && node.name === 'cuoi' && node.id === id).toBe(true);
+  });
+
+  it('token tùy chỉnh ĐẶT TRƯỚC shortcode: tên có chữ số vẫn nuốt trọn, không bẻ đôi', () => {
+    const id = '3fa85f64-5717-4562-b3fc-2c963f66afa6';
+    const [p] = parseMarkdown(`:pepe2:${id}`) as [{ type: 'paragraph'; children: MarkdownNode[] }];
+    expect(p.children).toHaveLength(1);
+    const node = p.children[0]!;
+    expect(node.type === 'customEmoji' && node.name === 'pepe2').toBe(true);
+  });
+
+  it('uuid sai hình thức không thành customEmoji node (fallback shortcode/text như cũ)', () => {
+    const [p] = parseMarkdown(':cuoi:khong-phai-uuid :smile:') as [
+      { type: 'paragraph'; children: MarkdownNode[] },
+    ];
+    expect(p.children.some((node) => node.type === 'customEmoji')).toBe(false);
+    const emoji = p.children.find((node) => node.type === 'emoji');
+    expect(emoji?.type === 'emoji' && emoji.unicode).toBe('😄');
+  });
+
+  it('token tùy chỉnh trong inline code không parse (giữ nguyên văn)', () => {
+    const id = '3fa85f64-5717-4562-b3fc-2c963f66afa6';
+    const [p] = parseMarkdown(`\`:cuoi:${id}\``) as [
+      { type: 'paragraph'; children: MarkdownNode[] },
+    ];
+    expect(p.children).toHaveLength(1);
+    const only = p.children[0]!;
+    const code = only.type === 'inlineCode' ? only.children[0]! : undefined;
+    expect(code?.type === 'text' && code.value).toBe(`:cuoi:${id}`);
+  });
+
   it('mention token thành mention node', () => {
     const [p] = parseMarkdown('gọi @alice vào đây') as [
       { type: 'paragraph'; children: MarkdownNode[] },
@@ -118,6 +156,7 @@ describe('parseMarkdown — bộ test XSS (OWASP, scheme, lồng, Unicode)', () 
         'link',
         'mention',
         'emoji',
+        'customEmoji',
         'quoteBlock',
         'listBlock',
         'paragraph',

@@ -1,4 +1,4 @@
-import { AttachmentLimits, STICKER_FILE_BYTES } from '@ping/shared';
+import { AttachmentLimits, EMOJI_FILE_BYTES, STICKER_FILE_BYTES } from '@ping/shared';
 import { fileTypeFromBuffer } from 'file-type';
 import sharp from 'sharp';
 
@@ -7,20 +7,33 @@ export class InvalidFile extends Error {}
 /** Kích thước xuất tối đa của sticker (ADR-0067): fit trong 512×512, không phóng to. */
 const STICKER_MAX_EDGE = 512;
 
+/** Kích thước xuất tối đa của custom emoji (ADR-0068): chuẩn 128×128. */
+const EMOJI_MAX_EDGE = 128;
+
+/** Tham số kiểm định ảnh biểu cảm: trần tệp gốc + cạnh xuất tối đa (sticker/emoji). */
+export interface ExpressionFileOptions {
+  maxBytes: number;
+  maxEdge: number;
+}
+
 /** Chữ ký chunk `acTL` của APNG — PNG tĩnh hợp lệ không bao giờ chứa chuỗi này. */
 const APNG_SIGNATURE = Buffer.from('acTL', 'ascii');
 
 /**
- * Kiểm định sticker (TG.22, ADR-0067): PNG/WebP tĩnh và WebP động (APNG vào được ở kiểm
- * định — file-type trả `image/png` — rồi reencode về WebP động). Không nhận SVG/HTML
- * (file-type không nhận diện được → từ chối sẵn) hay JPEG. Ảnh TĨNH lớn hơn 512×512 bị
- * từ chối (người upload phải tựresize); ảnh ĐỘNG được reencode fit trong 512×512.
- * Trả về thêm `thumbnail` = khung tĩnh (khung đầu của ảnh động) để
- * `prefers-reduced-motion` hiển thị thay cho bản động.
+ * Kiểm định ảnh biểu cảm (TG.22/TG.24) với tham số riêng cho sticker và emoji
+ * (ADR-0068 mục 2 — cùng một luồng, khác trần tệp và cạnh xuất): PNG/WebP tĩnh và
+ * WebP động (APNG vào được ở kiểm định — file-type trả `image/png` — rồi reencode về
+ * WebP động). Không nhận SVG/HTML (file-type không nhận diện được → từ chối sẵn) hay
+ * JPEG. Ảnh TĨNH lớn hơn `maxEdge` bị từ chối (người upload phải tự resize); ảnh ĐỘNG
+ * được reencode fit trong `maxEdge`×`maxEdge`. Trả về thêm `thumbnail` = khung tĩnh
+ * (khung đầu của ảnh động) để `prefers-reduced-motion` hiển thị thay cho bản động.
  */
-export async function validateStickerFile(bytes: Buffer) {
+export async function validateImageFile(
+  bytes: Buffer,
+  { maxBytes, maxEdge }: ExpressionFileOptions,
+) {
   try {
-    if (!bytes.length || bytes.length > STICKER_FILE_BYTES) throw new InvalidFile();
+    if (!bytes.length || bytes.length > maxBytes) throw new InvalidFile();
     const type = await fileTypeFromBuffer(bytes);
     // file-type trả APNG với mime riêng `image/apng` (không phải image/png).
     if (!type || !['image/png', 'image/apng', 'image/webp'].includes(type.mime))
@@ -46,13 +59,12 @@ export async function validateStickerFile(bytes: Buffer) {
       (meta.pages ?? 1) > 1 ||
       type.mime === 'image/apng' ||
       (type.mime === 'image/png' && bytes.includes(APNG_SIGNATURE));
-    if (!animated && (meta.width > STICKER_MAX_EDGE || meta.height > STICKER_MAX_EDGE))
-      throw new InvalidFile();
+    if (!animated && (meta.width > maxEdge || meta.height > maxEdge)) throw new InvalidFile();
     const output = await image
       .rotate()
       .resize({
-        width: STICKER_MAX_EDGE,
-        height: STICKER_MAX_EDGE,
+        width: maxEdge,
+        height: maxEdge,
         fit: 'inside',
         withoutEnlargement: true,
       })
@@ -67,8 +79,8 @@ export async function validateStickerFile(bytes: Buffer) {
     })
       .rotate()
       .resize({
-        width: STICKER_MAX_EDGE,
-        height: STICKER_MAX_EDGE,
+        width: maxEdge,
+        height: maxEdge,
         fit: 'inside',
         withoutEnlargement: true,
       })
@@ -88,6 +100,16 @@ export async function validateStickerFile(bytes: Buffer) {
     if (error instanceof InvalidFile) throw error;
     throw new InvalidFile('Invalid file');
   }
+}
+
+/** TG.22: sticker — tệp gốc ≤512 KiB, xuất ≤512×512 (ADR-0067). */
+export function validateStickerFile(bytes: Buffer) {
+  return validateImageFile(bytes, { maxBytes: STICKER_FILE_BYTES, maxEdge: STICKER_MAX_EDGE });
+}
+
+/** TG.24: custom emoji — tệp gốc ≤256 KiB, xuất ≤128×128 (ADR-0068). */
+export function validateCustomEmojiFile(bytes: Buffer) {
+  return validateImageFile(bytes, { maxBytes: EMOJI_FILE_BYTES, maxEdge: EMOJI_MAX_EDGE });
 }
 
 /** Conservative binary allowlist. Originals never become publicly reachable. */

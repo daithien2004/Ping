@@ -177,7 +177,8 @@
       "serverUpdate": "Renamed server",
       "serverInviteRegenerate": "Created new invite code",
       "channelUpdate": "Renamed channel",
-      "stickerDelete": "Sticker deleted"
+      "stickerDelete": "Sticker deleted",
+      "emojiDelete": "Emoji deleted"
     },
     "channels": "Channels",
     "channelActions": "Actions",
@@ -198,7 +199,21 @@
     "stickersEmpty": "No stickers yet.",
     "stickerDeleteTitle": "Delete sticker “{name}”?",
     "stickerDeleteDescription": "Older messages will show a “sticker was deleted” frame.",
-    "stickerDelete": "Delete sticker {name}"
+    "stickerDelete": "Delete sticker {name}",
+    "emojis": "Emoji",
+    "emojiHint": "Upload emojis for this server — up to 50 static + 50 animated. Accepts PNG/WebP up to 256 KB; exported as WebP up to 128×128, animation is kept.",
+    "emojiUpload": "Upload emoji",
+    "emojiUploading": "Uploading… {percent}%",
+    "emojiProcessing": "Validating file…",
+    "emojiName": "Emoji name ([a-z0-9_])",
+    "emojiCreate": "Add emoji",
+    "emojiCreated": "Emoji added.",
+    "emojiDeleted": "Emoji deleted.",
+    "emojisEmpty": "No custom emojis yet.",
+    "emojiDeleteTitle": "Delete emoji \"{name}\"?",
+    "emojiDeleteDescription": "Older messages will show a placeholder.",
+    "emojiDelete": "Delete emoji {name}",
+    "emojiInvalidName": "Name must be a-z, 0-9 or underscores, 2–32 characters"
   },
   "app": {
     "accessDenied": "Can't open this page",
@@ -368,7 +383,10 @@
     "pickEmoji": "Insert emoji {name}",
     "skinTone": "Skin tone",
     "skinToneOption": "Skin tone {n}",
-    "suggestionsLabel": "Emoji suggestions"
+    "suggestionsLabel": "Emoji suggestions",
+    "tabServerEmoji": "Server",
+    "noServerEmojis": "No custom emojis in this server yet.",
+    "pickCustomEmoji": "Insert emoji {name}"
   },
   "landing": {
     "eyebrow": "Realtime chat for small teams",
@@ -415,7 +433,8 @@
     "unknown": "Something went wrong.",
     "unknownWithId": "Something went wrong. Error ID: {requestId}",
     "withReference": "{message} Error ID: {requestId}",
-    "STICKER_LIMIT_REACHED": "This server already has 30 stickers. Delete some before adding more."
+    "STICKER_LIMIT_REACHED": "This server already has 30 stickers. Delete some before adding more.",
+    "EMOJI_LIMIT_REACHED": "This server reached the limit of 50 static or 50 animated emojis."
   },
   "ask": {
     "title": "Ask AI about channel history",

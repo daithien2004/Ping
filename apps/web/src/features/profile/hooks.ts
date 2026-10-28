@@ -77,9 +77,10 @@ export interface ProfileUpload {
  * Upload một tệp hồ sơ qua pipeline TG.6 (ADR-0053): reserve → PUT nhị phân → complete →
  * poll tới `ready`. Luồng đi qua cùng khoá hạn mức, cùng worker kiểm định như tệp tin nhắn.
  * TG.22: scope `sticker` tái dùng đúng luồng này cho màn quản trị sticker của server.
+ * TG.24: scope `customEmoji` tương tự cho màn quản trị emoji (WebP ≤ 128×128, trần 50+50).
  */
 export function useProfileUpload(
-  scope: 'avatar' | 'serverIcon' | 'sticker',
+  scope: 'avatar' | 'serverIcon' | 'sticker' | 'customEmoji',
   serverId?: string,
 ): ProfileUpload {
   const [state, setState] = useState<{

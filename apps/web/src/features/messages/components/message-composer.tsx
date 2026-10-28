@@ -1,6 +1,6 @@
 'use client';
 
-import { createMessageSchema, type StickerDto } from '@ping/shared';
+import { createMessageSchema, customEmojiToken, type StickerDto } from '@ping/shared';
 import { useEffect, useRef, useState, type KeyboardEvent, type RefObject } from 'react';
 import { useTranslations } from 'use-intl';
 import dynamic from 'next/dynamic';
@@ -13,6 +13,7 @@ import { useAttachmentDrafts } from '@/features/attachments/hooks';
 import { useErrorMessage } from '@/lib/error-message';
 import { DraftPreview } from '@/features/attachments/components/draft-preview';
 import { loadRecentStickers, pushRecentSticker } from '@/features/stickers/sticker-utils';
+import { profileImageUrl } from '@/features/profile/hooks';
 
 // Picker chỉ tải khi người dùng bấm nút emoji (TG.23): dataset + lưới không nằm trong
 // bundle ban đầu (ADR-0058). Sticker picker (TG.22) tải động vì cùng lý do.
@@ -25,9 +26,9 @@ const StickerPicker = dynamic(
   { ssr: false },
 );
 
-/** Trích fragment shortcode đang gõ cuối draft: `…:cuo` → 'cuo'; không có → null. */
+/** Trích fragment shortcode đang gõ cuối draft: `…:cuo` → 'cuo' (TG.24: nhận cả [a-z0-9_]). */
 function extractFragment(draft: string): string | null {
-  const match = /:([a-z_]{1,20})$/.exec(draft);
+  const match = /:([a-z0-9_]{1,32})$/.exec(draft);
   return match?.[1] ?? null;
 }
 
@@ -97,9 +98,10 @@ export function MessageComposer({
     if (replyToId) textareaRef?.current?.focus();
   }, [replyToId, textareaRef]);
 
-  // Gợi ý :ten: (TG.23): fragment từ draft; dataset tải động lần đầu gõ ':'.
+  // Gợi ý :ten: (TG.23/TG.24): fragment từ draft; dataset tải động lần đầu gõ ':'. Emoji
+  // server (tùy chỉnh) gộp vào cuối danh sách — mục có `id` là custom.
   const fragment = extractFragment(draft);
-  const suggestions = useEmojiSuggestions(fragment);
+  const suggestions = useEmojiSuggestions(fragment, serverId);
 
   function insertAtCursor(insert: string) {
     const el = resolveTextArea(textareaRef?.current ?? null);
@@ -116,11 +118,14 @@ export function MessageComposer({
   }
 
   function acceptSuggestion(index: number) {
-    const entry = suggestions[index];
-    if (!entry || fragment === null) return;
-    // Thay `:fragment` bằng `:shortcode:` — render qua map markdown (TG.4).
-    const next = `${draft.slice(0, draft.length - fragment.length - 1)}:${entry.shortcode}:`;
-    setDraft(next);
+    const suggestion = suggestions[index];
+    if (!suggestion || fragment === null) return;
+    // Thay `:fragment` bằng token: emoji server (TG.24) chèn `:ten:<id>` (id là nguồn sự
+    // thật), emoji hệ thống chèn `:shortcode:` — render qua map markdown (TG.4).
+    const insert = suggestion.id
+      ? customEmojiToken(suggestion.shortcode, suggestion.id)
+      : `:${suggestion.shortcode}:`;
+    setDraft(`${draft.slice(0, draft.length - fragment.length - 1)}${insert}`);
     setSuggestionIndex(0);
   }
 
@@ -260,8 +265,14 @@ export function MessageComposer({
           {pickerOpen && (
             <div className="mb-2 flex justify-start">
               <EmojiPicker
+                serverId={serverId}
                 onPick={(unicode) => {
                   insertAtCursor(unicode);
+                  setPickerOpen(false);
+                }}
+                onPickCustom={(token) => {
+                  // TG.24: emoji server chèn token `:ten:<id>` tại con trỏ.
+                  insertAtCursor(token);
                   setPickerOpen(false);
                 }}
               />
@@ -288,7 +299,7 @@ export function MessageComposer({
               data-testid="emoji-suggestions"
             >
               {suggestions.map((entry, index) => (
-                <li key={entry.shortcode}>
+                <li key={entry.id ?? entry.shortcode}>
                   <button
                     type="button"
                     role="option"
@@ -298,11 +309,23 @@ export function MessageComposer({
                       index === suggestionIndex ? 'bg-accent' : 'hover:bg-accent/60'
                     }`}
                   >
-                    <span className="text-lg leading-none">{entry.unicode}</span>
+                    {entry.imageUrl ? (
+                      // Emoji server (TG.24): ảnh nhỏ thay vì ký tự unicode.
+                      <img
+                        src={profileImageUrl(entry.imageUrl)}
+                        alt=""
+                        loading="lazy"
+                        className="h-5 w-5 object-contain"
+                      />
+                    ) : (
+                      <span className="text-lg leading-none">{entry.unicode}</span>
+                    )}
                     <code className="text-xs text-muted-foreground">:{entry.shortcode}:</code>
-                    <span className="truncate text-xs text-muted-foreground">
-                      {entry.keywords[0]}
-                    </span>
+                    {entry.keywords[0] && (
+                      <span className="truncate text-xs text-muted-foreground">
+                        {entry.keywords[0]}
+                      </span>
+                    )}
                   </button>
                 </li>
               ))}

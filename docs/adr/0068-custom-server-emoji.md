@@ -1,6 +1,7 @@
 # ADR-0068: Emoji tùy chỉnh theo server (custom emoji)
 
-Status: proposed — chờ OWNER duyệt (TG.24)
+Status: accepted — kế hoạch TG.24 được OWNER duyệt trong phiên 2026-10-28 ("tiếp đi" sau khi
+đọc tóm tắt ADR; bắt đầu triển khai ngay trong phiên)
 Date: 2026-10-28
 
 ## Context

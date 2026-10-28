@@ -177,7 +177,8 @@
       "serverUpdate": "Đổi tên server",
       "serverInviteRegenerate": "Tạo mã mời mới",
       "channelUpdate": "Đổi tên channel",
-      "stickerDelete": "Xoá sticker"
+      "stickerDelete": "Xoá sticker",
+      "emojiDelete": "Xoá emoji"
     },
     "channels": "Kênh",
     "channelActions": "Thao tác",
@@ -198,7 +199,21 @@
     "stickersEmpty": "Server chưa có sticker nào.",
     "stickerDeleteTitle": "Xóa sticker “{name}”?",
     "stickerDeleteDescription": "Các tin cũ sẽ hiển thị khung “sticker đã bị xóa”.",
-    "stickerDelete": "Xóa sticker {name}"
+    "stickerDelete": "Xóa sticker {name}",
+    "emojis": "Emoji",
+    "emojiHint": "Tải emoji lên cho server — tối đa 50 tĩnh + 50 động. Nhận PNG/WebP ≤ 256 KB; xuất WebP ≤ 128×128, ảnh động được giữ lại.",
+    "emojiUpload": "Tải emoji lên",
+    "emojiUploading": "Đang tải lên… {percent}%",
+    "emojiProcessing": "Đang kiểm định tệp…",
+    "emojiName": "Tên emoji ([a-z0-9_])",
+    "emojiCreate": "Thêm emoji",
+    "emojiCreated": "Đã thêm emoji.",
+    "emojiDeleted": "Đã xóa emoji.",
+    "emojisEmpty": "Server chưa có emoji nào.",
+    "emojiDeleteTitle": "Xóa emoji \"{name}\"?",
+    "emojiDeleteDescription": "Các tin cũ sẽ hiển thị placeholder.",
+    "emojiDelete": "Xóa emoji {name}",
+    "emojiInvalidName": "Tên chỉ gồm a-z, 0-9, dấu gạch dưới, 2–32 ký tự"
   },
   "app": {
     "accessDenied": "Không truy cập được",
@@ -368,7 +383,10 @@
     "pickEmoji": "Chèn emoji {name}",
     "skinTone": "Tông da",
     "skinToneOption": "Tông da {n}",
-    "suggestionsLabel": "Gợi ý emoji"
+    "suggestionsLabel": "Gợi ý emoji",
+    "tabServerEmoji": "Của server",
+    "noServerEmojis": "Server chưa có emoji nào.",
+    "pickCustomEmoji": "Chèn emoji {name}"
   },
   "landing": {
     "eyebrow": "Chat realtime cho nhóm nhỏ",
@@ -415,7 +433,8 @@
     "unknown": "Có lỗi xảy ra.",
     "unknownWithId": "Có lỗi xảy ra. Mã lỗi: {requestId}",
     "withReference": "{message} Mã lỗi: {requestId}",
-    "STICKER_LIMIT_REACHED": "Server này đã có đủ 30 sticker. Xoá bớt trước khi thêm."
+    "STICKER_LIMIT_REACHED": "Server này đã có đủ 30 sticker. Xoá bớt trước khi thêm.",
+    "EMOJI_LIMIT_REACHED": "Server này đã đạt trần 50 emoji tĩnh hoặc 50 emoji động."
   },
   "ask": {
     "title": "Hỏi AI về lịch sử kênh",

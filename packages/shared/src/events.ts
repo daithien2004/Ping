@@ -20,6 +20,7 @@ export const ServerEvents = {
   ReactionRemoved: 'reaction.removed',
   MessagePinned: 'message.pinned',
   MessageUnpinned: 'message.unpinned',
+  ExpressionsUpdated: 'expressions.updated',
   UserUpdated: 'user.updated',
   MemberUpdated: 'member.updated',
   ServerUpdated: 'server.updated',
@@ -179,6 +180,15 @@ export interface MemberUpdatedPayload {
   user: { id: string; displayName: string; avatarUrl: string | null };
 }
 
+/**
+ * Biểu cảm của server vừa đổi (TG.24, ADR-0068): tạo/xóa custom emoji hoặc sticker. Payload
+ * chỉ mang serverId — client invalidate toàn bộ query biểu cảm (emoji map + sticker list) để
+ * hai tab tự đồng bộ; danh sách mới lấy qua REST.
+ */
+export interface ExpressionsUpdatedPayload {
+  serverId: string;
+}
+
 /** Tên/icon server vừa đổi (TG.7); phát tới room `server:<id>`. */
 export interface ServerUpdatedPayload {
   id: string;
@@ -211,6 +221,7 @@ export interface ServerToClientEvents {
   [ServerEvents.ReactionRemoved]: (payload: ReactionChangedPayload) => void;
   [ServerEvents.MessagePinned]: (payload: MessagePinnedPayload) => void;
   [ServerEvents.MessageUnpinned]: (payload: MessageUnpinnedPayload) => void;
+  [ServerEvents.ExpressionsUpdated]: (payload: ExpressionsUpdatedPayload) => void;
   [ServerEvents.UserUpdated]: (payload: UserUpdatedPayload) => void;
   [ServerEvents.MemberUpdated]: (payload: MemberUpdatedPayload) => void;
   [ServerEvents.ServerUpdated]: (payload: ServerUpdatedPayload) => void;
