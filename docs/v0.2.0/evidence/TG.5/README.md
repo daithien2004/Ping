@@ -109,3 +109,11 @@ của A>` trong `idor.e2e-spec.ts`, unit `aroundWindow`/`prependNewer`/`preserve
   luồng permalink.
 - Kế tiếp theo lịch: TG.2 (reaction — tái dùng emoji picker + permalink để nhảy tới tin được
   reaction).
+
+## Cập nhật 2026-10-28 (sau TG.22)
+
+Test hiệu năng `around` đổi từ MEDIAN sang **MIN của 5 mẫu** (`min10k - minSmall < 150` giữ
+nguyên ngưỡng): runner CI chung bị nhiễu I/O hai mode — cùng truy vấn lần lượt 518 rồi 1205 ms
+— nên median đỏ oan hai lần liên tiếp trên main (chênh 603/503 ms) trong khi local xanh mọi
+lượt. Min là chi phí thật không chứa contention; hai lần CI đỏ đều đạt thoải mái nếu tính min
+(86 và 15 ms). Không đổi ngưỡng, không đụng code sản phẩm — commit `4c29cb0`.
