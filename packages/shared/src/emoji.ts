@@ -306,3 +306,19 @@ export const reactionEmojiSchema = z
   .min(1)
   .max(32)
   .refine(isAllowedReactionEmoji, { message: 'Emoji is not allowed' });
+
+/**
+ * TG.24 (ADR-0068): emoji tùy chỉnh trong reaction lưu token `c:<customEmojiId>` (38 ký tự,
+ * vượt trần 32 của unicode — schema riêng cho token này; API kiểm tiếp emoji thuộc server của
+ * tin và chưa xóa, schema chỉ chặn HÌNH THỨC).
+ */
+export const CUSTOM_EMOJI_REACTION_TOKEN =
+  /^c:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/;
+
+export const reactionTokenSchema = z
+  .string()
+  .refine(
+    (value) =>
+      reactionEmojiSchema.safeParse(value).success || CUSTOM_EMOJI_REACTION_TOKEN.test(value),
+    { message: 'Emoji is not allowed' },
+  );

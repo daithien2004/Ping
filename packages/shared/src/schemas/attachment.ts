@@ -10,10 +10,11 @@ export const AttachmentLimits = {
 } as const;
 
 /** TG.7: đích của một upload. `message` là luồng TG.6; avatar/icon tái dùng pipeline (ADR-0053);
- *  `sticker` là tài nguyên biểu cảm của server (TG.22, ADR-0067). */
-export type UploadScope = 'message' | 'avatar' | 'serverIcon' | 'sticker';
+ *  `sticker` là tài nguyên biểu cảm của server (TG.22, ADR-0067); `customEmoji` là emoji theo
+ *  server (TG.24, ADR-0068). */
+export type UploadScope = 'message' | 'avatar' | 'serverIcon' | 'sticker' | 'customEmoji';
 
-export const uploadScopes = ['message', 'avatar', 'serverIcon', 'sticker'] as const;
+export const uploadScopes = ['message', 'avatar', 'serverIcon', 'sticker', 'customEmoji'] as const;
 export const uploadScopeSchema = z.enum(uploadScopes);
 
 /** Ảnh hồ sơ nhỏ hơn tệp tin nhắn: vẫn đi qua cùng giới hạn 10 MiB của pipeline. */
@@ -22,10 +23,12 @@ export const PROFILE_FILE_BYTES = 5 * 1024 * 1024;
 /** Sticker nhỏ hơn nữa (ADR-0067): tệp gốc tối đa 512 KiB, worker xuất WebP ≤ 512×512. */
 export const STICKER_FILE_BYTES = 512 * 1024;
 
+/** Custom emoji (ADR-0068): tệp gốc tối đa 256 KiB, worker xuất WebP ≤ 128×128. */
+export const EMOJI_FILE_BYTES = 256 * 1024;
+
 /**
  * Luồng TG.6: `message` bắt buộc channelId (không kèm serverId — server suy từ channel);
- * `avatar` không thuộc server/channel nào; `serverIcon` gắn server, không qua channel;
- * `sticker` gắn server (người upload phải có `manage Sticker` của server đó).
+ * `avatar` không thuộc server/channel nào; `serverIcon`/`sticker`/`customEmoji` gắn server.
  */
 export const createUploadSchema = z
   .object({
@@ -51,6 +54,12 @@ export const createUploadSchema = z
       if (!value.serverId) ctx.addIssue({ code: 'custom', message: 'serverId required' });
       if (value.sizeBytes > STICKER_FILE_BYTES)
         ctx.addIssue({ code: 'custom', message: 'sticker file too large' });
+      return;
+    }
+    if (value.scope === 'customEmoji') {
+      if (!value.serverId) ctx.addIssue({ code: 'custom', message: 'serverId required' });
+      if (value.sizeBytes > EMOJI_FILE_BYTES)
+        ctx.addIssue({ code: 'custom', message: 'emoji file too large' });
       return;
     }
     if (value.sizeBytes > PROFILE_FILE_BYTES)

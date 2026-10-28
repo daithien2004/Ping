@@ -28,6 +28,8 @@ export const ErrorCodes = {
   ATTACHMENT_ALREADY_BOUND: 'ATTACHMENT_ALREADY_BOUND',
   /** Server đã có 30 sticker (TG.22, ADR-0067). */
   STICKER_LIMIT_REACHED: 'STICKER_LIMIT_REACHED',
+  /** Server đã đạt trần emoji tùy chỉnh (50 tĩnh hoặc 50 động — TG.24, ADR-0068). */
+  EMOJI_LIMIT_REACHED: 'EMOJI_LIMIT_REACHED',
 } as const;
 
 export type ErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes];
