@@ -29,6 +29,24 @@ export interface AbilityContext {
 }
 
 /**
+ * TG.9 (ADR-0070): quyền trong channel DM — hai participant ngang hàng, không role/owner.
+ * Luật nằm cạnh `defineAbilityFor` theo quy tắc "quyền chỉ định nghĩa ở packages/shared".
+ * Không có MANAGE_MESSAGES: chỉ tác giả sửa/xóa được tin của mình (nhánh moderation của
+ * Message.remove không bao giờ chạy với DM); ghim là hành động của participant (mục 10).
+ */
+export function defineDmAbilityFor(userId: string): AppAbility {
+  const { can, build } = new AbilityBuilder<AppAbility>(createMongoAbility);
+  can('view', 'Message');
+  can('view', 'Attachment');
+  can('create', 'Message');
+  can('create', 'Attachment');
+  can('create', 'Reaction');
+  can(['update', 'delete'], 'Message', { authorId: userId });
+  can(['create', 'delete'], 'Pin');
+  return build();
+}
+
+/**
  * Build rules for a verified member of one server. Callers must check membership
  * and ensure the resource belongs to that server before applying these rules.
  */
