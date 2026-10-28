@@ -143,7 +143,8 @@ export interface MentionCreatedPayload {
  */
 export interface ChannelActivityPayload {
   channelId: string;
-  serverId: string;
+  /** TG.9 (ADR-0070): DM không thuộc server — badge realtime đi room `user:<id>` với null. */
+  serverId: string | null;
   messageId: string;
   authorId: string;
 }
