@@ -58,12 +58,16 @@ export class AttachmentWorker implements OnModuleInit, OnModuleDestroy {
           // mồ côi. Sticker của GÓI HỆ THỐNG (serverId NULL, seed tạo — TG.22) không thuộc
           // server nào nên loại khỏi mọi nhánh dọn: vòng đời của nó là "sống mãi" theo seed.
           // Custom emoji luôn có serverId (ADR-0068) nên không cần nhánh loại trừ.
+          // TG.25: mồ côi theo TUỔI chỉ áp dụng cho scope 'message' — avatar/serverIcon KHÔNG
+          // BAO GIỜ có messageId nên row 'ready' đã rawRemoved của chúng khớp nhánh mồ côi
+          // vĩnh viễn: worker claim lại mỗi tick (LIMIT 1 chốt ở hàng CŨ NHẤT) và trừ
+          // quotaBytes vô hạn, đói cả hàng đợi upload (bắt được khi chạy suite TG.25).
           const rows = await tx.$queryRaw<Array<{ id: string }>>`
         SELECT id FROM "Attachment" a WHERE "nextRetryAt" <= NOW() AND
           NOT (scope = 'sticker' AND "serverId" IS NULL) AND (
           status IN ('queued', 'deleting') OR (status IN ('ready', 'rejected') AND NOT "rawRemoved") OR
           (status NOT IN ('deleted', 'rejected') AND (
-            ("messageId" IS NULL AND "createdAt" < NOW() - INTERVAL '1 hour') OR
+            (scope = 'message' AND "messageId" IS NULL AND "createdAt" < NOW() - INTERVAL '1 hour') OR
             (scope = 'message' AND (
               EXISTS (SELECT 1 FROM "Message" m WHERE m.id = a."messageId" AND m."deletedAt" IS NOT NULL) OR
               NOT EXISTS (SELECT 1 FROM "Channel" c WHERE c.id = a."channelId")
