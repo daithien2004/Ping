@@ -204,6 +204,14 @@ model Message {
   // TG.22: sticker của tin; xóa cứng sticker (cascade từ gói khi server xóa) → SetNull,
   // tin cũ render khung "sticker đã bị xóa" theo deletedAt của Sticker còn theo id.
   stickerId  String?                  @db.Uuid
+  // TG.25 (ADR-0069): tin GIF — URL + kích thước + nhà cung cấp chốt TẠI THỜI ĐIỂM GỬI là
+  // nguồn sự thật (Tenor đổi link thì tin cũ hiển thị khối lỗi, chấp nhận như sticker bị
+  // xóa). Không bảng riêng: GIF không phải tài sản của server — không trần, không quyền
+  // riêng, không lifecycle; xóa tin là hết. Nullable nên expand an toàn rolling deploy.
+  gifUrl      String?
+  gifWidth    Int?
+  gifHeight   Int?
+  gifProvider String?
   // TG.1: reply trỏ tới tin gốc CÙNG channel (service kiểm); SetNull khi tin gốc bị xóa cứng.
   replyToId  String?                  @db.Uuid
   // TG.3 (ADR-0066): ghim. NULL ở pinnedAt = tin không được ghim; xóa mềm thì service gỡ ghim

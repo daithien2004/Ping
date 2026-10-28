@@ -9,6 +9,7 @@ import {
   reactionTokenSchema,
   type AppAbility,
   type CreateMessageInput,
+  type MessageGifPreview,
   type MessagePinResult,
   type MessageReactionDto,
   type MessageReactionSummary,
@@ -53,6 +54,12 @@ const messageWithAuthor = {
       attachment: { select: { id: true, width: true, height: true } },
     },
   },
+  // TG.25: 4 cột GIF của tin (null với tin khác); preview dựng thẳng ở toMessageDto,
+  // không resolve thêm URL như sticker.
+  gifUrl: true,
+  gifWidth: true,
+  gifHeight: true,
+  gifProvider: true,
   // TG.1: xem trước tin gốc cho khối trích dẫn (kể cả tin đã soft-delete — cờ `deleted`).
   replyTo: {
     select: {
@@ -122,25 +129,58 @@ function stickerPreview(
   };
 }
 
-/** `Message.kind` là cột String — chuẩn hóa về hai giá trị DTO biết trước khi phát payload. */
-function messageKind(kind: string | null | undefined): 'text' | 'sticker' {
-  return kind === 'sticker' ? 'sticker' : 'text';
+/** `Message.kind` là cột String — chuẩn hóa về ba giá trị DTO biết trước khi phát payload. */
+function messageKind(kind: string | null | undefined): 'text' | 'sticker' | 'gif' {
+  if (kind === 'sticker') return 'sticker';
+  if (kind === 'gif') return 'gif';
+  return 'text';
+}
+
+/** Bốn cột GIF trên Message (TG.25) — select `messageWithAuthor` luôn trả đủ. */
+type GifColumns = {
+  gifUrl: string | null;
+  gifWidth: number | null;
+  gifHeight: number | null;
+  gifProvider: string | null;
+};
+
+/**
+ * Preview GIF trong tin (TG.25): dựng thẳng từ cột — URL chốt lúc gửi là nguồn sự thật,
+ * không resolve thêm như sticker. `gifProvider` là cột String; API hiện chỉ nhận host
+ * allowlist của Tenor nên mọi giá trị khác quy về 'tenor' cho khớp literal DTO.
+ */
+function gifPreview(row: GifColumns): MessageGifPreview | null {
+  if (!row.gifUrl) return null;
+  return {
+    url: row.gifUrl,
+    width: row.gifWidth ?? 0,
+    height: row.gifHeight ?? 0,
+    provider: (row.gifProvider ?? 'tenor') as MessageGifPreview['provider'],
+  };
 }
 
 /** Hàng Prisma (select `messageWithAuthor`) → DTO: `replyTo` preview + cảm xúc đã tổng hợp. */
 function toMessageDto<
-  T extends { replyTo: Parameters<typeof replyPreview>[0]; sticker: StickerSelect | null },
+  T extends {
+    kind: string;
+    replyTo: Parameters<typeof replyPreview>[0];
+    sticker: StickerSelect | null;
+  } & GifColumns,
 >(
   row: T,
   reactions: MessageReactionDto[] = [],
   stickerUrls: ReadonlyMap<string, { url: string; previewUrl: string }> = new Map(),
 ) {
-  const { replyTo, sticker, ...rest } = row;
+  // Cột GIF thô không được lọt ra response — gói lại thành preview `gif`.
+  const { replyTo, sticker, gifUrl, gifWidth, gifHeight, gifProvider, ...rest } = row;
+  const gif = gifPreview({ gifUrl, gifWidth, gifHeight, gifProvider });
   return {
     ...rest,
+    kind: messageKind(rest.kind),
     replyTo: replyPreview(replyTo),
     reactions,
     ...(sticker ? { sticker: stickerPreview(sticker, stickerUrls) } : {}),
+    ...(gif ? { gif } : {}),
   };
 }
 
@@ -405,6 +445,18 @@ export class MessagesService {
             ...(input.stickerId !== undefined
               ? { kind: 'sticker', stickerId: input.stickerId }
               : {}),
+            // TG.25: tin GIF lưu đúng bốn cột chốt tại thời điểm gửi — URL đã qua host
+            // allowlist ở schema (https + media.tenor.com) nên service không kiểm lại;
+            // provider hiện chỉ có Tenor. Content rỗng và không attachment do schema chặn.
+            ...(input.gif
+              ? {
+                  kind: 'gif',
+                  gifUrl: input.gif.url,
+                  gifWidth: input.gif.width,
+                  gifHeight: input.gif.height,
+                  gifProvider: 'tenor',
+                }
+              : {}),
             ...(replyToId !== undefined ? { replyToId } : {}),
           },
           select: messageWithAuthor,
@@ -420,6 +472,7 @@ export class MessagesService {
             data: mentions.map((mention) => ({ messageId: created.id, ...mention })),
           });
         }
+        const createdGif = gifPreview(created);
         await this.outbox.write(tx, {
           aggregateType: 'Message',
           aggregateId: created.id,
@@ -436,6 +489,7 @@ export class MessagesService {
             ...(created.sticker
               ? { sticker: stickerPreview(created.sticker, await this.stickerUrlsFor([created])) }
               : {}),
+            ...(createdGif ? { gif: createdGif } : {}),
             replyTo: replyPreview(created.replyTo),
             attachments: created.attachments,
           },
@@ -443,6 +497,7 @@ export class MessagesService {
         return created;
       });
       const stickerUrls = await this.stickerUrlsFor([message]);
+      const messageGif = gifPreview(message);
       this.realtime.emitToChannel(channelId, ServerEvents.MessageCreated, {
         id: message.id,
         channelId,
@@ -453,6 +508,7 @@ export class MessagesService {
         nonce: message.nonce,
         kind: messageKind(message.kind),
         ...(message.sticker ? { sticker: stickerPreview(message.sticker, stickerUrls) } : {}),
+        ...(messageGif ? { gif: messageGif } : {}),
         replyTo: replyPreview(message.replyTo),
         attachments: message.attachments,
       });
@@ -499,6 +555,11 @@ export class MessagesService {
     // TG.22: tin sticker không có nội dung để sửa — sửa là đổi loại tin, chặn thẳng.
     if (message.kind === 'sticker') {
       throw new BadRequestException('Sticker messages cannot be edited');
+    }
+
+    // TG.25: tin GIF cũng vậy — URL chốt lúc gửi, không có nội dung để sửa.
+    if (message.kind === 'gif') {
+      throw new BadRequestException('Gif messages cannot be edited');
     }
 
     // Sửa tin = parse lại mention: xoá toàn bộ hàng cũ rồi ghi lại từ nội dung mới
