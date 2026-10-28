@@ -57,6 +57,12 @@ export class AttachmentsService {
       serverId = input.serverId!;
       const ability = await this.ability.createForUserFresh(serverId, userId);
       if (!ability.can('manage', 'Sticker')) throw new ForbiddenException();
+    } else if (input.scope === 'customEmoji') {
+      // TG.24: emoji tùy chỉnh thuộc server; cùng nhóm biểu cảm nên tái dùng bit
+      // `manage Sticker` (ADR-0068 mục 5 — không thêm subject CASL mới).
+      serverId = input.serverId!;
+      const ability = await this.ability.createForUserFresh(serverId, userId);
+      if (!ability.can('manage', 'Sticker')) throw new ForbiddenException();
     }
     return this.prisma.$transaction(async (tx) => {
       // Consistent order: user then server. Both scopes include pending reservations.
@@ -122,9 +128,11 @@ export class AttachmentsService {
   private async owned(id: string, userId: string) {
     const row = await this.prisma.attachment.findUnique({ where: { id } });
     if (!row || row.uploaderId !== userId) throw new NotFoundException();
-    // Chỉ uploader đụng được upload avatar/sticker của chính mình (sticker: claim lại kiểm
-    // quyền `manage Sticker` ở StickersService nên không cần tra ability ở đây).
-    if (row.scope === 'avatar' || row.scope === 'sticker') return row;
+    // Chỉ uploader đụng được upload avatar/sticker/emoji của chính mình (sticker/emoji:
+    // claim lại kiểm quyền `manage Sticker` ở Stickers/EmojisService nên không cần tra
+    // ability ở đây).
+    if (row.scope === 'avatar' || row.scope === 'sticker' || row.scope === 'customEmoji')
+      return row;
     if (row.scope === 'serverIcon') {
       const ability = await this.ability.createForUserFresh(row.serverId!, userId);
       if (!ability.can('update', 'Server')) throw new ForbiddenException();
@@ -224,7 +232,7 @@ export class AttachmentsService {
     tx: Prisma.TransactionClient,
     userId: string,
     attachmentId: string,
-    scope: 'avatar' | 'serverIcon' | 'sticker',
+    scope: 'avatar' | 'serverIcon' | 'sticker' | 'customEmoji',
   ) {
     await tx.$queryRaw`SELECT id FROM "Attachment" WHERE id = ${attachmentId}::uuid FOR UPDATE`;
     const row = await tx.attachment.findUnique({ where: { id: attachmentId } });
@@ -253,6 +261,20 @@ export class AttachmentsService {
    */
   async claimStickerAttachment(tx: Prisma.TransactionClient, userId: string, attachmentId: string) {
     return this.claimProfileAttachment(tx, userId, attachmentId, 'sticker');
+  }
+
+  /**
+   * TG.24: claim attachment đã kiểm định làm custom emoji — cùng pattern
+   * `claimStickerAttachment`: đúng scope 'customEmoji', uploader là người gọi, đã `ready`,
+   * chưa gắn; set `boundAt` trong transaction của caller (cùng transaction với việc kiểm
+   * trần 50/50 và tạo hàng CustomEmoji).
+   */
+  async claimCustomEmojiAttachment(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    attachmentId: string,
+  ) {
+    return this.claimProfileAttachment(tx, userId, attachmentId, 'customEmoji');
   }
 
   /** Attachment đang được tham chiếu bởi avatarUrl/iconUrl cũ → worker dọn tệp và giải phóng hạn mức. */
@@ -342,10 +364,38 @@ export class AttachmentsService {
    * hàng) — sticker thiếu/tệp chưa ready bị bỏ khỏi map, caller không nhận URL của chúng.
    */
   async stickerUrlsMany(ids: string[]): Promise<Map<string, { url: string; previewUrl: string }>> {
+    return this.expressionUrlsMany(ids, 'sticker');
+  }
+
+  /**
+   * TG.24: cặp URL cho custom emoji (pattern `stickerUrls`) — bản chính (động nếu emoji
+   * động) và khung tĩnh 30 ngày.
+   */
+  async emojiUrls(id: string): Promise<{ url: string; previewUrl: string }> {
+    const row = await this.prisma.attachment.findUnique({ where: { id } });
+    if (!row || row.scope !== 'customEmoji' || row.status !== 'ready')
+      throw new NotFoundException();
+    const expires = Math.floor(Date.now() / 1000) + AttachmentLimits.PROFILE_URL_SECONDS;
+    return {
+      url: `/api/v1/attachments/${id}/file?expires=${expires}&signature=${this.profileSign(id, expires, false)}`,
+      previewUrl: `/api/v1/attachments/${id}/file?expires=${expires}&signature=${this.profileSign(id, expires, true)}&thumbnail=1`,
+    };
+  }
+
+  /** TG.24: cặp URL cho NHIỀU custom emoji — pattern `stickerUrlsMany`, chỉ scope customEmoji. */
+  async emojiUrlsMany(ids: string[]): Promise<Map<string, { url: string; previewUrl: string }>> {
+    return this.expressionUrlsMany(ids, 'customEmoji');
+  }
+
+  /** Cốt chung của cặp URL biểu cảm (sticker/emoji) theo scope — tránh sao chép ký HMAC. */
+  private async expressionUrlsMany(
+    ids: string[],
+    scope: 'sticker' | 'customEmoji',
+  ): Promise<Map<string, { url: string; previewUrl: string }>> {
     const map = new Map<string, { url: string; previewUrl: string }>();
     if (ids.length === 0) return map;
     const rows = await this.prisma.attachment.findMany({
-      where: { id: { in: ids }, scope: 'sticker', status: 'ready' },
+      where: { id: { in: ids }, scope, status: 'ready' },
       select: { id: true },
     });
     const expires = Math.floor(Date.now() / 1000) + AttachmentLimits.PROFILE_URL_SECONDS;

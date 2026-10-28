@@ -7,6 +7,7 @@ import {
 import {
   ErrorCodes,
   Limits,
+  ServerEvents,
   type CreateStickerInput,
   type StickerDto,
   type StickerListResponse,
@@ -15,6 +16,7 @@ import {
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
 import { AuditService } from '../audit/audit.service.js';
 import { AttachmentsService } from '../attachments/attachments.service.js';
+import { RealtimeService } from '../realtime/realtime.service.js';
 
 type StickerWithPack = {
   id: string;
@@ -46,6 +48,7 @@ export class StickersService {
     private readonly prisma: PrismaService,
     private readonly attachments: AttachmentsService,
     private readonly audit: AuditService,
+    private readonly realtime: RealtimeService,
   ) {}
 
   /**
@@ -102,6 +105,9 @@ export class StickersService {
           } satisfies StickerWithPack,
         };
       });
+      // TG.24 (ADR-0068 mục 6): một event `expressions.updated` chung cho cả biểu cảm —
+      // client invalidate qk.stickers + qk.emojis nên hai tab tự đồng bộ.
+      this.realtime.emitToServer(serverId, ServerEvents.ExpressionsUpdated, { serverId });
       return toStickerDto(sticker, await this.attachments.stickerUrls(input.attachmentId));
     } catch (error) {
       if (
@@ -188,6 +194,8 @@ export class StickersService {
         data: { status: 'deleting' },
       });
     });
+    // TG.24: cùng event biểu cảm với emoji — xóa sticker cũng invalidate cache picker/emoji.
+    this.realtime.emitToServer(serverId, ServerEvents.ExpressionsUpdated, { serverId });
     return { id: stickerId };
   }
 

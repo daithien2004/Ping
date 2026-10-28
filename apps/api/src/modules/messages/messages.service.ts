@@ -1,10 +1,12 @@
 import { ForbiddenError, subject } from '@casl/ability';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import {
+  CUSTOM_EMOJI_REACTION_TOKEN,
+  CUSTOM_EMOJI_TOKEN_PATTERN,
   ErrorCodes,
   Limits,
   ServerEvents,
-  reactionEmojiSchema,
+  reactionTokenSchema,
   type AppAbility,
   type CreateMessageInput,
   type MessagePinResult,
@@ -15,6 +17,7 @@ import {
   type ReactionUsersQuery,
 } from '@ping/shared';
 import { isUniqueConstraintError } from '../../common/utils/prisma-errors.js';
+import type { Prisma } from '../../generated/prisma/client.js';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
 import { OutboxService } from '../../infra/events/outbox.service.js';
 import { AbilityFactory } from '../ability/ability.factory.js';
@@ -357,6 +360,23 @@ export class MessagesService {
             throw new BadRequestException({
               code: ErrorCodes.BAD_REQUEST,
               message: 'Sticker unavailable',
+            });
+          }
+        }
+        // TG.24: token custom emoji trong nội dung (`:ten:<id>`) — id phải là emoji CÒN SỐNG
+        // thuộc server của channel (IDOR: chỉ dùng emoji server mình thuộc, lỗi 400 không lộ
+        // emoji server khác); token trỏ emoji đã xóa/không tồn tại cho qua (render placeholder
+        // — ADR-0068 mục 3). Số token tự bị chặn bởi trần 4000 ký tự của content nên không
+        // cần trần thêm.
+        const emojiIds = [
+          ...new Set([...input.content.matchAll(CUSTOM_EMOJI_TOKEN_PATTERN)].map((m) => m[2])),
+        ];
+        for (const id of emojiIds) {
+          const emoji = await tx.customEmoji.findFirst({ where: { id, deletedAt: null } });
+          if (emoji && emoji.serverId !== channel.serverId) {
+            throw new BadRequestException({
+              code: ErrorCodes.BAD_REQUEST,
+              message: 'Custom emoji unavailable',
             });
           }
         }
@@ -814,6 +834,8 @@ export class MessagesService {
       // Serialize all reaction writes for this message across API instances. The cap and
       // resulting count must be computed after the preceding writer has committed.
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${messageId}))`;
+      // TG.24: token custom phải trỏ emoji còn sống của server chứa tin (kiểm trong tx).
+      await this.assertCustomReactionEmoji(tx, emoji, message.serverId);
       const existing = await tx.messageReaction.groupBy({ by: ['emoji'], where: { messageId } });
       const isNew = !existing.some((row) => row.emoji === emoji);
       if (isNew && existing.length >= Limits.REACTIONS_PER_MESSAGE) {
@@ -854,6 +876,9 @@ export class MessagesService {
 
     const result = await this.prisma.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${messageId}))`;
+      // TG.24: gỡ cảm xúc token custom cũng kiểm emoji còn sống của server — token không
+      // hợp lệ/của server khác bị chặn thay vì xóa im lặng.
+      await this.assertCustomReactionEmoji(tx, emoji, message.serverId);
       const deleted = await tx.messageReaction.deleteMany({ where: { messageId, userId, emoji } });
       const count = await tx.messageReaction.count({ where: { messageId, emoji } });
       return { deleted: deleted.count, count };
@@ -906,8 +931,13 @@ export class MessagesService {
     };
   }
 
+  /**
+   * Hình thức cảm xúc (TG.2 + TG.24): emoji unicode trong allowlist hoặc token custom
+   * `c:<id>` (38 ký tự — vượt trần 32 của unicode nên schema có nhánh riêng). Kiểm NGỮ
+   * NGHĨA token (emoji còn sống, đúng server) ở caller qua `assertCustomReactionEmoji`.
+   */
   private parseReactionEmoji(rawEmoji: string): string {
-    const parsed = reactionEmojiSchema.safeParse(rawEmoji);
+    const parsed = reactionTokenSchema.safeParse(rawEmoji);
     if (!parsed.success) {
       throw new BadRequestException({
         code: ErrorCodes.REACTION_EMOJI_INVALID,
@@ -917,16 +947,42 @@ export class MessagesService {
     return parsed.data;
   }
 
-  /** Tin phải còn sống; trả channel để phát realtime và giới hạn tần suất. */
-  private async reactionTarget(messageId: string): Promise<{ id: string; channelId: string }> {
+  /**
+   * TG.24: cảm xúc token `c:<id>` phải trỏ tới emoji CÒN SỐNG thuộc server chứa tin —
+   * sai hình thức hay sai server đều trả cùng mã `REACTION_EMOJI_INVALID` (client hiển
+   * thị câu chung, không lộ sự tồn tại của emoji server khác). Token unicode bỏ qua.
+   */
+  private async assertCustomReactionEmoji(
+    tx: Prisma.TransactionClient,
+    emoji: string,
+    serverId: string,
+  ): Promise<void> {
+    const match = CUSTOM_EMOJI_REACTION_TOKEN.exec(emoji);
+    if (!match) return;
+    const live = await tx.customEmoji.findFirst({
+      where: { id: match[1], deletedAt: null, serverId },
+      select: { id: true },
+    });
+    if (!live) {
+      throw new BadRequestException({
+        code: ErrorCodes.REACTION_EMOJI_INVALID,
+        message: 'Emoji is not allowed',
+      });
+    }
+  }
+
+  /** Tin phải còn sống; trả channel + server để phát realtime, giới hạn tần suất và kiểm token. */
+  private async reactionTarget(
+    messageId: string,
+  ): Promise<{ id: string; channelId: string; serverId: string }> {
     const message = await this.prisma.message.findFirst({
       where: { id: messageId, deletedAt: null },
-      select: { id: true, channelId: true },
+      select: { id: true, channelId: true, channel: { select: { serverId: true } } },
     });
     if (!message) {
       throw new NotFoundException('Message not found');
     }
-    return message;
+    return { id: message.id, channelId: message.channelId, serverId: message.channel.serverId };
   }
 
   private async reactionSummary(

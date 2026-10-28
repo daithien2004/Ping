@@ -126,6 +126,19 @@ export class AbilityGuard implements CanActivate {
       }
       return sticker.pack.serverId;
     }
+    if (params.emojiId) {
+      // TG.24: emoji tùy chỉnh luôn thuộc một server (không có emoji hệ thống) nên
+      // luôn xác định được bối cảnh — emoji đã xóa mềm vẫn trả server để guard chạy,
+      // service mới trả 404 (như tin đã soft-delete).
+      const emoji = await this.prisma.customEmoji.findUnique({
+        where: { id: params.emojiId },
+        select: { serverId: true },
+      });
+      if (!emoji) {
+        throw new NotFoundException('Emoji not found');
+      }
+      return emoji.serverId;
+    }
     return undefined;
   }
 }
