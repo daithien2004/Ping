@@ -26,9 +26,18 @@ describe('applyIncoming (T4.3)', () => {
     expect(next[0]!.mentionCount).toBe(1);
   });
 
-  it('mention của người khác tăng cả hai', () => {
+  it('mention của người khác qua message.activity tăng cả hai (tin mới + được nhắc)', () => {
     const next = applyIncoming([row({})], 'c1', { isOwn: false, mention: true });
     expect(next[0]).toMatchObject({ unreadCount: 1, mentionCount: 1 });
+  });
+
+  it('mention.created (TG.12) chỉ tăng mentionCount — unread đã do channel.activity đếm', () => {
+    const next = applyIncoming([row({ unreadCount: 3 })], 'c1', {
+      isOwn: false,
+      mention: true,
+      countsUnread: false,
+    });
+    expect(next[0]).toMatchObject({ unreadCount: 3, mentionCount: 1 });
   });
 
   it('đến trần 100 thì dừng', () => {

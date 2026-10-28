@@ -31,6 +31,8 @@ model User {
   dmParticipations   DmParticipant[]
   blocksIssued       UserBlock[]     @relation("UserBlocksIssued")
   blocksReceived     UserBlock[]     @relation("UserBlocksReceived")
+  // TG.12: prefs thông báo của user (một dòng mỗi server/channel đã cấu hình).
+  notificationPrefs  NotificationPref[]
 }
 
 model Session {
@@ -233,6 +235,35 @@ model UserBlock {
   @@id([blockerId, blockedId])
   // Kiểm "tôi có bị ai chặn không" tra theo blockedId.
   @@index([blockedId])
+}
+
+/// Prefs thông báo (TG.12): mức all/mentions/none + mute có hạn của MỘT user trên một
+/// server hoặc một channel. Badge/notification do CLIENT tính từ prefs này + dữ liệu
+/// unread sẵn có — server chỉ lưu và đọc lại (fetch khi client boot, không realtime).
+/// `scope` kiểu String (không enum) khớp cách `Attachment.scope` đặt tên nhánh pipeline;
+/// giá trị do API kiểm (zod). `level` tương tự — NOTIFY_LEVELS trong @ping/shared.
+model NotificationPref {
+  id         String    @id @default(uuid(7)) @db.Uuid
+  userId     String    @db.Uuid
+  /// 'server' | 'channel'
+  scope      String
+  targetId   String    @db.Uuid
+  level      String
+  /// null = không mute; mốc trong quá khứ = hết mute (ngữ nghĩa của shouldNotify).
+  mutedUntil DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  // FK tới user để xóa tài khoản là prefs chết theo (dữ liệu user-scoped). KHÔNG FK tới
+  // Server/Channel: prefs sống khi target bị xóa — khi server/channel mất, hàng prefs trở
+  // nên vô nghĩa nhưng VÔ HẠI (client không còn hỏi tới target đó) và dọn bằng nhánh dọn
+  // riêng khi xóa server/channel; cố tình không thêm cascade/cleanup phức tạp ở đây.
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Một dòng prefs duy nhất mỗi user mỗi target — chìa khóa upsert idempotent của PUT.
+  @@unique([userId, scope, targetId])
+  // GET /users/me/notification-prefs đọc mọi dòng của người gọi.
+  @@index([userId])
 }
 
 model Message {

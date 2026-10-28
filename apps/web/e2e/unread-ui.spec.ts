@@ -68,22 +68,21 @@ test('unread ui: server/channel badges, mention badge, title, divider and two-ta
     // Chưa có tin: link chỉ mang tên server (không kèm số unread).
     await expect(testServerLink).toBeVisible();
 
-    await test.step('tin mới ở kênh không xem → badge server, không đổi title', async () => {
+    await test.step('tin mới ở kênh không xem → badge server + title (1) (TG.12: title theo tổng unread)', async () => {
       expect((await send(randomChannel, 'tin thứ nhất')).ok()).toBeTruthy();
       await expect(
         tabA.getByRole('link', { name: new RegExp(`${server.name}, 1 tin chưa đọc`) }),
       ).toBeVisible({ timeout: 10_000 });
-      // Chưa có mention: title giữ nguyên "Ping".
-      await tabA.waitForTimeout(500);
-      expect(await tabA.title()).toBe('Ping');
+      // TG.12: title giờ đếm tổng unread (không chỉ mention) — một tin chưa đọc đủ để (1).
+      await expect.poll(() => tabA.title(), { timeout: 10_000 }).toBe('(1) Ping');
     });
 
-    await test.step('mention → badge đỏ, title (1), aria-live đọc lên', async () => {
+    await test.step('mention → badge đỏ, title (2) (1 unread cũ + mention), aria-live đọc lên', async () => {
       expect((await send(randomChannel, `@${owner.user.username} chào`)).ok()).toBeTruthy();
       await expect(
         tabA.getByRole('link', { name: new RegExp(`${server.name}, 1 lượt nhắc bạn`) }),
       ).toBeVisible({ timeout: 10_000 });
-      await expect.poll(() => tabA.title(), { timeout: 10_000 }).toBe('(1) Ping');
+      await expect.poll(() => tabA.title(), { timeout: 10_000 }).toBe('(2) Ping');
       await expect(tabA.getByTestId('mention-announcer')).toHaveText(/nhắc/, {
         timeout: 10_000,
       });
@@ -135,7 +134,8 @@ test('unread ui: server/channel badges, mention badge, title, divider and two-ta
       await expect(tabB.getByRole('link', { name: new RegExp(server.name) })).toBeVisible({
         timeout: 15_000,
       });
-      expect(await tabB.title()).toBe('Ping');
+      // TG.12: title tab B theo tổng unread — đúng một tin chưa đọc.
+      await expect.poll(() => tabB.title(), { timeout: 10_000 }).toBe('(1) Ping');
     });
 
     await test.step('dọn server của test', async () => {

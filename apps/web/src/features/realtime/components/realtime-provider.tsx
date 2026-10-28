@@ -8,6 +8,7 @@ import { useDmEvents } from '@/features/dms/hooks';
 import { useEmojiEvents } from '@/features/emojis/hooks';
 import { useMemberPresence } from '@/features/members/hooks';
 import { useMessageEvents } from '@/features/messages/hooks';
+import { useNotificationEvents } from '@/features/notifications/events';
 import { useProfileEvents } from '@/features/profile/hooks';
 import { useServerEvents } from '@/features/servers/hooks';
 import { useUnreadEvents } from '@/features/unread/hooks';
@@ -40,6 +41,7 @@ function SignedInRealtime({ userId, children }: { userId: string; children: Reac
   useEmojiEvents(session); // TG.24: expressions.updated invalidate emoji + sticker của server.
   useUnreadEvents(session, userId, activeChannelId);
   useDmEvents(session, userId, activeChannelId); // TG.9: badge DM qua `serverId: null`.
+  useNotificationEvents(session, userId); // TG.12: thông báo trình duyệt khi tab ẩn.
   useEffect(() => {
     const typing = (event: TypingStartedPayload) => {
       if (event.userId !== userId) session.store.getState().type(event.channelId, event.userId);

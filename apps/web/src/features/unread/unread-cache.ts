@@ -18,11 +18,19 @@ const cap = (value: number) => Math.min(value, 100);
 /**
  * Một tin mới vừa đến channel: tăng unread (không tính tin của chính mình) và mentionCount
  * nếu mình được nhắc. Channel đang xem do nơi gọi lọc trước (đã được đánh dấu đã đọc).
+ *
+ * `countsUnread: false` cho event `mention.created`: tin đó KHÔNG tăng unread lần hai —
+ * `channel.activity` của cùng tin đã đếm rồi (server đếm một tin là một unread; TG.12 dùng
+ * tổng unread làm badge nên đếm đôi ở đây sẽ lộ thẳng lên title/favicon).
  */
 export function applyIncoming(
   unread: ChannelUnreadDto[],
   channelId: string,
-  { isOwn, mention }: { isOwn: boolean; mention: boolean },
+  {
+    isOwn,
+    mention,
+    countsUnread = true,
+  }: { isOwn: boolean; mention: boolean; countsUnread?: boolean },
 ): ChannelUnreadDto[] {
   const index = unread.findIndex((row) => row.channelId === channelId);
   if (index < 0) {
@@ -32,7 +40,7 @@ export function applyIncoming(
   const row = unread[index]!;
   const next: ChannelUnreadDto = {
     ...row,
-    unreadCount: isOwn ? row.unreadCount : cap(row.unreadCount + 1),
+    unreadCount: isOwn || !countsUnread ? row.unreadCount : cap(row.unreadCount + 1),
     mentionCount: mention ? cap(row.mentionCount + 1) : row.mentionCount,
   };
   return [...unread.slice(0, index), next, ...unread.slice(index + 1)];

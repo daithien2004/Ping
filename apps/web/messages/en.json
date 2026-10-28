@@ -521,5 +521,33 @@
     "blockHint": "Neither of you will be able to message the other in the existing DM, and no new DM can be created.",
     "unblockConfirm": "Unblock {name}?",
     "blockedBanner": "You can't message this person right now."
+  },
+  "notifications": {
+    "title": "Notifications",
+    "bellChannel": "Channel notifications",
+    "bellDm": "Conversation notifications",
+    "levelLabel": "Notification level",
+    "levelAll": "All",
+    "levelMentions": "Mentions only",
+    "levelNone": "Off",
+    "serverDefaultHint": "Following the server default",
+    "globalDefaultHint": "Following the global default",
+    "muteLabel": "Mute for a while",
+    "mute15m": "15 minutes",
+    "mute1h": "1 hour",
+    "mute3h": "3 hours",
+    "mute8h": "8 hours",
+    "mute24h": "24 hours",
+    "unmute": "Unmute",
+    "mutedUntil": "Muted ({count} minutes left)",
+    "ignoreEveryone": "Ignore @everyone",
+    "enableBrowser": "Enable browser notifications",
+    "browserBlocked": "Blocked in browser",
+    "browserBlockedHint": "Notifications are blocked in your browser settings.",
+    "bodyFallback": "You have a new message",
+    "stickerLabel": "[Sticker]",
+    "gifLabel": "[GIF]",
+    "attachmentLabel": "[Attachment]",
+    "fallbackTitle": "Ping"
   }
 }
