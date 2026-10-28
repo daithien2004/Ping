@@ -65,8 +65,10 @@ export function MessageComposer({
   onSendSticker,
   onSendGif,
   textareaRef,
+  dm = false,
 }: {
-  serverId: string;
+  /** Channel server; `null` = DM (TG.9 — không có emoji tùy chỉnh/sticker của server nào). */
+  serverId: string | null;
   channelId: string;
   channelName: string;
   /** TG.1: tin đang được trả lời; null = tin thường. */
@@ -79,6 +81,8 @@ export function MessageComposer({
   onSendGif: (gif: GifPayload, nonce: string, replyToId?: string) => void;
   /** Ô nhập để empty state bấm "Gửi tin đầu tiên" đưa con trỏ về đây (TF.9). */
   textareaRef?: RefObject<HTMLTextAreaElement | null>;
+  /** TG.9: chế độ DM — ẩn nút sticker (ADR-0070 mục 10: sticker là tài sản server, bị chặn trong DM). */
+  dm?: boolean;
 }) {
   const realtime = useRealtime();
   const { ability, ready } = useServerAbility();
@@ -105,7 +109,10 @@ export function MessageComposer({
   const t = useTranslations('messages');
   const te = useTranslations('emoji');
   const ts = useTranslations('stickers');
-  const label = t('composerLabel', { channel: channelName });
+  const isDm = serverId === null;
+  const label = isDm
+    ? t('dmComposerLabel', { name: channelName })
+    : t('composerLabel', { channel: channelName });
   const nearLimit = draft.length >= 3600;
   const replyToId = replyTo?.id ?? null;
 
@@ -115,9 +122,10 @@ export function MessageComposer({
   }, [replyToId, textareaRef]);
 
   // Gợi ý :ten: (TG.23/TG.24): fragment từ draft; dataset tải động lần đầu gõ ':'. Emoji
-  // server (tùy chỉnh) gộp vào cuối danh sách — mục có `id` là custom.
+  // server (tùy chỉnh) gộp vào cuối danh sách — mục có `id` là custom. DM (TG.9) không có
+  // server → chỉ gợi ý emoji hệ thống.
   const fragment = extractFragment(draft);
-  const suggestions = useEmojiSuggestions(fragment, serverId);
+  const suggestions = useEmojiSuggestions(fragment, serverId ?? undefined);
 
   function insertAtCursor(insert: string) {
     const el = resolveTextArea(textareaRef?.current ?? null);
@@ -281,7 +289,7 @@ export function MessageComposer({
           {pickerOpen && (
             <div className="mb-2 flex justify-start">
               <EmojiPicker
-                serverId={serverId}
+                serverId={serverId ?? undefined}
                 onPick={(unicode) => {
                   insertAtCursor(unicode);
                   setPickerOpen(false);
@@ -294,10 +302,11 @@ export function MessageComposer({
               />
             </div>
           )}
-          {stickerOpen && (
+          {!dm && stickerOpen && (
             <div className="mb-2 flex justify-start">
+              {/* Chế độ DM không bao giờ render picker này (nút đã ẩn) — serverId rỗng chỉ để thỏa kiểu. */}
               <StickerPicker
-                serverId={serverId}
+                serverId={serverId ?? ''}
                 recent={recentStickers}
                 recentGifs={recentGifs}
                 onPick={(sticker) => {
@@ -336,6 +345,7 @@ export function MessageComposer({
                   >
                     {entry.imageUrl ? (
                       // Emoji server (TG.24): ảnh nhỏ thay vì ký tự unicode.
+                      // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={profileImageUrl(entry.imageUrl)}
                         alt=""
@@ -402,19 +412,23 @@ export function MessageComposer({
             >
               <Smile className="size-5" />
             </button>
-            <button
-              type="button"
-              aria-label={ts('open')}
-              aria-expanded={stickerOpen}
-              data-testid="sticker-button"
-              onClick={() => {
-                setStickerOpen((open) => !open);
-                setPickerOpen(false);
-              }}
-              className="shrink-0 rounded-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            >
-              <Sticker className="size-5" />
-            </button>
+            {/* TG.9 (ADR-0070 mục 10): sticker bị chặn trong DM — ẩn nút để UI không mời
+                một hành động server sẽ luôn từ chối. */}
+            {!dm && (
+              <button
+                type="button"
+                aria-label={ts('open')}
+                aria-expanded={stickerOpen}
+                data-testid="sticker-button"
+                onClick={() => {
+                  setStickerOpen((open) => !open);
+                  setPickerOpen(false);
+                }}
+                className="shrink-0 rounded-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              >
+                <Sticker className="size-5" />
+              </button>
+            )}
           </div>
           {nearLimit ? (
             <p role="status" className="mt-1 text-xs text-muted-foreground">

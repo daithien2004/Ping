@@ -20,6 +20,8 @@ const KNOWN = [
   ErrorCodes.PIN_LIMIT_REACHED,
   ErrorCodes.STICKER_LIMIT_REACHED,
   ErrorCodes.EMOJI_LIMIT_REACHED,
+  // TG.9: bị chặn hoặc đối phương tắt DM — API cố ý dùng chung một mã chống dò (ADR-0070).
+  ErrorCodes.DM_BLOCKED,
 ] as const;
 type KnownCode = (typeof KNOWN)[number];
 

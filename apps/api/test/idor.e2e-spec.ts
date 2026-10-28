@@ -69,6 +69,12 @@ const ID_ROUTES: Array<[Verb, string]> = [
   ['post', '/servers/:id/emojis'],
   ['get', '/servers/:id/emojis'],
   ['delete', '/emojis/:id'],
+  // TG.9 (ADR-0070): block/unblock user — bối cảnh là CHÍNH người gọi, quyền do service kiểm
+  // (không có ability server). POST/GET /dms KHÔNG nằm ở đây: route không có id trong path
+  // nên test phủ route (chỉ quét route `:id`) không bắt — IDOR của DM phủ ở test/dms.e2e-spec.ts
+  // (người thứ ba → 404 mọi route /channels/:id/*, không join được room).
+  ['post', '/users/:id/block'],
+  ['delete', '/users/:id/block'],
 ];
 
 /** Quét controller của app qua metadata của Nest: các route có tham số `:...Id`, dạng `verb /path/:id`, đã sắp xếp. */
@@ -631,7 +637,7 @@ describe('IDOR (e2e)', () => {
 
   it('no token → 401 on every endpoint that takes an id', async () => {
     const uuid = randomUUID();
-    expect(ID_ROUTES).toHaveLength(45);
+    expect(ID_ROUTES).toHaveLength(47);
     for (const [verb, template] of ID_ROUTES) {
       const url = template.replaceAll(':id', uuid);
       const res = await as(undefined, verb, url).send({});

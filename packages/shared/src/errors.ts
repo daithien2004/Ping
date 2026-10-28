@@ -32,6 +32,8 @@ export const ErrorCodes = {
   EMOJI_LIMIT_REACHED: 'EMOJI_LIMIT_REACHED',
   /** Nhà cung cấp GIF thiếu key/lỗi/hết quota — `/gifs/*` 503, chat không ảnh hưởng (TG.25, ADR-0069). */
   GIF_PROVIDER_UNAVAILABLE: 'GIF_PROVIDER_UNAVAILABLE',
+  /** Bị chặn hoặc đối phương tắt DM — cùng mã cho cả hai để chống dò nguyên nhân (TG.9, ADR-0070). */
+  DM_BLOCKED: 'DM_BLOCKED',
 } as const;
 
 export type ErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes];

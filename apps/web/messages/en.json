@@ -313,6 +313,9 @@
     "channelStart": "This is the start of #{channel}.",
     "listLabel": "Messages in #{channel}",
     "composerLabel": "Message #{channel}",
+    "dmListLabel": "Messages with {name}",
+    "dmStart": "This is the start of your conversation with {name}.",
+    "dmComposerLabel": "Message {name}",
     "edited": "(edited)",
     "failed": "Failed to send",
     "emptyAction": "Send the first message",
@@ -434,7 +437,8 @@
     "unknownWithId": "Something went wrong. Error ID: {requestId}",
     "withReference": "{message} Error ID: {requestId}",
     "STICKER_LIMIT_REACHED": "This server already has 30 stickers. Delete some before adding more.",
-    "EMOJI_LIMIT_REACHED": "This server reached the limit of 50 static or 50 animated emojis."
+    "EMOJI_LIMIT_REACHED": "This server reached the limit of 50 static or 50 animated emojis.",
+    "DM_BLOCKED": "Message not sent: one of you has blocked the other or turned off direct messages."
   },
   "ask": {
     "title": "Ask AI about channel history",
@@ -465,7 +469,6 @@
     "removeNickname": "Remove nickname",
     "joined": "Joined {date}",
     "sendMessage": "Message",
-    "sendMessageSoon": "Direct messages are coming later (TG.9)",
     "uploading": "Uploading {percent}%",
     "processing": "Validating image…",
     "save": "Save"
@@ -498,5 +501,25 @@
     "placeholder": "GIF",
     "broken": "This GIF is no longer available.",
     "attribution": "GIFs by Tenor"
+  },
+  "dms": {
+    "title": "Direct messages",
+    "navLabel": "Direct message list",
+    "loading": "Loading conversations…",
+    "empty": "No conversations yet. Open a member's profile card and press “Message”.",
+    "pickOne": "Pick a conversation on the left, or open a server member's profile card and press “Message”.",
+    "notFound": "Conversation not found.",
+    "rowLabel": "Message {name}",
+    "rowLabelUnread": "Message {name}, {count} unread",
+    "unreadCount": "{count} unread",
+    "railLabelUnread": "Direct messages, {count} unread",
+    "mentionCount": "{count} new unread",
+    "block": "Block",
+    "unblock": "Unblock",
+    "cancel": "Cancel",
+    "blockConfirm": "Block {name}?",
+    "blockHint": "Neither of you will be able to message the other in the existing DM, and no new DM can be created.",
+    "unblockConfirm": "Unblock {name}?",
+    "blockedBanner": "You can't message this person right now."
   }
 }

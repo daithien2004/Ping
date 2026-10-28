@@ -313,6 +313,9 @@
     "channelStart": "Đây là đầu kênh #{channel}.",
     "listLabel": "Tin nhắn trong #{channel}",
     "composerLabel": "Nhắn #{channel}",
+    "dmListLabel": "Tin nhắn với {name}",
+    "dmStart": "Đây là đầu cuộc trò chuyện với {name}.",
+    "dmComposerLabel": "Nhắn tin cho {name}",
     "edited": "(đã sửa)",
     "failed": "Gửi thất bại",
     "emptyAction": "Gửi tin đầu tiên",
@@ -434,7 +437,8 @@
     "unknownWithId": "Có lỗi xảy ra. Mã lỗi: {requestId}",
     "withReference": "{message} Mã lỗi: {requestId}",
     "STICKER_LIMIT_REACHED": "Server này đã có đủ 30 sticker. Xoá bớt trước khi thêm.",
-    "EMOJI_LIMIT_REACHED": "Server này đã đạt trần 50 emoji tĩnh hoặc 50 emoji động."
+    "EMOJI_LIMIT_REACHED": "Server này đã đạt trần 50 emoji tĩnh hoặc 50 emoji động.",
+    "DM_BLOCKED": "Không nhắn được: một trong hai người đã chặn hoặc đã tắt nhận tin nhắn riêng."
   },
   "ask": {
     "title": "Hỏi AI về lịch sử kênh",
@@ -465,7 +469,6 @@
     "removeNickname": "Xóa biệt danh",
     "joined": "Đã tham gia {date}",
     "sendMessage": "Nhắn tin",
-    "sendMessageSoon": "Tin nhắn trực tiếp sẽ ra mắt sau (TG.9)",
     "uploading": "Đang tải {percent}%",
     "processing": "Đang kiểm định ảnh…",
     "save": "Lưu"
@@ -498,5 +501,25 @@
     "placeholder": "GIF",
     "broken": "GIF không còn xem được.",
     "attribution": "GIFs by Tenor"
+  },
+  "dms": {
+    "title": "Tin nhắn trực tiếp",
+    "navLabel": "Danh sách tin nhắn trực tiếp",
+    "loading": "Đang tải hội thoại…",
+    "empty": "Chưa có hội thoại nào. Mở thẻ hồ sơ của một thành viên rồi bấm “Nhắn tin”.",
+    "pickOne": "Chọn một hội thoại ở cột bên trái, hoặc mở thẻ hồ sơ của một thành viên trong server rồi bấm “Nhắn tin”.",
+    "notFound": "Không tìm thấy hội thoại.",
+    "rowLabel": "Nhắn tin với {name}",
+    "rowLabelUnread": "Nhắn tin với {name}, {count} tin chưa đọc",
+    "unreadCount": "{count} tin chưa đọc",
+    "railLabelUnread": "Tin nhắn trực tiếp, {count} tin chưa đọc",
+    "mentionCount": "{count} tin chưa đọc mới",
+    "block": "Chặn",
+    "unblock": "Bỏ chặn",
+    "cancel": "Huỷ",
+    "blockConfirm": "Chặn {name}?",
+    "blockHint": "Cả hai sẽ không gửi được tin cho nhau trong DM hiện có và không thể tạo DM mới.",
+    "unblockConfirm": "Bỏ chặn {name}?",
+    "blockedBanner": "Bạn không thể nhắn tin cho người này lúc này."
   }
 }

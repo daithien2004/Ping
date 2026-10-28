@@ -1,5 +1,10 @@
 import { Body, Controller, Get, Patch, UseGuards } from '@nestjs/common';
-import { updateProfileSchema, type UpdateProfileInput } from '@ping/shared';
+import {
+  updatePrivacySchema,
+  updateProfileSchema,
+  type UpdatePrivacyInput,
+  type UpdateProfileInput,
+} from '@ping/shared';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe.js';
 import { AuthService } from '../auth/auth.service.js';
 import { CurrentUser, type AuthenticatedUser } from '../auth/current-user.decorator.js';
@@ -27,5 +32,18 @@ export class UsersController {
     @Body(new ZodValidationPipe(updateProfileSchema)) body: UpdateProfileInput,
   ) {
     return this.usersService.updateProfile(user.userId, body);
+  }
+
+  /**
+   * TG.9 (ADR-0070 mục 11): cài đặt riêng tư — mức nhận DM. ADR dẫn `PATCH /users/me` nhưng
+   * route đó đã là hợp đồng TG.7 (updateProfileSchema: displayName/avatar); tách endpoint
+   * riêng với `updatePrivacySchema` giữ nguyên hợp đồng cũ và mỗi schema một luồng rõ ràng.
+   */
+  @Patch('me/privacy')
+  updatePrivacy(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body(new ZodValidationPipe(updatePrivacySchema)) body: UpdatePrivacyInput,
+  ) {
+    return this.usersService.updatePrivacy(user.userId, body);
   }
 }

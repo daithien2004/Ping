@@ -29,4 +29,9 @@ export const qk = {
   gifSearch: (query: string) => ['gifs', 'search', query] as const,
   /** TG.25: GIF thịnh hành cho tab GIF khi chưa gõ gì (cache chung cho mọi channel). */
   gifTrending: ['gifs', 'trending'] as const,
+  /**
+   * TG.9: danh sách DM của người gọi (GET /dms) — key phẳng vì DM không thuộc server nào.
+   * Tin trong DM vẫn dùng `qk.messages(channelId)` như channel thường (ADR-0070 mục 8).
+   */
+  dms: ['dms'] as const,
 };

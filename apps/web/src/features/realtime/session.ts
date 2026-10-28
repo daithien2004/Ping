@@ -5,7 +5,8 @@ import { createRealtimeStore } from './store';
 import { TYPING_INTERVAL_MS } from './typing-state';
 
 interface Room {
-  serverId: string;
+  /** TG.9: phòng DM không thuộc server — `null` để `revoke`/`rejoin` theo server không đụng tới. */
+  serverId: string | null;
   channelId: string;
   synced: () => void;
   denied: () => void;
@@ -66,7 +67,12 @@ export class RealtimeSession {
     this.store.getState().reset();
   }
 
-  watch(serverId: string, channelId: string, synced: () => void, denied: () => void) {
+  /**
+   * Theo dõi một channel: `serverId` của channel server, `null` với DM (ADR-0070 — join duy
+   * nhất room channel, không room server). Room DM không vào `visited` nên bị loại khi
+   * `revoke(serverId)`/invalidate theo server, và không bị fetch lại quyền server khi reconnect.
+   */
+  watch(serverId: string | null, channelId: string, synced: () => void, denied: () => void) {
     const room: Room = {
       serverId,
       channelId,
@@ -77,9 +83,11 @@ export class RealtimeSession {
       lastTypingAt: -Infinity,
     };
     this.rooms.set(channelId, room);
-    const channels = this.visited.get(serverId) ?? new Set<string>();
-    channels.add(channelId);
-    this.visited.set(serverId, channels);
+    if (serverId !== null) {
+      const channels = this.visited.get(serverId) ?? new Set<string>();
+      channels.add(channelId);
+      this.visited.set(serverId, channels);
+    }
     if (this.running && this.socket.connected) this.join(room);
     return () => {
       if (this.rooms.get(channelId) !== room) return;

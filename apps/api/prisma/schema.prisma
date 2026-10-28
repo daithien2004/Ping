@@ -25,6 +25,12 @@ model User {
   pinnedMessages Message[]         @relation("MessagePins")
   ownedServers   Server[]
   invites        ServerInvite[]
+  // TG.9 (ADR-0070): mức nhận DM — 'server_members' mặc định (người chung server), 'none' tắt hẳn.
+  // Kiểu String khớp cách `Attachment.scope` đặt tên nhánh pipeline; giá trị do API kiểm (zod).
+  dmAllow            String          @default("server_members")
+  dmParticipations   DmParticipant[]
+  blocksIssued       UserBlock[]     @relation("UserBlocksIssued")
+  blocksReceived     UserBlock[]     @relation("UserBlocksReceived")
 }
 
 model Session {
@@ -171,22 +177,62 @@ model MemberRole {
 
 model Channel {
   id        String      @id @default(uuid(7)) @db.Uuid
-  serverId  String      @db.Uuid
+  // TG.9 (ADR-0070): NULL với channel DM — mọi query cũ lọc theo serverId nên DM vô hình
+  // với instance cũ (rolling-safe, expand/contract).
+  serverId  String?     @db.Uuid
   name      String
   type      ChannelType @default(TEXT)
   position  Int         @default(0)
+  // TG.9: `"min|max"` hai UUID participant đã chuẩn hóa thứ tự — chìa khóa get-or-create
+  // idempotent của POST /dms; hai request song song chạm unique này thì hàng sau trả existing.
+  dmKey     String?     @unique
   createdAt DateTime    @default(now())
 
-  server     Server             @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  server     Server?            @relation(fields: [serverId], references: [id], onDelete: Cascade)
   messages   Message[]
   readStates ChannelReadState[]
+  dmParticipants DmParticipant[]
 
   @@index([serverId])
 }
 
 enum ChannelType {
   TEXT
+  // TG.9 (ADR-0070): tin nhắn trực tiếp 1:1 ngoài server.
+  DM
   // Mở rộng sau: VOICE, ANNOUNCEMENT...
+}
+
+/// Participant của channel DM (TG.9, ADR-0070): DM không có Member nên membership + con trỏ
+/// đã đọc (ngữ nghĩa ADR-0043) đặt thẳng trên bảng này — một bảng cho cả quyền lẫn unread.
+model DmParticipant {
+  channelId         String   @db.Uuid
+  userId            String   @db.Uuid
+  lastReadMessageId String?  @db.Uuid
+  // Mốc tạo hàng dùng làm bối cảnh trần spam: tối đa 10 DM mới/giờ/user (ADR-0070 mục 5).
+  createdAt         DateTime @default(now())
+
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([channelId, userId])
+  // GET /dms và đếm trần DM/giờ tra theo người gọi.
+  @@index([userId])
+}
+
+/// Chặn người dùng (TG.9, ADR-0070): hai mức — chặn tạo DM mới và chặn tin mới trong DM có
+/// sẵn; tin cũ vẫn đọc được. Một chiều nhưng kiểm tra theo cả hai chiều khi cho phép DM.
+model UserBlock {
+  blockerId String   @db.Uuid
+  blockedId String   @db.Uuid
+  createdAt DateTime @default(now())
+
+  blocker User @relation("UserBlocksIssued", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked User @relation("UserBlocksReceived", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@id([blockerId, blockedId])
+  // Kiểm "tôi có bị ai chặn không" tra theo blockedId.
+  @@index([blockedId])
 }
 
 model Message {

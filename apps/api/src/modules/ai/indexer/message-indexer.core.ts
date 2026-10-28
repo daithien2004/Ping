@@ -63,6 +63,14 @@ export class MessageIndexerCore {
       return;
     }
 
+    // TG.9 (ADR-0070 mục 9): DM (channel.serverId NULL) không index cho tìm kiếm AI — bỏ qua
+    // trước khi embed. Backfill dùng chung lõi này nên được phủ cùng lúc; FTS đã scope theo
+    // serverId sẵn (search.service) và RAG hydrate theo server người hỏi.
+    if (anchor.channel.serverId === null) {
+      await this.deletePoint(messageId);
+      return;
+    }
+
     const previous = await this.prisma.message.findMany({
       where: {
         channelId: anchor.channelId,

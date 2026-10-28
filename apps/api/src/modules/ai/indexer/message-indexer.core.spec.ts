@@ -12,7 +12,8 @@ interface FakeMessage {
   deletedAt: Date | null;
   createdAt: Date;
   author: { displayName: string; username: string };
-  channel: { serverId: string };
+  // TG.9: serverId NULL với channel DM.
+  channel: { serverId: string | null };
 }
 
 class RecordingEmbedder implements Embedder {
@@ -146,5 +147,16 @@ describe('MessageIndexerCore', () => {
     expect(store.upserts).toHaveLength(0);
     expect(store.deletes[0]?.ids).toEqual(['m1']);
     expect(embedder.texts).toEqual(['khởi tạo chỉ mục']);
+  });
+
+  it('TG.9: tin DM (channel.serverId NULL) không index cho AI — bỏ qua trước khi embed', async () => {
+    const dm = { ...message('m1', 'tin trực tiếp'), channel: { serverId: null } };
+    const { core, embedder, store } = buildCore([dm]);
+
+    await core.syncMessage('m1');
+
+    // Không embed passage nào ngoài câu thăm dò khởi tạo, không upsert point.
+    expect(embedder.texts).toEqual(['khởi tạo chỉ mục']);
+    expect(store.upserts).toHaveLength(0);
   });
 });

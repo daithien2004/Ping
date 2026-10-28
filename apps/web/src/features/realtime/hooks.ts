@@ -4,7 +4,7 @@ import { useStore } from 'zustand';
 import { useChannelSync } from '@/features/messages/hooks';
 import { useRealtime } from './context';
 
-export function useChannelRealtime(serverId: string, channelId: string) {
+export function useChannelRealtime(serverId: string | null, channelId: string) {
   const session = useRealtime();
   const sync = useChannelSync(channelId);
   const onJoined = useEffectEvent(() => {
