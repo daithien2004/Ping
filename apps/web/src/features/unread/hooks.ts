@@ -18,11 +18,13 @@ import { applyIncoming, applyRead } from './unread-cache';
  * Unread của một server (T4.3). Không suspense: rail cần render ngay cả khi chưa có số.
  * Cache được các event realtime cập nhật tinh (xem useUnreadEvents) và fetch lại khi
  * socket reconnect (đối soát tin đến lúc mất mạng).
+ * TG.9: `null` = xem DM (không thuộc server nào) — không gọi API, unread DM do `qk.dms` lo.
  */
-export function useUnread(serverId: string) {
+export function useUnread(serverId: string | null) {
   return useQuery({
-    queryKey: qk.unread(serverId),
-    queryFn: () => listUnread(serverId),
+    queryKey: qk.unread(serverId ?? ''),
+    queryFn: () => listUnread(serverId ?? ''),
+    enabled: serverId !== null,
   });
 }
 

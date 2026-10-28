@@ -56,6 +56,8 @@ export default defineConfig([
       'src/features/servers/components/server-rail.tsx',
       'src/features/channels/components/channel-sidebar.tsx',
       'src/features/channels/components/channel-redirect.tsx',
+      // TG.9: cột hội thoại DM là component layout của /dms (như ChannelSidebar của server).
+      'src/features/dms/components/dm-sidebar.tsx',
     ],
     rules: { 'no-restricted-imports': ['error', { patterns: [noApp] }] },
   },
@@ -111,6 +113,8 @@ export default defineConfig([
       'src/features/servers/components/server-rail.tsx',
       'src/features/channels/components/channel-sidebar.tsx',
       'src/features/channels/components/channel-redirect.tsx',
+      // TG.9: cột hội thoại DM là component layout của /dms (như ChannelSidebar của server).
+      'src/features/dms/components/dm-sidebar.tsx',
     ],
     rules: {
       'no-restricted-imports': [

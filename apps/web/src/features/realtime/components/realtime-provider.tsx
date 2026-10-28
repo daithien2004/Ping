@@ -4,6 +4,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
 import { useMe } from '@/features/auth/hooks';
 import { useChannelEvents } from '@/features/channels/hooks';
+import { useDmEvents } from '@/features/dms/hooks';
 import { useEmojiEvents } from '@/features/emojis/hooks';
 import { useMemberPresence } from '@/features/members/hooks';
 import { useMessageEvents } from '@/features/messages/hooks';
@@ -27,7 +28,10 @@ function SignedInRealtime({ userId, children }: { userId: string; children: Reac
   const [session] = useState(() => new RealtimeSession(createSocket()));
   const pathname = usePathname();
   // Channel đang xem (nếu có): unread của kênh này do mark-read lo, không tính badge (T4.3).
-  const activeChannelId = /^\/servers\/[^/]+\/channels\/([^/]+)/.exec(pathname)?.[1];
+  // TG.9: DM ở route `/dms/:channelId` — badge riêng qua `useDmEvents`, cùng cơ chế "đang xem".
+  const activeChannelId =
+    /^\/servers\/[^/]+\/channels\/([^/]+)/.exec(pathname)?.[1] ??
+    /^\/dms\/([^/]+)/.exec(pathname)?.[1];
   useMessageEvents(session);
   useChannelEvents(session);
   useServerEvents(session);
@@ -35,6 +39,7 @@ function SignedInRealtime({ userId, children }: { userId: string; children: Reac
   useProfileEvents(session); // TG.7: user/member/server.updated cập nhật cache hồ sơ ngay.
   useEmojiEvents(session); // TG.24: expressions.updated invalidate emoji + sticker của server.
   useUnreadEvents(session, userId, activeChannelId);
+  useDmEvents(session, userId, activeChannelId); // TG.9: badge DM qua `serverId: null`.
   useEffect(() => {
     const typing = (event: TypingStartedPayload) => {
       if (event.userId !== userId) session.store.getState().type(event.channelId, event.userId);

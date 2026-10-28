@@ -58,7 +58,13 @@ function MemberRow({
         footer={null}
         destroyOnHidden
       >
-        <MemberProfileCard member={member} serverId={serverId} self={self} />
+        {/* TG.9: bấm "Nhắn tin"/điều hướng DM xong thì đóng modal (onDone). */}
+        <MemberProfileCard
+          member={member}
+          serverId={serverId}
+          self={self}
+          onDone={() => setOpen(false)}
+        />
       </PingModal>
     </li>
   );

@@ -11,6 +11,7 @@ import { TypingIndicator } from '@/features/realtime/components/typing-indicator
 import { useMe } from '@/features/auth/hooks';
 import { useMarkRead, useUnread } from '@/features/unread/hooks';
 import { messagePath } from '@/features/servers/navigation';
+import { dmMessagePath } from '@/features/dms/navigation';
 import { incomingMessage } from '../announce';
 import { useLoadNewer, useMessages, useResetWindow, useSeedAround, useSendMessage } from '../hooks';
 import { type ClientMessage, oldestFirst } from '../message-cache';
@@ -31,19 +32,29 @@ const HEADER_HEIGHT = 48;
  * - `anchorTo: 'end'`: chèn trang tin cũ lên trên thì tin đang xem đứng yên (neo theo key).
  * - `followOnAppend`: có tin mới ở cuối thì tự cuộn theo, CHỈ khi đang đứng ở đáy.
  * - Vào channel lần đầu thì cuộn xuống đáy (một lần; <Activity> giữ vị trí khi quay lại).
+ *
+ * TG.9: tái dùng nguyên trạng cho DM — `serverId: null` (DM không thuộc server, ADR-0070).
+ * Khác biệt duy nhất: unread/vạch "tin mới" lấy cursor từ `dm.lastReadMessageId` thay vì
+ * unread theo server, permalink mở route `/dms/...`, và lỗi gửi (403 DM_BLOCKED) báo về
+ * nơi gọi qua `dm.onSendError` để DmView bật banner + tắt composer.
  */
 export function MessagePane({
   serverId,
   channelId,
   channelName,
   focusId,
+  dm,
 }: {
-  serverId: string;
+  /** Channel server; `null` = DM (route /dms/:channelId, TG.9). */
+  serverId: string | null;
   channelId: string;
   channelName: string;
   /** Tin cần nhảy tới (permalink `…/messages/:id` hoặc `?m=` cũ), null nếu không có. */
   focusId: string | null;
+  /** Có khi channel là DM: cursor đọc riêng của DmSummary + nhận lỗi gửi tin. */
+  dm?: { lastReadMessageId: string | null; onSendError?: (error: unknown) => void };
 }) {
+  const isDm = serverId === null;
   const roomDenied = useChannelRealtime(serverId, channelId);
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useMessages(channelId);
   const sendMutation = useSendMessage(channelId);
@@ -191,17 +202,23 @@ export function MessagePane({
   // T4.3: vạch "Tin mới" — cursor ĐÃ ĐỌC được chốt MỘT lần mỗi phiên xem kênh: mark-read
   // của chính mình (đi kèm `read.updated`) không kéo vạch chạy xuống. `<Activity>` giữ
   // component khi rời kênh nhưng tháo effect khi ẩn nên vào lại = phiên mới (reset),
-  // kể cả khi trang bị unmount hoàn toàn.
+  // kể cả khi trang bị unmount hoàn toàn. TG.9: DM lấy cursor từ DmSummary (qk.dms),
+  // không có unread theo server.
   const dividerCursor = useRef<string | null | undefined>(undefined);
   useEffect(() => {
     dividerCursor.current = undefined;
   }, [channelId]);
   useEffect(() => {
-    if (dividerCursor.current === undefined && unread !== undefined) {
+    if (dividerCursor.current !== undefined) return;
+    if (isDm) {
+      if (dm) dividerCursor.current = dm.lastReadMessageId;
+      return;
+    }
+    if (unread !== undefined) {
       dividerCursor.current =
         unread.find((row) => row.channelId === channelId)?.lastReadMessageId ?? null;
     }
-  }, [unread, channelId]);
+  }, [isDm, dm, unread, channelId]);
   const dividerId =
     dividerCursor.current != null
       ? (messages.find((message) => message.id > dividerCursor.current!)?.id ?? null)
@@ -209,12 +226,16 @@ export function MessagePane({
 
   function send(content: string, nonce: string, replyToId?: string, attachmentIds?: string[]) {
     if (!ready || !ability.can('create', 'Message')) return;
-    sendMutation.mutate({
-      content,
-      nonce,
-      ...(replyToId ? { replyToId } : {}),
-      ...(attachmentIds?.length ? { attachmentIds } : {}),
-    });
+    sendMutation.mutate(
+      {
+        content,
+        nonce,
+        ...(replyToId ? { replyToId } : {}),
+        ...(attachmentIds?.length ? { attachmentIds } : {}),
+      },
+      // TG.9: DM bị chặn hai chiều trả 403 DM_BLOCKED — báo DmView bật banner + tắt composer.
+      dm?.onSendError ? { onError: dm.onSendError } : undefined,
+    );
   }
 
   // TG.22: gửi tin sticker — preview của sticker vừa chọn đi kèm để tin optimistic render
@@ -305,12 +326,14 @@ export function MessagePane({
     );
   };
 
-  // Nhảy tới tin gốc của một reply. Tin đã có trong cửa sổ → cuộn + tô sáng; tin cũ hơn
+  // TG.5: nhảy tới tin gốc của một reply. Tin đã có trong cửa sổ → cuộn + tô sáng; tin cũ hơn
   // (chưa tải) → mở permalink để pane nạp `?around=` quanh nó (TG.5, ADR-0063).
+  const permalinkOf = (messageId: string) =>
+    isDm ? dmMessagePath(channelId, messageId) : messagePath(serverId, channelId, messageId);
   function jumpTo(messageId: string) {
     const index = messages.findIndex((message) => message.id === messageId);
     if (index < 0) {
-      router.push(messagePath(serverId, channelId, messageId));
+      router.push(permalinkOf(messageId));
       return;
     }
     virtualizer.scrollToIndex(index, { align: 'center' });
@@ -353,7 +376,9 @@ export function MessagePane({
       <div
         ref={scrollRef}
         className="min-h-0 flex-1 overflow-y-auto"
-        aria-label={t('listLabel', { channel: channelName })}
+        aria-label={
+          isDm ? t('dmListLabel', { name: channelName }) : t('listLabel', { channel: channelName })
+        }
       >
         <div className="relative w-full" style={{ height: virtualizer.getTotalSize() }}>
           <p
@@ -364,7 +389,9 @@ export function MessagePane({
               ? t('loadingOlder')
               : hasNextPage
                 ? ''
-                : t('channelStart', { channel: channelName })}
+                : isDm
+                  ? t('dmStart', { name: channelName })
+                  : t('channelStart', { channel: channelName })}
           </p>
           {messages.length === 0 && !hasNextPage && (
             <div
@@ -405,8 +432,8 @@ export function MessagePane({
                 <MessageItem
                   message={message}
                   channelId={channelId}
-                  serverId={serverId}
-                  permalink={messagePath(serverId, channelId, message.id)}
+                  serverId={isDm ? undefined : serverId}
+                  permalink={permalinkOf(message.id)}
                   onRetry={retry}
                   onAction={setSelection}
                   onReply={setReplyTo}
@@ -440,9 +467,10 @@ export function MessagePane({
         {announcement}
       </div>
       <MessageComposer
-        serverId={serverId}
+        serverId={isDm ? null : serverId}
         channelId={channelId}
         channelName={channelName}
+        dm={isDm}
         replyTo={
           replyTo
             ? {

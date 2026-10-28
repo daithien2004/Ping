@@ -13,8 +13,9 @@ interface Props {
   message: ClientMessage;
   /** TG.2: kênh chứa tin — mutation cảm xúc khoá theo (user, channel) và cache theo kênh. */
   channelId: string;
-  /** TG.24: server chứa kênh — resolve emoji tùy chỉnh `:ten:<id>` trong nội dung tin. */
-  serverId: string;
+  /** TG.24: server chứa kênh — resolve emoji tùy chỉnh `:ten:<id>` trong nội dung tin.
+   *  TG.9: `undefined` với DM (không thuộc server nào, ADR-0070). */
+  serverId: string | undefined;
   /** TG.5: permalink tương đối của tin (menu "Sao chép liên kết"). */
   permalink: string;
   onRetry: (message: ClientMessage) => void;

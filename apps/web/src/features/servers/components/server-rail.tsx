@@ -1,9 +1,9 @@
 'use client';
 
 import { ServerEvents, type MentionCreatedPayload } from '@ping/shared';
-import { LogIn, LogOut, Plus } from 'lucide-react';
+import { LogIn, LogOut, MessageCircle, Plus } from 'lucide-react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, usePathname } from 'next/navigation';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslations } from 'use-intl';
 import { LanguageSwitcher } from '@/components/language-switcher';
@@ -12,6 +12,9 @@ import { Button } from '@/components/ui/button';
 import { PingBadge } from '@/components/ui/ping-badge';
 import { PingModal } from '@/components/ui/ping-modal';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { dmUnreadTotal } from '@/features/dms/dm-cache';
+import { useDms } from '@/features/dms/hooks';
+import { dmsPath } from '@/features/dms/navigation';
 import { useLogout, useMe } from '@/features/auth/hooks';
 import { SelfProfileCard } from '@/features/profile/components/profile-popover';
 import { profileImageUrl } from '@/features/profile/hooks';
@@ -53,9 +56,10 @@ function RailItem({
 const railIcon =
   'size-12 rounded-3xl bg-background text-foreground transition-all hover:rounded-2xl hover:bg-primary hover:text-primary-foreground';
 
-/** Cột trái: các server của tôi, tạo/tham gia server, tài khoản. */
+/** Cột trái: mục DM, các server của tôi, tạo/tham gia server, tài khoản. */
 export function ServerRail() {
   const { serverId } = useParams<{ serverId?: string }>();
+  const pathname = usePathname();
   const { data: servers } = useServers();
   const { data: me } = useMe();
   const logoutMutation = useLogout();
@@ -73,6 +77,10 @@ export function ServerRail() {
       aria-label={t('servers.navLabel')}
       className="flex w-18 shrink-0 flex-col items-center gap-2 bg-rail py-3 text-rail-foreground"
     >
+      {/* TG.9: mục "Tin nhắn trực tiếp" nằm trên cùng của rail (như trang chủ Discord) — ngoài
+          ChannelSidebar per-server theo ADR-0070 mục 7. */}
+      <DmRailItem active={pathname.startsWith('/dms')} />
+
       {servers.map((server) => (
         <ServerRailItem
           key={server.id}
@@ -159,10 +167,43 @@ export function ServerRail() {
 }
 
 /**
+ * Mục "Tin nhắn trực tiếp" trên rail (TG.9): badge đỏ tổng unread mọi DM — mọi tin DM đều
+ * mention-style (ADR-0070 mục 7) nên chỉ một mức badge, khác server (mention đỏ + chấm xám).
+ * Cache `qk.dms` được `useDmEvents` cập nhật realtime nên badge đổi ngay không reload.
+ */
+function DmRailItem({ active }: { active: boolean }) {
+  const t = useTranslations('dms');
+  const { data: dms } = useDms();
+  const unreadTotal = dmUnreadTotal(dms ?? []);
+  const label = unreadTotal > 0 ? t('railLabelUnread', { count: unreadTotal }) : t('title');
+
+  return (
+    <RailItem label={label} active={active}>
+      <Link
+        href={dmsPath()}
+        aria-label={label}
+        aria-current={active ? 'page' : undefined}
+        data-testid="dm-rail"
+      >
+        <PingBadge
+          count={unreadTotal}
+          color="red"
+          offset={[-4, 4]}
+          aria-label={unreadTotal > 0 ? t('mentionCount', { count: unreadTotal }) : undefined}
+        >
+          <span className={`${railIcon} flex items-center justify-center`}>
+            <MessageCircle className="size-5" />
+          </span>
+        </PingBadge>
+      </Link>
+    </RailItem>
+  );
+}
+
+/**
  * Một server trên rail kèm badge unread (T4.3): mention > 0 → badge đỏ số mention; còn lại
  * unread > 0 → chấm xám. Nhãn aria gộp số để trình đọc màn hình đọc đủ thông tin.
- */
-function ServerRailItem({
+ */ function ServerRailItem({
   serverId,
   name,
   iconUrl,
