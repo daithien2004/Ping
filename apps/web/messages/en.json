@@ -524,8 +524,8 @@
   },
   "notifications": {
     "title": "Notifications",
-    "bellChannel": "Channel notification settings",
-    "bellDm": "Conversation notification settings",
+    "bellChannel": "Channel notifications",
+    "bellDm": "Conversation notifications",
     "levelLabel": "Notification level",
     "levelAll": "All",
     "levelMentions": "Mentions only",

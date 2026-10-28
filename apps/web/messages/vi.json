@@ -524,8 +524,8 @@
   },
   "notifications": {
     "title": "Thông báo",
-    "bellChannel": "Cài đặt thông báo kênh",
-    "bellDm": "Cài đặt thông báo hội thoại",
+    "bellChannel": "Thông báo kênh",
+    "bellDm": "Thông báo hội thoại",
     "levelLabel": "Mức thông báo",
     "levelAll": "Tất cả",
     "levelMentions": "Chỉ đề cập",
