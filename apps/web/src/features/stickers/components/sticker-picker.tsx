@@ -1,30 +1,39 @@
 'use client';
-import type { StickerDto } from '@ping/shared';
+import type { GifPayload, StickerDto } from '@ping/shared';
 import { useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'use-intl';
 import { useStickers, flattenStickers } from '../hooks';
 import { pushRecentSticker, saveRecentStickers, stickerMatchesSearch } from '../sticker-utils';
 import { profileImageUrl } from '@/features/profile/hooks';
+import { GifPanel } from '@/features/gifs/components/gif-panel';
 import { PingInput } from '@/components/ui/ping-input';
 
-export type StickerTab = 'recent' | 'system' | 'server';
+export type StickerTab = 'recent' | 'system' | 'server' | 'gif';
 
 /**
- * Sticker picker (TG.22, ADR-0067): ba tab — Gần đây / Hệ thống / Server — tìm theo tên và
- * thẻ (không dấu), lưới điều hướng bằng mũi tên, Enter gửi. Bấm một sticker là GỬI ngay
- * (tin `kind='sticker'`), không chèn vào ô soạn.
+ * Sticker picker (TG.22, ADR-0067; tab GIF thêm bởi TG.25 ADR-0069): bốn tab — Gần đây / Hệ thống /
+ * Của server / GIF — tìm theo tên và thẻ (không dấu), lưới điều hướng bằng mũi tên, Enter gửi.
+ * Bấm một sticker/GIF là GỬI ngay (tin `kind='sticker'`/`kind='gif'`), không chèn vào ô soạn.
+ * Ô tìm kiếm dùng chung theo tab đang mở: tab GIF thì truy vấn đi tới panel GIF (debounce ở đó).
  */
 export function StickerPicker({
   serverId,
   recent,
+  recentGifs,
   onPick,
+  onPickGif,
 }: {
   serverId: string;
   /** Danh sách id gần đây do composer giữ state (để picker render lại khi chọn). */
   recent: string[];
+  /** TG.25: GIF gần đây của user (state ở composer vì khóa localStorage theo user). */
+  recentGifs: GifPayload[];
   onPick: (sticker: StickerDto) => void;
+  /** TG.25: chọn GIF trong tab GIF là gửi ngay một tin `kind='gif'` (payload đủ để gửi). */
+  onPickGif: (gif: GifPayload) => void;
 }) {
   const t = useTranslations('stickers');
+  const tg = useTranslations('gifs');
   const { data, isPending } = useStickers(serverId);
   const [query, setQuery] = useState('');
   const [tab, setTab] = useState<StickerTab>('recent');
@@ -85,6 +94,7 @@ export function StickerPicker({
     recent: t('tabRecent'),
     system: t('tabSystem'),
     server: t('tabServer'),
+    gif: tg('tab'),
   };
 
   return (
@@ -93,14 +103,14 @@ export function StickerPicker({
       data-testid="sticker-picker"
     >
       <PingInput
-        aria-label={t('search')}
-        placeholder={t('searchPlaceholder')}
+        aria-label={tab === 'gif' ? tg('search') : t('search')}
+        placeholder={tab === 'gif' ? tg('searchPlaceholder') : t('searchPlaceholder')}
         value={query}
         onChange={(event) => setQuery(event.target.value)}
         data-testid="sticker-search"
       />
       <div role="tablist" aria-label={t('tabsLabel')} className="flex gap-1">
-        {(['recent', 'system', 'server'] as const).map((name) => (
+        {(['recent', 'system', 'server', 'gif'] as const).map((name) => (
           <button
             key={name}
             type="button"
@@ -117,7 +127,11 @@ export function StickerPicker({
           </button>
         ))}
       </div>
-      {isPending ? (
+      {tab === 'gif' ? (
+        // TG.25: panel GIF tự lo loading/rỗng/lỗi 503/ghi công; truy vấn dùng chung ô tìm kiếm
+        // phía trên (debounce trong panel), không phụ thuộc trạng thái tải sticker.
+        <GifPanel query={query} recentGifs={recentGifs} onPickGif={onPickGif} />
+      ) : isPending ? (
         <p className="py-6 text-center text-sm text-muted-foreground">{t('loading')}</p>
       ) : visible.length === 0 ? (
         <p className="py-6 text-center text-sm text-muted-foreground">{t('noResults')}</p>

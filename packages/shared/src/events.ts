@@ -40,9 +40,11 @@ export interface MessageAuthor {
 }
 
 export interface MessageCreatedPayload {
-  kind?: 'text' | 'sticker';
+  kind?: 'text' | 'sticker' | 'gif';
   /** TG.22: preview sticker khi đây là tin sticker; tin văn bản không có. */
   sticker?: import('./schemas/sticker').MessageStickerPreview | null;
+  /** TG.25: preview GIF khi đây là tin GIF; tin khác không có. */
+  gif?: import('./schemas/gif').MessageGifPreview | null;
   attachments?: import('./schemas/attachment').AttachmentDto[];
   id: string;
   channelId: string;

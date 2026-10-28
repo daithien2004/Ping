@@ -30,6 +30,8 @@ export const ErrorCodes = {
   STICKER_LIMIT_REACHED: 'STICKER_LIMIT_REACHED',
   /** Server đã đạt trần emoji tùy chỉnh (50 tĩnh hoặc 50 động — TG.24, ADR-0068). */
   EMOJI_LIMIT_REACHED: 'EMOJI_LIMIT_REACHED',
+  /** Nhà cung cấp GIF thiếu key/lỗi/hết quota — `/gifs/*` 503, chat không ảnh hưởng (TG.25, ADR-0069). */
+  GIF_PROVIDER_UNAVAILABLE: 'GIF_PROVIDER_UNAVAILABLE',
 } as const;
 
 export type ErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes];

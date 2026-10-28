@@ -25,4 +25,8 @@ export const qk = {
   stickers: (serverId: string) => ['servers', serverId, 'stickers'] as const,
   /** TG.24: emoji tùy chỉnh của server — picker, render tin/reaction và màn quản trị dùng chung. */
   emojis: (serverId: string) => ['servers', serverId, 'emojis'] as const,
+  /** TG.25: tìm GIF qua cổng backend (key theo truy vấn đã trim/lowercase, không gọi nhà cung cấp trực tiếp). */
+  gifSearch: (query: string) => ['gifs', 'search', query] as const,
+  /** TG.25: GIF thịnh hành cho tab GIF khi chưa gõ gì (cache chung cho mọi channel). */
+  gifTrending: ['gifs', 'trending'] as const,
 };

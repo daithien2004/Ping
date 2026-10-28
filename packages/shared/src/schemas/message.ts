@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { MessageAuthor } from '../events';
 import { AttachmentLimits, type AttachmentDto } from './attachment';
+import { gifPayloadSchema, type MessageGifPreview } from './gif';
 import type { MessageStickerPreview } from './sticker';
 
 export const createMessageSchema = z
@@ -13,18 +14,30 @@ export const createMessageSchema = z
     attachmentIds: z.array(z.uuid()).max(AttachmentLimits.PER_MESSAGE).optional(),
     // TG.22: gửi sticker — tin `kind='sticker'`, nội dung bắt buộc rỗng, không kèm tệp tin nhắn.
     stickerId: z.uuid().optional(),
+    // TG.25: gửi GIF — tin `kind='gif'`, nội dung bắt buộc rỗng, URL thuộc host allowlist.
+    gif: gifPayloadSchema.optional(),
   })
   .refine(
     (input) =>
       input.content.length > 0 ||
       (input.attachmentIds?.length ?? 0) > 0 ||
-      input.stickerId !== undefined,
+      input.stickerId !== undefined ||
+      input.gif !== undefined,
   )
   .refine((input) => input.stickerId === undefined || input.content === '', {
     message: 'Sticker message must have empty content',
   })
   .refine((input) => input.stickerId === undefined || (input.attachmentIds?.length ?? 0) === 0, {
     message: 'Sticker message cannot carry message attachments',
+  })
+  .refine((input) => input.stickerId === undefined || input.gif === undefined, {
+    message: 'Message cannot be both sticker and gif',
+  })
+  .refine((input) => input.gif === undefined || input.content === '', {
+    message: 'Gif message must have empty content',
+  })
+  .refine((input) => input.gif === undefined || (input.attachmentIds?.length ?? 0) === 0, {
+    message: 'Gif message cannot carry message attachments',
   });
 export type CreateMessageInput = z.infer<typeof createMessageSchema>;
 
@@ -76,9 +89,11 @@ export type ReactionUsersQuery = z.infer<typeof reactionUsersQuerySchema>;
  * bản deploy không có `kind` — client coi thiếu `kind` là `'text'`.
  */
 export interface MessageDto {
-  kind?: 'text' | 'sticker';
+  kind?: 'text' | 'sticker' | 'gif';
   /** Xem trước sticker khi `kind='sticker'`; tin văn bản không có. */
   sticker?: MessageStickerPreview | null;
+  /** TG.25: xem trước GIF khi `kind='gif'`; tin khác không có. */
+  gif?: MessageGifPreview | null;
   attachments?: AttachmentDto[];
   id: string;
   content: string;

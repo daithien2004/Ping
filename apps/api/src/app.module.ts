@@ -27,6 +27,7 @@ import { AuditModule } from './modules/audit/audit.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { EventsModule } from './infra/events/events.module.js';
 import { ChannelsModule } from './modules/channels/channels.module.js';
+import { GifsModule } from './modules/gifs/gifs.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { EmojisModule } from './modules/emojis/emojis.module.js';
 import { MessagesModule } from './modules/messages/messages.module.js';
@@ -95,6 +96,7 @@ import { UsersModule } from './modules/users/users.module.js';
     MessagesModule,
     StickersModule,
     EmojisModule,
+    GifsModule,
     AttachmentsModule,
     RealtimeModule,
     AiModule,

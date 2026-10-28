@@ -4,7 +4,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'use-intl';
-import type { StickerDto } from '@ping/shared';
+import type { GifPayload, StickerDto } from '@ping/shared';
 import { Button } from '@/components/ui/button';
 import { useChannelRealtime } from '@/features/realtime/hooks';
 import { TypingIndicator } from '@/features/realtime/components/typing-indicator';
@@ -232,6 +232,21 @@ export function MessagePane({
     setReplyTo(null);
   }
 
+  // TG.25 (ADR-0069): gửi tin GIF — KHÔNG content, payload {id,url,width,height} như client
+  // chọn; preview đi kèm để tin optimistic render ngay (provider luôn 'tenor' ở v0.2.0).
+  function sendGif(gif: GifPayload, nonce: string, replyToId?: string) {
+    if (!ready || !ability.can('create', 'Message')) return;
+    scrollOnAppend.current = true;
+    sendMutation.mutate({
+      content: '',
+      nonce,
+      gif,
+      ...(replyToId ? { replyToId } : {}),
+      gifPreview: { url: gif.url, width: gif.width, height: gif.height, provider: 'tenor' },
+    });
+    setReplyTo(null);
+  }
+
   // Tin của chính mình: luôn xuống đáy để thấy nó, kể cả khi đang đọc tin cũ. KHÔNG cuộn ngay:
   // tin optimistic chỉ vào cache sau `await cancelQueries()` trong onMutate, cuộn sớm thì dừng ở
   // tin cuối CŨ (e2e bắt được: lệch đúng một tin, chập chờn). Đánh dấu, cuộn khi danh sách dài ra.
@@ -260,6 +275,25 @@ export function MessagePane({
         ...(message.replyTo?.id ? { replyToId: message.replyTo.id } : {}),
         stickerId: message.sticker?.id,
         stickerPreview: message.sticker ?? null,
+      });
+      return;
+    }
+    // TG.25: gửi lại tin gif — id payload được giữ lại trên tin optimistic (preview không có id);
+    // thiếu id/preview thì không gửi lại được (server sẽ từ chối payload thiếu id).
+    if (message.kind === 'gif') {
+      if (!message.gif || !message.gifId) return;
+      scrollOnAppend.current = true;
+      sendMutation.mutate({
+        content: '',
+        nonce: message.nonce,
+        ...(message.replyTo?.id ? { replyToId: message.replyTo.id } : {}),
+        gif: {
+          id: message.gifId,
+          url: message.gif.url,
+          width: message.gif.width,
+          height: message.gif.height,
+        },
+        gifPreview: message.gif,
       });
       return;
     }
@@ -422,6 +456,7 @@ export function MessagePane({
         onCancelReply={() => setReplyTo(null)}
         onSend={sendOwn}
         onSendSticker={sendSticker}
+        onSendGif={sendGif}
         textareaRef={composerRef}
       />
       <MessageDialogs

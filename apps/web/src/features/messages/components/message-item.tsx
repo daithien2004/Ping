@@ -3,6 +3,7 @@ import { useFormatter, useTranslations } from 'use-intl';
 import type { ClientMessage } from '../message-cache';
 import { useServerAbility } from '@/features/permissions/context';
 import { StickerMessage } from '@/features/stickers/components/sticker-message';
+import { GifMessage } from '@/features/gifs/components/gif-message';
 import { MessageActions, type MessageSelection } from './message-actions';
 import { MessageReactions } from './message-reactions';
 import { MarkdownText } from './markdown-text';
@@ -93,10 +94,13 @@ export function MessageItem({
           </span>
         </button>
       )}
-      {/* TG.22: tin sticker render ảnh thay vì markdown/attachment; tin văn bản đi qua AST
-          allowlist (TG.4, ADR-0054) — không đường sinh HTML; tin optimistic vẫn hiện thường. */}
+      {/* TG.22: tin sticker render ảnh thay vì markdown/attachment; TG.25: tin GIF render ảnh
+          Tenor cùng cách. Tin văn bản đi qua AST allowlist (TG.4, ADR-0054) — không đường sinh
+          HTML; tin optimistic vẫn hiện thường. */}
       {message.kind === 'sticker' ? (
         <StickerMessage sticker={message.sticker ?? null} />
+      ) : message.kind === 'gif' ? (
+        <GifMessage gif={message.gif ?? null} />
       ) : (
         <>
           <MarkdownText content={message.content} serverId={serverId} />

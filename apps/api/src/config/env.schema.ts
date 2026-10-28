@@ -66,6 +66,12 @@ export const envSchema = z.object({
     z.string().min(1).optional(),
   ),
   GROQ_MODEL: z.string().min(1).default('openai/gpt-oss-20b'),
+  // Tenor (TG.25, ADR-0069). Bỏ trống = tìm GIF tắt; /gifs/* trả 503 GIF_PROVIDER_UNAVAILABLE
+  // nhưng gửi/nhận chat bình thường. Key do OWNER tự tạo, không commit, không log.
+  TENOR_API_KEY: z.preprocess(
+    (value) => (value === '' ? undefined : value),
+    z.string().min(1).optional(),
+  ),
   // T5.7/ADR-0047: hạn mức AI theo ngày (UTC). `AI_DAILY_REQUEST_LIMIT` là số request/user/ngày.
   // `AI_DAILY_BUDGET_USD = 0` tắt kill-switch ngân sách; > 0 là trần chi phí toàn hệ thống/ngày.
   AI_DAILY_REQUEST_LIMIT: z.coerce.number().int().min(1).max(10_000).default(50),
