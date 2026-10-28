@@ -32,6 +32,7 @@ import { GifsModule } from './modules/gifs/gifs.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { EmojisModule } from './modules/emojis/emojis.module.js';
 import { MessagesModule } from './modules/messages/messages.module.js';
+import { NotificationsModule } from './modules/notifications/notifications.module.js';
 import { RealtimeModule } from './modules/realtime/realtime.module.js';
 import { RolesModule } from './modules/roles/roles.module.js';
 import { ServersModule } from './modules/servers/servers.module.js';
@@ -100,6 +101,8 @@ import { UsersModule } from './modules/users/users.module.js';
     EmojisModule,
     GifsModule,
     AttachmentsModule,
+    // TG.12: prefs thông báo (chỉ lưu + đọc; badge do client tính).
+    NotificationsModule,
     RealtimeModule,
     AiModule,
   ],

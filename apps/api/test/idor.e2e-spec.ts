@@ -75,6 +75,15 @@ const ID_ROUTES: Array<[Verb, string]> = [
   // (người thứ ba → 404 mọi route /channels/:id/*, không join được room).
   ['post', '/users/:id/block'],
   ['delete', '/users/:id/block'],
+  // TG.12: prefs thông báo theo server/channel — PUT/DELETE có id target trên path. Dữ liệu
+  // user-scoped (userId từ JWT, không bao giờ từ path; không kiểm quyền member vì đặt prefs
+  // cho target mình không thuộc là vô hại — lý do ở NotificationsService). Không có gì của
+  // người khác để đọc/sửa nên không vào bảng tấn công: cách ly giữa người dùng phủ ở
+  // test/notification-prefs.e2e-spec.ts (user khác GET/DELETE không đụng được dòng của nhau).
+  ['put', '/users/me/notification-prefs/server/:id'],
+  ['put', '/users/me/notification-prefs/channel/:id'],
+  ['delete', '/users/me/notification-prefs/server/:id'],
+  ['delete', '/users/me/notification-prefs/channel/:id'],
 ];
 
 /** Quét controller của app qua metadata của Nest: các route có tham số `:...Id`, dạng `verb /path/:id`, đã sắp xếp. */
@@ -637,7 +646,7 @@ describe('IDOR (e2e)', () => {
 
   it('no token → 401 on every endpoint that takes an id', async () => {
     const uuid = randomUUID();
-    expect(ID_ROUTES).toHaveLength(47);
+    expect(ID_ROUTES).toHaveLength(51);
     for (const [verb, template] of ID_ROUTES) {
       const url = template.replaceAll(':id', uuid);
       const res = await as(undefined, verb, url).send({});
