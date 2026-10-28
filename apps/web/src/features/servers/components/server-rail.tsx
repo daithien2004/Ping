@@ -16,11 +16,13 @@ import { dmUnreadTotal } from '@/features/dms/dm-cache';
 import { useDms } from '@/features/dms/hooks';
 import { dmsPath } from '@/features/dms/navigation';
 import { useLogout, useMe } from '@/features/auth/hooks';
+import { EnableNotificationsButton } from '@/features/notifications/components/enable-notifications';
+import { useNotifyBadge } from '@/features/notifications/badge';
 import { SelfProfileCard } from '@/features/profile/components/profile-popover';
 import { profileImageUrl } from '@/features/profile/hooks';
 import { UserAvatar } from '@/features/profile/components/user-avatar';
 import { useRealtime } from '@/features/realtime/context';
-import { useUnread, useUnreadTitle } from '@/features/unread/hooks';
+import { useUnread } from '@/features/unread/hooks';
 import { totals } from '@/features/unread/unread-cache';
 import { initials } from '@/lib/initials';
 import { useServers } from '../hooks';
@@ -66,8 +68,8 @@ export function ServerRail() {
   const [wizard, setWizard] = useState<OnboardingMode | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
   const t = useTranslations();
-  // Tab title theo tổng mention mọi server (T4.3).
-  useUnreadTitle(
+  // TG.12: tab title + favicon theo tổng unread mọi server + DM (trước đây chỉ tổng mention).
+  useNotifyBadge(
     servers.map((server) => server.id),
     'Ping',
   );
@@ -117,6 +119,8 @@ export function ServerRail() {
       </RailItem>
 
       <div className="mt-auto flex flex-col items-center gap-2">
+        {/* TG.12: xin quyền Notification sau thao tác người dùng — chỉ hiện khi còn 'default'. */}
+        <EnableNotificationsButton />
         <LanguageSwitcher compact />
         {/* TG.7: bấm vào avatar mở thẻ hồ sơ (PingModal — đặt vị trí của popover bị lệch trong
             layout rail); đổi ảnh đại diện/tên hiển thị không cần trang cài đặt. */}

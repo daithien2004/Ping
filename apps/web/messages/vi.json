@@ -521,5 +521,33 @@
     "blockHint": "Cả hai sẽ không gửi được tin cho nhau trong DM hiện có và không thể tạo DM mới.",
     "unblockConfirm": "Bỏ chặn {name}?",
     "blockedBanner": "Bạn không thể nhắn tin cho người này lúc này."
+  },
+  "notifications": {
+    "title": "Thông báo",
+    "bellChannel": "Cài đặt thông báo kênh",
+    "bellDm": "Cài đặt thông báo hội thoại",
+    "levelLabel": "Mức thông báo",
+    "levelAll": "Tất cả",
+    "levelMentions": "Chỉ đề cập",
+    "levelNone": "Tắt",
+    "serverDefaultHint": "Đang theo mặc định server",
+    "globalDefaultHint": "Đang theo mặc định chung",
+    "muteLabel": "Tạm tắt tiếng",
+    "mute15m": "15 phút",
+    "mute1h": "1 giờ",
+    "mute3h": "3 giờ",
+    "mute8h": "8 giờ",
+    "mute24h": "24 giờ",
+    "unmute": "Bỏ tắt tiếng",
+    "mutedUntil": "Đang tắt tiếng (còn {count} phút)",
+    "ignoreEveryone": "Bỏ qua @everyone",
+    "enableBrowser": "Bật thông báo trình duyệt",
+    "browserBlocked": "Bị chặn trong trình duyệt",
+    "browserBlockedHint": "Thông báo đã bị chặn trong cài đặt trình duyệt.",
+    "bodyFallback": "Bạn có tin nhắn mới",
+    "stickerLabel": "[Sticker]",
+    "gifLabel": "[GIF]",
+    "attachmentLabel": "[Tệp đính kèm]",
+    "fallbackTitle": "Ping"
   }
 }

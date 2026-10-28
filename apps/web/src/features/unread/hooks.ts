@@ -28,35 +28,13 @@ export function useUnread(serverId: string | null) {
   });
 }
 
-/** Đánh dấu đã đọc đến một tin (T4.2). `read.updated` server phát sẽ tới các tab khác. */
+/**
+ * Đánh dấu đã đọc đến một tin (T4.2). `read.updated` server phát sẽ tới các tab khác.
+ */
 export function useMarkRead(channelId: string) {
   return useMutation({
     mutationFn: (messageId: string) => markChannelRead(channelId, messageId),
   });
-}
-
-/**
- * Tab title `(N) Ping` với N = tổng mention mọi server (T4.3) — tín hiệu mạnh nhất cần
- * chú ý; unread thường chỉ đáng một chấm trên rail. Theo dõi trực tiếp cache để đổi
- * ngay khi event realtime cập nhật số.
- */
-export function useUnreadTitle(serverIds: string[], appName: string) {
-  const queryClient = useQueryClient();
-  // Mảng id mới mỗi render: ghép thành chuỗi làm dependency cho effect.
-  const serverKey = serverIds.join(',');
-  useEffect(() => {
-    const ids = serverKey ? serverKey.split(',') : [];
-    const update = () => {
-      const total = ids.reduce((sum, serverId) => {
-        const rows = queryClient.getQueryData<ChannelUnreadDto[]>(qk.unread(serverId));
-        return sum + (rows?.reduce((acc, row) => acc + row.mentionCount, 0) ?? 0);
-      }, 0);
-      document.title = total > 0 ? `(${total}) ${appName}` : appName;
-    };
-    update();
-    // TanStack trả về hàm unsubscribe trực tiếp.
-    return queryClient.getQueryCache().subscribe(update);
-  }, [serverKey, appName, queryClient]);
 }
 
 /**
@@ -85,7 +63,10 @@ export function useUnreadEvents(
       return null;
     };
 
-    const bump = (channelId: string, options: { isOwn: boolean; mention: boolean }) => {
+    const bump = (
+      channelId: string,
+      options: { isOwn: boolean; mention: boolean; countsUnread?: boolean },
+    ) => {
       const serverId = serverIdOfChannel(channelId);
       if (!serverId) return; // server chưa nạp unread (đang không ở rail?) — lần fetch sau tự đúng
       queryClient.setQueryData<ChannelUnreadDto[]>(qk.unread(serverId), (old) =>
@@ -99,7 +80,9 @@ export function useUnreadEvents(
     };
     const mention = (event: MentionCreatedPayload) => {
       if (event.channelId === activeChannelId) return;
-      bump(event.channelId, { isOwn: false, mention: true });
+      // mention.created KHÔNG tăng unread lần hai: channel.activity của cùng tin đã đếm
+      // (TG.12 — tổng unread lên title/favicon, đếm đôi sẽ lộ thẳng lên badge).
+      bump(event.channelId, { isOwn: false, mention: true, countsUnread: false });
     };
     const read = (event: ReadUpdatedPayload) => {
       const serverId = serverIdOfChannel(event.channelId);

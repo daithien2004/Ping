@@ -34,4 +34,6 @@ export const qk = {
    * Tin trong DM vẫn dùng `qk.messages(channelId)` như channel thường (ADR-0070 mục 8).
    */
   dms: ['dms'] as const,
+  /** TG.12: prefs thông báo của chính người gọi (một bản cho mọi server/channel, key phẳng). */
+  notificationPrefs: ['notification-prefs'] as const,
 };

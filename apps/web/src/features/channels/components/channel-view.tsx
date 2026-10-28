@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { MessageListSkeleton } from '@/components/skeletons';
 import { MemberPanel } from '@/features/members/components/member-panel';
 import { useMemberPanel } from '@/features/members/store';
+import { NotificationBell } from '@/features/notifications/components/notification-bell';
 import { AskDialog } from '@/features/messages/components/ask-dialog';
 import { SearchDialog } from '@/features/search/components/search-dialog';
 import { MessagePane } from '@/features/messages/components/message-pane';
@@ -77,6 +78,8 @@ export function ChannelView({
           >
             <Pin />
           </Button>
+          {/* TG.12: chuông cài đặt thông báo của kênh (mức + mute), kế thừa mặc định server. */}
+          <NotificationBell serverId={serverId} channelId={channel.id} />
           <Button
             variant="ghost"
             size="icon"

@@ -11,6 +11,7 @@ import { PingPopconfirm } from '@/components/ui/ping-popconfirm';
 import { pingToast } from '@/components/ui/ping-toast';
 import { PinnedPanel } from '@/features/messages/components/pinned-panel';
 import { MessagePane } from '@/features/messages/components/message-pane';
+import { NotificationBell } from '@/features/notifications/components/notification-bell';
 import { UserAvatar } from '@/features/profile/components/user-avatar';
 import { ApiError } from '@/lib/api-client';
 import { useErrorMessage } from '@/lib/error-message';
@@ -110,6 +111,8 @@ function DmConversation({ dm, focusId }: { dm: DmSummary; focusId: string | null
         <p className="truncate font-semibold">{dm.partner.displayName}</p>
         <span className="truncate text-xs text-muted-foreground">@{dm.partner.username}</span>
         <div className="ml-auto flex items-center gap-1">
+          {/* TG.12: DM không có dòng server — chuông đặt mức/mute riêng cho hội thoại này. */}
+          <NotificationBell serverId={null} channelId={dm.channelId} dm />
           <Button
             variant="ghost"
             size="icon"
