@@ -4,6 +4,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
 import { useMe } from '@/features/auth/hooks';
 import { useChannelEvents } from '@/features/channels/hooks';
+import { useEmojiEvents } from '@/features/emojis/hooks';
 import { useMemberPresence } from '@/features/members/hooks';
 import { useMessageEvents } from '@/features/messages/hooks';
 import { useProfileEvents } from '@/features/profile/hooks';
@@ -32,6 +33,7 @@ function SignedInRealtime({ userId, children }: { userId: string; children: Reac
   useServerEvents(session);
   useMemberPresence(session);
   useProfileEvents(session); // TG.7: user/member/server.updated cập nhật cache hồ sơ ngay.
+  useEmojiEvents(session); // TG.24: expressions.updated invalidate emoji + sticker của server.
   useUnreadEvents(session, userId, activeChannelId);
   useEffect(() => {
     const typing = (event: TypingStartedPayload) => {

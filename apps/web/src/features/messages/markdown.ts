@@ -9,6 +9,7 @@ import { SHORTCODE_TO_UNICODE as EMOJI } from '@/features/emoji/map';
 export type InlineNode =
   | { type: 'text'; value: string }
   | { type: 'emoji'; unicode: string }
+  | { type: 'customEmoji'; id: string; name: string }
   | { type: 'mention'; username: string }
   | { type: 'bold'; children: InlineNode[] }
   | { type: 'italic'; children: InlineNode[] }
@@ -42,8 +43,10 @@ function linkNode(rawUrl: string): InlineNode {
 
 /**
  * Một đợt quét inline duy nhất theo thứ tự ưu tiên: inline code (nội dung thuần) → đậm →
- * nghiêng/gạch/spoiler → mention → emoji → liên kết. Nhóm không khớp rơi vào text.
- * Mention yêu cầu @ đứng sau ranh giới từ (lookbehind) nên email không thành chip.
+ * nghiêng/gạch/spoiler → mention → emoji tùy chỉnh → emoji shortcode → liên kết. Nhóm không
+ * khớp rơi vào text. Mention yêu cầu @ đứng sau ranh giới từ (lookbehind) nên email không thành
+ * chip. Custom emoji (TG.24, ADR-0068) ĐẶT TRƯỚC shortcode vì cùng bắt đầu bằng `:` — token
+ * `:ten:<uuid>` nếu để sau sẽ bị nhóm shortcode nuốt `:ten:` và bỏ lại uuid thành text.
  */
 const INLINE_PATTERN = new RegExp(
   [
@@ -53,8 +56,9 @@ const INLINE_PATTERN = new RegExp(
     '~~([^~\\n]+?)~~', // 5: gạch ngang
     '\\|\\|([^|\\n]+?)\\|\\|', // 6: spoiler
     '(?<![\\w@.])@([A-Za-z0-9_.-]{3,32})', // 7: mention
-    ':([a-z_]{2,20}):', // 8: shortcode emoji
-    '(https?://[^\\s<]+)', // 9: autolink
+    ':([a-z0-9_]{2,32}):([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})', // 8,9: emoji tùy chỉnh
+    ':([a-z_]{2,20}):', // 10: shortcode emoji
+    '(https?://[^\\s<]+)', // 11: autolink
   ].join('|'),
   'g',
 );
@@ -65,7 +69,20 @@ function parseInline(text: string): InlineNode[] {
   for (const match of text.matchAll(INLINE_PATTERN)) {
     const index = match.index ?? 0;
     if (index > last) nodes.push({ type: 'text', value: text.slice(last, index) });
-    const [full, fence, code, bold, italic, strike, spoiler, mention, shortcode, url] = match;
+    const [
+      full,
+      fence,
+      code,
+      bold,
+      italic,
+      strike,
+      spoiler,
+      mention,
+      customName,
+      customId,
+      shortcode,
+      url,
+    ] = match;
     if (fence !== undefined && code !== undefined) {
       nodes.push({ type: 'inlineCode', children: [{ type: 'text', value: code }] });
     } else if (bold !== undefined) {
@@ -78,6 +95,10 @@ function parseInline(text: string): InlineNode[] {
       nodes.push({ type: 'spoiler', children: parseInline(spoiler) });
     } else if (mention !== undefined) {
       nodes.push({ type: 'mention', username: mention });
+    } else if (customName !== undefined && customId !== undefined) {
+      // Emoji tùy chỉnh (TG.24): id UUID là nguồn sự thật; renderer resolve qua cache server,
+      // thiếu/đã xóa → placeholder chip `:ten:`. Parser không biết emoji nào tồn tại.
+      nodes.push({ type: 'customEmoji', id: customId, name: customName });
     } else if (shortcode !== undefined) {
       const unicode = EMOJI[shortcode];
       if (unicode) {
