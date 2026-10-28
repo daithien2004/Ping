@@ -4,6 +4,7 @@ export * from './schemas/channel';
 export * from './schemas/message';
 export * from './schemas/attachment';
 export * from './schemas/sticker';
+export * from './schemas/gif';
 export * from './schemas/custom-emoji';
 export * from './schemas/audit';
 export * from './schemas/search';
