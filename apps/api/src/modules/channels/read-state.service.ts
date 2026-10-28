@@ -24,7 +24,7 @@ export class ReadStateService {
   async markRead(channelId: string, userId: string, messageId: string): Promise<void> {
     const channel = await this.prisma.channel.findUnique({
       where: { id: channelId },
-      select: { serverId: true },
+      select: { id: true, serverId: true, type: true },
     });
     if (!channel) {
       throw new NotFoundException('Channel not found');
@@ -36,6 +36,30 @@ export class ReadStateService {
     });
     if (!message || message.channelId !== channelId) {
       throw new NotFoundException('Message not found');
+    }
+    // TG.9 (ADR-0070 mục 7): DM không có Member — cursor đọc ghi thẳng lên DmParticipant,
+    // cùng ngữ nghĩa "chỉ tiến" với ChannelReadState. markRead gọi sau khi AbilityGuard
+    // xác nhận participant nên hàng chắc chắn tồn tại; updateMany là phòng hờ + lọc cursor.
+    if (channel.type === 'DM') {
+      const advanced = await this.prisma.dmParticipant.updateMany({
+        where: {
+          channelId,
+          userId,
+          OR: [{ lastReadMessageId: null }, { lastReadMessageId: { lt: messageId } }],
+        },
+        data: { lastReadMessageId: messageId },
+      });
+      if (advanced.count > 0) {
+        this.realtime.emitToUser(userId, ServerEvents.ReadUpdated, {
+          channelId,
+          lastReadMessageId: messageId,
+        });
+      }
+      return;
+    }
+    // Channel server luôn có serverId (chỉ DM mới NULL — ADR-0070); nhánh DM đã return.
+    if (channel.serverId === null) {
+      throw new NotFoundException('Channel not found');
     }
     const member = await this.prisma.member.findUnique({
       where: { serverId_userId: { serverId: channel.serverId, userId } },

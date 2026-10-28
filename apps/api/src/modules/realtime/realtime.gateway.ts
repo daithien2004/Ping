@@ -216,12 +216,32 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
 
     const channel = await this.prisma.channel.findUnique({
       where: { id: channelId },
-      select: { serverId: true },
+      select: { id: true, serverId: true, type: true },
     });
     if (!channel) {
       return denied;
     }
 
+    // TG.9 (ADR-0070 mục 6): channel DM — kiểm DmParticipant thay vì ability server; join
+    // DUY NHẤT room channel, không join room server. Participant join room lúc mở hội thoại
+    // (client emit channel.join như channel thường); badge đã đi qua room `user:<id>`.
+    if (channel.type === 'DM') {
+      const participant = await this.prisma.dmParticipant.findUnique({
+        where: { channelId_userId: { channelId, userId } },
+        select: { userId: true },
+      });
+      if (!participant) {
+        // Cùng từ chối cho DM không tồn tại và không phải participant — không lộ tồn tại.
+        await socket.leave(`channel:${channelId}`);
+        return denied;
+      }
+      if (!socket.connected) return denied;
+      await socket.join(`channel:${channelId}`);
+      return { ok: true };
+    }
+
+    // Channel server luôn có serverId (chỉ DM mới NULL — ADR-0070); nhánh DM đã return ở trên.
+    if (channel.serverId === null) return denied;
     let canView: boolean;
     try {
       const ability = await this.abilityFactory.createForUser(channel.serverId, userId);

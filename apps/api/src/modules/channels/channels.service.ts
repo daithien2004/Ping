@@ -31,7 +31,14 @@ export class ChannelsService {
         data: { serverId, name, position: (_max.position ?? -1) + 1 },
       });
     });
-    this.realtime.emitToServer(serverId, ServerEvents.ChannelCreated, this.toDto(channel));
+    // TG.9: Channel.serverId giờ nullable (DM); channel vừa tạo luôn có serverId từ route —
+    // chốt lại để TypeScript thấy (fail-closed nếu lệch dữ liệu).
+    if (channel.serverId === null) throw new NotFoundException('Channel not found');
+    this.realtime.emitToServer(
+      serverId,
+      ServerEvents.ChannelCreated,
+      this.toDto(channel, serverId),
+    );
     return channel;
   }
 
@@ -44,6 +51,9 @@ export class ChannelsService {
 
   async update(channelId: string, actorId: string, input: UpdateChannelInput) {
     const current = await this.getChannel(channelId);
+    // Guard chỉ cho phép tới đây với channel server (DM không có `manage Channel` —
+    // defineDmAbilityFor); serverId NULL là lệch dữ liệu → fail-closed.
+    if (current.serverId === null) throw new NotFoundException('Channel not found');
     const [channel] = await this.prisma.$transaction([
       this.prisma.channel.update({ where: { id: current.id }, data: input }),
       this.audit.record({
@@ -59,12 +69,19 @@ export class ChannelsService {
         },
       }),
     ]);
-    this.realtime.emitToServer(channel.serverId, ServerEvents.ChannelUpdated, this.toDto(channel));
+    if (channel.serverId === null) throw new NotFoundException('Channel not found');
+    this.realtime.emitToServer(
+      channel.serverId,
+      ServerEvents.ChannelUpdated,
+      this.toDto(channel, channel.serverId),
+    );
     return channel;
   }
 
   async remove(channelId: string, actorId: string): Promise<{ id: string }> {
     const channel = await this.getChannel(channelId);
+    // Guard chỉ cho phép tới đây với channel server (DM không có `manage Channel`).
+    if (channel.serverId === null) throw new NotFoundException('Channel not found');
     // Cascade khai báo trong schema: xóa channel kéo toàn bộ tin nhắn theo.
     await this.prisma.$transaction([
       this.prisma.channel.delete({ where: { id: channel.id } }),
@@ -83,17 +100,23 @@ export class ChannelsService {
     return { id: channelId };
   }
 
-  private toDto(channel: {
-    id: string;
-    serverId: string;
-    name: string;
-    type: string;
-    position: number;
-    createdAt: Date;
-  }): ChannelDto {
+  /**
+   * DTO của channel server. `serverId` truyền riêng vì kiểu Prisma của Channel hiện nullable
+   * (TG.9: DM có serverId NULL) — các đường tới đây chỉ là channel server đã narrow.
+   */
+  private toDto(
+    channel: {
+      id: string;
+      name: string;
+      type: string;
+      position: number;
+      createdAt: Date;
+    },
+    serverId: string,
+  ): ChannelDto {
     return {
       id: channel.id,
-      serverId: channel.serverId,
+      serverId,
       name: channel.name,
       type: channel.type as ChannelDto['type'],
       position: channel.position,

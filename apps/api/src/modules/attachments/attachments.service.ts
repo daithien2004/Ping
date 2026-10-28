@@ -45,9 +45,20 @@ export class AttachmentsService {
     if (input.scope === 'message') {
       const channel = await this.prisma.channel.findUnique({ where: { id: input.channelId } });
       if (!channel) throw new NotFoundException();
-      serverId = channel.serverId;
-      const ability = await this.ability.createForUserFresh(channel.serverId, userId);
-      if (!ability.can('create', 'Attachment')) throw new ForbiddenException();
+      // TG.9 (ADR-0070): channel DM — kiểm DmParticipant thay vì ability server; attachment
+      // của tin DM có serverId NULL nên chỉ tính vào hạn mức USER (không có bối cảnh server).
+      if (channel.type === 'DM') {
+        const participant = await this.prisma.dmParticipant.findUnique({
+          where: { channelId_userId: { channelId: channel.id, userId } },
+          select: { userId: true },
+        });
+        if (!participant) throw new ForbiddenException();
+      } else {
+        if (channel.serverId === null) throw new NotFoundException();
+        serverId = channel.serverId;
+        const ability = await this.ability.createForUserFresh(channel.serverId, userId);
+        if (!ability.can('create', 'Attachment')) throw new ForbiddenException();
+      }
     } else if (input.scope === 'serverIcon') {
       serverId = input.serverId!;
       const ability = await this.ability.createForUserFresh(serverId, userId);
@@ -138,7 +149,18 @@ export class AttachmentsService {
       if (!ability.can('update', 'Server')) throw new ForbiddenException();
       return row;
     }
-    const ability = await this.ability.createForUserFresh(row.serverId!, userId);
+    // TG.9: attachment tin DM (serverId NULL) — không có ability server để nạp; người gọi
+    // đã phải là uploader (kiểm ở trên) nên chỉ đối chiếu participant của channel DM.
+    if (row.serverId === null) {
+      if (row.channelId === null) throw new NotFoundException();
+      const participant = await this.prisma.dmParticipant.findUnique({
+        where: { channelId_userId: { channelId: row.channelId, userId } },
+        select: { userId: true },
+      });
+      if (!participant) throw new ForbiddenException();
+      return row;
+    }
+    const ability = await this.ability.createForUserFresh(row.serverId, userId);
     if (!ability.can('create', 'Attachment')) throw new ForbiddenException();
     return row;
   }
@@ -301,9 +323,24 @@ export class AttachmentsService {
       (thumbnail && !row.mime.startsWith('image/'))
     )
       throw new NotFoundException();
-    const channel = await this.prisma.channel.findUnique({ where: { id: row.channelId! } });
+    const channel = await this.prisma.channel.findUnique({
+      where: { id: row.channelId! },
+      select: { id: true, serverId: true, type: true },
+    });
     if (!channel) throw new NotFoundException();
-    const ability = await this.ability.createForUserFresh(row.serverId!, userId);
+    // TG.9 (ADR-0070 mục 8): attachment tin DM — chữ ký URL chỉ xác thực người KÝ URL, mỗi
+    // lần tải phải kiểm lại participant (serverId NULL không có ability server để nạp).
+    // Người ngoài (kể cả có URL) → 404 che tồn tại.
+    if (channel.type === 'DM') {
+      const participant = await this.prisma.dmParticipant.findUnique({
+        where: { channelId_userId: { channelId: channel.id, userId } },
+        select: { userId: true },
+      });
+      if (!participant) throw new NotFoundException();
+      return row;
+    }
+    if (channel.serverId === null) throw new NotFoundException();
+    const ability = await this.ability.createForUserFresh(channel.serverId, userId);
     if (!ability.can('view', 'Attachment')) throw new ForbiddenException();
     return row;
   }

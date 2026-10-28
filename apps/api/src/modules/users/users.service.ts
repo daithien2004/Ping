@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import type { UpdateProfileInput } from '@ping/shared';
+import type { UpdatePrivacyInput, UpdateProfileInput } from '@ping/shared';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
 import { AttachmentsService } from '../attachments/attachments.service.js';
 import { RealtimeService } from '../realtime/realtime.service.js';
@@ -57,5 +57,18 @@ export class UsersService {
     for (const { serverId } of memberships)
       this.realtime.emitToServer(serverId, ServerEvents.UserUpdated, updated);
     return updated;
+  }
+
+  /**
+   * TG.9 (ADR-0070): mức nhận DM của chính mình ('server_members' | 'none'). Không phát
+   * UserUpdated: đây là cài đặt RIÊNG TƯ, không phải hồ sơ công khai — payload event hiện có
+   * (id/username/displayName/avatarUrl) cũng không mang cột này, phát đi là lộ cài đặt.
+   */
+  async updatePrivacy(userId: string, input: UpdatePrivacyInput) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { dmAllow: input.dmAllow },
+      select: { id: true, dmAllow: true },
+    });
   }
 }
