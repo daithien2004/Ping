@@ -1,6 +1,6 @@
 'use client';
 import type { MessageStickerPreview } from '@ping/shared';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslations } from 'use-intl';
 import { profileImageUrl } from '@/features/profile/hooks';
 
@@ -34,6 +34,11 @@ export function StickerMessage({ sticker }: { sticker: MessageStickerPreview | n
   const [broken, setBroken] = useState(false);
   const src = sticker?.deleted === false && sticker.url ? profileImageUrl(sticker.url) : undefined;
   const source = reduced && sticker?.previewUrl ? profileImageUrl(sticker.previewUrl) : src;
+  // onError gắn qua ref thay vì prop JSX: handler DOM trực tiếp vẫn bắt lỗi tải ảnh (tệp đã
+  // bị dọn, cache còn URL cũ) mà không đụng rule a11y cấm handler trên phần tử phi tương tác.
+  const bindError = useCallback((el: HTMLImageElement | null) => {
+    if (el) el.onerror = () => setBroken(true);
+  }, []);
 
   if (!sticker || sticker.deleted || !source || broken) {
     return (
@@ -46,15 +51,13 @@ export function StickerMessage({ sticker }: { sticker: MessageStickerPreview | n
     );
   }
   return (
-    // onError chỉ để bắt tệp đã bị dọn (sticker vừa xóa, cache còn URL cũ) và đổi sang khung
-    // "đã xóa" — không phải tương tác chuột/bàn phím nên jsx-a11y cho phép loại trừ.
-     
+    // onError: tệp đã bị dọn (sticker vừa xóa, cache còn URL cũ) → đổi sang khung "đã xóa".
     <img
+      ref={bindError}
       src={source}
       alt={sticker.name}
       width={sticker.width ?? undefined}
       height={sticker.height ?? undefined}
-      onError={() => setBroken(true)}
       data-testid="sticker-image"
       className="max-h-40 max-w-40 object-contain"
     />
