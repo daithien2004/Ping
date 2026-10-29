@@ -35,6 +35,10 @@ export function buildAntdTheme(mode: ThemeMode): ThemeConfig {
       // Mặc định antd dùng colorTextLabel (text pha alpha) cho mục chưa chọn — trên nền
       // ink-50/ink-950 của palette này tụt dưới 4.5:1 (axe bắt ở trang cài đặt TG.13).
       Segmented: { itemColor: c.foreground, itemHoverColor: c.foreground },
+      // Tag preset 'default' của antd cũng dùng chữ pha alpha trên nền xám nhẹ — axe bắt
+      // color-contrast (serious) ở tag "Chưa xác minh"/"Phiên này" của TG.8. Text đậm màu
+      // foreground, nền giữ neutralFill (vẫn phân biệt được với nền card).
+      Tag: { defaultColor: c.foreground, defaultBg: c.muted },
     },
     hashed: true,
     cssVar: { key: 'ping' },

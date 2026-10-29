@@ -29,38 +29,44 @@ async function main(): Promise<void> {
   const passwordHash = await hash(PASSWORD, { type: argon2id });
 
   // ── Users ──────────────────────────────────────────────────────────────
+  // emailVerified: true ở CẢ create lẫn update — DB dev có user từ trước migration
+  // TG.8 (mặc định false) cũng phải được xác minh, nếu không chính sách chưa xác minh
+  // (chặn tạo server) làm vỡ ~300 e2e cũ đăng nhập bằng user seed.
   const [alice, bob, carol] = await Promise.all([
     prisma.user.upsert({
       where: { email: 'alice@ping.dev' },
-      update: {},
+      update: { emailVerified: true },
       create: {
         id: id('0001'),
         email: 'alice@ping.dev',
         username: 'alice',
         displayName: 'Alice Nguyen',
         passwordHash,
+        emailVerified: true,
       },
     }),
     prisma.user.upsert({
       where: { email: 'bob@ping.dev' },
-      update: {},
+      update: { emailVerified: true },
       create: {
         id: id('0002'),
         email: 'bob@ping.dev',
         username: 'bob',
         displayName: 'Bob Tran',
         passwordHash,
+        emailVerified: true,
       },
     }),
     prisma.user.upsert({
       where: { email: 'carol@ping.dev' },
-      update: {},
+      update: { emailVerified: true },
       create: {
         id: id('0003'),
         email: 'carol@ping.dev',
         username: 'carol',
         displayName: 'Carol Le',
         passwordHash,
+        emailVerified: true,
       },
     }),
   ]);

@@ -35,6 +35,10 @@ model User {
   notificationPrefs  NotificationPref[]
   // TG.13: cài đặt giao diện/ngôn ngữ — một hàng mỗi user, tạo LAZY (chỉ PATCH mới upsert).
   settings           UserSettings?
+  // TG.8: chính sách tài khoản chưa xác minh — chặn tạo server/mã mời cho tới khi
+  // người dùng xác minh email. Default false: user mới chưa xác minh; seed gán true.
+  emailVerified      Boolean @default(false)
+  emailTokens        EmailToken[]
 }
 
 model Session {
@@ -48,8 +52,32 @@ model Session {
   expiresAt        DateTime
   revokedAt        DateTime?
   createdAt        DateTime  @default(now())
+  // TG.8: tóm tắt User-Agent cho danh sách phiên ("Chrome trên Windows") — tính MỘT lúc
+  // tạo (hàm thuần describeUserAgent) để danh sách không phải parse UA mỗi lần đọc.
+  // Hàng cũ trước TG.8 để '' và được suy lại từ userAgent khi đọc.
+  device           String    @default("")
+  // TG.8: lần dùng gần nhất — cập nhật mỗi lần refresh thành công, sắp xếp danh sách phiên.
+  lastUsedAt       DateTime  @default(now())
 
   // Refresh token gắn với user: xóa user thì phiên đăng nhập phải chết theo.
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/// TG.8: token một lần cho xác minh email ('verify', TTL 24h) và đặt lại mật khẩu
+/// ('reset', TTL 30 phút). DB chỉ giữ BĂM SHA-256 — token thô chỉ tồn tại trong thư;
+/// dùng xong đánh dấu usedAt (một mã VERIFY_TOKEN_INVALID chung cho sai/hết hạn/đã dùng).
+/// kind kiểu String (giá trị do API kiểm) khớp cách User.dmAllow/Attachment.scope đặt tên.
+model EmailToken {
+  id        String    @id @default(uuid(7)) @db.Uuid
+  userId    String    @db.Uuid
+  kind      String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])

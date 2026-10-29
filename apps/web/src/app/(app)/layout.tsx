@@ -2,6 +2,7 @@ import { Suspense, type ReactNode } from 'react';
 import { Loading } from '@/components/loading';
 import { RailSkeleton } from '@/components/skeletons';
 import { AuthGate } from '@/features/auth/components/auth-gate';
+import { VerifyEmailBanner } from '@/features/auth/components/verify-email-banner';
 import { SettingsSync } from '@/features/settings/components/settings-sync';
 import { ServerRail } from '@/features/servers/components/server-rail';
 import { RealtimeProvider } from '@/features/realtime/components/realtime-provider';
@@ -22,6 +23,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           <SettingsSync />
           <div className="flex h-dvh flex-col">
             <ConnectionBanner />
+            {/* TG.8: nhắc khi email chưa xác minh — ẩn ngay khi `me` cho biết đã xác minh. */}
+            <VerifyEmailBanner />
             <QuickSwitcher items={[]} />
             <div className="flex min-h-0 min-w-[960px] flex-1">
               <Suspense fallback={<RailSkeleton />}>

@@ -202,7 +202,13 @@ async function request<T>(
   if (res.status === 204) {
     return undefined as T;
   }
-  const data: unknown = await res.json();
+  // TG.8: hành động vòng đời tài khoản trả 200/202 với body rỗng (quên mật khẩu luôn 202,
+  // xác minh email 204) — đọc JSON chỉ khi có nội dung, body rỗng coi như undefined.
+  const text = await res.text();
+  if (text === '') {
+    return undefined as T;
+  }
+  const data: unknown = JSON.parse(text);
   return schema ? schema.parse(data) : (data as T);
 }
 

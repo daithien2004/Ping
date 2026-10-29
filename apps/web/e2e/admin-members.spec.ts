@@ -97,7 +97,12 @@ test('admin members: role badges, kick hierarchy guard and realtime removal', as
     const victimPage = await victimContext.newPage();
 
     await kickerPage.goto(settings);
-    await expect(kickerPage.getByRole('heading', { name: 'Cài đặt server' })).toBeVisible();
+    // 30s thay vì mặc định: trong full suite, hydration + next dev compile route có thể vượt
+    // 10s dưới tải (spec này pass solo đều nhưng fail test 6 của 3 run full liền — hết thời
+    // gian chờ chứ không phải trang hỏng; trang render đúng khi được đủ thời gian).
+    await expect(kickerPage.getByRole('heading', { name: 'Cài đặt server' })).toBeVisible({
+      timeout: 30_000,
+    });
     const members = kickerPage.getByRole('region', { name: 'Thành viên' });
     await expect(members).toBeVisible();
     // Chỉ KICK_MEMBERS: không thấy vùng vai trò nhưng vẫn vào được danh sách thành viên.

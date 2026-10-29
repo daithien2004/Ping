@@ -19,6 +19,10 @@ export default defineConfig({
     env: {
       REDIS_URL: process.env.E2E_REDIS_URL ?? 'redis://localhost:6379/1',
       PRESENCE_BATCH_MS: '0',
+      // TG.8: Mặc định e2e KHÔNG cấu hình SMTP (ConsoleMailer chỉ log) — 40 spec cũ đăng ký
+      // user không cần thư thật và không nên tốn I/O SMTP làm nhiễu timing presence.
+      // Riêng account-lifecycle.e2e-spec tự bật SMTP_URL tới Mailpit trước khi boot app.
+      SMTP_URL: process.env.E2E_SMTP_URL ?? '',
     },
   },
 });

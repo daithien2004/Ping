@@ -42,4 +42,6 @@ export const qk = {
   blockedUsers: ['blocked-users'] as const,
   /** TG.13: mức nhận DM của chính người gọi (GET /users/me/privacy) — key phẳng. */
   privacy: ['privacy'] as const,
+  /** TG.8: danh sách phiên đăng nhập của chính người gọi (GET /users/me/sessions) — key phẳng. */
+  sessions: ['sessions'] as const,
 };

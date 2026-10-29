@@ -6,6 +6,7 @@ import { UsersController } from './users.controller.js';
 import { UsersService } from './users.service.js';
 
 @Module({
+  // AuthModule export cả AccountService (TG.8: đổi mật khẩu, phiên đăng nhập).
   imports: [AuthModule, AttachmentsModule, RealtimeModule],
   controllers: [UsersController],
   providers: [UsersService],

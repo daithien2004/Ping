@@ -4,13 +4,17 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { argon2id, hash as hashPassword, verify as verifyPassword } from 'argon2';
 import { createHash, randomBytes } from 'node:crypto';
 import { PinoLogger } from 'nestjs-pino';
 import type { LoginInput, RegisterInput } from '@ping/shared';
+import type { Env } from '../../config/env.schema.js';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
 import { isUniqueConstraintError } from '../../common/utils/prisma-errors.js';
+import { AccountService } from './account.service.js';
+import { describeUserAgent } from './describe-user-agent.js';
 import { REFRESH_REUSE_GRACE_MS, REFRESH_TOKEN_TTL_MS } from './auth.constants.js';
 import type { AuthenticatedUser } from './current-user.decorator.js';
 import { LoginAttemptsService } from './login-attempts.service.js';
@@ -23,6 +27,8 @@ const userPublicSelect = {
   displayName: true,
   avatarUrl: true,
   createdAt: true,
+  // TG.8: web dùng cờ này để nhắc xác minh email (chính sách chặn tạo server/mã mời).
+  emailVerified: true,
 } as const;
 
 export interface AuthRequestContext {
@@ -56,7 +62,9 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
+    private readonly config: ConfigService<Env, true>,
     private readonly loginAttempts: LoginAttemptsService,
+    private readonly account: AccountService,
     logger: PinoLogger,
   ) {
     this.logger = logger;
@@ -83,6 +91,12 @@ export class AuthService {
           username: normalizedUsername,
           displayName: input.displayName ?? input.username,
           passwordHash,
+          // TG.8: user mới luôn chưa xác minh — thư verify gửi ngay dưới đây. RIÊNG e2e
+          // (NODE_ENV=test): ~25 spec cũ đăng ký user rồi tạo server ngay, coi fixture như
+          // đã xác minh (cùng pattern attachment-worker/indexer tự tắt khi test); chính sách
+          // chưa xác minh vẫn luôn chạy và được test riêng trong account-lifecycle.e2e-spec
+          // bằng cách đặt lại cờ qua Prisma.
+          emailVerified: this.config.get('NODE_ENV', { infer: true }) === 'test',
         },
         select: userPublicSelect,
       });
@@ -94,6 +108,12 @@ export class AuthService {
       }
       throw error;
     }
+
+    // Gửi thư xác minh fire-and-forget (TG.8): tạo token + gửi SMTP chạy nền, lỗi chỉ
+    // log — đăng ký không được chặn hay thất bại vì SMTP chậm/hỏng.
+    void this.account.issueVerificationEmail(user.id, user.email).catch((error: unknown) => {
+      this.logger.warn({ err: error as Error }, 'Không gửi được thư xác minh sau đăng ký');
+    });
 
     const tokens = await this.issueTokens(user.id, user.username, ctx);
     return { user, ...tokens };
@@ -127,6 +147,7 @@ export class AuthService {
       displayName: found.displayName,
       avatarUrl: found.avatarUrl,
       createdAt: found.createdAt,
+      emailVerified: found.emailVerified,
     };
     // Dọn session đã hết hạn của user mỗi lần đăng nhập — bảng Session không phình mãi
     // mà không cần job định kỳ. Session revoke nhưng chưa hết hạn được GIỮ lại để
@@ -174,10 +195,11 @@ export class AuthService {
     }
 
     // Rotation: session cũ đóng lại, token mới mở session mới. Điều kiện revokedAt: null
-    // làm việc đóng là nguyên tử: hai refresh đồng thời thì chỉ một bên thắng.
+    // làm việc đóng là nguyên tử: hai refresh đồng thời thì chỉ một bên thắng. lastUsedAt
+    // (TG.8) cập nhật ở đây — thời điểm session được dùng gần nhất.
     const { count } = await this.prisma.session.updateMany({
       where: { id: session.id, revokedAt: null },
-      data: { revokedAt: new Date() },
+      data: { revokedAt: new Date(), lastUsedAt: new Date() },
     });
     if (count === 0) {
       throw new UnauthorizedException('Refresh token already rotated');
@@ -210,8 +232,13 @@ export class AuthService {
 
   /** Dùng chung cho REST guard và (sau này) Socket.IO handshake. */
   async verifyAccessToken(token: string): Promise<AuthenticatedUser> {
-    const payload = await this.jwt.verifyAsync<{ sub: string; username: string }>(token);
-    return { userId: payload.sub, username: payload.username };
+    // sid (TG.8): id hàng Session phát hành token — dùng đánh dấu "phiên hiện tại" trong
+    // danh sách phiên và thu hồi "mọi phiên khác". Claim cũ (triển khai cuốn chiếu) thiếu
+    // sid → sessionId undefined, các endpoint phiên rơi về nhánh an toàn (xóa mọi phiên).
+    const payload = await this.jwt.verifyAsync<{ sub: string; username: string; sid?: string }>(
+      token,
+    );
+    return { userId: payload.sub, username: payload.username, sessionId: payload.sid };
   }
 
   private async issueTokens(
@@ -222,17 +249,25 @@ export class AuthService {
     const rawRefreshToken = randomBytes(48).toString('base64url');
     const expiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL_MS);
 
-    await this.prisma.session.create({
+    const session = await this.prisma.session.create({
       data: {
         userId,
         refreshTokenHash: hashToken(rawRefreshToken),
         userAgent: ctx.userAgent,
         ip: ctx.ip,
         expiresAt,
+        // TG.8: tóm tắt thiết bị tính MỘT lúc tạo để danh sách phiên không phải parse UA.
+        device: describeUserAgent(ctx.userAgent),
       },
+      select: { id: true },
     });
 
-    const accessToken = await this.jwt.signAsync({ sub: userId, username });
+    // sid = hàng Session vừa tạo: JWT mang theo "phiên hiện tại" đã ký (lý do ở AccountService).
+    const accessToken = await this.jwt.signAsync({
+      sub: userId,
+      username,
+      sid: session.id,
+    });
     return { accessToken, refreshCookie: { token: rawRefreshToken, expiresAt } };
   }
 
