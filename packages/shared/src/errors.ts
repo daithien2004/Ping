@@ -38,6 +38,8 @@ export const ErrorCodes = {
   VERIFY_TOKEN_INVALID: 'VERIFY_TOKEN_INVALID',
   /** Tài khoản chưa xác minh email — chặn tạo server/mã mời cho tới khi xác minh (TG.8). */
   VERIFY_REQUIRED: 'VERIFY_REQUIRED',
+  /** Đã bị ban khỏi server — join bằng mã mời bị chặn (TG.11). Message không tiết lộ lý do ban. */
+  BANNED: 'BANNED',
 } as const;
 
 export type ErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes];

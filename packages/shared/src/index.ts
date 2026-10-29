@@ -13,6 +13,9 @@ export * from './schemas/dm';
 export * from './schemas/notification';
 // TG.13: cài đặt người dùng (theme/density/fontSize/locale PATCH semantics) + danh sách chặn.
 export * from './schemas/settings';
+// TG.11: hợp đồng ban/unban (schema tạo ban + danh sách ban phân trang cursor) — cùng bài học
+// TG.9: module mới dễ quên khỏi barrel, web/api chỉ import được qua `@ping/shared`.
+export * from './schemas/ban';
 export * from './schemas/audit';
 export * from './schemas/search';
 export * from './permissions';

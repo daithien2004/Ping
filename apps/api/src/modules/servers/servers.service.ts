@@ -293,6 +293,21 @@ export class ServersService {
     }
     const server = invite.server;
 
+    // TG.11: người bị ban không vào lại được bằng mã mời — chặn trước mọi nhánh khác của
+    // join. Kiểm theo (serverId, userId) trên bảng ServerBan (unique index, một lần tra).
+    // Message không kèm reason: lý do ban là dữ liệu của người quản lý (xem qua danh sách
+    // ban / audit log), người bị ban chỉ cần biết mình bị cấm.
+    const ban = await this.prisma.serverBan.findUnique({
+      where: { serverId_userId: { serverId: server.id, userId } },
+      select: { id: true },
+    });
+    if (ban) {
+      throw new ForbiddenException({
+        code: ErrorCodes.BANNED,
+        message: 'You are banned from this server',
+      });
+    }
+
     const existing = await this.prisma.member.findUnique({
       where: { serverId_userId: { serverId: server.id, userId } },
       select: { id: true },

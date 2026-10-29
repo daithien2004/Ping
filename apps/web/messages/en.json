@@ -205,7 +205,9 @@
       "serverInviteRegenerate": "Created new invite code",
       "channelUpdate": "Renamed channel",
       "stickerDelete": "Sticker deleted",
-      "emojiDelete": "Emoji deleted"
+      "emojiDelete": "Emoji deleted",
+      "serverBan": "Banned a member",
+      "serverUnban": "Unbanned a member"
     },
     "channels": "Channels",
     "channelActions": "Actions",

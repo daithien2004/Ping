@@ -25,6 +25,9 @@ model User {
   pinnedMessages Message[]         @relation("MessagePins")
   ownedServers   Server[]
   invites        ServerInvite[]
+  // TG.11: ban — nạn nhân (bansReceived) và người ra lệnh (bansIssued).
+  bansReceived   ServerBan[]       @relation("ServerBanTargets")
+  bansIssued     ServerBan[]       @relation("ServerBanActors")
   // TG.9 (ADR-0070): mức nhận DM — 'server_members' mặc định (người chung server), 'none' tắt hẳn.
   // Kiểu String khớp cách `Attachment.scope` đặt tên nhánh pipeline; giá trị do API kiểm (zod).
   dmAllow            String          @default("server_members")
@@ -102,6 +105,7 @@ model Server {
   invites      ServerInvite[]
   stickerPacks StickerPack[]
   customEmojis CustomEmoji[]
+  bans         ServerBan[]
 }
 
 // T3.6: mã mời là bản ghi riêng thay vì chỉ cột `inviteCode` trên Server, để
@@ -159,6 +163,33 @@ model Member {
   @@index([userId])
   // Phân trang cursor danh sách thành viên: WHERE serverId = ? AND id > ? ORDER BY id.
   @@index([serverId, id])
+}
+
+/// TG.11: lệnh cấm tham gia server. Tồn tại ĐỘC LẬP với Member — ban gỡ membership TRƯỚC
+/// rồi mới tạo hàng ban, và hàng ban phải còn nguyên sau khi Member đã xóa để chặn join
+/// lại bằng mã mời. Vì vậy KHÔNG FK tới Member (FK tới Member sẽ cascade/xóa theo).
+model ServerBan {
+  id         String   @id @default(uuid(7)) @db.Uuid
+  serverId   String   @db.Uuid
+  userId     String   @db.Uuid
+  reason     String?
+  bannedById String   @db.Uuid
+  createdAt  DateTime @default(now())
+
+  server   Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  // Xóa tài khoản nạn nhân thì lệnh ban theo cũng vô nghĩa (user id không còn ai chiếm) — Cascade.
+  user     User   @relation("ServerBanTargets", fields: [userId], references: [id], onDelete: Cascade)
+  // Người ra lệnh phải còn nguyên trên dòng ban (hiện trong danh sách ban); mẫu
+  // ServerInvite.createdBy: Restrict — xóa tài khoản phải xử lý ban trước (TG.8).
+  bannedBy User   @relation("ServerBanActors", fields: [bannedById], references: [id])
+
+  // Một user chỉ bị ban đúng 1 lần mỗi server (re-ban sau unban tạo hàng mới).
+  @@unique([serverId, userId])
+  // Join tra "tôi có bị ban ở server này không" theo đúng cặp (serverId, userId).
+  // Danh sách ban của một server, mới nhất trước (phân trang cursor).
+  @@index([serverId, id(sort: Desc)])
+  // "Các server tôi bị ban" — tra ngược theo user không cần quét bảng.
+  @@index([userId])
 }
 
 // Trạng thái đã đọc theo thành viên-kênh (T4.1, ADR-0043): một hàng cho mỗi
@@ -575,4 +606,6 @@ enum AuditAction {
   MESSAGE_UNPIN
   STICKER_DELETE
   EMOJI_DELETE
+  SERVER_BAN
+  SERVER_UNBAN
 }

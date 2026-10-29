@@ -24,6 +24,8 @@ export const ServerEvents = {
   UserUpdated: 'user.updated',
   MemberUpdated: 'member.updated',
   ServerUpdated: 'server.updated',
+  /** TG.11: một thành viên vừa bị ban — tới room `server:<id>`, người khác gỡ nạn nhân khỏi danh sách. */
+  MemberBanned: 'member.banned',
 } as const;
 
 export const ClientEvents = {
@@ -105,9 +107,15 @@ export interface PermissionsChangedPayload {
   serverId: string;
 }
 
-/** Gửi riêng tới user: họ không còn là member của server (bị kick, tự rời, server bị xóa). */
+/**
+ * Gửi riêng tới user: họ không còn là member của server (bị kick, tự rời, server bị xóa,
+ * TG.11: bị ban). `banned: true` chỉ có khi người nhận vừa bị BAN — client phân biệt được
+ * "bạn bị cấm" với "bạn đã rời/kick/server xóa". Kick/leave/server-delete không đặt cờ
+ * nên payload của họ vẫn là `{ serverId }` như cũ (hợp đồng cũ không đổi).
+ */
 export interface MemberRemovedPayload {
   serverId: string;
+  banned?: boolean;
 }
 
 export interface PresenceUpdatedPayload {
@@ -184,6 +192,19 @@ export interface MemberUpdatedPayload {
 }
 
 /**
+ * Một thành viên vừa bị BAN (TG.11); phát tới room `server:<id>` để những người khác
+ * gỡ nạn nhân khỏi danh sách thành viên. Event riêng thay vì tái dùng `member.removed`
+ * cho room server: web xử lý `member.removed` như "chính mình mất quyền truy cập server"
+ * (dọn UI server) — phát room-wide sẽ xóa UI của mọi người. Tên event mới nên client cũ
+ * chưa biết chỉ bỏ qua. Payload tối giản `userId` (member đã bị xóa, memberId vô nghĩa),
+ * KHÔNG kèm reason — lý do ban chỉ xem qua danh sách ban / audit log.
+ */
+export interface MemberBannedPayload {
+  serverId: string;
+  userId: string;
+}
+
+/**
  * Biểu cảm của server vừa đổi (TG.24, ADR-0068): tạo/xóa custom emoji hoặc sticker. Payload
  * chỉ mang serverId — client invalidate toàn bộ query biểu cảm (emoji map + sticker list) để
  * hai tab tự đồng bộ; danh sách mới lấy qua REST.
@@ -228,6 +249,7 @@ export interface ServerToClientEvents {
   [ServerEvents.UserUpdated]: (payload: UserUpdatedPayload) => void;
   [ServerEvents.MemberUpdated]: (payload: MemberUpdatedPayload) => void;
   [ServerEvents.ServerUpdated]: (payload: ServerUpdatedPayload) => void;
+  [ServerEvents.MemberBanned]: (payload: MemberBannedPayload) => void;
 }
 
 export interface ClientToServerEvents {
