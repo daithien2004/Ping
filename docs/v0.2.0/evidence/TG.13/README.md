@@ -94,3 +94,22 @@
 - **Flake hạ tầng gặp khi chạy**: lượt full web e2e đầu bị API `ECONNREFUSED` giữa chừng
   (dev server khởi động lại) làm một test a11y rơi vào global-error; chạy lại sau khi ổn định
   hạ tầng — ghi ở mục full web e2e. Không phải lỗi sản phẩm.
+
+## Hồi quy CI 5a897bb (TG.12) — nguyên nhân + vá (`1c2cc24`)
+
+CI main lần đầu đỏ từ TG.22 (web-e2e shard 3: `notification.spec`, `pin.spec`, `unread-ui`).
+Chẩn đoán trên log CI: **không phải bug product** — (1) title từ TG.12 là TỔNG unread toàn
+cục (mọi server + DM) nên mọi assertion title tuyệt đối `(1)/(2)` vỡ trước unread còn lại
+của spec khác trên cùng shard (CI chạy nối tiếp trên cùng seed, kênh mute vẫn đếm unread theo
+thiết kế); (2) `notification.spec` không mở kênh `#ping` (nơi step trước gửi mention) nên
+unread của nó còn lại và title không bao giờ về `Ping`. Vá `1c2cc24`: `unread-ui` đổi 4
+assertion sang `titleFor(delta)` theo baseline lúc đầu; `notification.spec` mở đủ 3 kênh bằng
+`goto` trực tiếp (click sidebar flaky khi badge re-render churn — nợ profiling vòng render),
+truth = `GET /servers/:id/unread` về 0, title chỉ assert render được (`Ping` hoặc `(N) Ping`).
+Cả hai spec xanh riêng sau vá; run full: xem bảng trên.
+
+**Bài học vận hành bổ sung (lượt full đầu trên máy dev)**: 14 fail hàng loạt do TỰ commit
+trong lúc e2e chạy — `lint-staged --fix` của pre-commit hook đụng mtime `apps/api/src/**` →
+nest watch "File change detected" → API restart giữa run → 8×ECONNREFUSED + pipeline upload
+treo (pid đổi 35108→5412 trong log). Quy tắc: **mọi git commit dựng lại file mtime — cấm
+commit/build/chỉnh cây khi e2e đang chạy**, kể cả commit tưởng "chỉ docs".
