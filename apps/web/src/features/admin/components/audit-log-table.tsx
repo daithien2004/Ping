@@ -28,6 +28,8 @@ const ACTION_KEYS = {
   SERVER_INVITE_REGENERATE: 'serverInviteRegenerate',
   STICKER_DELETE: 'stickerDelete',
   EMOJI_DELETE: 'emojiDelete',
+  SERVER_BAN: 'serverBan',
+  SERVER_UNBAN: 'serverUnban',
 } as const satisfies Record<AuditAction, string>;
 
 function formatTime(value: string, locale: string): string {

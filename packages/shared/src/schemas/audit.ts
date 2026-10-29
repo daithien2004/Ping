@@ -20,6 +20,9 @@ export const AuditActions = {
   MESSAGE_UNPIN: 'MESSAGE_UNPIN',
   STICKER_DELETE: 'STICKER_DELETE',
   EMOJI_DELETE: 'EMOJI_DELETE',
+  // TG.11: ban/unban thành viên (metadata: userId, reason?, deletedMessages?).
+  SERVER_BAN: 'SERVER_BAN',
+  SERVER_UNBAN: 'SERVER_UNBAN',
 } as const;
 
 export const auditActionSchema = z.enum(AuditActions);

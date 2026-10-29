@@ -29,6 +29,11 @@ const ID_ROUTES: Array<[Verb, string]> = [
   ['patch', '/servers/:id/members/me'],
   ['post', '/servers/:id/leave'],
   ['delete', '/servers/:id/members/:id'],
+  // TG.11: ban/unban — :userId trên path ban là id NGƯỜI BỊ BAN (không phải id người gọi):
+  // quyền do @CheckAbility(['create/delete/view', 'ServerBan']) + thứ bậc ở service kiểm.
+  ['post', '/servers/:id/bans'],
+  ['get', '/servers/:id/bans'],
+  ['delete', '/servers/:id/bans/:id'],
   ['delete', '/servers/:id'],
   ['get', '/servers/:id/channels'],
   ['post', '/servers/:id/channels'],
@@ -626,6 +631,22 @@ describe('IDOR (e2e)', () => {
       lowPriv,
       () => ({ attachmentId: randomUUID(), name: 'nope' }),
     );
+    // TG.11: ban/unban — member thường thiếu KICK_MEMBERS (guard), kẻ ngoài không với tới
+    // server A; target trên body/path là user thật (dan) để chạm tận service, không phải zod.
+    add('GET /servers/:serverId/bans', 'get', () => `/servers/${serverA}/bans`, lowPriv);
+    add(
+      'POST /servers/:serverId/bans',
+      'post',
+      () => `/servers/${serverA}/bans`,
+      lowPriv,
+      () => ({ userId: dan.id }),
+    );
+    add(
+      'DELETE /servers/:serverId/bans/:userId',
+      'delete',
+      () => `/servers/${serverA}/bans/${dan.id}`,
+      lowPriv,
+    );
     return out;
   };
 
@@ -663,7 +684,7 @@ describe('IDOR (e2e)', () => {
 
   it('no token → 401 on every endpoint that takes an id', async () => {
     const uuid = randomUUID();
-    expect(ID_ROUTES).toHaveLength(52);
+    expect(ID_ROUTES).toHaveLength(55);
     for (const [verb, template] of ID_ROUTES) {
       const url = template.replaceAll(':id', uuid);
       const res = await as(undefined, verb, url).send({});

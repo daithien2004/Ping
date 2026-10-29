@@ -94,6 +94,10 @@ jobs:
         ports: ['6379:6379']
         options: >-
           --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 5s --health-retries 10
+      # TG.8: account-lifecycle e2e đọc token từ Mailpit API (8025) và API gửi qua SMTP (1025).
+      mailpit:
+        image: axllent/mailpit:v1.20
+        ports: ['1025:1025', '8025:8025']
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -107,6 +111,8 @@ jobs:
       - run: pnpm --filter api exec prisma generate
       - run: pnpm --filter api exec prisma migrate deploy
       - run: pnpm --filter api test:e2e
+        env:
+          SMTP_URL: smtp://127.0.0.1:1025
 
   web-e2e:
     name: web-e2e
@@ -135,6 +141,10 @@ jobs:
         ports: ['6379:6379']
         options: >-
           --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 5s --health-retries 10
+      # TG.8: global-setup verify seed + account.spec đọc token từ Mailpit (8025).
+      mailpit:
+        image: axllent/mailpit:v1.20
+        ports: ['1025:1025', '8025:8025']
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -174,6 +184,9 @@ jobs:
       - run: pnpm --filter web exec playwright test --shard=${{ matrix.shard }}/${{ matrix.total-shards }}
         env:
           E2E_PRODUCTION: '1'
+          # TG.8: API prod boot kế thừa env này → gửi thư thật vào Mailpit (global-setup
+          # verify seed + account.spec đọc token). Thiếu → ConsoleMailer và Mailpit trống.
+          SMTP_URL: smtp://127.0.0.1:1025
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

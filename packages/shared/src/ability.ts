@@ -16,6 +16,7 @@ export type Subjects =
   | 'Sticker'
   | 'Role'
   | 'Member'
+  | 'ServerBan'
   | 'AuditLog'
   | 'all'
   | MessageSubject;
@@ -113,6 +114,12 @@ export function defineAbilityFor(ctx: AbilityContext): AppAbility {
 
   if (has(Permissions.KICK_MEMBERS)) {
     can('delete', 'Member');
+    // TG.11: ban/unban tái dùng bit KICK_MEMBERS thay vì thêm bit BAN_MEMBERS — ban là
+    // phiên bản nặng hơn của kick (gỡ membership + chặn join lại) cùng khối công việc
+    // "quản lý thành viên"; thêm bit mới chỉ phình bitmask mà không tách được nhóm người.
+    // Danh sách ban cũng theo bit này: đó là công cụ làm việc của người ban/unban;
+    // người chỉ có VIEW_AUDIT_LOG xem lịch sử ban qua audit log (SERVER_BAN/UNBAN) là đủ.
+    can(['create', 'delete', 'view'], 'ServerBan');
   }
 
   // TG.7: tự đổi biệt danh của chính mình (`/members/me` chỉ chạm đúng hàng member của caller).

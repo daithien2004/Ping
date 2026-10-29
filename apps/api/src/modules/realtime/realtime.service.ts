@@ -86,12 +86,18 @@ export class RealtimeService {
   }
 
   /**
-   * Quyền chỉ được kiểm tra lúc `channel.join`, nên khi quyền đổi (rời server, bị kick, đổi role)
-   * phải chủ động đá socket ra khỏi room — nếu không họ vẫn nhận tin tới khi ngắt kết nối —
-   * và báo riêng cho user để client tải lại quyền hoặc rời server khỏi giao diện.
+   * Quyền chỉ được kiểm tra lúc `channel.join`, nên khi quyền đổi (rời server, bị kick, bị ban,
+   * đổi role) phải chủ động đá socket ra khỏi room — nếu không họ vẫn nhận tin tới khi ngắt
+   * kết nối — và báo riêng cho user để client tải lại quyền hoặc rời server khỏi giao diện.
    * Không truyền `userIds` = xét mọi member của server (role đổi quyền ảnh hưởng nhiều người).
+   * `opts.banned` (TG.11): kèm cờ `banned: true` vào `member.removed` riêng của người bị ban
+   * để client phân biệt với kick/tự rời/server xóa.
    */
-  async refreshAccess(serverId: string, userIds?: string[]): Promise<void> {
+  async refreshAccess(
+    serverId: string,
+    userIds?: string[],
+    opts?: { banned?: boolean },
+  ): Promise<void> {
     if (!this.server) {
       return;
     }
@@ -113,7 +119,10 @@ export class RealtimeService {
       const sockets = this.server.in(`user:${userId}`);
       if (access === 'removed') {
         sockets.socketsLeave([...channelRooms, `server:${serverId}`]);
-        this.server.to(`user:${userId}`).emit(ServerEvents.MemberRemoved, { serverId });
+        this.server.to(`user:${userId}`).emit(ServerEvents.MemberRemoved, {
+          serverId,
+          ...(opts?.banned ? { banned: true } : {}),
+        });
         continue;
       }
       if (access === 'no-view') {

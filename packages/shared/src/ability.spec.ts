@@ -278,6 +278,32 @@ describe('kick', () => {
   });
 });
 
+describe('TG.11 ban (tái dùng bit KICK_MEMBERS)', () => {
+  const kicker = {
+    userId: 'kicker',
+    isOwner: false,
+    permissions: memberPermissions | Permissions.KICK_MEMBERS,
+  };
+  const plain = { userId: 'plain', isOwner: false, permissions: memberPermissions };
+  const owner = { userId: 'owner', isOwner: true, permissions: memberPermissions };
+
+  it('grants create/delete/view ServerBan with KICK_MEMBERS but not without it', () => {
+    const ability = defineAbilityFor(kicker);
+    expect(ability.can('create', 'ServerBan')).toBe(true);
+    expect(ability.can('delete', 'ServerBan')).toBe(true);
+    expect(ability.can('view', 'ServerBan')).toBe(true);
+    expect(defineAbilityFor(plain).can('create', 'ServerBan')).toBe(false);
+    expect(defineAbilityFor(plain).can('delete', 'ServerBan')).toBe(false);
+    expect(defineAbilityFor(plain).can('view', 'ServerBan')).toBe(false);
+  });
+
+  it('owner/admin quản lý ban qua manage all', () => {
+    const ability = defineAbilityFor(owner);
+    expect(ability.can('create', 'ServerBan')).toBe(true);
+    expect(ability.can('view', 'ServerBan')).toBe(true);
+  });
+});
+
 describe('TG.7 nickname', () => {
   it('grants update Member with CHANGE_NICKNAME but not without it', () => {
     const without = defineAbilityFor({

@@ -19,6 +19,8 @@ import {
   type RegenerateInviteResult,
 } from '@ping/shared';
 import { randomBytes } from 'node:crypto';
+import { ConfigService } from '@nestjs/config';
+import type { Env } from '../../config/env.schema.js';
 import { limitReached } from '../../common/limit-reached.js';
 import { isUniqueConstraintError } from '../../common/utils/prisma-errors.js';
 import type { Prisma } from '../../generated/prisma/client.js';
@@ -42,6 +44,7 @@ export class ServersService {
     private readonly realtime: RealtimeService,
     private readonly audit: AuditService,
     private readonly attachments: AttachmentsService,
+    private readonly config: ConfigService<Env, true>,
   ) {}
 
   /** Trần mềm số server mỗi user tham gia (tính cả server tự tạo). */
@@ -56,8 +59,14 @@ export class ServersService {
    * server và không được cấp mã mời. Đặt ở tầng SERVICE chứ không phải defineAbilityFor:
    * đây là điều kiện hồ sơ tài khoản (trạng thái xác minh), không phải luật quyền theo
    * role — ability vẫn trả "owner được tạo server" cho user chưa xác minh.
+   *
+   * CHỈ áp dụng khi hệ thống có đường gửi thư (`SMTP_URL` cấu hình — Mailer SMTP): môi
+   * trường không có mailer (drill, smoke prod example, dev tối giản) thì user KHÔNG THỂ
+   * tự xác minh — chặn là khóa vĩnh viễn vô lý. Đã đỏ CI ở 2662d94 (drills + smoke đăng
+   * ký user rồi tạo server ngay).
    */
   private async assertEmailVerified(userId: string): Promise<void> {
+    if (!this.config.get('SMTP_URL', { infer: true })) return;
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { emailVerified: true },
@@ -292,6 +301,21 @@ export class ServersService {
       });
     }
     const server = invite.server;
+
+    // TG.11: người bị ban không vào lại được bằng mã mời — chặn trước mọi nhánh khác của
+    // join. Kiểm theo (serverId, userId) trên bảng ServerBan (unique index, một lần tra).
+    // Message không kèm reason: lý do ban là dữ liệu của người quản lý (xem qua danh sách
+    // ban / audit log), người bị ban chỉ cần biết mình bị cấm.
+    const ban = await this.prisma.serverBan.findUnique({
+      where: { serverId_userId: { serverId: server.id, userId } },
+      select: { id: true },
+    });
+    if (ban) {
+      throw new ForbiddenException({
+        code: ErrorCodes.BANNED,
+        message: 'You are banned from this server',
+      });
+    }
 
     const existing = await this.prisma.member.findUnique({
       where: { serverId_userId: { serverId: server.id, userId } },

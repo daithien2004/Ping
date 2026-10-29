@@ -205,7 +205,9 @@
       "serverInviteRegenerate": "Tạo mã mời mới",
       "channelUpdate": "Đổi tên channel",
       "stickerDelete": "Xoá sticker",
-      "emojiDelete": "Xoá emoji"
+      "emojiDelete": "Xoá emoji",
+      "serverBan": "Cấm thành viên",
+      "serverUnban": "Bỏ cấm thành viên"
     },
     "channels": "Kênh",
     "channelActions": "Thao tác",
