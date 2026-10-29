@@ -1,13 +1,16 @@
-import { Body, Controller, Get, Patch, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, UseGuards } from '@nestjs/common';
 import {
+  changePasswordSchema,
   updatePrivacySchema,
   updateProfileSchema,
   updateUserSettingsSchema,
+  type ChangePasswordInput,
   type UpdatePrivacyInput,
   type UpdateProfileInput,
   type UpdateUserSettingsInput,
 } from '@ping/shared';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe.js';
+import { AccountService } from '../auth/account.service.js';
 import { AuthService } from '../auth/auth.service.js';
 import { CurrentUser, type AuthenticatedUser } from '../auth/current-user.decorator.js';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
@@ -20,6 +23,7 @@ export class UsersController {
   constructor(
     private readonly authService: AuthService,
     private readonly usersService: UsersService,
+    private readonly accountService: AccountService,
   ) {}
 
   @Get('me')
@@ -74,5 +78,41 @@ export class UsersController {
     @Body(new ZodValidationPipe(updateUserSettingsSchema)) body: UpdateUserSettingsInput,
   ) {
     return this.usersService.updateSettings(user.userId, body);
+  }
+
+  /**
+   * TG.8: đổi mật khẩu khi biết mật khẩu hiện tại — các phiên KHÁC phiên hiện tại bị
+   * thu hồi (phiên hiện tại sống nhờ claim `sid` trong JWT). 204 không body.
+   */
+  @Patch('me/password')
+  @HttpCode(204)
+  changePassword(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body(new ZodValidationPipe(changePasswordSchema)) body: ChangePasswordInput,
+  ) {
+    return this.accountService.changePassword(user.userId, body, user.sessionId);
+  }
+
+  /** TG.8: danh sách phiên (thiết bị, lần dùng gần nhất, phiên hiện tại) — mới dùng trước. */
+  @Get('me/sessions')
+  listSessions(@CurrentUser() user: AuthenticatedUser) {
+    return this.accountService.listSessions(user.userId, user.sessionId);
+  }
+
+  /** TG.8: thu hồi MỌI phiên khác — đăng xuất các thiết bị còn lại, giữ phiên hiện tại. */
+  @Delete('me/sessions')
+  @HttpCode(204)
+  revokeOtherSessions(@CurrentUser() user: AuthenticatedUser) {
+    return this.accountService.revokeOtherSessions(user.userId, user.sessionId);
+  }
+
+  /**
+   * TG.8: thu hồi đúng một phiên của chính mình (IDOR: service tra theo cả userId của
+   * người gọi — phiên của người khác là 404; đưa vào ID_ROUTES + bảng tấn công idor.e2e).
+   */
+  @Delete('me/sessions/:sessionId')
+  @HttpCode(204)
+  revokeSession(@CurrentUser() user: AuthenticatedUser, @Param('sessionId') sessionId: string) {
+    return this.accountService.revokeSession(user.userId, sessionId);
   }
 }

@@ -69,6 +69,9 @@ const ID_ROUTES: Array<[Verb, string]> = [
   ['post', '/servers/:id/emojis'],
   ['get', '/servers/:id/emojis'],
   ['delete', '/emojis/:id'],
+  // TG.8: thu hồi một phiên của CHÍNH người gọi — service tra theo cả userId (JWT), phiên
+  // của người khác là 404. Dòng tấn công bên dưới phủ IDOR của route này.
+  ['delete', '/users/me/sessions/:id'],
   // TG.9 (ADR-0070): block/unblock user — bối cảnh là CHÍNH người gọi, quyền do service kiểm
   // (không có ability server). POST/GET /dms KHÔNG nằm ở đây: route không có id trong path
   // nên test phủ route (chỉ quét route `:id`) không bắt — IDOR của DM phủ ở test/dms.e2e-spec.ts
@@ -140,6 +143,7 @@ describe('IDOR (e2e)', () => {
   let aliceMessage = '';
   let carolMessage = '';
   let uploadId = '';
+  let aliceSession = ''; // phiên đăng nhập của alice (TG.8) cho bảng tấn công
   let stickerA = ''; // sticker của server A (TG.22) cho bảng tấn công
   let stickerPackA = '';
   let emojiA = ''; // emoji của server A (TG.24) cho bảng tấn công
@@ -202,6 +206,12 @@ describe('IDOR (e2e)', () => {
       register('b'),
       register('d'),
     ]);
+    // TG.8: register tạo một hàng Session cho alice — mục tiêu của dòng tấn công
+    // DELETE /users/me/sessions/:id (kẻ khác không được thu hồi phiên của người khác).
+    aliceSession = (await prisma.session.findFirst({
+      where: { userId: alice.id },
+      select: { id: true },
+    }))!.id;
 
     const a = await as(alice, 'post', '/servers').send({ name: SECRET }).expect(201);
     serverA = a.body.id;
@@ -602,6 +612,13 @@ describe('IDOR (e2e)', () => {
     // TG.24: emoji của server A — kẻ ngoài không xóa được emoji của server người khác, member
     // thường thiếu MANAGE_EXPRESSIONS (ADR-0068 tái dùng bit sticker TG.22) nên không tạo được.
     add('DELETE /emojis/<emoji của A>', 'delete', () => `/emojis/${emojiA}`, outsider);
+    // TG.8: kẻ khác không được thu hồi phiên của alice — 404 vì service tra theo (id, userId).
+    add(
+      'DELETE /users/me/sessions/<phiên của alice>',
+      'delete',
+      () => `/users/me/sessions/${aliceSession}`,
+      outsider,
+    );
     add(
       'POST /servers/:serverId/emojis',
       'post',
@@ -646,7 +663,7 @@ describe('IDOR (e2e)', () => {
 
   it('no token → 401 on every endpoint that takes an id', async () => {
     const uuid = randomUUID();
-    expect(ID_ROUTES).toHaveLength(51);
+    expect(ID_ROUTES).toHaveLength(52);
     for (const [verb, template] of ID_ROUTES) {
       const url = template.replaceAll(':id', uuid);
       const res = await as(undefined, verb, url).send({});

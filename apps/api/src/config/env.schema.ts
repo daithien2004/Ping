@@ -72,6 +72,14 @@ export const envSchema = z.object({
     (value) => (value === '' ? undefined : value),
     z.string().min(1).optional(),
   ),
+  // Mailer (TG.8): URL SMTP cho thư xác minh email/đặt lại mật khẩu. Bỏ trống = ConsoleMailer
+  // chỉ ghi log (dev không cần Mailpit vẫn chạy được). Dev dùng Mailpit của compose:
+  // smtp://127.0.0.1:1025 — thư xem tại http://127.0.0.1:8025. Staging/production trỏ vào
+  // dịch vụ thư thật. Không log nội dung thư (chứa token một lần).
+  SMTP_URL: z.preprocess(
+    (value) => (value === '' ? undefined : value),
+    z.string().min(1).optional(),
+  ),
   // T5.7/ADR-0047: hạn mức AI theo ngày (UTC). `AI_DAILY_REQUEST_LIMIT` là số request/user/ngày.
   // `AI_DAILY_BUDGET_USD = 0` tắt kill-switch ngân sách; > 0 là trần chi phí toàn hệ thống/ngày.
   AI_DAILY_REQUEST_LIMIT: z.coerce.number().int().min(1).max(10_000).default(50),

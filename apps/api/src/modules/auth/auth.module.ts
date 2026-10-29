@@ -3,6 +3,9 @@ import { ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import type { Env } from '../../config/env.schema.js';
 import { ACCESS_TOKEN_TTL } from './auth.constants.js';
+import { AccountController } from './account.controller.js';
+import { AccountRateLimitService } from './account-rate-limit.js';
+import { AccountService } from './account.service.js';
 import { AuthController } from './auth.controller.js';
 import { AuthService } from './auth.service.js';
 import { LoginAttemptsService } from './login-attempts.service.js';
@@ -20,8 +23,8 @@ import { LoginAttemptsService } from './login-attempts.service.js';
       }),
     }),
   ],
-  controllers: [AuthController],
-  providers: [AuthService, LoginAttemptsService],
-  exports: [AuthService, LoginAttemptsService],
+  controllers: [AuthController, AccountController],
+  providers: [AuthService, LoginAttemptsService, AccountService, AccountRateLimitService],
+  exports: [AuthService, LoginAttemptsService, AccountService],
 })
 export class AuthModule {}

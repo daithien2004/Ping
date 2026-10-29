@@ -26,6 +26,7 @@ import { PrismaService } from '../../infra/prisma/prisma.service.js';
 import { AbilityFactory } from '../ability/ability.factory.js';
 import { AttachmentsService } from '../attachments/attachments.service.js';
 import { AuditService } from '../audit/audit.service.js';
+import { verifyRequired } from '../auth/account.service.js';
 import { RealtimeService } from '../realtime/realtime.service.js';
 
 /**
@@ -50,7 +51,25 @@ export class ServersService {
     }
   }
 
+  /**
+   * Chính sách tài khoản chưa xác minh (TG.8): chưa xác minh email thì không được tạo
+   * server và không được cấp mã mời. Đặt ở tầng SERVICE chứ không phải defineAbilityFor:
+   * đây là điều kiện hồ sơ tài khoản (trạng thái xác minh), không phải luật quyền theo
+   * role — ability vẫn trả "owner được tạo server" cho user chưa xác minh.
+   */
+  private async assertEmailVerified(userId: string): Promise<void> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { emailVerified: true },
+    });
+    // User vừa bị xóa giữa chừng thì tra cứu trật — xử lý như trường hợp không xác minh.
+    if (user && !user.emailVerified) {
+      throw verifyRequired();
+    }
+  }
+
   async create(userId: string, name: string) {
+    await this.assertEmailVerified(userId);
     await this.assertCanJoinAnotherServer(userId);
     const inviteCode = await this.generateUniqueInviteCode();
 
@@ -418,6 +437,9 @@ export class ServersService {
     actorId: string,
     input: RegenerateInviteInput,
   ): Promise<RegenerateInviteResult> {
+    // Cấp mã mời cũng thuộc chính sách chưa xác minh (TG.8): chủ server chưa xác minh
+    // email không được phát mã kéo người mới vào.
+    await this.assertEmailVerified(actorId);
     const server = await this.prisma.server.findUnique({
       where: { id: serverId },
       select: { id: true },

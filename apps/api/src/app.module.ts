@@ -18,6 +18,7 @@ import { LOG_REDACT_PATHS } from './common/log-redaction.js';
 import { requestIdFrom } from './common/request-id.js';
 import { envSchema } from './config/env.schema.js';
 import { LifecycleModule } from './infra/lifecycle/lifecycle.module.js';
+import { MailerModule } from './mailer/mailer.module.js';
 import { PrismaModule } from './infra/prisma/prisma.module.js';
 import { RedisModule, RedisProvider } from './infra/redis/redis.module.js';
 import { RedisThrottlerStorage } from './infra/throttler/redis-throttler.storage.js';
@@ -77,6 +78,8 @@ import { UsersModule } from './modules/users/users.module.js';
     PrismaModule,
     RedisModule,
     EventsModule,
+    // Cổng Mailer toàn cục (TG.8): chọn SmtpMailer/ConsoleMailer theo env SMTP_URL.
+    MailerModule,
     ThrottlerModule.forRootAsync({
       inject: [RedisProvider],
       useFactory: (redis: RedisProvider) => ({
