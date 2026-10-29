@@ -32,13 +32,11 @@ services:
 
   # TG.8: Mailer ở dev — Mailpit bắt SMTP (1025) và có UI/API xem thư (8025); e2e đọc token
   # từ API của nó. Staging/production dùng dịch vụ thật qua SMTP_URL, không chạy container này.
+  # Không đặt healthcheck: image Alpine không có bash, healthcheck TCP kiểu khác rườm ra mà
+  # không có service nào depends_on nó — compose up --wait từng đỏ oan vì "unhealthy".
   mailpit:
     image: axllent/mailpit:v1.20
     ports: ['127.0.0.1:8025:8025', '127.0.0.1:1025:1025']
-    healthcheck:
-      test: ['CMD-SHELL', 'bash -c ":> /dev/tcp/127.0.0.1/1025"']
-      interval: 5s
-      retries: 10
 
 volumes:
   pgdata:
