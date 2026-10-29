@@ -23,10 +23,12 @@ const ALICE = 'alice@ping.dev';
 const field = (page: Page, label: string) =>
   page.getByLabel(label, { exact: true }).filter({ visible: true });
 
-/** Đợi một request đúng method + path trả 2xx rồi trả response (bấm nút phải nằm sau). */
+/** Đợi một request đúng method + path trả 2xx rồi trả response (bấm nút phải nằm sau).
+ * Timeout 30s: không có timeout nghĩa là form không submit được sẽ treo tới timeout test 300s. */
 const waitForOk = (page: Page, path: string, method: string) =>
   page.waitForResponse(
     (res) => res.url().includes(path) && res.request().method() === method && res.ok(),
+    { timeout: 30_000 },
   );
 
 /**
@@ -140,7 +142,8 @@ test('(b) quên mật khẩu: thông báo trung lập → reset bằng token Mai
       await field(page, 'Mật khẩu').fill(newPassword);
       await page.getByRole('button', { name: 'Đăng nhập' }).click();
       await expect(page.getByTestId('personal-settings-rail')).toBeVisible();
-      await expect(page).toHaveURL(/\/servers\/[0-9a-f-]+\/channels\//);
+      // 30s: danh sách channel sau login có thể chậm dưới tải (pattern admin-members TG.8).
+      await expect(page).toHaveURL(/\/servers\/[0-9a-f-]+\/channels\//, { timeout: 30_000 });
     });
 
     await test.step('đổi NGƯỢC về password123 qua form Đổi mật khẩu trong /settings', async () => {
