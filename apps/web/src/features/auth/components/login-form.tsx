@@ -73,15 +73,20 @@ export function LoginForm() {
         <PingButton htmlType="submit" size="lg" block loading={loginMutation.isPending}>
           {t('login')}
         </PingButton>
-        <p className="mt-2 text-sm">
-          {t('noAccount')}{' '}
+        <div className="mt-2 flex items-center justify-between text-sm">
+          <Link
+            href="/forgot-password"
+            className="font-medium text-link underline-offset-4 hover:underline"
+          >
+            {t('forgotPassword')}
+          </Link>
           <Link
             href={`/register?next=${encodeURIComponent(next)}`}
             className="font-medium text-link underline-offset-4 hover:underline"
           >
             {t('register')}
           </Link>
-        </p>
+        </div>
       </PingForm>
     </div>
   );

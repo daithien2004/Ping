@@ -204,6 +204,15 @@ describe('api-client', () => {
     await expect(api.delete('/servers/x/members/y')).resolves.toBeUndefined();
   });
 
+  it('200/202 với body rỗng trả undefined, không ném SyntaxError (TG.8: quên mật khẩu luôn 202)', async () => {
+    const { api } = await load();
+    fetchMock
+      .mockResolvedValueOnce(new Response(null, { status: 202 }))
+      .mockResolvedValueOnce(new Response('', { status: 200 }));
+    await expect(api.post('/auth/password/forgot', { email: 'a@b.c' })).resolves.toBeUndefined();
+    await expect(api.post('/auth/verify-email', { token: 'x' })).resolves.toBeUndefined();
+  });
+
   it('lỗi mạng (fetch reject) thành ApiError status 0', async () => {
     const { api } = await load();
     fetchMock.mockRejectedValue(new TypeError('Failed to fetch'));

@@ -22,6 +22,9 @@ const KNOWN = [
   ErrorCodes.EMOJI_LIMIT_REACHED,
   // TG.9: bị chặn hoặc đối phương tắt DM — API cố ý dùng chung một mã chống dò (ADR-0070).
   ErrorCodes.DM_BLOCKED,
+  // TG.8: token xác minh hết hạn/đã dùng, và chính sách tài khoản chưa xác minh email.
+  ErrorCodes.VERIFY_TOKEN_INVALID,
+  ErrorCodes.VERIFY_REQUIRED,
 ] as const;
 type KnownCode = (typeof KNOWN)[number];
 
