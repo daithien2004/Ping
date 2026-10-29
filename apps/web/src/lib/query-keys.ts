@@ -36,4 +36,10 @@ export const qk = {
   dms: ['dms'] as const,
   /** TG.12: prefs thông báo của chính người gọi (một bản cho mọi server/channel, key phẳng). */
   notificationPrefs: ['notification-prefs'] as const,
+  /** TG.13: cài đặt người dùng lưu server (theme/density/fontSize/locale) — key phẳng. */
+  settings: ['settings'] as const,
+  /** TG.13: danh sách người tôi đã chặn (GET /users/me/blocks) — key phẳng. */
+  blockedUsers: ['blocked-users'] as const,
+  /** TG.13: mức nhận DM của chính người gọi (GET /users/me/privacy) — key phẳng. */
+  privacy: ['privacy'] as const,
 };

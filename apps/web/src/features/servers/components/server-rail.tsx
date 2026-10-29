@@ -1,7 +1,7 @@
 'use client';
 
 import { ServerEvents, type MentionCreatedPayload } from '@ping/shared';
-import { LogIn, LogOut, MessageCircle, Plus } from 'lucide-react';
+import { LogIn, LogOut, MessageCircle, Plus, Settings } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, usePathname } from 'next/navigation';
 import { useEffect, useState, type ReactNode } from 'react';
@@ -121,6 +121,19 @@ export function ServerRail() {
       <div className="mt-auto flex flex-col items-center gap-2">
         {/* TG.12: xin quyền Notification sau thao tác người dùng — chỉ hiện khi còn 'default'. */}
         <EnableNotificationsButton />
+        {/* TG.13: cài đặt CÁ NHÂN (/settings) — khác nút "Cài đặt" của server ở sidebar kênh. */}
+        <RailItem label={t('settings.railOpen')}>
+          <Link
+            href="/settings"
+            aria-label={t('settings.railOpen')}
+            aria-current={pathname.startsWith('/settings') ? 'page' : undefined}
+            data-testid="personal-settings-rail"
+          >
+            <span className={`${railIcon} flex items-center justify-center`}>
+              <Settings className="size-5" />
+            </span>
+          </Link>
+        </RailItem>
         <LanguageSwitcher compact />
         {/* TG.7: bấm vào avatar mở thẻ hồ sơ (PingModal — đặt vị trí của popover bị lệch trong
             layout rail); đổi ảnh đại diện/tên hiển thị không cần trang cài đặt. */}

@@ -10,9 +10,21 @@
  *   2. Token theo nghĩa (sáng / tối)   shadcn + riêng của app (--rail)
  *   3. Nối vào Tailwind (@theme)       sinh ra class bg-*, text-*, border-*
  *
- * Chế độ tối theo hệ điều hành (prefers-color-scheme), không dùng class `.dark`.
+ * Chế độ sáng/tối (TG.13): `data-theme` trên <html> do cài đặt người dùng điều khiển —
+ * 'dark' buộc tối, 'light' buộc sáng, 'system' (mặc định, không ghi đè gì) theo hệ điều
+ * hành (prefers-color-scheme). Class `dark:` của shadcn (variant bên dưới) cũng theo đúng
+ * quy tắc đó.
  */
-@custom-variant dark (@media (prefers-color-scheme: dark));
+@custom-variant dark {
+  @media (prefers-color-scheme: dark) {
+    &:where(html:not([data-theme='light']) *) {
+      @slot;
+    }
+  }
+  &:where(html[data-theme='dark'] *) {
+    @slot;
+  }
+}
 
 /* ---------- 1. Bảng màu gốc (xám ánh lam + màu nhấn tím của ping) ---------- */
 :root {
@@ -75,8 +87,9 @@
 }
 
 /* ---------- 2. Token theo nghĩa: nền tối ---------- */
+/* Áp dụng khi hệ điều hành tối VÀ người dùng không buộc sáng ('light'). */
 @media (prefers-color-scheme: dark) {
-  :root {
+  html:not([data-theme='light']) {
     --background: var(--palette-ink-850);
     --foreground: var(--palette-ink-150);
     --card: var(--palette-ink-900);
@@ -108,6 +121,42 @@
     --sidebar-border: oklch(1 0 0 / 8%);
     --sidebar-ring: var(--palette-violet-500);
   }
+}
+
+/* Buộc tối bằng cài đặt (TG.13, data-theme='dark') — kể cả khi hệ điều hành đang sáng.
+   Token PHẢI GIỐNG HỆT khối media phía trên: CSS không gộp được selector với @media nên
+   nhân bản một lần; sửa khối này thì sửa khối kia. */
+html[data-theme='dark'] {
+  --background: var(--palette-ink-850);
+  --foreground: var(--palette-ink-150);
+  --card: var(--palette-ink-900);
+  --card-foreground: var(--palette-ink-150);
+  --popover: var(--palette-ink-950);
+  --popover-foreground: var(--palette-ink-150);
+  --primary: var(--palette-violet-600); /* chữ trắng trên nút ≥ 4.5:1 */
+  --link: var(--palette-violet-300);
+  --primary-foreground: var(--palette-white);
+  --secondary: var(--palette-ink-700);
+  --secondary-foreground: var(--palette-ink-150);
+  --muted: var(--palette-ink-800);
+  --muted-foreground: var(--palette-ink-400);
+  --accent: var(--palette-ink-800);
+  --accent-foreground: var(--palette-ink-50);
+  --destructive: var(--palette-red-400);
+  --border: oklch(1 0 0 / 8%);
+  --input: oklch(1 0 0 / 12%);
+  --ring: var(--palette-violet-500);
+
+  --rail: var(--palette-ink-950);
+  --rail-foreground: var(--palette-ink-150);
+  --sidebar: var(--palette-ink-900);
+  --sidebar-foreground: var(--palette-ink-150);
+  --sidebar-primary: var(--palette-violet-500);
+  --sidebar-primary-foreground: var(--palette-white);
+  --sidebar-accent: var(--palette-ink-800);
+  --sidebar-accent-foreground: var(--palette-ink-50);
+  --sidebar-border: oklch(1 0 0 / 8%);
+  --sidebar-ring: var(--palette-violet-500);
 }
 
 /* ---------- 3. Nối token vào Tailwind ---------- */
@@ -156,12 +205,37 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* ---------- 4. Cỡ chữ + mật độ tin nhắn (TG.13) ----------
+ * `data-font`/`data-density` trên <html> do cài đặt người dùng điều khiển (theme-provider);
+ * không đặt attr = mặc định (md / comfortable). Đổi cỡ chữ qua font-size gốc (rem) nên mọi
+ * khoảng cách theo rem co theo, không đổi màu — contrast a11y giữ nguyên.
+ */
+:root {
+  --ping-root-font-size: 100%; /* md = 16px */
+  --ping-message-py: 6px; /* padding khối tin nhắn, khớp py-1.5 cũ */
+  --ping-message-leading: 1.5; /* giãn dòng nội dung tin */
+}
+
+html[data-font='sm'] {
+  --ping-root-font-size: 93.75%; /* 15px */
+}
+
+html[data-font='lg'] {
+  --ping-root-font-size: 112.5%; /* 18px */
+}
+
+html[data-density='compact'] {
+  --ping-message-py: 2px;
+  --ping-message-leading: 1.3;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
   html {
     @apply font-sans;
+    font-size: var(--ping-root-font-size);
   }
   body {
     @apply bg-background text-foreground;

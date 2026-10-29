@@ -49,7 +49,9 @@ export function MessageItem({
       id={`message-${message.id}`}
       data-message-id={message.id}
       data-highlighted={highlighted ? 'true' : undefined}
-      className={`px-4 py-1.5 transition-colors hover:bg-accent/50 ${message.status === 'sending' ? 'opacity-60' : ''} ${highlighted ? 'bg-accent ring-1 ring-ring/40' : ''}`}
+      // TG.13: mật độ khối tin nhắn điều khiển qua biến CSS trên <html> (data-density) —
+      // mặc định khớp py-1.5/giãn dòng cũ, 'compact' siết lại (globals.css mục 4).
+      className={`px-4 py-(--ping-message-py) leading-(--ping-message-leading) transition-colors hover:bg-accent/50 ${message.status === 'sending' ? 'opacity-60' : ''} ${highlighted ? 'bg-accent ring-1 ring-ring/40' : ''}`}
       aria-busy={message.status === 'sending' || undefined}
     >
       <header className="flex items-baseline gap-2">
