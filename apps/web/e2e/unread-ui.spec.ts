@@ -64,6 +64,15 @@ test('unread ui: server/channel badges, mention badge, title, divider and two-ta
     await tabA.goto('/');
     await expect(tabA.getByRole('button', { name: 'Tham gia server' })).toBeVisible();
     await unreadLoaded;
+    // TG.12: title là TỔNG unread toàn cục (mọi server + DM) — các spec khác trên cùng shard
+    // có thể để lại unread cho alice (CI chạy nối tiếp trên cùng seed). Mọi khẳng định title
+    // của spec này đo THEO DELTA so với baseline lúc đầu, không khẳng định số tuyệt đối.
+    await expect.poll(() => tabA.title(), { timeout: 10_000 }).toMatch(/^(Ping|\(\d+\) Ping)$/);
+    const baseTitle = await tabA.title();
+    const titleFor = (n: number) => {
+      const base = Number(/^\((\d+)\) Ping$/.exec(baseTitle)?.[1] ?? 0) + n;
+      return base === 0 ? 'Ping' : `(${base}) Ping`;
+    };
     const testServerLink = tabA.getByRole('link', { name: new RegExp(server.name) });
     // Chưa có tin: link chỉ mang tên server (không kèm số unread).
     await expect(testServerLink).toBeVisible();
@@ -74,7 +83,7 @@ test('unread ui: server/channel badges, mention badge, title, divider and two-ta
         tabA.getByRole('link', { name: new RegExp(`${server.name}, 1 tin chưa đọc`) }),
       ).toBeVisible({ timeout: 10_000 });
       // TG.12: title giờ đếm tổng unread (không chỉ mention) — một tin chưa đọc đủ để (1).
-      await expect.poll(() => tabA.title(), { timeout: 10_000 }).toBe('(1) Ping');
+      await expect.poll(() => tabA.title(), { timeout: 10_000 }).toBe(titleFor(1));
     });
 
     await test.step('mention → badge đỏ, title (2) (1 unread cũ + mention), aria-live đọc lên', async () => {
@@ -82,7 +91,7 @@ test('unread ui: server/channel badges, mention badge, title, divider and two-ta
       await expect(
         tabA.getByRole('link', { name: new RegExp(`${server.name}, 1 lượt nhắc bạn`) }),
       ).toBeVisible({ timeout: 10_000 });
-      await expect.poll(() => tabA.title(), { timeout: 10_000 }).toBe('(2) Ping');
+      await expect.poll(() => tabA.title(), { timeout: 10_000 }).toBe(titleFor(2));
       await expect(tabA.getByTestId('mention-announcer')).toHaveText(/nhắc/, {
         timeout: 10_000,
       });
@@ -102,7 +111,7 @@ test('unread ui: server/channel badges, mention badge, title, divider and two-ta
       await expect(tabA).toHaveURL(new RegExp(randomChannel), { timeout: 15_000 });
       await expect(randomLink.getByTestId('mention-badge')).toHaveCount(0, { timeout: 10_000 });
       await expect(randomLink.getByTestId('unread-badge')).toHaveCount(0);
-      await expect.poll(() => tabA.title(), { timeout: 10_000 }).toBe('Ping');
+      await expect.poll(() => tabA.title(), { timeout: 10_000 }).toBe(titleFor(0));
     });
 
     await test.step('vạch Tin mới: đọc rồi có tin mới → vào lại thấy vạch trên tin mới', async () => {
@@ -135,7 +144,7 @@ test('unread ui: server/channel badges, mention badge, title, divider and two-ta
         timeout: 15_000,
       });
       // TG.12: title tab B theo tổng unread — đúng một tin chưa đọc.
-      await expect.poll(() => tabB.title(), { timeout: 10_000 }).toBe('(1) Ping');
+      await expect.poll(() => tabB.title(), { timeout: 10_000 }).toBe(titleFor(1));
     });
 
     await test.step('dọn server của test', async () => {
