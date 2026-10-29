@@ -13,6 +13,11 @@ export const dmAllowSchema = z.enum(DM_ALLOW_VALUES);
 export const updatePrivacySchema = z.object({ dmAllow: dmAllowSchema });
 export type UpdatePrivacyInput = z.infer<typeof updatePrivacySchema>;
 
+/** GET /users/me/privacy (TG.13): trạng thái riêng tư hiện tại — trang cài đặt đọc giá trị thật. */
+export interface UserPrivacyDto {
+  dmAllow: DmAllow;
+}
+
 /** POST /dms (TG.9): get-or-create idempotent theo cặp — cặp đã có trả 200 với channel cũ. */
 export const createDmSchema = z.object({ userId: z.uuid() });
 export type CreateDmInput = z.infer<typeof createDmSchema>;

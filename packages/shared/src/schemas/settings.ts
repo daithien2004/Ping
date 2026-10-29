@@ -41,6 +41,18 @@ export interface UserSettingsDto {
   locale: SettingsLocale;
 }
 
+/**
+ * Mặc định khi user chưa có hàng UserSettings — một nguồn cho cả ba nơi cần biết:
+ * DEFAULT của cột trong schema.prisma (API ghi), GET lazy (API đọc) và store thiết bị
+ * (web, trước khi GET trả về). Đổi giá trị mặc định = sửa đây + migration expand.
+ */
+export const USER_SETTINGS_DEFAULTS = {
+  theme: 'system',
+  density: 'comfortable',
+  fontSize: 'md',
+  locale: 'vi',
+} as const satisfies UserSettingsDto;
+
 /** TG.13 — Riêng tư: danh sách người tôi đã chặn (TG.9 lưu UserBlock, TG.13 bổ sung liệt kê). */
 export interface BlockedUserDto {
   userId: string;
