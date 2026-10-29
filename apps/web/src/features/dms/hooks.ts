@@ -6,12 +6,13 @@ import {
   type DmListResponse,
   type ReadUpdatedPayload,
   type UpdatePrivacyInput,
+  type UserPrivacyDto,
 } from '@ping/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import type { RealtimeSession } from '@/features/realtime/session';
 import { qk } from '@/lib/query-keys';
-import { blockUser, createDm, listDms, unblockUser, updatePrivacy } from './api';
+import { blockUser, createDm, getPrivacy, listDms, unblockUser, updatePrivacy } from './api';
 import { applyDmActivity, applyDmRead } from './dm-cache';
 import { useDmBlockStore } from './store';
 
@@ -46,22 +47,46 @@ export function useCreateDm() {
 }
 
 /**
- * Chặn/bỏ chặn (TG.9): ghi nhận vào store UI để banner + composer phản hồi ngay. Danh sách
- * chặn toàn cục/đối soát lại thuộc TG.13 — v0.2 chỉ toggle tại profile card và header DM.
+ * Chặn/bỏ chặn (TG.9): ghi nhận vào store UI để banner + composer phản hồi ngay; TG.13 làm
+ * tươi thêm danh sách chặn ở trang cài đặt. Toggle có ở profile card, header DM và cài đặt.
  */
 export function useToggleBlock() {
+  const queryClient = useQueryClient();
   const setBlocked = useDmBlockStore((state) => state.setBlocked);
   return useMutation({
     mutationFn: ({ userId, block }: { userId: string; block: boolean }) =>
       block ? blockUser(userId) : unblockUser(userId),
-    onSuccess: (_result, { userId, block }) => setBlocked(userId, block),
+    onSuccess: (_result, { userId, block }) => {
+      setBlocked(userId, block);
+      // TG.13: danh sách chặn liệt kê ở trang cài đặt — chặn/bỏ chặn ở đây cũng phải tươi.
+      void queryClient.invalidateQueries({ queryKey: qk.blockedUsers });
+    },
   });
 }
 
-/** PATCH /users/me/privacy — mức `dmAllow` của chính mình (màn cài đặt thuộc TG.13). */
+/** GET /users/me/privacy (TG.13) — trang cài đặt cần giá trị đã lưu để switch không sai. */
+export function usePrivacy() {
+  return useQuery({ queryKey: qk.privacy, queryFn: getPrivacy, staleTime: Infinity });
+}
+
+/** PATCH /users/me/privacy — mức `dmAllow` của chính mình (màn cài đặt TG.13). */
 export function useUpdatePrivacy() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: UpdatePrivacyInput) => updatePrivacy(input),
+    onMutate: async (input) => {
+      await queryClient.cancelQueries({ queryKey: qk.privacy });
+      const previous = queryClient.getQueryData<UserPrivacyDto>(qk.privacy);
+      // PATCH trả 204 — áp giá trị vừa gửi ngay để switch không nhảy về giá trị cũ trong lúc chờ.
+      queryClient.setQueryData<UserPrivacyDto>(qk.privacy, { dmAllow: input.dmAllow });
+      return { previous };
+    },
+    onError: (_error, _input, context) => {
+      if (context?.previous) queryClient.setQueryData(qk.privacy, context.previous);
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: qk.privacy });
+    },
   });
 }
 

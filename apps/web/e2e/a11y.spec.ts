@@ -93,3 +93,23 @@ test('app shell with a channel, the message menu and the create-server dialog, l
     await expect(page.getByRole('dialog')).toHaveCount(0);
   }
 });
+
+test('personal settings sections, light and dark (TG.13)', async ({ page }) => {
+  await signIn(page);
+  const sections = [
+    ['/settings', 'settings-account'],
+    ['/settings/appearance', 'settings-appearance'],
+    ['/settings/language', 'settings-language'],
+    ['/settings/notifications', 'settings-notifications'],
+    ['/settings/privacy', 'settings-privacy'],
+    ['/settings/shortcuts', 'settings-shortcuts'],
+  ] as const;
+  for (const colorScheme of SCHEMES) {
+    await page.emulateMedia({ colorScheme });
+    for (const [url, testId] of sections) {
+      await page.goto(url);
+      await expect(page.getByTestId(testId)).toBeVisible();
+      await scan(page, `${testId} ${colorScheme}`);
+    }
+  }
+});

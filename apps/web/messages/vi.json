@@ -549,5 +549,98 @@
     "gifLabel": "[GIF]",
     "attachmentLabel": "[Tệp đính kèm]",
     "fallbackTitle": "Ping"
+  },
+  "settings": {
+    "navLabel": "Cài đặt cá nhân",
+    "railOpen": "Cài đặt cá nhân",
+    "sections": {
+      "account": "Tài khoản",
+      "appearance": "Giao diện",
+      "language": "Ngôn ngữ",
+      "notifications": "Thông báo",
+      "privacy": "Riêng tư",
+      "shortcuts": "Phím tắt"
+    },
+    "account": {
+      "title": "Tài khoản",
+      "hint": "Hồ sơ của bạn dùng chung mọi server.",
+      "profileTitle": "Hồ sơ",
+      "credentialsTitle": "Email, mật khẩu và phiên",
+      "email": "Email",
+      "password": "Mật khẩu",
+      "sessions": "Phiên đăng nhập",
+      "comingSoon": "Sắp có"
+    },
+    "appearance": {
+      "title": "Giao diện",
+      "hint": "Áp dụng ngay khi đổi và đồng bộ mọi thiết bị của bạn.",
+      "theme": "Chủ đề",
+      "themeHint": "«Hệ thống» theo chế độ sáng/tối của hệ điều hành.",
+      "themeLight": "Sáng",
+      "themeDark": "Tối",
+      "themeSystem": "Hệ thống",
+      "density": "Mật độ tin nhắn",
+      "densityHint": "Khoảng cách và giãn dòng của khối tin nhắn.",
+      "densityComfortable": "Thoáng",
+      "densityCompact": "Gọn",
+      "fontSize": "Cỡ chữ",
+      "fontSizeHint": "Cỡ chữ cơ sở của giao diện; nội dung tin nhắn kế thừa.",
+      "fontSizeSm": "Nhỏ",
+      "fontSizeMd": "Vừa",
+      "fontSizeLg": "To"
+    },
+    "language": {
+      "title": "Ngôn ngữ",
+      "hint": "Chọn ngôn ngữ giao diện.",
+      "language": "Ngôn ngữ",
+      "syncHint": "Được lưu lên server và đồng bộ mọi thiết bị."
+    },
+    "notifications": {
+      "title": "Thông báo",
+      "hint": "Quyền và cài đặt thiết bị áp dụng cho máy này; mức theo server/kênh đồng bộ mọi thiết bị.",
+      "browserPermission": "Quyền thông báo trình duyệt",
+      "permissionGranted": "Đã cho phép",
+      "permissionDenied": "Bị chặn trong trình duyệt",
+      "permissionDefault": "Chưa cấp quyền",
+      "permissionUnsupported": "Trình duyệt không hỗ trợ",
+      "requestPermission": "Xin quyền",
+      "deviceSection": "Thiết bị này",
+      "ignoreEveryone": "Bỏ qua @everyone",
+      "ignoreEveryoneHint": "Không bắn thông báo cho tin chỉ nhắc @everyone/@here.",
+      "sound": "Âm thanh thông báo",
+      "soundHint": "Phát âm thanh khi có thông báo mới trên thiết bị này.",
+      "serverLevels": "Mức theo server",
+      "serverLevelsHint": "Mặc định chung là «Tất cả»; đổi tại đây áp dụng cho mọi kênh của server.",
+      "serverDefaultHint": "Đang theo mặc định chung",
+      "channelOverrides": "Ghi đè theo kênh",
+      "channelOverridesHint": "Các kênh đang đặt mức riêng, khác mức của server.",
+      "channelOverridesEmpty": "Chưa có kênh nào ghi đè mức của server.",
+      "mutedRow": "Đang tắt tiếng",
+      "reset": "Về mặc định"
+    },
+    "privacy": {
+      "title": "Riêng tư",
+      "hint": "Ai có thể nhắn tin trực tiếp cho bạn và những người bạn đã chặn.",
+      "dmAllow": "Nhận DM từ thành viên server",
+      "dmAllowHint": "Tắt thì người khác không tạo được hội thoại mới với bạn; DM hiện có vẫn dùng được.",
+      "blockedTitle": "Người dùng bị chặn",
+      "blockedEmpty": "Bạn chưa chặn ai.",
+      "unblock": "Bỏ chặn",
+      "unblockConfirmTitle": "Bỏ chặn người dùng này?",
+      "cancel": "Hủy"
+    },
+    "shortcuts": {
+      "title": "Phím tắt",
+      "hint": "Các tổ hợp phím đang có của app.",
+      "columnShortcut": "Tổ hợp phím",
+      "columnAction": "Thao tác",
+      "send": "Gửi tin nhắn",
+      "newline": "Xuống dòng trong ô soạn tin",
+      "quickSwitcher": "Mở hộp thoại chuyển nhanh",
+      "closeDialog": "Đóng hộp thoại, menu hoặc chuyển nhanh",
+      "suggestNavigate": "Chọn gợi ý emoji khi đang gõ «:ten:»",
+      "suggestAccept": "Chèn gợi ý đang chọn",
+      "suggestCancel": "Xóa đoạn gợi ý đang gõ"
+    }
   }
 }

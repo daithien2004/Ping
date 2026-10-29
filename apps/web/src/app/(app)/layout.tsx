@@ -2,6 +2,7 @@ import { Suspense, type ReactNode } from 'react';
 import { Loading } from '@/components/loading';
 import { RailSkeleton } from '@/components/skeletons';
 import { AuthGate } from '@/features/auth/components/auth-gate';
+import { SettingsSync } from '@/features/settings/components/settings-sync';
 import { ServerRail } from '@/features/servers/components/server-rail';
 import { RealtimeProvider } from '@/features/realtime/components/realtime-provider';
 import { ConnectionBanner } from '@/features/realtime/components/connection-banner';
@@ -16,6 +17,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     <Suspense fallback={<Loading />}>
       <AuthGate>
         <RealtimeProvider>
+          {/* TG.13: nạp cài đặt người dùng từ server để áp dụng toàn app — đặt sau AuthGate nên
+              chỉ chạy khi đã đăng nhập; chưa tải xong thì app vẽ theo mặc định. */}
+          <SettingsSync />
           <div className="flex h-dvh flex-col">
             <ConnectionBanner />
             <QuickSwitcher items={[]} />

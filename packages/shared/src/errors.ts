@@ -34,6 +34,10 @@ export const ErrorCodes = {
   GIF_PROVIDER_UNAVAILABLE: 'GIF_PROVIDER_UNAVAILABLE',
   /** Bị chặn hoặc đối phương tắt DM — cùng mã cho cả hai để chống dò nguyên nhân (TG.9, ADR-0070). */
   DM_BLOCKED: 'DM_BLOCKED',
+  /** Token xác minh email/đặt lại mật khẩu sai, hết hạn hoặc đã dùng — một mã chung (TG.8). */
+  VERIFY_TOKEN_INVALID: 'VERIFY_TOKEN_INVALID',
+  /** Tài khoản chưa xác minh email — chặn tạo server/mã mời cho tới khi xác minh (TG.8). */
+  VERIFY_REQUIRED: 'VERIFY_REQUIRED',
 } as const;
 
 export type ErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes];

@@ -549,5 +549,98 @@
     "gifLabel": "[GIF]",
     "attachmentLabel": "[Attachment]",
     "fallbackTitle": "Ping"
+  },
+  "settings": {
+    "navLabel": "User settings",
+    "railOpen": "User settings",
+    "sections": {
+      "account": "Account",
+      "appearance": "Appearance",
+      "language": "Language",
+      "notifications": "Notifications",
+      "privacy": "Privacy",
+      "shortcuts": "Shortcuts"
+    },
+    "account": {
+      "title": "Account",
+      "hint": "Your profile, shared across every server.",
+      "profileTitle": "Profile",
+      "credentialsTitle": "Email, password and sessions",
+      "email": "Email",
+      "password": "Password",
+      "sessions": "Signed-in sessions",
+      "comingSoon": "Coming soon"
+    },
+    "appearance": {
+      "title": "Appearance",
+      "hint": "Changes apply instantly and sync across your devices.",
+      "theme": "Theme",
+      "themeHint": "“System” follows your operating system light/dark mode.",
+      "themeLight": "Light",
+      "themeDark": "Dark",
+      "themeSystem": "System",
+      "density": "Message density",
+      "densityHint": "Spacing and line height of message blocks.",
+      "densityComfortable": "Comfortable",
+      "densityCompact": "Compact",
+      "fontSize": "Font size",
+      "fontSizeHint": "Base font size of the interface; message content inherits it.",
+      "fontSizeSm": "Small",
+      "fontSizeMd": "Medium",
+      "fontSizeLg": "Large"
+    },
+    "language": {
+      "title": "Language",
+      "hint": "Choose the interface language.",
+      "language": "Language",
+      "syncHint": "Saved to your account and synced across devices."
+    },
+    "notifications": {
+      "title": "Notifications",
+      "hint": "Browser and device settings apply to this device; server/channel levels sync everywhere.",
+      "browserPermission": "Browser notification permission",
+      "permissionGranted": "Granted",
+      "permissionDenied": "Blocked in the browser",
+      "permissionDefault": "Not requested yet",
+      "permissionUnsupported": "Not supported by this browser",
+      "requestPermission": "Request permission",
+      "deviceSection": "This device",
+      "ignoreEveryone": "Ignore @everyone",
+      "ignoreEveryoneHint": "Do not raise notifications for messages that only mention @everyone/@here.",
+      "sound": "Notification sound",
+      "soundHint": "Play a sound for new notifications on this device.",
+      "serverLevels": "Per-server levels",
+      "serverLevelsHint": "The global default is “All”; changing it here applies to every channel of the server.",
+      "serverDefaultHint": "Following the global default",
+      "channelOverrides": "Channel overrides",
+      "channelOverridesHint": "Channels that set their own level, different from the server's.",
+      "channelOverridesEmpty": "No channel overrides the server level yet.",
+      "mutedRow": "Muted",
+      "reset": "Reset"
+    },
+    "privacy": {
+      "title": "Privacy",
+      "hint": "Who can direct-message you and the people you have blocked.",
+      "dmAllow": "Receive DMs from server members",
+      "dmAllowHint": "When off, others cannot start a new conversation with you; existing DMs keep working.",
+      "blockedTitle": "Blocked users",
+      "blockedEmpty": "You have not blocked anyone.",
+      "unblock": "Unblock",
+      "unblockConfirmTitle": "Unblock this user?",
+      "cancel": "Cancel"
+    },
+    "shortcuts": {
+      "title": "Shortcuts",
+      "hint": "Keyboard shortcuts currently available in the app.",
+      "columnShortcut": "Shortcut",
+      "columnAction": "Action",
+      "send": "Send message",
+      "newline": "New line in the composer",
+      "quickSwitcher": "Open the quick switcher",
+      "closeDialog": "Close dialog, menu or quick switcher",
+      "suggestNavigate": "Move through emoji suggestions while typing “:name”",
+      "suggestAccept": "Insert the highlighted suggestion",
+      "suggestCancel": "Clear the suggestion being typed"
+    }
   }
 }

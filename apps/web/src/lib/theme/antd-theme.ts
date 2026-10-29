@@ -32,6 +32,9 @@ export function buildAntdTheme(mode: ThemeMode): ThemeConfig {
       Input: { borderRadius: radius.md, controlHeight: 36 },
       Modal: { borderRadiusLG: radius.xl },
       Card: { borderRadiusLG: radius.lg },
+      // Mặc định antd dùng colorTextLabel (text pha alpha) cho mục chưa chọn — trên nền
+      // ink-50/ink-950 của palette này tụt dưới 4.5:1 (axe bắt ở trang cài đặt TG.13).
+      Segmented: { itemColor: c.foreground, itemHoverColor: c.foreground },
     },
     hashed: true,
     cssVar: { key: 'ping' },

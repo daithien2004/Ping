@@ -1,6 +1,7 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Post, UseGuards } from '@nestjs/common';
 import {
   createDmSchema,
+  type BlockedUsersResponse,
   type CreateDmInput,
   type DmListResponse,
   type DmSummary,
@@ -60,5 +61,15 @@ export class DmsController {
     @Param('userId') targetId: string,
   ): Promise<void> {
     await this.dms.unblock(user.userId, targetId);
+  }
+
+  /**
+   * TG.13: danh sách người TÔI đã chặn (liệt kê UserBlock của TG.9), mới nhất trước. Route
+   * không có id trong path — bối cảnh là chính người gọi (userId từ JWT), cùng nhánh `me`
+   * với cài đặt; bỏ chặn tái dùng DELETE /users/:userId/block ở trên.
+   */
+  @Get('users/me/blocks')
+  listBlocks(@CurrentUser() user: AuthenticatedUser): Promise<BlockedUsersResponse> {
+    return this.dms.listBlocks(user.userId);
   }
 }
