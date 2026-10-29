@@ -346,6 +346,7 @@ describe('ServersService.join — chặn người bị ban (TG.11)', () => {
       deps.realtime,
       deps.audit,
       null as never, // attachments: join không đụng
+      { get: () => undefined } as never, // config: không SMTP_URL → bỏ qua chính sách xác minh
     );
   }
 
