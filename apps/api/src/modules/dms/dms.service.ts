@@ -4,7 +4,12 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { ErrorCodes, type DmListResponse, type DmSummary } from '@ping/shared';
+import {
+  ErrorCodes,
+  type BlockedUsersResponse,
+  type DmListResponse,
+  type DmSummary,
+} from '@ping/shared';
 import { Prisma } from '../../generated/prisma/client.js';
 import { TooManyRequestsError } from '../../common/too-many-requests.error.js';
 import { isUniqueConstraintError } from '../../common/utils/prisma-errors.js';
@@ -199,6 +204,32 @@ export class DmsService {
     await this.prisma.userBlock.deleteMany({
       where: { blockerId: meId, blockedId: targetId },
     });
+  }
+
+  /**
+   * GET /users/me/blocks (TG.13): liệt kê người TÔI đã chặn (UserBlock của TG.9), mới nhất
+   * trước. Gộp vào service này để mọi truy vấn UserBlock ở một chỗ; bỏ chặn tái dùng
+   * DELETE /users/:userId/block — không thêm endpoint. Dữ liệu user-scoped: khóa
+   * `blockerId` theo JWT; hồ sơ bị chặn trả đúng shape BlockedUserDto, không lộ gì thêm.
+   */
+  async listBlocks(meId: string): Promise<BlockedUsersResponse> {
+    const rows = await this.prisma.userBlock.findMany({
+      where: { blockerId: meId },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        createdAt: true,
+        blocked: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
+      },
+    });
+    return {
+      blocked: rows.map((row) => ({
+        userId: row.blocked.id,
+        username: row.blocked.username,
+        displayName: row.blocked.displayName,
+        avatarUrl: row.blocked.avatarUrl,
+        blockedAt: row.createdAt.toISOString(),
+      })),
+    };
   }
 
   /**

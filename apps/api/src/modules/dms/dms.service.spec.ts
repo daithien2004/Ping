@@ -7,6 +7,7 @@ import { DmsService, dmKeyFor } from './dms.service.js';
 // Hai UUID lệch thứ tự từ điển — đủ để kiểm chuẩn hóa min|max (UUIDv7 so sánh theo byte).
 const ME = '00000000-0000-0000-0000-000000000001';
 const TARGET = '00000000-0000-0000-0000-000000000002';
+const OTHER = '00000000-0000-0000-0000-000000000003';
 
 /** Prisma giả đúng những gì DmsService đụng tới; $transaction chạy thẳng callback với tx giả. */
 function makePrisma() {
@@ -33,6 +34,7 @@ function makePrisma() {
     $queryRaw: vi.fn().mockResolvedValue([]), // GET /dms hoặc cặp đã có: rỗng mặc định
     user: { findUnique: vi.fn().mockResolvedValue({ id: TARGET }) },
     userBlock: {
+      findMany: vi.fn().mockResolvedValue([]),
       upsert: vi.fn().mockResolvedValue({}),
       deleteMany: vi.fn().mockResolvedValue({ count: 1 }),
     },
@@ -214,6 +216,53 @@ describe('DmsService.block/unblock (ADR-0070 mục 4)', () => {
     await expect(new DmsService(prisma).unblock(ME, TARGET)).resolves.toBeUndefined();
     expect(prismaRaw.userBlock.deleteMany).toHaveBeenCalledWith({
       where: { blockerId: ME, blockedId: TARGET },
+    });
+  });
+});
+
+describe('DmsService.listBlocks (TG.13 — liệt kê UserBlock của TG.9)', () => {
+  it('chưa chặn ai → { blocked: [] }', async () => {
+    const { prisma, prismaRaw } = makePrisma();
+    await expect(new DmsService(prisma).listBlocks(ME)).resolves.toEqual({ blocked: [] });
+    expect(prismaRaw.userBlock.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { blockerId: ME }, orderBy: { createdAt: 'desc' } }),
+    );
+  });
+
+  it('map hàng join User → BlockedUserDto (blockedAt là ISO), mới nhất trước', async () => {
+    const { prisma, prismaRaw } = makePrisma();
+    prismaRaw.userBlock.findMany.mockResolvedValue([
+      {
+        createdAt: new Date('2026-10-29T01:00:00.000Z'),
+        blocked: { id: TARGET, username: 'bob', displayName: 'Bob', avatarUrl: null },
+      },
+      {
+        createdAt: new Date('2026-10-28T01:00:00.000Z'),
+        blocked: {
+          id: OTHER,
+          username: 'carol',
+          displayName: 'Carol',
+          avatarUrl: 'https://a/x.png',
+        },
+      },
+    ]);
+    await expect(new DmsService(prisma).listBlocks(ME)).resolves.toEqual({
+      blocked: [
+        {
+          userId: TARGET,
+          username: 'bob',
+          displayName: 'Bob',
+          avatarUrl: null,
+          blockedAt: '2026-10-29T01:00:00.000Z',
+        },
+        {
+          userId: OTHER,
+          username: 'carol',
+          displayName: 'Carol',
+          avatarUrl: 'https://a/x.png',
+          blockedAt: '2026-10-28T01:00:00.000Z',
+        },
+      ],
     });
   });
 });

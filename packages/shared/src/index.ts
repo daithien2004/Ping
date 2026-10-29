@@ -11,6 +11,8 @@ export * from './schemas/custom-emoji';
 export * from './schemas/dm';
 // TG.12: hợp đồng prefs thông báo (mức all/mentions/none + mute có hạn) — cùng bài học TG.9.
 export * from './schemas/notification';
+// TG.13: cài đặt người dùng (theme/density/fontSize/locale PATCH semantics) + danh sách chặn.
+export * from './schemas/settings';
 export * from './schemas/audit';
 export * from './schemas/search';
 export * from './permissions';

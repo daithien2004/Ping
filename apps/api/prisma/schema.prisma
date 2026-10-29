@@ -33,6 +33,8 @@ model User {
   blocksReceived     UserBlock[]     @relation("UserBlocksReceived")
   // TG.12: prefs thông báo của user (một dòng mỗi server/channel đã cấu hình).
   notificationPrefs  NotificationPref[]
+  // TG.13: cài đặt giao diện/ngôn ngữ — một hàng mỗi user, tạo LAZY (chỉ PATCH mới upsert).
+  settings           UserSettings?
 }
 
 model Session {
@@ -235,6 +237,29 @@ model UserBlock {
   @@id([blockerId, blockedId])
   // Kiểm "tôi có bị ai chặn không" tra theo blockedId.
   @@index([blockedId])
+}
+
+/// Cài đặt người dùng (TG.13): giao diện + ngôn ngữ, đồng bộ mọi thiết bị. Cột tường minh
+/// (không JSON blob) vì v0.2 là bộ cố định — thêm mục mới là một migration expand. Giá trị
+/// do API kiểm (zod trong @ping/shared), kiểu String khớp cách `User.dmAllow` đặt tên nhánh.
+/// DEFAULT dưới đây phải khớp `USER_SETTINGS_DEFAULTS` (cùng file shared) — đó là nguồn cho
+/// GET lazy của API và store thiết bị của web.
+/// Hàng tạo LAZY: GET khi chưa có hàng trả về mặc định ở tầng service, KHÔNG ghi — chỉ PATCH
+/// mới upsert, tránh rác hàng cho user không bao giờ đụng settings.
+model UserSettings {
+  userId   String  @id @db.Uuid
+  /// 'light' | 'dark' | 'system' — mặc định theo hệ điều hành (SETTINGS_THEMES).
+  theme    String  @default("system")
+  /// 'comfortable' | 'compact' (SETTINGS_DENSITIES).
+  density  String  @default("comfortable")
+  /// 'sm' | 'md' | 'lg' (SETTINGS_FONT_SIZES).
+  fontSize String  @default("md")
+  /// 'vi' | 'en' (SETTINGS_LOCALES).
+  locale   String  @default("vi")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 /// Prefs thông báo (TG.12): mức all/mentions/none + mute có hạn của MỘT user trên một
