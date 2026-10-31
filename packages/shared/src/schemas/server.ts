@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { ChannelDto } from './channel';
+import type { ChannelCategoryDto, ChannelDto } from './channel';
 
 export const createServerSchema = z.object({
   name: z.string().trim().min(1).max(100),
@@ -95,6 +95,8 @@ export interface RoleDto {
 /** GET /servers/:id và POST /servers. */
 export interface ServerDetail extends Omit<ServerSummary, 'memberCount' | 'channelCount'> {
   channels: ChannelDto[];
+  /** TG.10: category sidebar theo thứ tự `position`; chỉ có ở GET /servers/:id. */
+  categories?: ChannelCategoryDto[];
   roles: RoleDto[];
   /** Có ở GET /servers/:id, không có ở POST /servers (server mới chỉ có chủ). */
   memberCount?: number;

@@ -23,6 +23,9 @@ export const AuditActions = {
   // TG.11: ban/unban thành viên (metadata: userId, reason?, deletedMessages?).
   SERVER_BAN: 'SERVER_BAN',
   SERVER_UNBAN: 'SERVER_UNBAN',
+  // TG.10: sắp xếp lại category hoặc di chuyển channel sang nhóm khác (metadata:
+  // categoryIds khi reorder; channelId + fromCategoryId/toCategoryId khi move).
+  CHANNEL_REORDER: 'CHANNEL_REORDER',
 } as const;
 
 export const auditActionSchema = z.enum(AuditActions);
