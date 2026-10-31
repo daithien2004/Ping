@@ -50,7 +50,6 @@ export default async function globalSetup() {
     password,
   });
   const token = auth.accessToken;
-  await verifyEmailFromMailpit(email);
   // Chốt chặn: máy dev không cấu hình SMTP_URL thì API dùng ConsoleMailer (không có thư
   // trong Mailpit) — đặt cờ thẳng DB để seed vẫn chạy được, chi tiết ở hàm bên dưới.
   await ensureVerifiedForSeed(email, token);
@@ -104,6 +103,16 @@ async function postNoBody(path: string, body: unknown): Promise<boolean> {
 }
 
 /**
+ * Xác minh email của tài khoản vừa đăng ký (spec tự tạo user rồi tạo server): ưu tiên token
+ * thật từ Mailpit, fallback ghi cờ thẳng DB khi môi trường không có mailer. Chính sách
+ * VERIFY_REQUIRED (TG.8) bật ở mọi môi trường có SMTP_URL — kể cả web-e2e trên CI.
+ */
+export async function ensureUserVerified(email: string): Promise<void> {
+  if (await verifyEmailFromMailpit(email)) return;
+  verifyUserInDb(email);
+}
+
+/**
  * Chốt chặn seed e2e (TG.8): nếu sau Mailpit user VẪN chưa xác minh (API dev không cấu
  * hình SMTP_URL → ConsoleMailer chỉ ghi log, Mailpit không bao giờ có thư) thì đặt
  * `emailVerified` thẳng DB bằng script dev — cùng pattern seed-messages.ts phía dưới.
@@ -117,6 +126,10 @@ async function ensureVerifiedForSeed(email: string, token: string): Promise<void
   if (me.ok && ((await me.json()) as { emailVerified?: boolean }).emailVerified === true) {
     return;
   }
+  await ensureUserVerified(email);
+}
+
+function verifyUserInDb(email: string): void {
   // verify-user cần DATABASE_URL: nạp .env gốc sớm hơn seed-messages (nạp hai lần vô hại).
   try {
     process.loadEnvFile(path.join(repoRoot, '.env'));
@@ -140,7 +153,7 @@ async function ensureVerifiedForSeed(email: string, token: string): Promise<void
  * chỉ rồi POST /auth/verify-email. Best-effort (đợi tối đa 15s): khi API máy này chưa gửi
  * thư (TG.8 của API chưa về) thì bỏ qua để seed vẫn chạy được như trước.
  */
-async function verifyEmailFromMailpit(email: string): Promise<void> {
+async function verifyEmailFromMailpit(email: string): Promise<boolean> {
   const deadline = Date.now() + 15_000;
   while (Date.now() < deadline) {
     const mailToken = await findMailToken(email, '/verify');
@@ -148,15 +161,15 @@ async function verifyEmailFromMailpit(email: string): Promise<void> {
       // /auth/verify-email trả 204 KHÔNG body — post() parse JSON sẽ văng trên 204, dùng
       // fetch riêng chỉ cần biết ok hay không (token hỏng → false → thử lại tới hết hạn).
       if (await postNoBody('/auth/verify-email', { token: mailToken })) {
-        return;
+        return true;
       }
     }
     await new Promise((resolve) => setTimeout(resolve, 500));
   }
   console.warn(
-    `[web-e2e] không lấy được thư xác minh Mailpit cho ${email} — nếu API đã bật chính sách ` +
-      'VERIFY_REQUIRED thì bước tạo server phía dưới sẽ đỏ.',
+    `[web-e2e] không lấy được thư xác minh Mailpit cho ${email} — dùng fallback ghi cờ DB (verify-user).`,
   );
+  return false;
 }
 
 /**

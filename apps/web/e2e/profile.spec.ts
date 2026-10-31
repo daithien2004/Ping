@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
 import type { ServerDetail } from '@ping/shared';
 import type { AuthResponse } from '@ping/shared';
+import { ensureUserVerified } from './global-setup';
 import { pacedLogin } from './login-pace';
 
 const API = 'http://localhost:4000/api/v1';
@@ -47,6 +48,8 @@ test('profile: avatar and display name update everywhere without reload, nicknam
     expect(registered.ok()).toBeTruthy();
     const login = (await registered.json()) as AuthResponse;
     headers = { Authorization: `Bearer ${login.accessToken}` };
+    // TG.8: tài khoản vừa đăng ký phải xác minh email trước khi tạo server khi có SMTP_URL.
+    await ensureUserVerified(`profile-e2e-${suffix}@ping.dev`);
     const created = await owner.request.post(`${API}/servers`, {
       headers,
       data: { name: `Profile ${suffix}` },
