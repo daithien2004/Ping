@@ -76,7 +76,9 @@ test('admin invite: display, regenerate revokes old code, join reports clear err
         const joinerPage = await joinerContext.newPage();
         await joinerPage.goto('/');
         await joinerPage.getByRole('button', { name: 'Tham gia server' }).click();
-        await joinerPage.getByLabel('Mã mời').fill(originalCode);
+        // Hộp thoại mở trên trang server (carol đã ở Ping Playground): sidebar cũng có nút
+        // «Sao chép mã mời» nên phải giới hạn trong dialog.
+        await joinerPage.getByRole('dialog').getByLabel('Mã mời').fill(originalCode);
         await joinerPage.getByRole('button', { name: 'Tham gia', exact: true }).click();
         await expect(joinerPage.getByText('Mã mời đã bị thu hồi.')).toBeVisible();
       });
@@ -85,7 +87,7 @@ test('admin invite: display, regenerate revokes old code, join reports clear err
         const joinerPage = await joinerContext.newPage();
         await joinerPage.goto('/');
         await joinerPage.getByRole('button', { name: 'Tham gia server' }).click();
-        await joinerPage.getByLabel('Mã mời').fill(newCode);
+        await joinerPage.getByRole('dialog').getByLabel('Mã mời').fill(newCode);
         await joinerPage.getByRole('button', { name: 'Tham gia', exact: true }).click();
         await expect(joinerPage).toHaveURL(new RegExp(`/servers/${serverId}`), {
           timeout: 15_000,

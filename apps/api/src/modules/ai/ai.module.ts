@@ -8,6 +8,7 @@ import { GroqLlmClient } from './groq-llm.client.js';
 import type { LlmClient } from './llm-client.port.js';
 import { EMBEDDER, LLM_CLIENT, VECTOR_STORE } from './ai.tokens.js';
 import { AskController } from './ask/ask.controller.js';
+import { AskRateLimiter } from './ask/ask-rate-limiter.js';
 import { AskService } from './ask/ask.service.js';
 import { AskCacheService } from './cache/ask-cache.service.js';
 import { MessageIndexerService } from './indexer/message-indexer.service.js';
@@ -60,6 +61,7 @@ export { EMBEDDER, LLM_CLIENT, VECTOR_STORE } from './ai.tokens.js';
     MessageIndexerService,
     RetrievalService,
     AskService,
+    AskRateLimiter,
     AskCacheService,
     AiUsageService,
   ],

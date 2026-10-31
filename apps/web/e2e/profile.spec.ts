@@ -90,7 +90,8 @@ test('profile: avatar and display name update everywhere without reload, nicknam
     await page.getByTestId('display-name-input').fill('Alice Kiêu Hãnh');
     await page.getByRole('button', { name: 'Lưu' }).click();
     await expect(selfDialog).toContainText('Alice Kiêu Hãnh');
-    await selfDialog.getByRole('button', { name: 'Close' }).click();
+    // TF.12: antd dùng locale vi_VN nên nút đóng của Modal là "Đóng", không còn "Close".
+    await selfDialog.getByRole('button', { name: 'Đóng' }).click();
     await expect(selfDialog).toHaveCount(0);
     // Tab của bob: member panel hiện tên mới + avatar mới không cần reload (event user.updated).
     await expect(
@@ -111,7 +112,7 @@ test('profile: avatar and display name update everywhere without reload, nicknam
     await expect(page.getByTestId('member-profile')).toBeVisible();
     await page.getByTestId('nickname-input').fill('Alice Q');
     await memberDialog.getByRole('button', { name: 'Lưu', exact: true }).click();
-    await memberDialog.getByRole('button', { name: 'Close' }).click();
+    await memberDialog.getByRole('button', { name: 'Đóng' }).click();
     await expect(page.getByTestId('member-row').filter({ hasText: 'Alice Q' })).toBeVisible();
 
     // 3. Icon server qua bề mặt quản trị; rail đổi sang icon ngay.

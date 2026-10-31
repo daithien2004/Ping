@@ -5,6 +5,7 @@ import { AbilityGuard } from '../../ability/ability.guard.js';
 import { CheckAbility } from '../../ability/check-ability.decorator.js';
 import { CurrentUser, type AuthenticatedUser } from '../../auth/current-user.decorator.js';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard.js';
+import { AskRateLimiter } from './ask-rate-limiter.js';
 import { AskService, type AskEvent } from './ask.service.js';
 
 const askBodySchema = z.object({
@@ -17,7 +18,10 @@ type AskBody = z.infer<typeof askBodySchema>;
 @Controller('servers/:serverId')
 @UseGuards(JwtAuthGuard, AbilityGuard)
 export class AskController {
-  constructor(private readonly ask: AskService) {}
+  constructor(
+    private readonly ask: AskService,
+    private readonly rateLimiter: AskRateLimiter,
+  ) {}
 
   @Post('ask')
   @CheckAbility(['view', 'Message'])
@@ -34,6 +38,9 @@ export class AskController {
       question: parsed.question,
       channelId: parsed.channelId,
     });
+    // Sau authorize: người ngoài nhận 403 chứ không bị trừ lượt (và 429 ở đây là JSON thường,
+    // chưa mở stream — dialog web đọc mã TOO_MANY_REQUESTS như mọi lỗi khác).
+    await this.rateLimiter.consume(user.userId);
 
     response.status(200);
     response.setHeader('Content-Type', 'text/event-stream; charset=utf-8');

@@ -8,16 +8,9 @@ import { useErrorMessage } from '@/lib/error-message';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PingAlert } from '@/components/ui/ping-alert';
+import { PingDrawer } from '@/components/ui/ping-drawer';
+import { PingSkeleton } from '@/components/ui/ping-skeleton';
 import { PingSpinner } from '@/components/ui/ping-spinner';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
 
 export interface AskDialogProps {
   serverId: string;
@@ -31,12 +24,13 @@ export interface AskDialogProps {
 type AskStatus = 'idle' | 'asking' | 'done' | 'error';
 
 /**
- * Dialog hỏi AI về lịch sử kênh (T5.6).
+ * Ngăn kéo hỏi AI về lịch sử kênh (T5.6, TF.11).
  *
  * Gọi `POST /servers/:serverId/ask` (SSE text/event-stream), hiển thị câu trả lời
  * văn bản thuần cùng các trích dẫn (citation) dưới dạng chip. Câu trả lời chỉ được
  * hiển thị khi API trả về `done` kèm ít nhất một trích dẫn hợp lệ (fail-closed,
- * ADR-0048 + guardrails AI). Người dùng có thể hủy giữa chừng.
+ * ADR-0048 + guardrails AI). Trong lúc chờ, khung tóm tắt là skeleton và trạng thái
+ * được thông báo qua `aria-live`; người dùng có thể hủy giữa chừng.
  */
 export function AskDialog({
   serverId,
@@ -184,96 +178,25 @@ export function AskDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          aria-label={t('ask.title')}
-          data-testid="ask-ai-button"
-        >
-          <BotIcon className="mr-1.5 size-4" />
-          {t('ask.askButton')}
-        </Button>
-      </DialogTrigger>
-      <DialogContent closeLabel={t('common.close')} className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>{t('ask.title')}</DialogTitle>
-          <DialogDescription>{t('ask.placeholder')}</DialogDescription>
-        </DialogHeader>
-
-        <form
-          className="flex items-center gap-2"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void ask();
-          }}
-        >
-          <Input
-            type="text"
-            value={question}
-            onChange={(event) => setQuestion(event.target.value)}
-            placeholder={t('ask.placeholder')}
-            disabled={isAsking}
-            data-testid="ask-input"
-          />
-          <Button
-            type="submit"
-            size="icon"
-            disabled={!question.trim() || isAsking}
-            aria-label={t('ask.askButton')}
-            data-testid="ask-send"
-          >
-            <SendIcon />
-          </Button>
-        </form>
-
-        {isAsking && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <PingSpinner size="small" />
-            {t('ask.asking')}
-          </div>
-        )}
-
-        {status === 'error' && errorMessage && (
-          <PingAlert type="error" message={errorMessage} data-testid="ask-error" />
-        )}
-
-        {status === 'done' && (
-          <section
-            className="max-h-96 overflow-y-auto rounded-lg border p-3 text-sm leading-relaxed"
-            data-testid="ask-answer"
-          >
-            <h3 className="mb-1 font-medium">{t('ask.answer')}</h3>
-            {/* Văn bản thuần: không render Markdown/HTML từ model. */}
-            <p className="whitespace-pre-wrap">{answer}</p>
-            {citations.length > 0 ? (
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                <span className="text-xs text-muted-foreground">{t('ask.citations')}</span>
-                {citations.map((messageId) => (
-                  <Button
-                    key={messageId}
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => onCitationClick?.(messageId, channelId)}
-                    title={t('ask.goToMessage')}
-                    data-testid={`ask-citation-${messageId}`}
-                  >
-                    <span className="font-mono">{messageId.slice(0, 8)}</span>
-                    <ArrowRightIcon className="ml-1 size-3" />
-                  </Button>
-                ))}
-              </div>
-            ) : (
-              <p className="mt-2 text-xs text-muted-foreground">{t('ask.noCitation')}</p>
-            )}
-          </section>
-        )}
-
-        <DialogFooter>
-          {isAsking ? (
+    <>
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        aria-label={t('ask.title')}
+        onClick={() => onOpenChange(true)}
+        data-testid="ask-ai-button"
+      >
+        <BotIcon className="mr-1.5 size-4" />
+        {t('ask.askButton')}
+      </Button>
+      <PingDrawer
+        open={open}
+        onClose={() => handleOpenChange(false)}
+        title={t('ask.title')}
+        size={460}
+        footer={
+          isAsking ? (
             <Button type="button" variant="outline" onClick={cancel} data-testid="ask-cancel">
               {t('common.cancel')}
             </Button>
@@ -286,10 +209,91 @@ export function AskDialog({
             >
               {t('common.close')}
             </Button>
+          )
+        }
+      >
+        <div className="flex flex-col gap-3">
+          <p className="text-sm text-muted-foreground">{t('ask.placeholder')}</p>
+
+          <form
+            className="flex items-center gap-2"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void ask();
+            }}
+          >
+            <Input
+              type="text"
+              value={question}
+              onChange={(event) => setQuestion(event.target.value)}
+              placeholder={t('ask.placeholder')}
+              disabled={isAsking}
+              data-testid="ask-input"
+            />
+            <Button
+              type="submit"
+              size="icon"
+              disabled={!question.trim() || isAsking}
+              aria-label={t('ask.askButton')}
+              data-testid="ask-send"
+            >
+              <SendIcon />
+            </Button>
+          </form>
+
+          {isAsking && (
+            <div className="flex flex-col gap-2">
+              <div role="status" className="flex items-center gap-2 text-sm text-muted-foreground">
+                <PingSpinner size="small" />
+                {t('ask.asking')}
+              </div>
+              {/* Thẻ tóm tắt chờ: hình dạng giữ chỗ, không đọc nội dung giả cho trình đọc màn hình. */}
+              <div aria-hidden="true" data-testid="ask-skeleton">
+                <PingSkeleton active title={false} paragraph={{ rows: 3 }} />
+              </div>
+            </div>
           )}
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+
+          <div aria-live="polite" aria-atomic="true" data-testid="ask-live">
+            {status === 'done' && (
+              <section
+                className="max-h-96 overflow-y-auto rounded-lg border p-3 text-sm leading-relaxed"
+                data-testid="ask-answer"
+              >
+                <h3 className="mb-1 font-medium">{t('ask.answer')}</h3>
+                {/* Văn bản thuần: không render Markdown/HTML từ model. */}
+                <p className="whitespace-pre-wrap">{answer}</p>
+                {citations.length > 0 ? (
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <span className="text-xs text-muted-foreground">{t('ask.citations')}</span>
+                    {citations.map((messageId) => (
+                      <Button
+                        key={messageId}
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => onCitationClick?.(messageId, channelId)}
+                        title={t('ask.goToMessage')}
+                        data-testid={`ask-citation-${messageId}`}
+                      >
+                        <span className="font-mono">{messageId.slice(0, 8)}</span>
+                        <ArrowRightIcon className="ml-1 size-3" />
+                      </Button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-2 text-xs text-muted-foreground">{t('ask.noCitation')}</p>
+                )}
+              </section>
+            )}
+          </div>
+
+          {status === 'error' && errorMessage && (
+            <PingAlert type="error" message={errorMessage} data-testid="ask-error" />
+          )}
+        </div>
+      </PingDrawer>
+    </>
   );
 }
 

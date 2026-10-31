@@ -47,11 +47,12 @@ describe('Search (e2e)', () => {
     return { id: res.body.user.id, token: res.body.accessToken };
   }
 
-  const api = (method: 'get' | 'post' | 'delete', url: string, token?: string) => {
+  const api = (method: 'get' | 'post' | 'patch' | 'delete', url: string, token?: string) => {
     const agent = request(app.getHttpServer());
     const call = {
       get: () => agent.get(url),
       post: () => agent.post(url),
+      patch: () => agent.patch(url),
       delete: () => agent.delete(url),
     }[method]();
     return token ? call.set('Authorization', `Bearer ${token}`) : call;
@@ -243,6 +244,25 @@ describe('Search (e2e)', () => {
     await api('get', `/api/v1/servers/${serverB}/search?q=${secretToken}`, outsider.token).expect(
       200,
     );
+  });
+
+  it('member thiếu VIEW_CHANNEL bị 403 khi search — không đọc nội dung tin (T6.5)', async () => {
+    // @everyone (chỉ member thường chịu ảnh hưởng; owner bypass) mất VIEW_CHANNEL.
+    const everyone = await prisma.role.findFirstOrThrow({
+      where: { serverId: serverA, isDefault: true },
+      select: { id: true },
+    });
+    await api('patch', `/api/v1/roles/${everyone.id}`, owner.token)
+      .send({ permissions: '0' })
+      .expect(200);
+
+    await api(
+      'get',
+      `/api/v1/servers/${serverA}/search?q=${secretToken}`,
+      otherMember.token,
+    ).expect(403);
+    // Owner vẫn tìm được — quyền owner không phụ thuộc role.
+    await api('get', `/api/v1/servers/${serverA}/search?q=${secretToken}`, owner.token).expect(200);
   });
 
   it('q rỗng / quá dài / không truyền → 400 SEARCH_QUERY_INVALID', async () => {

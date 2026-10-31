@@ -1,7 +1,10 @@
 'use client';
 
 import { ConfigProvider, App as AntdApp } from 'antd';
+import enUS from 'antd/locale/en_US';
+import viVN from 'antd/locale/vi_VN';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useLocale } from 'use-intl';
 import { PingToastHost } from '@/components/ui/ping-toast';
 import { useAppliedSettings } from '@/features/settings/store';
 import { buildAntdTheme, cssVariables, type ThemeMode } from '@/lib/theme';
@@ -23,6 +26,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const theme = useAppliedSettings((state) => state.theme);
   const density = useAppliedSettings((state) => state.density);
   const fontSize = useAppliedSettings((state) => state.fontSize);
+  // TF.12: chuỗi dựng sẵn của antd (Popconfirm, Select, Pagination…) theo cùng ngôn ngữ app.
+  const locale = useLocale();
   const [osDark, setOsDark] = useState(detectOsDark);
 
   useEffect(() => {
@@ -45,7 +50,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const vars = useMemo(() => cssVariables(mode), [mode]);
 
   return (
-    <ConfigProvider theme={themeConfig}>
+    <ConfigProvider theme={themeConfig} locale={locale === 'en' ? enUS : viVN}>
       <AntdApp>
         <PingToastHost />
         <div style={vars as React.CSSProperties}>{children}</div>
