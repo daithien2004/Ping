@@ -102,6 +102,7 @@ model Server {
   members      Member[]
   roles        Role[]
   channels     Channel[]
+  categories   ChannelCategory[]
   invites      ServerInvite[]
   stickerPacks StickerPack[]
   customEmojis CustomEmoji[]
@@ -249,14 +250,45 @@ model Channel {
   // TG.9: `"min|max"` hai UUID participant đã chuẩn hóa thứ tự — chìa khóa get-or-create
   // idempotent của POST /dms; hai request song song chạm unique này thì hàng sau trả existing.
   dmKey     String?     @unique
+  // TG.10: category chứa channel; NULL = vùng mặc định (thứ tự theo `position` Int cũ).
+  // onDelete: SetNull — xóa category PHẢI giữ nguyên channel (về vùng mặc định), tuyệt đối
+  // không Cascade xóa kênh; API cũng tự đặt NULL trong cùng transaction (SetNull là lưới an toàn).
+  categoryId  String?   @db.Uuid
+  // TG.10: chủ đề hiển thị ở header channel.
+  topic       String?
+  // TG.10: thứ tự TRONG category (lexorank 'a'..'z' — packages/shared/src/lexorank.ts);
+  // NULL khi ngoài category (thứ tự theo `position` Int). `position` cũ KHÔNG đụng: rolling-safe.
+  positionKey String?
+
   createdAt DateTime    @default(now())
 
   server     Server?            @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  category   ChannelCategory?   @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   messages   Message[]
   readStates ChannelReadState[]
   dmParticipants DmParticipant[]
 
   @@index([serverId])
+  // Xóa category phải quét kênh thuộc nó (SetNull); list kênh của một nhóm cũng tra theo đây.
+  @@index([categoryId])
+}
+
+/// Nhóm channel trong sidebar (TG.10). `position` là lexorank so sánh theo CHUỖI ('a' < 'aa'):
+/// chèn giữa hai nhóm chỉ cập nhật một hàng, không đánh số lại hàng loạt — sinh rank bằng
+/// packages/shared/src/lexorank.ts.
+model ChannelCategory {
+  id       String   @id @default(uuid(7)) @db.Uuid
+  serverId String   @db.Uuid
+  name     String
+  position String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  server   Server    @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  channels Channel[]
+
+  // List category của server (GET detail) sắp theo vị trí; lock/tạo mới đọc max theo đây.
+  @@index([serverId, position])
 }
 
 enum ChannelType {
@@ -608,4 +640,6 @@ enum AuditAction {
   EMOJI_DELETE
   SERVER_BAN
   SERVER_UNBAN
+  // TG.10: sắp xếp lại category / di chuyển channel sang nhóm khác.
+  CHANNEL_REORDER
 }
