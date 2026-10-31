@@ -20,6 +20,7 @@ import { useErrorMessage } from '@/lib/error-message';
 import { useDeleteServer, useKickMember, useRegenerateInvite, useRoles } from '../hooks';
 import { kickBlockReason, memberContext } from '../permissions';
 import { AuditLogTable } from './audit-log-table';
+import { CategoryManager } from './category-manager';
 import { ChannelManager } from './channel-manager';
 import { RoleEditor } from './role-editor';
 import { RoleTag } from './role-tag';
@@ -98,6 +99,7 @@ export function AdminSurface({ params }: { params: Promise<{ serverId: string }>
 
       {canManageServer && <ServerNameForm server={server} />}
       {canManageServer && <InviteSection server={server} />}
+      {canManageChannels && <CategoryManager serverId={serverId} />}
       {canManageChannels && <ChannelManager serverId={serverId} />}
       {canManageStickers && <StickerManager serverId={serverId} />}
       <RolesSection serverId={serverId} enabled={canManageRoles} />

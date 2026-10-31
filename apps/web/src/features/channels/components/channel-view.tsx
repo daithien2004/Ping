@@ -2,7 +2,7 @@
 
 import { Suspense, use, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Pin, Users } from 'lucide-react';
+import { Pencil, Pin, Users } from 'lucide-react';
 import { useTranslations } from 'use-intl';
 import { Button } from '@/components/ui/button';
 import { MessageListSkeleton } from '@/components/skeletons';
@@ -13,8 +13,10 @@ import { AskDialog } from '@/features/messages/components/ask-dialog';
 import { SearchDialog } from '@/features/search/components/search-dialog';
 import { MessagePane } from '@/features/messages/components/message-pane';
 import { PinnedPanel } from '@/features/messages/components/pinned-panel';
+import { useServerAbility } from '@/features/permissions/context';
 import { messagePath } from '@/features/servers/navigation';
 import { useChannels } from '../hooks';
+import { ChannelTopicDialog } from './channel-topic-dialog';
 
 /** `use()` cần một promise ổn định cho trang permalink (không có searchParams). */
 const EMPTY_QUERY: Promise<Record<string, string | string[] | undefined>> = Promise.resolve({});
@@ -49,8 +51,11 @@ export function ChannelView({
   const router = useRouter();
   const panelOpen = useMemberPanel((state) => state.open);
   const togglePanel = useMemberPanel((state) => state.toggle);
+  const { ability } = useServerAbility();
+  const canManage = ability.can('manage', 'Channel');
   const [askOpen, setAskOpen] = useState(false);
   const [pinsOpen, setPinsOpen] = useState(false);
+  const [topicOpen, setTopicOpen] = useState(false);
 
   if (!channel) {
     return <p className="m-auto text-sm text-muted-foreground">{t('channels.notFound')}</p>;
@@ -64,9 +69,33 @@ export function ChannelView({
   return (
     <div className="flex min-h-0 flex-1">
       <section className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <header className="flex h-12 shrink-0 items-center border-b px-4 font-semibold shadow-xs">
-          <span className="mr-1.5 text-xl leading-none text-muted-foreground">#</span>
-          {channel.name}
+        <header className="flex min-h-12 shrink-0 items-center border-b px-4 font-semibold shadow-xs">
+          <div className="mr-1 flex min-w-0 flex-col justify-center py-1">
+            <span className="flex min-w-0 items-center gap-1.5">
+              <span className="text-xl leading-none text-muted-foreground">#</span>
+              <span className="truncate">{channel.name}</span>
+            </span>
+            {/* TG.10: chủ đề hiển thị ngay dưới tên kênh (header), quản lý kênh sửa qua nút bút. */}
+            {channel.topic && (
+              <p
+                className="truncate text-xs font-normal text-muted-foreground"
+                data-testid="channel-topic"
+              >
+                {channel.topic}
+              </p>
+            )}
+          </div>
+          {canManage && (
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={t('channels.editTopic')}
+              data-testid="channel-topic-edit"
+              onClick={() => setTopicOpen(true)}
+            >
+              <Pencil />
+            </Button>
+          )}
           <SearchDialog serverId={serverId} />
           <Button
             variant="ghost"
@@ -112,6 +141,15 @@ export function ChannelView({
       {panelOpen && <MemberPanel serverId={serverId} />}
       {/* TG.3: panel ghim là sibling của pane tin nhắn (không nằm trong danh sách ảo hoá). */}
       {pinsOpen && <PinnedPanel channelId={channel.id} onOpen={goToMessage} />}
+      {topicOpen && (
+        <ChannelTopicDialog
+          serverId={serverId}
+          channelId={channel.id}
+          initialTopic={channel.topic ?? ''}
+          open
+          onClose={() => setTopicOpen(false)}
+        />
+      )}
     </div>
   );
 }
