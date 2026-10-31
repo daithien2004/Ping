@@ -23,6 +23,7 @@ const ACTION_KEYS = {
   MESSAGE_UNPIN: 'messageUnpin',
   CHANNEL_DELETE: 'channelDelete',
   CHANNEL_UPDATE: 'channelUpdate',
+  CHANNEL_REORDER: 'channelReorder',
   SERVER_DELETE: 'serverDelete',
   SERVER_UPDATE: 'serverUpdate',
   SERVER_INVITE_REGENERATE: 'serverInviteRegenerate',

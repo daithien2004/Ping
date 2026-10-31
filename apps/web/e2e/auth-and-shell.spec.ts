@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { expect, type Page, test } from '@playwright/test';
+import { ensureUserVerified } from './global-setup';
 
 // F2 + F3: một user mới đi trọn luồng, các bước phụ thuộc nhau nên chạy nối tiếp trên một trang.
 test.describe.configure({ mode: 'serial' });
@@ -22,6 +23,8 @@ test('register, sign out without ?next=, sign in, create server and channel', as
   });
 
   await test.step('tạo server → vào #general', async () => {
+    // TG.8: tài khoản vừa đăng ký phải xác minh email trước khi tạo server khi có SMTP_URL.
+    await ensureUserVerified(email);
     await page.getByRole('button', { name: 'Tạo server' }).first().click();
     // Wizard onboarding: nút mở wizard và nút gửi trong wizard trùng tên → bám theo dialog.
     const wizard = page.getByRole('dialog');

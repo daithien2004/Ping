@@ -27,6 +27,7 @@ import { AiModule } from './modules/ai/ai.module.js';
 import { AuditModule } from './modules/audit/audit.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { EventsModule } from './infra/events/events.module.js';
+import { CategoriesModule } from './modules/categories/categories.module.js';
 import { ChannelsModule } from './modules/channels/channels.module.js';
 import { DmsModule } from './modules/dms/dms.module.js';
 import { GifsModule } from './modules/gifs/gifs.module.js';
@@ -97,6 +98,8 @@ import { UsersModule } from './modules/users/users.module.js';
     AuditModule,
     ServersModule,
     ChannelsModule,
+    // TG.10: category channel — routes /servers/:serverId/categories*.
+    CategoriesModule,
     DmsModule,
     RolesModule,
     MessagesModule,

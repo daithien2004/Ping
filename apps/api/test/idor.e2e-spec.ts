@@ -39,6 +39,14 @@ const ID_ROUTES: Array<[Verb, string]> = [
   ['post', '/servers/:id/channels'],
   ['patch', '/channels/:id'],
   ['delete', '/channels/:id'],
+  // TG.10: category + move channel + topic — quyền do @CheckAbility(['manage', 'Channel'])
+  // kiểm; category đích của server khác bị service từ chối (404 che tồn tại).
+  ['post', '/servers/:id/categories'],
+  ['patch', '/servers/:id/categories/:id'],
+  ['delete', '/servers/:id/categories/:id'],
+  ['put', '/servers/:id/categories/reorder'],
+  ['put', '/channels/:id/move'],
+  ['patch', '/channels/:id/topic'],
   ['get', '/servers/:id/roles'],
   ['post', '/servers/:id/roles'],
   ['get', '/servers/:id/audit-log'],
@@ -152,6 +160,7 @@ describe('IDOR (e2e)', () => {
   let stickerA = ''; // sticker của server A (TG.22) cho bảng tấn công
   let stickerPackA = '';
   let emojiA = ''; // emoji của server A (TG.24) cho bảng tấn công
+  let categoryA = ''; // category của server A (TG.10) cho bảng tấn công
 
   const SECRET = `secret-${runId}`; // xuất hiện trong dữ liệu của server A; không được rò ra
   const http = () => request(app.getHttpServer());
@@ -176,26 +185,47 @@ describe('IDOR (e2e)', () => {
 
   /** Ảnh chụp DB phần thuộc server A: nếu cuộc tấn công làm đổi gì thì so sánh sẽ lệch. */
   async function snapshotA() {
-    const [server, members, roles, channels, messages, memberRoles, carolSessions, emojis] =
-      await Promise.all([
-        prisma.server.findUnique({ where: { id: serverA } }),
-        prisma.member.findMany({ where: { serverId: serverA }, orderBy: { id: 'asc' } }),
-        prisma.role.findMany({ where: { serverId: serverA }, orderBy: { id: 'asc' } }),
-        prisma.channel.findMany({ where: { serverId: serverA }, orderBy: { id: 'asc' } }),
-        prisma.message.findMany({
-          where: { channel: { serverId: serverA } },
-          orderBy: { id: 'asc' },
-        }),
-        prisma.memberRole.findMany({
-          where: { member: { serverId: serverA } },
-          orderBy: [{ memberId: 'asc' }, { roleId: 'asc' }],
-        }),
-        prisma.member.count({ where: { userId: bob.id } }),
-        prisma.customEmoji.findMany({ where: { serverId: serverA }, orderBy: { id: 'asc' } }),
-      ]);
+    const [
+      server,
+      members,
+      roles,
+      channels,
+      messages,
+      memberRoles,
+      carolSessions,
+      emojis,
+      categories,
+    ] = await Promise.all([
+      prisma.server.findUnique({ where: { id: serverA } }),
+      prisma.member.findMany({ where: { serverId: serverA }, orderBy: { id: 'asc' } }),
+      prisma.role.findMany({ where: { serverId: serverA }, orderBy: { id: 'asc' } }),
+      prisma.channel.findMany({ where: { serverId: serverA }, orderBy: { id: 'asc' } }),
+      prisma.message.findMany({
+        where: { channel: { serverId: serverA } },
+        orderBy: { id: 'asc' },
+      }),
+      prisma.memberRole.findMany({
+        where: { member: { serverId: serverA } },
+        orderBy: [{ memberId: 'asc' }, { roleId: 'asc' }],
+      }),
+      prisma.member.count({ where: { userId: bob.id } }),
+      prisma.customEmoji.findMany({ where: { serverId: serverA }, orderBy: { id: 'asc' } }),
+      // TG.10: category của server A cũng thuộc diện "không được đổi khi bị tấn công".
+      prisma.channelCategory.findMany({ where: { serverId: serverA }, orderBy: { id: 'asc' } }),
+    ]);
     return JSON.parse(
       JSON.stringify(
-        { server, members, roles, channels, messages, memberRoles, carolSessions, emojis },
+        {
+          server,
+          members,
+          roles,
+          channels,
+          messages,
+          memberRoles,
+          carolSessions,
+          emojis,
+          categories,
+        },
         (_k, v) => (typeof v === 'bigint' ? v.toString() : v),
       ),
     );
@@ -321,6 +351,13 @@ describe('IDOR (e2e)', () => {
         },
       })
     ).id;
+
+    // TG.10: một category của server A cho bảng tấn công (tạo bằng API thật của alice).
+    categoryA = (
+      await as(alice, 'post', `/servers/${serverA}/categories`)
+        .send({ name: `cat-${SECRET}` })
+        .expect(201)
+    ).body.id;
   });
 
   afterAll(async () => {
@@ -617,6 +654,57 @@ describe('IDOR (e2e)', () => {
     // TG.24: emoji của server A — kẻ ngoài không xóa được emoji của server người khác, member
     // thường thiếu MANAGE_EXPRESSIONS (ADR-0068 tái dùng bit sticker TG.22) nên không tạo được.
     add('DELETE /emojis/<emoji của A>', 'delete', () => `/emojis/${emojiA}`, outsider);
+    // TG.10: category của server A — member thường thiếu MANAGE_CHANNELS (guard), kẻ ngoài
+    // không với tới server A; orderedIds dùng đúng category thật để chạm tận service.
+    add(
+      'POST /servers/:serverId/categories',
+      'post',
+      () => `/servers/${serverA}/categories`,
+      lowPriv,
+      () => ({ name: 'x' }),
+    );
+    add(
+      'PUT /servers/:serverId/categories/reorder',
+      'put',
+      () => `/servers/${serverA}/categories/reorder`,
+      lowPriv,
+      () => ({ orderedIds: [categoryA] }),
+    );
+    add(
+      'PATCH /servers/:serverId/categories/:categoryId',
+      'patch',
+      () => `/servers/${serverA}/categories/${categoryA}`,
+      lowPriv,
+      () => ({ name: 'evil' }),
+    );
+    add(
+      'DELETE /servers/:serverId/categories/:categoryId',
+      'delete',
+      () => `/servers/${serverA}/categories/${categoryA}`,
+      lowPriv,
+    );
+    add(
+      'PUT /channels/:channelId/move (channel của A)',
+      'put',
+      () => `/channels/${channelA}/move`,
+      lowPriv,
+      () => ({ categoryId: categoryA }),
+    );
+    add(
+      'PATCH /channels/:channelId/topic (channel của A)',
+      'patch',
+      () => `/channels/${channelA}/topic`,
+      lowPriv,
+      () => ({ topic: 'hacked' }),
+    );
+    // Trộn ID chéo server: category của A gắn vào URL server B của bob — 404 che tồn tại.
+    add(
+      'chéo: PATCH /servers/B/categories/<category của A>',
+      'patch',
+      () => `/servers/${serverB}/categories/${categoryA}`,
+      [() => bob],
+      () => ({ name: 'evil' }),
+    );
     // TG.8: kẻ khác không được thu hồi phiên của alice — 404 vì service tra theo (id, userId).
     add(
       'DELETE /users/me/sessions/<phiên của alice>',
@@ -684,7 +772,7 @@ describe('IDOR (e2e)', () => {
 
   it('no token → 401 on every endpoint that takes an id', async () => {
     const uuid = randomUUID();
-    expect(ID_ROUTES).toHaveLength(55);
+    expect(ID_ROUTES).toHaveLength(61);
     for (const [verb, template] of ID_ROUTES) {
       const url = template.replaceAll(':id', uuid);
       const res = await as(undefined, verb, url).send({});

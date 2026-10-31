@@ -28,6 +28,7 @@ import { PrismaService } from '../../infra/prisma/prisma.service.js';
 import { AbilityFactory } from '../ability/ability.factory.js';
 import { AttachmentsService } from '../attachments/attachments.service.js';
 import { AuditService } from '../audit/audit.service.js';
+import { compareRanks } from '../categories/ranks.js';
 import { verifyRequired } from '../auth/account.service.js';
 import { RealtimeService } from '../realtime/realtime.service.js';
 
@@ -147,19 +148,45 @@ export class ServersService {
   }
 
   async detail(serverId: string) {
-    const { _count, invites, ...server } = await this.prisma.server.findUniqueOrThrow({
-      where: { id: serverId },
-      include: {
-        channels: { orderBy: { position: 'asc' } },
-        roles: { orderBy: { position: 'asc' } },
-        // Mã đang hoạt động là bản ghi chưa thu hồi duy nhất (regenerate thu hồi hết
-        // rồi tạo mới, create tạo đúng một) — chỉ lấy hạn dùng để UI hiển thị.
-        invites: { where: { revokedAt: null }, select: { expiresAt: true }, take: 1 },
-        _count: { select: { members: true } },
-      },
+    const { _count, invites, channels, categories, ...server } =
+      await this.prisma.server.findUniqueOrThrow({
+        where: { id: serverId },
+        include: {
+          // TG.10: category sắp theo lexorank (so sánh chuỗi) — DB collation tùy cấu hình
+          // nên sắp lại trong JS bằng compareRanks cho mọi môi trường ra cùng kết quả.
+          categories: { orderBy: { position: 'asc' } },
+          channels: { orderBy: { position: 'asc' } },
+          roles: { orderBy: { position: 'asc' } },
+          // Mã đang hoạt động là bản ghi chưa thu hồi duy nhất (regenerate thu hồi hết
+          // rồi tạo mới, create tạo đúng một) — chỉ lấy hạn dùng để UI hiển thị.
+          invites: { where: { revokedAt: null }, select: { expiresAt: true }, take: 1 },
+          _count: { select: { members: true } },
+        },
+      });
+    // TG.10: thứ tự hiển thị sidebar — vùng mặc định (channel ngoài category, sắp theo
+    // `position` Int cũ) TRƯỚC để giữ hình ảnh cũ khi chưa có category; sau đó từng category
+    // theo `position` lexorank của nó, kênh trong category sắp theo `positionKey` (so sánh
+    // chuỗi). `position` Int của kênh trong category là giá trị cũ vô nghĩa — client nhóm
+    // theo `categoryId` trước khi render.
+    const categoryOrder = new Map(categories.map((category, index) => [category.id, index]));
+    const sortedChannels = [...channels].sort((a, b) => {
+      if (a.categoryId === null && b.categoryId === null) return a.position - b.position;
+      if (a.categoryId === null) return -1;
+      if (b.categoryId === null) return 1;
+      const byCategory =
+        (categoryOrder.get(a.categoryId) ?? categories.length) -
+        (categoryOrder.get(b.categoryId) ?? categories.length);
+      if (byCategory !== 0) return byCategory;
+      return compareRanks(a.positionKey ?? '', b.positionKey ?? '');
     });
     return {
       ...server,
+      // Category trả đúng hợp đồng ChannelCategoryDto ({id, name, position}); các trường
+      // audit (createdAt/updatedAt/serverId) là nội bộ — không đưa ra API.
+      categories: categories.map(
+        ({ serverId: _serverId, createdAt: _c, updatedAt: _u, ...category }) => category,
+      ),
+      channels: sortedChannels,
       memberCount: _count.members,
       inviteExpiresAt: invites[0]?.expiresAt?.toISOString() ?? null,
     };

@@ -14,9 +14,13 @@ import {
 import {
   createChannelSchema,
   markChannelReadSchema,
+  moveChannelSchema,
+  setTopicSchema,
   updateChannelSchema,
   type CreateChannelInput,
   type MarkChannelReadInput,
+  type MoveChannelInput,
+  type SetTopicInput,
   type UpdateChannelInput,
 } from '@ping/shared';
 import { IdempotencyInterceptor } from '../../common/interceptors/idempotency.interceptor.js';
@@ -89,5 +93,30 @@ export class ChannelsController {
   @CheckAbility(['manage', 'Channel'])
   remove(@CurrentUser() user: AuthenticatedUser, @Param('channelId') channelId: string) {
     return this.channelsService.remove(channelId, user.userId);
+  }
+
+  /**
+   * TG.10: di chuyển channel vào category (`categoryId` = id) hoặc ra vùng mặc định (null).
+   * `positionKey` do UI tính bằng lexorank; bỏ trống = chèn cuối nhóm đích. 200 kèm DTO mới;
+   * room server nhận `channel.reordered` với thứ tự mới của nhóm đích.
+   */
+  @Put('channels/:channelId/move')
+  @CheckAbility(['manage', 'Channel'])
+  move(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('channelId') channelId: string,
+    @Body(new ZodValidationPipe(moveChannelSchema)) body: MoveChannelInput,
+  ) {
+    return this.channelsService.move(channelId, user.userId, body);
+  }
+
+  /** TG.10: đặt/xóa chủ đề hiển thị ở header (chuỗi rỗng = xóa); phát `channel.updated`. */
+  @Patch('channels/:channelId/topic')
+  @CheckAbility(['manage', 'Channel'])
+  setTopic(
+    @Param('channelId') channelId: string,
+    @Body(new ZodValidationPipe(setTopicSchema)) body: SetTopicInput,
+  ) {
+    return this.channelsService.setTopic(channelId, body.topic);
   }
 }

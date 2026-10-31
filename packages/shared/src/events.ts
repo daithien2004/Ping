@@ -26,6 +26,8 @@ export const ServerEvents = {
   ServerUpdated: 'server.updated',
   /** TG.11: một thành viên vừa bị ban — tới room `server:<id>`, người khác gỡ nạn nhân khỏi danh sách. */
   MemberBanned: 'member.banned',
+  /** TG.10: thứ tự category hoặc thứ tự kênh trong một nhóm vừa đổi — room `server:<id>`. */
+  ChannelReordered: 'channel.reordered',
 } as const;
 
 export const ClientEvents = {
@@ -220,6 +222,23 @@ export interface ServerUpdatedPayload {
   iconUrl: string | null;
 }
 
+/**
+ * Thứ tự vừa đổi (TG.10); phát tới room `server:<id>`. Một shape duy nhất, phân biệt bằng
+ * `scope` — client chỉ cần invalidate query server-detail của server này và render lại:
+ * - scope 'categories': thứ tự DANH MỤC đổi (tạo/reorder/xóa category — mảng là các
+ *   category theo thứ tự MỚI, sau xóa thì danh sách còn lại). `channelIds` mang các
+ *   **categoryId** (tái dùng mảng của shape chung cho gọn hợp đồng; `categoryId` không gửi
+ *   trong scope này).
+ * - scope 'category': thứ tự KÊNH TRONG MỘT NHÓM đổi — `categoryId` là nhóm đích (kể cả
+ *   `null` = kênh chuyển về vùng mặc định) và `channelIds` là các **channelId** theo thứ tự mới.
+ */
+export interface ChannelReorderedPayload {
+  serverId: string;
+  scope: 'categories' | 'category';
+  categoryId?: string | null;
+  channelIds: string[];
+}
+
 /** Payload client gửi lên chỉ là dữ liệu chưa tin cậy: gateway parse bằng schema này. */
 export const channelEventSchema = z.object({ channelId: z.uuid() });
 export type ChannelJoinPayload = z.infer<typeof channelEventSchema>;
@@ -250,6 +269,7 @@ export interface ServerToClientEvents {
   [ServerEvents.MemberUpdated]: (payload: MemberUpdatedPayload) => void;
   [ServerEvents.ServerUpdated]: (payload: ServerUpdatedPayload) => void;
   [ServerEvents.MemberBanned]: (payload: MemberBannedPayload) => void;
+  [ServerEvents.ChannelReordered]: (payload: ChannelReorderedPayload) => void;
 }
 
 export interface ClientToServerEvents {

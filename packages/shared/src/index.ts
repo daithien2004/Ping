@@ -20,6 +20,8 @@ export * from './schemas/audit';
 export * from './schemas/search';
 export * from './permissions';
 export * from './ability';
+// TG.10: lexorank dùng chung — web tính positionKey khi kéo thả, API sinh rank khi chèn cuối.
+export * from './lexorank';
 export * from './events';
 export * from './errors';
 export * from './emoji';
