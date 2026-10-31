@@ -1,10 +1,38 @@
 import { randomUUID } from 'node:crypto';
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { type ServerDetail } from '@ping/shared';
 import { pacedLogin } from './login-pace';
 
 const API = 'http://localhost:4000/api/v1';
 const SEED_PASSWORD = 'password123';
+
+/**
+ * Mở app và chờ unread của server test nạp xong. Throttle toàn cục 100 req/phút/IP trả 429 và
+ * block 60 s (T6.5); CI chạy nhiều spec nối tiếp trên cùng IP nên một tab mới có thể bị chặn
+ * ngay lúc mở — khi đó unread không có dữ liệu và event realtime không cập nhật được. Gặp 429
+ * thì chờ theo `Retry-After` rồi mở lại, quá 150 s mới coi là lỗi thật.
+ */
+async function openWithUnread(page: Page, serverId: string) {
+  const deadline = Date.now() + 150_000;
+  for (;;) {
+    const unread = page
+      .waitForResponse((res) => res.url().includes(`/servers/${serverId}/unread`), {
+        timeout: 30_000,
+      })
+      .catch(() => null);
+    await page.goto('/');
+    await expect(page.getByRole('button', { name: 'Tham gia server' })).toBeVisible();
+    const response = await unread;
+    if (response?.ok()) return;
+    if (Date.now() > deadline) {
+      throw new Error(
+        `unread của ${serverId} không nạp được (lần cuối: ${response?.status() ?? 'timeout'})`,
+      );
+    }
+    const retryAfter = Number(response?.headers()['retry-after'] ?? 0);
+    await page.waitForTimeout(Math.min(70_000, Math.max(2_000, retryAfter * 1_000 + 1_000)));
+  }
+}
 
 /**
  * T4.3: badge unread trên rail/sidebar, badge mention, vạch "Tin mới", tab title, đồng bộ
@@ -57,13 +85,7 @@ test('unread ui: server/channel badges, mention badge, title, divider and two-ta
     const tabA = await ownerContext.newPage();
     // Chờ app nạp xong unread của server test trước khi bob gửi: event đến giữa lúc query
     // đang bay sẽ bị lần fetch đó ghi đè (race có sẵn, không liên quan TG.1).
-    const unreadLoaded = tabA.waitForResponse(
-      (res) => res.url().includes(`/servers/${server.id}/unread`) && res.ok(),
-      { timeout: 20_000 },
-    );
-    await tabA.goto('/');
-    await expect(tabA.getByRole('button', { name: 'Tham gia server' })).toBeVisible();
-    await unreadLoaded;
+    await openWithUnread(tabA, server.id);
     // TG.12: title là TỔNG unread toàn cục (mọi server + DM) — các spec khác trên cùng shard
     // có thể để lại unread cho alice (CI chạy nối tiếp trên cùng seed). Mọi khẳng định title
     // của spec này đo THEO DELTA so với baseline lúc đầu, không khẳng định số tuyệt đối.
@@ -132,19 +154,32 @@ test('unread ui: server/channel badges, mention badge, title, divider and two-ta
     });
 
     await test.step('hai tab: đọc ở tab này xóa badge ở tab kia (read.updated)', async () => {
-      // Tab B mở app ở server khác; tab A đang xem #random.
+      // Tab B mở app ở server khác, chờ query unread xong rồi mới gửi: event đến khi query đang
+      // bay sẽ bị response cũ ghi đè (cùng race với tab A ở trên).
       const tabB = await ownerContext.newPage();
-      await tabB.goto('/');
-      await expect(tabB.getByRole('button', { name: 'Tham gia server' })).toBeVisible();
-
-      // Bob gửi tin mới vào #random: tab B thấy badge, tab A (đang xem) mark-read ngay →
-      // read.updated đưa badge tab B về sạch.
-      expect((await send(randomChannel, 'tin cho hai tab')).ok()).toBeTruthy();
+      await openWithUnread(tabB, server.id);
       await expect(tabB.getByRole('link', { name: new RegExp(server.name) })).toBeVisible({
         timeout: 15_000,
       });
-      // TG.12: title tab B theo tổng unread — đúng một tin chưa đọc.
+
+      // Tab A rời #random để không tự mark-read: badge ở tab B phải hiện ổn định, không phải
+      // trạng thái chớp nhoáng giữa unread.updated và read.updated.
+      await tabA.getByRole('link', { name: '# general' }).click();
+      await expect(tabA).toHaveURL(new RegExp(generalId), { timeout: 15_000 });
+      expect((await send(randomChannel, 'tin cho hai tab')).ok()).toBeTruthy();
+      await expect(
+        tabB.getByRole('link', { name: new RegExp(`${server.name}, 1 tin chưa đọc`) }),
+      ).toBeVisible({ timeout: 15_000 });
+      // TG.12: hai tab của cùng một tài khoản thấy cùng tổng unread — dùng chung baseline tab A.
       await expect.poll(() => tabB.title(), { timeout: 10_000 }).toBe(titleFor(1));
+
+      // Tab A mở #random → mark-read → read.updated đưa badge và title tab B về baseline.
+      await tabA.getByRole('link', { name: '# random' }).click();
+      await expect(tabA).toHaveURL(new RegExp(randomChannel), { timeout: 15_000 });
+      await expect(
+        tabB.getByRole('link', { name: new RegExp(`${server.name}, 1 tin chưa đọc`) }),
+      ).toHaveCount(0, { timeout: 15_000 });
+      await expect.poll(() => tabB.title(), { timeout: 10_000 }).toBe(titleFor(0));
     });
 
     await test.step('dọn server của test', async () => {
