@@ -27,6 +27,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { MessagesService } from './messages.service.js';
 import { listMessagesQuerySchema, type ListMessagesQuery } from './schemas.js';
 import { searchQuerySchema, type SearchQuery } from '@ping/shared';
+import { SearchRateLimiter } from './search-rate-limiter.js';
 import { SearchService } from './search.service.js';
 
 @Controller()
@@ -35,18 +36,22 @@ export class MessagesController {
   constructor(
     private readonly messagesService: MessagesService,
     private readonly searchService: SearchService,
+    private readonly searchRateLimiter: SearchRateLimiter,
   ) {}
 
   /**
    * Tìm kiếm tin nhắn trong server (T4.6, ADR-0045): FTS + trigram, lọc channel/author/thời
-   * gian, cursor `before`. Guard `view Server` — chỉ thành viên; where luôn ràng buộc serverId.
+   * gian, cursor `before`. Guard `view Message` (T6.5) — thành viên thiếu VIEW_CHANNEL không
+   * được đọc nội dung tin qua search; where luôn ràng buộc serverId.
    */
   @Get('servers/:serverId/search')
-  @CheckAbility(['view', 'Server'])
-  search(
+  @CheckAbility(['view', 'Message'])
+  async search(
+    @CurrentUser() user: AuthenticatedUser,
     @Param('serverId') serverId: string,
     @Query(new ZodValidationPipe(searchQuerySchema)) query: SearchQuery,
   ) {
+    await this.searchRateLimiter.consume(user.userId);
     return this.searchService.search(serverId, query);
   }
 

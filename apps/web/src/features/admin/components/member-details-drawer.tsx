@@ -3,7 +3,7 @@
 import type { MemberDto } from '@ping/shared';
 import { canManageMember } from '@ping/shared';
 import { useState } from 'react';
-import { useTranslations } from 'use-intl';
+import { useLocale, useTranslations } from 'use-intl';
 import { PingButton } from '@/components/ui/ping-button';
 import { PingCheckbox } from '@/components/ui/ping-checkbox';
 import { PingDrawer } from '@/components/ui/ping-drawer';
@@ -32,6 +32,7 @@ export function MemberDetailsDrawer({ serverId, ownerId, member, onClose }: Prop
   const t = useTranslations('admin');
   const tm = useTranslations('members');
   const tc = useTranslations('common');
+  const locale = useLocale();
   const errorMessage = useErrorMessage();
   const { data: me } = useMe();
   const { ability } = useServerAbility();
@@ -115,7 +116,7 @@ export function MemberDetailsDrawer({ serverId, ownerId, member, onClose }: Prop
         </div>
         <div>
           <dt className="text-muted-foreground">{t('memberJoinedAt')}</dt>
-          <dd>{new Date(member.joinedAt).toLocaleDateString()}</dd>
+          <dd>{new Date(member.joinedAt).toLocaleDateString(locale)}</dd>
         </div>
       </dl>
 

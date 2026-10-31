@@ -3,7 +3,7 @@
 import type { MemberDto } from '@ping/shared';
 import { Ban, Send, ShieldX } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useTranslations } from 'use-intl';
+import { useLocale, useTranslations } from 'use-intl';
 import { useEffect, useRef, useState } from 'react';
 import { PingButton } from '@/components/ui/ping-button';
 import { PingInput } from '@/components/ui/ping-input';
@@ -145,6 +145,7 @@ export function MemberProfileCard({
   const t = useTranslations('profile');
   const td = useTranslations('dms');
   const tm = useTranslations('members');
+  const locale = useLocale();
   const errorMessage = useErrorMessage();
   const nickname = useUpdateNickname(serverId);
   const createDm = useCreateDm();
@@ -153,7 +154,7 @@ export function MemberProfileCard({
   const blocked = useDmBlockStore(selectDmBlocked(member.user.id));
   const [value, setValue] = useState<string | null>(null);
   const name = member.nickname ?? member.user.displayName;
-  const joined = new Intl.DateTimeFormat(undefined, { dateStyle: 'long' }).format(
+  const joined = new Intl.DateTimeFormat(locale, { dateStyle: 'long' }).format(
     new Date(member.joinedAt),
   );
 

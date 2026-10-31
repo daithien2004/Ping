@@ -7,11 +7,18 @@ import { MessageRateLimiter } from './message-rate-limiter.js';
 import { ReactionRateLimiter } from './reaction-rate-limiter.js';
 import { MessagesController } from './messages.controller.js';
 import { MessagesService } from './messages.service.js';
+import { SearchRateLimiter } from './search-rate-limiter.js';
 import { SearchService } from './search.service.js';
 
 @Module({
   imports: [AuthModule, AttachmentsModule, EventsModule, RealtimeModule],
   controllers: [MessagesController],
-  providers: [MessagesService, MessageRateLimiter, ReactionRateLimiter, SearchService],
+  providers: [
+    MessagesService,
+    MessageRateLimiter,
+    ReactionRateLimiter,
+    SearchService,
+    SearchRateLimiter,
+  ],
 })
 export class MessagesModule {}
