@@ -14,7 +14,17 @@ không phải danh sách tính năng.
 
 Không demo trên DB dev đã tích nhiều server từ các lần seed/test: mỗi server cũ sinh một request
 `/servers/:id/unread`, vượt hạn mức **100 request/phút/IP** (global throttler) và trang quay
-6,6 giây vì 429 (đo ở lần diễn tập 1). Dùng DB riêng, seed lại từ đầu:
+6,6 giây vì 429 (đo ở lần diễn tập 1). Dùng DB riêng `ping_demo`, seed lại từ đầu bằng một lệnh:
+
+```bash
+pnpm demo:prepare          # bật Docker, tạo ping_demo nếu chưa có, migrate + seed
+pnpm demo:prepare --fresh  # buổi quay cần sạch tuyệt đối: xoá rồi tạo lại ping_demo
+```
+
+Script (`scripts/prepare-demo.mjs`) còn kiểm số liệu seed, cảnh báo nếu DB có dư dữ liệu và cảnh
+báo khi cổng 3000/4000 đang bận (process cũ có thể trỏ DB khác — sự cố lần diễn tập 1).
+
+Làm tay khi cần (đúng phần việc script thực hiện):
 
 ```bash
 docker exec ping-postgres-1 createdb -U ping ping_demo    # chỉ lần đầu

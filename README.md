@@ -6,6 +6,12 @@ ngôn ngữ, hai theme.
 
 [![CI](https://github.com/daithien2004/Ping/actions/workflows/ci.yml/badge.svg)](https://github.com/daithien2004/Ping/actions/workflows/ci.yml)
 
+> **Trạng thái 2026-11-01 — bản demo local.** Mọi hạng mục `v0.2.0` không cần hạ tầng trả phí đã xong và merge
+> `main`; OWNER chốt dừng ở mức demo nên **chưa tag `v0.2.0`**. Phần vận hành (staging, HTTPS, backup/restore,
+> Sentry, load test ngoài máy) làm khi có kinh phí, lúc đó mới đóng cổng nghiệm thu và tag. Xem
+> [trạng thái](docs/v0.2.0/status.md#chốt-bản-demo-2026-11-01) và
+> [nghiệm thu](docs/v0.2.0/acceptance/v0.2.0.md).
+
 ## Tóm tắt trong 60 giây
 
 - **Đây là gì:** một sản phẩm chat chạy được, không phải bản demo giao diện — đăng ký, server/kênh, phân quyền
@@ -108,6 +114,10 @@ Cần dữ liệu demo nhiều hơn (thử tìm kiếm, phân trang, badge unrea
 (qua bàn cà phê / nhóm lập trình / sở thích), 9 kênh, 21.600 tin tiếng Việt, 360 mention cho alice; tài khoản
 `david@ping.dev` đi kèm. Chạy lại bao nhiêu lần cũng cho cùng dữ liệu (id và nội dung cố định).
 
+Trước buổi diễn 5 phút, dùng DB riêng thay vì DB dev đã tích dữ liệu: `pnpm demo:prepare` bật Docker, tạo
+`ping_demo`, migrate + seed và kiểm số liệu; thêm `--fresh` để xoá rồi tạo lại sạch. Ba process phải cùng trỏ
+`DATABASE_URL` của DB đó — lệnh cụ thể ở [kịch bản demo](docs/v0.2.0/demo.md).
+
 Hai phần tuỳ chọn, không cần để chat chạy:
 
 | Muốn thử                        | Làm gì                                                                                                                                |
@@ -134,6 +144,7 @@ Tài liệu API (Swagger) ở http://localhost:4000/docs khi không chạy produ
 | Việc                 | Lệnh                                                                           |
 | -------------------- | ------------------------------------------------------------------------------ |
 | Chạy dev (web + API) | `pnpm dev` (worker: `pnpm --filter api dev:worker`)                            |
+| Chuẩn bị DB demo     | `pnpm demo:prepare` (`--fresh`: xoá và tạo lại `ping_demo`)                    |
 | Build                | `pnpm build`                                                                   |
 | Lint / typecheck     | `pnpm lint` / `pnpm typecheck`                                                 |
 | Test đơn vị          | `pnpm test`                                                                    |

@@ -8,7 +8,8 @@ mạng/LLM lỗi, **diễn tập được 2 lần, ghi thời gian**.
 - [`docs/v0.2.0/demo.md`](../../demo.md): kịch bản 8 nhịp trong 5:00, chuẩn bị môi trường, số đo
   app-side, bảng dự phòng, checklist 60 giây, mục "không demo".
 - Quy trình **seed sạch trên DB riêng** (`ping_demo`): tạo DB → `prisma migrate deploy` →
-  `pnpm seed:demo`, chạy lại lặp lại được (seed dùng id cố định, không `Date.now`).
+  `pnpm seed:demo`, chạy lại lặp lại được (seed dùng id cố định, không `Date.now`). Từ 2026-11-01 gói
+  trong một lệnh `pnpm demo:prepare` (`scripts/prepare-demo.mjs`; `--fresh` để xoá và tạo lại DB).
 - Hai lần diễn tập thật trong trình duyệt, có ghi thời gian (dưới đây).
 
 ## Diễn tập 1 — phát hiện môi trường hỏng
@@ -75,7 +76,7 @@ DB `ping_demo` mới: `migrate deploy` 27 bảng, `seed:demo` in đúng
 ## Lệnh chạy lại
 
 ```bash
-DATABASE_URL="postgresql://ping:ping@localhost:5432/ping_demo" pnpm --filter api seed:demo
+pnpm demo:prepare    # bật Docker, tạo + migrate + seed ping_demo, in số liệu kiểm (thêm --fresh nếu DB đã tích dữ liệu)
 export DATABASE_URL="postgresql://ping:ping@localhost:5432/ping_demo"
 pnpm --filter api dev & pnpm --filter api dev:worker & pnpm --filter web dev
 # số đo tệp lấy từ một script gọi API dùng một lần (không commit); UI chỉ hiện nhãn
