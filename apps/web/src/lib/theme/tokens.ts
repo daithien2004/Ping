@@ -148,7 +148,9 @@ export const darkColors: SemanticColors = {
   cardForeground: palette.ink[50],
   popover: palette.ink[900],
   popoverForeground: palette.ink[50],
-  primary: palette.violet[500],
+  // violet-600 vì chữ trắng trên violet-500 chỉ đạt 4,35:1 (dưới AA); cũng khớp --primary trong
+  // globals.css ở nền tối.
+  primary: palette.violet[600],
   primaryForeground: palette.white,
   secondary: palette.ink[800],
   secondaryForeground: palette.ink[50],

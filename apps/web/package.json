@@ -10,7 +10,13 @@
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "check:bundle": "node scripts/bundle-budget.mjs"
+    "build:visual": "pnpm --filter api build && pnpm --filter web build",
+    "pretest:visual": "pnpm build:visual",
+    "test:visual": "playwright test --config playwright.visual.config.ts",
+    "pretest:visual:update": "pnpm build:visual",
+    "test:visual:update": "playwright test --config playwright.visual.config.ts --update-snapshots",
+    "check:bundle": "node scripts/bundle-budget.mjs && node scripts/bundle-routes.mjs",
+    "audit:design": "node scripts/design-audit.mjs"
   },
   "dependencies": {
     "@casl/ability": "7.0.2",

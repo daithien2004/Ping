@@ -278,7 +278,7 @@ export function AskDrawer({
         </div>
 
         {status === 'error' && errorMessage && (
-          <PingAlert type="error" message={errorMessage} data-testid="ask-error" />
+          <PingAlert type="error" title={errorMessage} data-testid="ask-error" />
         )}
       </div>
     </PingDrawer>

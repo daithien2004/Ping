@@ -1,6 +1,7 @@
 # Case 2 — Dual-write, outbox và giao tin at-least-once; gap recovery ở client
 
-Trạng thái: bản nhánh của T4.4/T4.5 (2026-10-25) — sẽ hoàn thiện số tải ở T7.2. Mức độ: đầy đủ.
+Trạng thái: hoàn thiện tại T7.2 (2026-11-01). Mức độ: đầy đủ. Số p95 theo độ dài khoảng trống
+vẫn chưa đo (thuộc T6.1, ngoài phạm vi lô này).
 
 ## Bối cảnh và vấn đề
 

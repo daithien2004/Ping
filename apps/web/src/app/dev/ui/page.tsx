@@ -21,7 +21,7 @@ export default function DevUiPage() {
       <PingInput placeholder="Input" />
       <PingTag>Tag</PingTag>
       <PingBadge count={5} />
-      <PingAlert message="Alert" type="info" />
+      <PingAlert title="Alert" type="info" />
       <PingSkeleton active />
       <PingEmpty description="Empty" />
       <PingSpinner />

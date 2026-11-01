@@ -155,7 +155,9 @@ export function SearchModal({ serverId, onClose }: { serverId: string; onClose: 
                 >
                   <p className="text-xs text-muted-foreground">
                     # {item.channelName} · {item.author.displayName} ·{' '}
-                    {new Date(item.createdAt).toLocaleString(locale)}
+                    <time dateTime={item.createdAt}>
+                      {new Date(item.createdAt).toLocaleString(locale)}
+                    </time>
                   </p>
                   <p className="line-clamp-2 text-sm">{item.content}</p>
                 </button>

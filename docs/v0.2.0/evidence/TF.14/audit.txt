@@ -1,0 +1,100 @@
+
+Tương phản — nền sáng
+┌─────────┬──────────────────────────────────────────────────┬───────────┬───────────┬─────────┬───────────┐
+│ (index) │ cặp                                              │ loại      │ tỉ lệ     │ ngưỡng  │ kết       │
+├─────────┼──────────────────────────────────────────────────┼───────────┼───────────┼─────────┼───────────┤
+│ 0       │ '--foreground / --background'                    │ 'chữ'     │ '18.82:1' │ '4.5:1' │ 'đạt'     │
+│ 1       │ '--foreground / --card'                          │ 'chữ'     │ '18.82:1' │ '4.5:1' │ 'đạt'     │
+│ 2       │ '--card-foreground / --card'                     │ 'chữ'     │ '18.82:1' │ '4.5:1' │ 'đạt'     │
+│ 3       │ '--popover-foreground / --popover'               │ 'chữ'     │ '18.82:1' │ '4.5:1' │ 'đạt'     │
+│ 4       │ '--muted-foreground / --background'              │ 'chữ'     │ '6.01:1'  │ '4.5:1' │ 'đạt'     │
+│ 5       │ '--muted-foreground / --card'                    │ 'chữ'     │ '6.01:1'  │ '4.5:1' │ 'đạt'     │
+│ 6       │ '--secondary-foreground / --secondary'           │ 'chữ'     │ '15.31:1' │ '4.5:1' │ 'đạt'     │
+│ 7       │ '--accent-foreground / --accent'                 │ 'chữ'     │ '15.31:1' │ '4.5:1' │ 'đạt'     │
+│ 8       │ '--link / --background'                          │ 'chữ'     │ '5.23:1'  │ '4.5:1' │ 'đạt'     │
+│ 9       │ '--destructive / --card'                         │ 'chữ'     │ '6.39:1'  │ '4.5:1' │ 'đạt'     │
+│ 10      │ '--primary-foreground / --primary'               │ 'chữ'     │ '5.23:1'  │ '4.5:1' │ 'đạt'     │
+│ 11      │ '--rail-foreground / --rail'                     │ 'chữ'     │ '13.96:1' │ '4.5:1' │ 'đạt'     │
+│ 12      │ '--sidebar-foreground / --sidebar'               │ 'chữ'     │ '16.50:1' │ '4.5:1' │ 'đạt'     │
+│ 13      │ '--sidebar-accent-foreground / --sidebar-accent' │ 'chữ'     │ '13.96:1' │ '4.5:1' │ 'đạt'     │
+│ 14      │ '--ring / --background'                          │ 'phi chữ' │ '3.87:1'  │ '3:1'   │ 'đạt'     │
+│ 15      │ '--sidebar-primary / --sidebar'                  │ 'phi chữ' │ '4.58:1'  │ '3:1'   │ 'đạt'     │
+│ 16      │ '--border / --card'                              │ 'phi chữ' │ '1.35:1'  │ '3:1'   │ 'ghi chú' │
+│ 17      │ '--input / --card'                               │ 'phi chữ' │ '1.35:1'  │ '3:1'   │ 'ghi chú' │
+└─────────┴──────────────────────────────────────────────────┴───────────┴───────────┴─────────┴───────────┘
+
+Tương phản — nền tối
+┌─────────┬──────────────────────────────────────────────────┬───────────┬───────────┬─────────┬───────────┐
+│ (index) │ cặp                                              │ loại      │ tỉ lệ     │ ngưỡng  │ kết       │
+├─────────┼──────────────────────────────────────────────────┼───────────┼───────────┼─────────┼───────────┤
+│ 0       │ '--foreground / --background'                    │ 'chữ'     │ '13.21:1' │ '4.5:1' │ 'đạt'     │
+│ 1       │ '--foreground / --card'                          │ 'chữ'     │ '14.26:1' │ '4.5:1' │ 'đạt'     │
+│ 2       │ '--card-foreground / --card'                     │ 'chữ'     │ '14.26:1' │ '4.5:1' │ 'đạt'     │
+│ 3       │ '--popover-foreground / --popover'               │ 'chữ'     │ '15.31:1' │ '4.5:1' │ 'đạt'     │
+│ 4       │ '--muted-foreground / --background'              │ 'chữ'     │ '6.07:1'  │ '4.5:1' │ 'đạt'     │
+│ 5       │ '--muted-foreground / --card'                    │ 'chữ'     │ '6.56:1'  │ '4.5:1' │ 'đạt'     │
+│ 6       │ '--secondary-foreground / --secondary'           │ 'chữ'     │ '10.33:1' │ '4.5:1' │ 'đạt'     │
+│ 7       │ '--accent-foreground / --accent'                 │ 'chữ'     │ '14.22:1' │ '4.5:1' │ 'đạt'     │
+│ 8       │ '--link / --background'                          │ 'chữ'     │ '7.25:1'  │ '4.5:1' │ 'đạt'     │
+│ 9       │ '--destructive / --card'                         │ 'chữ'     │ '7.38:1'  │ '4.5:1' │ 'đạt'     │
+│ 10      │ '--primary-foreground / --primary'               │ 'chữ'     │ '5.23:1'  │ '4.5:1' │ 'đạt'     │
+│ 11      │ '--rail-foreground / --rail'                     │ 'chữ'     │ '15.31:1' │ '4.5:1' │ 'đạt'     │
+│ 12      │ '--sidebar-foreground / --sidebar'               │ 'chữ'     │ '14.26:1' │ '4.5:1' │ 'đạt'     │
+│ 13      │ '--sidebar-accent-foreground / --sidebar-accent' │ 'chữ'     │ '14.22:1' │ '4.5:1' │ 'đạt'     │
+│ 14      │ '--ring / --background'                          │ 'phi chữ' │ '4.20:1'  │ '3:1'   │ 'đạt'     │
+│ 15      │ '--sidebar-primary / --sidebar'                  │ 'phi chữ' │ '4.53:1'  │ '3:1'   │ 'đạt'     │
+│ 16      │ '--border / --card'                              │ 'phi chữ' │ '2.32:1'  │ '3:1'   │ 'ghi chú' │
+│ 17      │ '--input / --card'                               │ 'phi chữ' │ '2.98:1'  │ '3:1'   │ 'ghi chú' │
+└─────────┴──────────────────────────────────────────────────┴───────────┴───────────┴─────────┴───────────┘
+
+Tương phản — token antd (tokens.ts), light
+┌─────────┬───────────────────────────────┬───────────┬───────────┬─────────┬───────────┐
+│ (index) │ cặp                           │ loại      │ tỉ lệ     │ ngưỡng  │ kết       │
+├─────────┼───────────────────────────────┼───────────┼───────────┼─────────┼───────────┤
+│ 0       │ 'primaryForeground / primary' │ 'chữ'     │ '5.13:1'  │ '4.5:1' │ 'đạt'     │
+│ 1       │ 'foreground / card'           │ 'chữ'     │ '17.69:1' │ '4.5:1' │ 'đạt'     │
+│ 2       │ 'mutedForeground / card'      │ 'chữ'     │ '4.89:1'  │ '4.5:1' │ 'đạt'     │
+│ 3       │ 'link / card'                 │ 'chữ'     │ '5.13:1'  │ '4.5:1' │ 'đạt'     │
+│ 4       │ 'destructive / card'          │ 'chữ'     │ '4.65:1'  │ '4.5:1' │ 'đạt'     │
+│ 5       │ 'railForeground / rail'       │ 'chữ'     │ '16.56:1' │ '4.5:1' │ 'đạt'     │
+│ 6       │ 'border / card'               │ 'phi chữ' │ '1.44:1'  │ '3:1'   │ 'ghi chú' │
+└─────────┴───────────────────────────────┴───────────┴───────────┴─────────┴───────────┘
+
+Tương phản — token antd (tokens.ts), dark
+┌─────────┬───────────────────────────────┬───────────┬───────────┬─────────┬───────────┐
+│ (index) │ cặp                           │ loại      │ tỉ lệ     │ ngưỡng  │ kết       │
+├─────────┼───────────────────────────────┼───────────┼───────────┼─────────┼───────────┤
+│ 0       │ 'primaryForeground / primary' │ 'chữ'     │ '5.13:1'  │ '4.5:1' │ 'đạt'     │
+│ 1       │ 'foreground / card'           │ 'chữ'     │ '14.78:1' │ '4.5:1' │ 'đạt'     │
+│ 2       │ 'mutedForeground / card'      │ 'chữ'     │ '6.76:1'  │ '4.5:1' │ 'đạt'     │
+│ 3       │ 'link / card'                 │ 'chữ'     │ '7.31:1'  │ '4.5:1' │ 'đạt'     │
+│ 4       │ 'destructive / card'          │ 'chữ'     │ '5.79:1'  │ '4.5:1' │ 'đạt'     │
+│ 5       │ 'railForeground / rail'       │ 'chữ'     │ '14.78:1' │ '4.5:1' │ 'đạt'     │
+│ 6       │ 'border / card'               │ 'phi chữ' │ '1.29:1'  │ '3:1'   │ 'ghi chú' │
+└─────────┴───────────────────────────────┴───────────┴───────────┴─────────┴───────────┘
+
+Thang thiết kế (nguồn: src/lib/theme/tokens.ts)
+  spacing: 4 / 8 / 12 / 16 / 20 / 24 / 32 / 40 / 48 / 64 px — toàn bộ bội số 4 px
+  cỡ chữ: 12 / 14 / 16 / 18 / 20 / 24 px; giãn dòng 1.2 / 1.5 / 1.7
+  radius (antd + biến --ping): sm=6px, md=8px, lg=12px, xl=16px, full=9999px
+  motion: fast=120ms, normal=200ms, slow=200ms — trần 200 ms
+
+Quét nguồn
+  file đã quét: 284
+  hex ngoài danh sách cho phép: 0
+  !important ngoài globals.css: 0
+  giá trị px/rem tuỳ ý ngoài thang: 5
+  import antd ngoài components/ui|lib/theme|providers: 0
+  icon ngoài lucide-react: 0
+  file dùng hover:: 21; file có disabled: 44
+
+Ghi chú:
+  - light: --border / --card = 1.35 (dưới 3:1 — chỉ là đường phân cách, không phải ranh giới bắt buộc)
+  - light: --input / --card = 1.35 (dưới 3:1 — chỉ là đường phân cách, không phải ranh giới bắt buộc)
+  - dark: --border / --card = 2.32 (dưới 3:1 — chỉ là đường phân cách, không phải ranh giới bắt buộc)
+  - dark: --input / --card = 2.98 (dưới 3:1 — chỉ là đường phân cách, không phải ranh giới bắt buộc)
+  - tokens.ts light: border/card = 1.44 (đường phân cách)
+  - tokens.ts dark: border/card = 1.29 (đường phân cách)
+  - giá trị tuỳ ý ngoài thang: components/skeletons.tsx [72px]; components/ui/button.tsx [0.8rem]; components/ui/tooltip.tsx [2px]; features/gifs/components/gif-panel.tsx text-[11px]; features/notifications/components/enable-notifications.tsx text-[10px]
+
+Tất cả kiểm tra cứng đều đạt.
