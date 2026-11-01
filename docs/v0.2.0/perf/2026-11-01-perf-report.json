@@ -1,0 +1,63 @@
+{
+  "measuredAt": "2026-11-01T06:08:34.713Z",
+  "environment": {
+    "web": "http://localhost:3000",
+    "build": "production (next build + next start)",
+    "viewport": "1280x800",
+    "browser": "Chromium 153.0.8010.12",
+    "runs": 2,
+    "note": "Số đo lab trên một máy; INP là event duration lớn nhất (xấp xỉ p98), không thay RUM."
+  },
+  "landing": [
+    {
+      "lcp": 1264,
+      "cls": 0,
+      "shifts": 0,
+      "inp": 16,
+      "events": 18,
+      "longTasks": 2,
+      "slowestEvents": [16, 16, 16, 16, 16]
+    },
+    {
+      "lcp": 268,
+      "cls": 0,
+      "shifts": 0,
+      "inp": 16,
+      "events": 18,
+      "longTasks": 2,
+      "slowestEvents": [16, 16, 16, 16, 16]
+    }
+  ],
+  "chat": [
+    {
+      "lcp": 3556,
+      "cls": 0.0289,
+      "shifts": 1,
+      "inp": 32,
+      "events": 49,
+      "longTasks": 1,
+      "slowestEvents": [32, 24, 16, 16, 16]
+    },
+    {
+      "lcp": 2948,
+      "cls": 0.0289,
+      "shifts": 1,
+      "inp": 32,
+      "events": 52,
+      "longTasks": 1,
+      "slowestEvents": [32, 32, 16, 16, 16]
+    }
+  ],
+  "median": {
+    "landing": {
+      "lcp": 1264,
+      "cls": 0,
+      "inp": 16
+    },
+    "chat": {
+      "lcp": 3556,
+      "cls": 0.0289,
+      "inp": 32
+    }
+  }
+}

@@ -1,6 +1,7 @@
 # Case 5 — LLM là dependency không tin cậy
 
-Trạng thái: kiểm chứng local cho T5.7/T5.9/T5.11; chưa phải nghiệm thu staging.
+Trạng thái: hoàn thiện tại T7.2 (2026-11-01). Mức độ: đầy đủ.
+Kiểm chứng local cho T5.7/T5.9/T5.11; chưa phải nghiệm thu staging.
 Kết quả T5.9 và SHA: [evidence](../evidence/T5.9/README.md).
 
 ## Bối cảnh và ràng buộc

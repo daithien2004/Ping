@@ -8,6 +8,10 @@ không đổi nhãn báo cáo cũ thành baseline mới.
   [presence fix](../../perf/2026-10-20-presence-fix.md).
 - Phạm vi tải và ngưỡng đánh giá: [ADR-0038](../../adr/0038-release-scope-v0.2.0.md).
 - Báo cáo mới dùng [template.md](template.md), raw evidence theo task.
+- FE (TF.15, 2026-11-01): Web Vitals lab + treemap + JS theo route ở
+  [evidence/TF.15](../evidence/TF.15/README.md); số thô [2026-11-01-perf-report.json](2026-11-01-perf-report.json),
+  [treemap chat](2026-11-01-treemap-chat.png), [treemap landing](2026-11-01-treemap-landing.png),
+  [bảng JS theo route](2026-11-01-bundle-route-report.txt). Số lab một máy, không phải SLA.
 
 Load staging từ máy khác qua proxy thực tế; ghi rate limit, profile, lỗi connect/join và giới
 hạn generator. Số liệu local không phải SLA hay sức tải staging. Không chạy kịch bản nặng vào

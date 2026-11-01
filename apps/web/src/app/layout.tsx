@@ -3,14 +3,16 @@ import { Geist, Geist_Mono } from 'next/font/google';
 import { Providers } from '@/providers/providers';
 import './globals.css';
 
+// TF.13: kèm `vietnamese` — thiếu subset này dấu tiếng Việt rơi về font hệ điều hành, vừa
+// lệch chữ giữa Windows/Linux (vỡ baseline ảnh) vừa khác tệp font so với phần chữ Latin.
 const geistSans = Geist({
   variable: '--font-geist-sans',
-  subsets: ['latin'],
+  subsets: ['latin', 'vietnamese'],
 });
 
 const geistMono = Geist_Mono({
   variable: '--font-geist-mono',
-  subsets: ['latin'],
+  subsets: ['latin', 'vietnamese'],
 });
 
 export const metadata: Metadata = {

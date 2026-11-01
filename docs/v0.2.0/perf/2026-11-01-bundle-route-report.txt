@@ -1,0 +1,29 @@
+
+> web@0.2.0 check:bundle D:\discord\Ping\apps\web
+> node scripts/bundle-budget.mjs && node scripts/bundle-routes.mjs
+
+JS tải ban đầu: 248.2 KB gzip (8 chunk); tải theo yêu cầu: 791.4 KB (74 chunk); tổng mọi chunk (tham khảo): 1039.5 KB
+JS tải ban đầu theo route (gzip, .next, base 11 chunk + chunk route):
+  /servers/[serverId]/settings                                     662.2 KB  (42 chunk)
+  /servers/[serverId]/channels/[channelId]/messages/[messageId]    609.7 KB  (41 chunk)
+  /servers/[serverId]/channels/[channelId]                         609.7 KB  (41 chunk)
+  /dms/[channelId]/messages/[messageId]                            603.8 KB  (41 chunk)
+  /dms/[channelId]                                                 603.8 KB  (41 chunk)
+  /settings/notifications                                          557.8 KB  (39 chunk)
+  /servers/[serverId]                                              555.1 KB  (39 chunk)
+  /settings/appearance                                             554.7 KB  (39 chunk)
+  /settings/language                                               554.3 KB  (39 chunk)
+  /settings/privacy                                                553.8 KB  (39 chunk)
+  /settings                                                        552.5 KB  (39 chunk)
+  /settings/shortcuts                                              551.1 KB  (39 chunk)
+  /dms                                                             550.4 KB  (39 chunk)
+  /servers                                                         549.3 KB  (38 chunk)
+  /verify                                                          488.4 KB  (34 chunk)
+  /reset-password                                                  488.2 KB  (34 chunk)
+  /forgot-password                                                 488.0 KB  (34 chunk)
+  /register                                                        487.0 KB  (34 chunk)
+  /login                                                           486.9 KB  (34 chunk)
+  /dev/ui                                                          481.1 KB  (30 chunk)
+  /                                                                458.8 KB  (31 chunk)
+  /_not-found                                                      439.9 KB  (27 chunk)
+  /_global-error                                                   269.6 KB  (13 chunk)

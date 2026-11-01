@@ -1,5 +1,5 @@
 # CI của ping (ADR-0032). Chạy cho mọi PR và mọi lần push main. Tên job là tên bạn chọn làm
-# "required status check" khi bật branch protection: verify, api-e2e, web-e2e-gate,
+# "required status check" khi bật branch protection: verify, api-e2e, web-e2e-gate, visual,
 # migrations, security (web-e2e chạy shard nên gate là check tổng).
 name: CI
 
@@ -273,6 +273,78 @@ jobs:
             success|skipped) exit 0 ;;
             *) exit 1 ;;
           esac
+
+  # TF.13: visual regression (Playwright toHaveScreenshot) trên dữ liệu seed — chỉ chạy khi vùng
+  # web đổi. Baseline tách theo hệ điều hành (DirectWrite vs FreeType): lần đầu trên Linux chưa
+  # có bộ `linux/`, job tự sinh rồi upload artifact để commit; các lần sau mới so sánh thật.
+  visual:
+    name: visual
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
+    services:
+      postgres:
+        image: postgres:17
+        env: { POSTGRES_USER: ping, POSTGRES_PASSWORD: ping, POSTGRES_DB: ping }
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U ping" --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: cp .env.example .env
+      - run: pnpm --filter @ping/shared build
+      - run: pnpm --filter api exec prisma generate
+      - run: pnpm --filter api exec prisma migrate deploy
+      # Ảnh baseline cần đúng dữ liệu seed cố định (id + nội dung tin) đã dùng khi sinh ảnh.
+      - run: pnpm --filter api exec prisma db seed
+      - name: Get Playwright version
+        id: pw-version
+        run: echo "version=$(pnpm --filter web exec playwright --version)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw-version.outputs.version }}
+      - run: pnpm --filter web exec playwright install --with-deps chromium
+      - run: pnpm --filter api build
+      - run: pnpm --filter web build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:4000
+      - name: Visual regression
+        id: visual
+        run: |
+          if [ -d apps/web/visual/__screenshots__/linux ]; then
+            pnpm --filter web exec playwright test --config playwright.visual.config.ts
+          else
+            # Chưa có baseline Linux: sinh bộ đầu tiên và để job đạt, kèm cảnh báo để biết rằng
+            # lượt này KHÔNG gác hồi quy — artifact bên dưới được commit vào lần sau.
+            echo "::warning title=Visual baseline::Chưa có apps/web/visual/__screenshots__/linux — sinh baseline Linux (bootstrap), chưa so sánh."
+            pnpm --filter web exec playwright test --config playwright.visual.config.ts --update-snapshots
+            echo "bootstrap=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: steps.visual.outputs.bootstrap == 'true'
+        with:
+          name: visual-baselines-linux
+          path: apps/web/visual/__screenshots__/linux
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: visual-test-results
+          path: apps/web/test-results
+          retention-days: 7
 
   migrations:
     name: migrations
