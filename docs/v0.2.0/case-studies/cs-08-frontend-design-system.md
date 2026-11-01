@@ -80,7 +80,7 @@ flowchart TD
 - **Visual regression (TF.13):** 36 baseline (6 màn × sáng/tối × 375/768/1280) trong
   `apps/web/visual`, `threshold 0.3` + 1,5% điểm ảnh; local production **12/12 pass** hai lần liền,
   job CI `visual` là check bắt buộc ([ADR-0074](../../adr/0074-visual-regression-baselines-va-ci.md)).
-  Baseline tách theo hệ điều hành; bộ Linux bootstrap ở lần chạy CI đầu.
+  Baseline tách theo hệ điều hành; bộ Linux sinh ở lần chạy CI đầu rồi được commit (`13ea987`).
 
 ## 6. Trade-off và rủi ro còn lại
 

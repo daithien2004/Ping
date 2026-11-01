@@ -10,6 +10,8 @@ không commit; clone mới có thể không có hai file đó.
 - Hồ sơ phỏng vấn: [case studies](case-studies/README.md).
 - Hiệu năng: [hướng dẫn](perf/README.md), giữ phân biệt số đo local và staging.
 - Cổng phát hành: [nghiệm thu](acceptance/v0.2.0.md).
+- Bản demo hiện tại: [demo.md](demo.md); dựng DB bằng `pnpm demo:prepare`. Dự án đóng băng ở mức
+  demo từ 2026-11-01, chưa tag `v0.2.0` (lý do ở [status.md](status.md#chốt-bản-demo-2026-11-01)).
 - Workflow Claude Code: [hướng dẫn](../claude-workflow/README.md).
 
 Đọc task đầy đủ trong kế hoạch local khi thực thi; thiếu file thì xin nội dung task cần làm,

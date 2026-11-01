@@ -1,6 +1,8 @@
 # Tài liệu Ping
 
-v0.2.0: [điểm vào công việc](v0.2.0/plan.md), [trạng thái](v0.2.0/status.md).
+v0.2.0: [điểm vào công việc](v0.2.0/plan.md), [trạng thái](v0.2.0/status.md),
+[nghiệm thu](v0.2.0/acceptance/v0.2.0.md). Dự án đang đóng băng ở mức **bản demo local** (OWNER chốt
+2026-11-01, chưa tag `v0.2.0`); xem [Chốt bản demo](v0.2.0/status.md#chốt-bản-demo-2026-11-01).
 
 ## Đọc theo nhu cầu
 
@@ -14,7 +16,8 @@ v0.2.0: [điểm vào công việc](v0.2.0/plan.md), [trạng thái](v0.2.0/stat
 | Thử stack production qua Nginx       | [Hướng dẫn HTTP/HTTPS](../ops/nginx/README.md), [ADR-0035](adr/0035-nginx-reverse-proxy.md) |
 | Tra lỗi, migrate, backup, rollback   | [Mục lục runbook](runbook/README.md)                                                        |
 | Chạy hoặc đọc load test              | [Hiệu năng](perf/README.md)                                                                 |
-| Xem điều kiện phát hành còn thiếu    | [Nghiệm thu v0.1.0](acceptance/v0.1.0.md)                                                   |
+| Xem sản phẩm chạy                    | [Kịch bản demo 5 phút](v0.2.0/demo.md) (`pnpm demo:prepare` dựng DB demo)                   |
+| Xem điều kiện phát hành còn thiếu    | [Nghiệm thu v0.2.0](v0.2.0/acceptance/v0.2.0.md), [v0.1.0](acceptance/v0.1.0.md) (lưu trữ)  |
 | Chọn việc cải thiện tiếp theo        | [Nợ kỹ thuật](tech-debt.md)                                                                 |
 
 ## Bản đồ ADR

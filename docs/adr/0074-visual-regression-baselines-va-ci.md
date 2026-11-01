@@ -63,4 +63,7 @@ job visual và diff vượt ngưỡng chặn PR đến khi duyệt. Các ràng b
   dữ liệu).
 - Baseline là ảnh nhị phân trong repo: PR đổi giao diện sẽ kèm ảnh; review phải xem ảnh, không
   chỉ đọc diff code.
+- **Cập nhật 2026-11-01:** 36 ảnh `linux/` đã được commit (`13ea987`); run 41294800751 job `visual`
+  so sánh thật, xanh 4 phút và không upload artifact. Cổng nay có hiệu lực trên Linux — run nào
+  còn artifact `visual-baselines-linux` là lượt đó lại bootstrap (thiếu ảnh), không gác.
 - Không thay thế e2e hành vi (axe, luồng chức năng) — chỉ gác hồi quy thị giác.

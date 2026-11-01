@@ -71,9 +71,9 @@ dateTime=…>` — vừa đúng ngữ nghĩa, vừa ẩn được bằng CSS tha
 - Run [41288747574](https://github.com/daithien2004/Ping/actions/runs/41288747574) trên `main`
   `fd4e05f`: job `visual` **xanh ở chế độ bootstrap** (repo chưa có `__screenshots__/linux`), sinh
   36 ảnh Linux và upload artifact `visual-baselines-linux` (id 13075953360, 1.585.158 byte).
-- **Chưa gác hồi quy trên Linux**: artifact chưa được tải về/commit. Máy dev không có `gh`;
-  endpoint artifact của GitHub API trả 401 khi không đăng nhập và URL UI trả 404. Lần CI đụng web
-  kế tiếp vẫn đi nhánh bootstrap.
+- Lượt đó **chưa gác hồi quy trên Linux** vì artifact chưa được commit (máy dev không có `gh`;
+  endpoint artifact của GitHub API trả 401 khi không đăng nhập, URL UI trả 404). Đã xử lý trong
+  mục kế tiếp.
 
 ## Baseline Linux đã commit (2026-11-01)
 
