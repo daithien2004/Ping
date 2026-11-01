@@ -34,6 +34,18 @@
 | Ảnh            | `screens/`: `375-channel`, `375-drawer`, `768-channel`, `1280-channel` (script `capture-polish.mjs`)      |
 | Lần chạy       | `E2E_PRODUCTION=1 npx playwright test e2e/responsive.spec.ts` → **4/4 pass (33,1 s)** cùng quick-switcher |
 
+## Sửa sau lần CI đầu (run 41273346357)
+
+- Bước cuối từng đòi tải hết 6 trang tin cũ (`#300 → #1`): mỗi trang là một request `?before=`,
+  và khi một lần fetch lỗi giữa chừng (CI tải cao) effect tải-tiếp không chạy lại vì `firstVisible`
+  vẫn 0 — vòng chờ 30 s đứng im, shard 3 đỏ dù 19/20 test khác xanh (`5c63bd8`).
+- Bước cuối giờ kiểm đúng điều tên test hứa: sau khi chọn kênh trong drawer rồi `goBack` về
+  `#long`, về đáy thấy lại tin mới nhất; cuộn lên đầu danh sách ảo vẫn render và tin `#300` biến
+  mất; cuộn về đáy thấy lại — không phụ thuộc số trang đã tải. Tải tin cũ vẫn do `messages.spec`
+  phủ ("cuộn lên: tải dần tin cũ tới đầu channel").
+- Kiểm lại local production **2 lượt 4/4** (bước cuối 1,1–1,7 s; bản cũ 9,9 s vì còn vòng tải
+  trang), format/lint/typecheck sạch.
+
 ## Giới hạn
 
 - Chưa đo trên thiết bị thật (chỉ Chromium/Playwright); `dvh` và bàn phím di động cần pilot T7.
