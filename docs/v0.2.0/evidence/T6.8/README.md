@@ -45,6 +45,8 @@
   phủ ("cuộn lên: tải dần tin cũ tới đầu channel").
 - Kiểm lại local production **2 lượt 4/4** (bước cuối 1,1–1,7 s; bản cũ 9,9 s vì còn vòng tải
   trang), format/lint/typecheck sạch.
+- CI lại xanh: run **41274672558** — 11 job đạt, gồm web-e2e 3/3 shard + `web-e2e-gate`;
+  `api-e2e`/`migrations`/`drills` skip theo bộ lọc vùng (diff chỉ `apps/web/e2e` + docs).
 
 ## Giới hạn
 
