@@ -79,6 +79,9 @@ export const palette = {
     200: '#d6d6e4',
     400: '#a8a8bc',
     500: '#7a7a92',
+    // 550: chữ phụ trên nền sáng. ink-500 chỉ đạt 4.18:1 trên trắng (axe bắt ở mô tả Empty/
+    // bảng khi T6.9 quét vai trò); 550 đạt 4.89:1 trên trắng và 4.57:1 trên nền ink-50.
+    550: '#6f6f86',
     700: '#4a4a5e',
     800: '#33334a',
     850: '#2a2a3d',
@@ -127,7 +130,7 @@ export const lightColors: SemanticColors = {
   secondary: palette.ink[150],
   secondaryForeground: palette.ink[950],
   muted: palette.ink[100],
-  mutedForeground: palette.ink[500],
+  mutedForeground: palette.ink[550],
   accent: palette.ink[150],
   accentForeground: palette.ink[950],
   destructive: palette.red[600],

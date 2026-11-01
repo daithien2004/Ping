@@ -77,7 +77,8 @@ export function ServerRail() {
   return (
     <nav
       aria-label={t('servers.navLabel')}
-      className="flex w-18 shrink-0 flex-col items-center gap-2 bg-rail py-3 text-rail-foreground"
+      data-mobile-nav
+      className="flex min-h-0 w-18 shrink-0 flex-col items-center gap-2 overflow-x-hidden overflow-y-auto bg-rail py-3 text-rail-foreground"
     >
       {/* TG.9: mục "Tin nhắn trực tiếp" nằm trên cùng của rail (như trang chủ Discord) — ngoài
           ChannelSidebar per-server theo ADR-0070 mục 7. */}

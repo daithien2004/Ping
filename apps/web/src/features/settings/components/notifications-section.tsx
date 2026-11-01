@@ -8,6 +8,7 @@ import { useTranslations } from 'use-intl';
 import { PingButton } from '@/components/ui/ping-button';
 import { PingSegmented } from '@/components/ui/ping-segmented';
 import { PingSwitch } from '@/components/ui/ping-switch';
+import { pingToast } from '@/components/ui/ping-toast';
 import {
   useNotificationPermission,
   requestNotificationPermission,
@@ -25,6 +26,7 @@ import {
   writeSoundEnabled,
 } from '@/features/notifications/notify-storage';
 import { useServers } from '@/features/servers/hooks';
+import { useErrorMessage } from '@/lib/error-message';
 import { useServerChannels } from '../hooks';
 import { SettingsSection } from './settings-section';
 
@@ -143,10 +145,12 @@ function DeviceOptions() {
 /** Một dòng mức theo server: chưa có dòng prefs là đang theo mặc định chung (all). */
 function ServerLevelRow({ server }: { server: ServerSummary }) {
   const t = useTranslations('settings.notifications');
+  const errorMessage = useErrorMessage();
   const { data } = useNotificationPrefs();
   const row = findPref(data?.prefs ?? [], 'server', server.id);
   const setPref = useSetNotificationPref('server');
   const reset = useResetNotificationPref('server');
+  const onError = (error: unknown) => pingToast.error(errorMessage(error));
 
   return (
     <div
@@ -163,11 +167,14 @@ function ServerLevelRow({ server }: { server: ServerSummary }) {
           testIdPrefix={`settings-server-level-${server.id}`}
           disabled={setPref.isPending}
           onChange={(level) =>
-            setPref.mutate({
-              targetId: server.id,
-              level,
-              mutedUntil: row?.mutedUntil ?? null,
-            })
+            setPref.mutate(
+              {
+                targetId: server.id,
+                level,
+                mutedUntil: row?.mutedUntil ?? null,
+              },
+              { onError },
+            )
           }
         />
         {row && (
@@ -176,7 +183,7 @@ function ServerLevelRow({ server }: { server: ServerSummary }) {
             variant="ghost"
             data-testid={`settings-server-reset-${server.id}`}
             disabled={reset.isPending}
-            onClick={() => reset.mutate(server.id)}
+            onClick={() => reset.mutate(server.id, { onError })}
           >
             {t('reset')}
           </PingButton>
@@ -197,9 +204,11 @@ function ServerChannelOverrides({
   prefs: NotificationPrefDto[];
 }) {
   const t = useTranslations('settings.notifications');
+  const errorMessage = useErrorMessage();
   const { data: channels } = useServerChannels(serverId);
   const setPref = useSetNotificationPref('channel');
   const reset = useResetNotificationPref('channel');
+  const onError = (error: unknown) => pingToast.error(errorMessage(error));
   const rows = (channels ?? []).flatMap((channel) => {
     const pref = findPref(prefs, 'channel', channel.id);
     return pref ? [{ channel, pref }] : [];
@@ -229,11 +238,14 @@ function ServerChannelOverrides({
               testIdPrefix={`settings-channel-level-${channel.id}`}
               disabled={setPref.isPending}
               onChange={(level) =>
-                setPref.mutate({
-                  targetId: channel.id,
-                  level,
-                  mutedUntil: pref.mutedUntil,
-                })
+                setPref.mutate(
+                  {
+                    targetId: channel.id,
+                    level,
+                    mutedUntil: pref.mutedUntil,
+                  },
+                  { onError },
+                )
               }
             />
             <PingButton
@@ -241,7 +253,7 @@ function ServerChannelOverrides({
               variant="ghost"
               data-testid={`settings-channel-reset-${channel.id}`}
               disabled={reset.isPending}
-              onClick={() => reset.mutate(channel.id)}
+              onClick={() => reset.mutate(channel.id, { onError })}
             >
               {t('reset')}
             </PingButton>
@@ -260,9 +272,11 @@ function ServerChannelOverrides({
  */
 export function NotificationsSection() {
   const t = useTranslations('settings.notifications');
+  const tc = useTranslations('common');
+  const errorMessage = useErrorMessage();
   const { data: servers } = useServers();
-  const { data: prefsData } = useNotificationPrefs();
-  const prefs = prefsData?.prefs ?? [];
+  const prefsQuery = useNotificationPrefs();
+  const prefs = prefsQuery.data?.prefs ?? [];
   const channelPrefs = prefs.filter((pref) => pref.scope === 'channel');
 
   return (
@@ -275,6 +289,22 @@ export function NotificationsSection() {
         <section aria-label={t('serverLevels')} className="flex flex-col">
           <h2 className="text-sm font-semibold">{t('serverLevels')}</h2>
           <p className="pb-1 text-xs text-muted-foreground">{t('serverLevelsHint')}</p>
+          {prefsQuery.isError && (
+            <div role="alert" className="flex flex-col items-start gap-2 py-2 text-sm">
+              <p className="text-destructive">{errorMessage(prefsQuery.error)}</p>
+              <PingButton
+                size="sm"
+                variant="secondary"
+                disabled={prefsQuery.isFetching}
+                onClick={() => void prefsQuery.refetch()}
+              >
+                {tc('retry')}
+              </PingButton>
+            </div>
+          )}
+          {(servers ?? []).length === 0 && (
+            <p className="py-3 text-sm text-muted-foreground">{t('serversEmpty')}</p>
+          )}
           {(servers ?? []).map((server) => (
             <div key={server.id} className="border-t border-border first:border-t-0">
               <ServerLevelRow server={server} />

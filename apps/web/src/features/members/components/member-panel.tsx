@@ -117,7 +117,7 @@ export function MemberPanel({ serverId }: { serverId: string }) {
   return (
     <aside
       aria-label={t('panel')}
-      className="flex w-60 shrink-0 flex-col overflow-y-auto bg-sidebar p-2"
+      className="flex w-60 shrink-0 flex-col overflow-y-auto bg-sidebar p-2 max-lg:absolute max-lg:top-12 max-lg:right-0 max-lg:bottom-0 max-lg:z-20 max-lg:shadow-xl"
     >
       {query.isPending && (
         <div
@@ -159,6 +159,11 @@ export function MemberPanel({ serverId }: { serverId: string }) {
             {tc('retry')}
           </Button>
         </div>
+      )}
+      {!query.isPending && !query.isError && members.length === 0 && (
+        <p role="status" className="px-2 py-1.5 text-sm text-muted-foreground">
+          {t('empty')}
+        </p>
       )}
       <Group
         label={t('online', { count: online.length })}

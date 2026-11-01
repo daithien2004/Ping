@@ -5,6 +5,7 @@ import { ChevronDown, ChevronUp } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslations } from 'use-intl';
 import { PingButton } from '@/components/ui/ping-button';
+import { PingEmpty } from '@/components/ui/ping-empty';
 import { PingForm, PingFormItem, usePingForm } from '@/components/ui/ping-form';
 import { PingIconButton } from '@/components/ui/ping-icon-button';
 import { PingInput } from '@/components/ui/ping-input';
@@ -107,7 +108,7 @@ export function RoleEditor({ serverId, roles }: Props) {
         columns={columns}
         rows={ordered}
         rowKey={(role) => role.id}
-        empty={t('rolesEmpty')}
+        empty={<PingEmpty description={t('rolesEmpty')} />}
       />
       {selected ? (
         // key = id của vai trò: đổi vai trò thì form và trạng thái quyền khởi tạo lại.

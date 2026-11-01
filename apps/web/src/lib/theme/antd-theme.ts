@@ -16,6 +16,10 @@ export function buildAntdTheme(mode: ThemeMode): ThemeConfig {
       colorBgElevated: c.popover,
       colorText: c.foreground,
       colorTextSecondary: c.mutedForeground,
+      // antd tự suy colorTextDescription từ colorTextBase pha alpha (~45%) → dưới 4.5:1 trên
+      // nền card (axe bắt color-contrast ở mô tả Empty của bảng vai trò, T6.9). Dùng màu phụ
+      // của palette (đã đạt AA ở cả hai nền) thay vì alpha.
+      colorTextDescription: c.mutedForeground,
       colorLink: c.link,
       colorError: c.destructive,
       borderRadius: radius.md,
@@ -28,7 +32,10 @@ export function buildAntdTheme(mode: ThemeMode): ThemeConfig {
       motionDurationFast: `${motion.fast}ms`,
     },
     components: {
-      Button: { borderRadius: radius.md, controlHeight: 36 },
+      // Nút "danger" kiểu viền lấy chữ từ colorError; antd suy palette[6] từ seed nên nền tối
+      // thành #cf6b5d, chỉ ~4.4:1 trên card. Ghim về đúng destructive của palette (5.8:1 tối,
+      // 4.7:1 sáng) — axe color-contrast (serious) ở mục Thu hồi phiên (T6.9).
+      Button: { borderRadius: radius.md, controlHeight: 36, colorError: c.destructive },
       Input: { borderRadius: radius.md, controlHeight: 36 },
       Modal: { borderRadiusLG: radius.xl },
       Card: { borderRadiusLG: radius.lg },

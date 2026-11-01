@@ -34,7 +34,8 @@ export function StickerPicker({
 }) {
   const t = useTranslations('stickers');
   const tg = useTranslations('gifs');
-  const { data, isPending } = useStickers(serverId);
+  const tc = useTranslations('common');
+  const { data, isPending, isError, refetch, isFetching } = useStickers(serverId);
   const [query, setQuery] = useState('');
   const [tab, setTab] = useState<StickerTab>('recent');
   const gridRef = useRef<HTMLDivElement>(null);
@@ -131,6 +132,21 @@ export function StickerPicker({
         // TG.25: panel GIF tự lo loading/rỗng/lỗi 503/ghi công; truy vấn dùng chung ô tìm kiếm
         // phía trên (debounce trong panel), không phụ thuộc trạng thái tải sticker.
         <GifPanel query={query} recentGifs={recentGifs} onPickGif={onPickGif} />
+      ) : isError ? (
+        <div
+          role="alert"
+          className="flex flex-col items-center gap-2 py-4 text-sm text-destructive"
+        >
+          <p>{t('loadFailed')}</p>
+          <button
+            type="button"
+            disabled={isFetching}
+            onClick={() => void refetch()}
+            className="rounded border px-2 py-0.5 text-xs text-foreground transition-colors hover:bg-accent disabled:opacity-50"
+          >
+            {tc('retry')}
+          </button>
+        </div>
       ) : isPending ? (
         <p className="py-6 text-center text-sm text-muted-foreground">{t('loading')}</p>
       ) : visible.length === 0 ? (

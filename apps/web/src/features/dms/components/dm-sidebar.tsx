@@ -4,9 +4,12 @@ import { MessageCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'use-intl';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useErrorMessage } from '@/lib/error-message';
 import { PingBadge } from '@/components/ui/ping-badge';
 import { UserAvatar } from '@/features/profile/components/user-avatar';
+import { useMobileNav } from '@/features/shell/store';
 import { sortedDms } from '../dm-cache';
 import { useDms } from '../hooks';
 import { dmPath } from '../navigation';
@@ -21,12 +24,22 @@ import { dmPath } from '../navigation';
  */
 export function DmSidebar() {
   const { channelId } = useParams<{ channelId?: string }>();
-  const { data: dms, isPending } = useDms();
+  const { data: dms, isPending, isError, error, refetch, isFetching } = useDms();
+  const mobileNavOpen = useMobileNav((state) => state.open);
   const t = useTranslations('dms');
+  const tc = useTranslations('common');
+  const errorMessage = useErrorMessage();
   const rows = sortedDms(dms ?? []);
 
   return (
-    <aside className="flex w-60 shrink-0 flex-col bg-sidebar text-sidebar-foreground">
+    <aside
+      data-mobile-nav
+      className={`flex min-h-0 w-60 shrink-0 flex-col bg-sidebar text-sidebar-foreground max-md:absolute max-md:inset-y-0 max-md:left-18 max-md:z-30 max-md:shadow-xl max-md:transition-transform max-md:duration-200 ${
+        mobileNavOpen
+          ? 'max-md:visible max-md:translate-x-0'
+          : 'max-md:invisible max-md:-translate-x-full'
+      }`}
+    >
       <header className="flex h-12 shrink-0 items-center gap-2 border-b border-sidebar-border px-4 shadow-xs">
         <MessageCircle className="size-4 text-muted-foreground" aria-hidden />
         <h2 className="font-semibold">{t('title')}</h2>
@@ -40,6 +53,21 @@ export function DmSidebar() {
                 <Skeleton className="h-4 w-28" />
               </div>
             ))}
+          </div>
+        ) : isError ? (
+          <div
+            role="alert"
+            className="flex flex-col items-start gap-2 p-2 text-sm text-destructive"
+          >
+            <p>{errorMessage(error)}</p>
+            <Button
+              variant="outline"
+              size="xs"
+              disabled={isFetching}
+              onClick={() => void refetch()}
+            >
+              {tc('retry')}
+            </Button>
           </div>
         ) : rows.length === 0 ? (
           <p className="px-2 py-1.5 text-sm text-muted-foreground">{t('empty')}</p>

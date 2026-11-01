@@ -30,11 +30,12 @@ export function MarkdownText({ content, serverId }: { content: string; serverId?
 }
 
 function BlockView({ block, serverId }: { block: MarkdownBlock; serverId?: string }) {
+  const t = useTranslations('messages');
   switch (block.type) {
     case 'codeBlock':
       return (
         <pre
-          aria-label="code"
+          aria-label={t('codeBlockLabel')}
           className="my-1 overflow-x-auto rounded-md bg-muted p-2 font-mono text-sm"
         >
           <code>{block.code}</code>
@@ -76,11 +77,12 @@ function InlineNodes({ nodes, serverId }: { nodes: InlineNode[]; serverId?: stri
 }
 
 function InlineNodeView({ node, serverId }: { node: InlineNode; serverId?: string }) {
+  const t = useTranslations('messages');
   switch (node.type) {
     case 'text':
       return <>{node.value}</>;
     case 'emoji':
-      return <span aria-label="emoji">{node.unicode}</span>;
+      return <span aria-label={t('emojiLabel')}>{node.unicode}</span>;
     case 'customEmoji':
       return <CustomEmojiNode id={node.id} name={node.name} serverId={serverId} />;
     case 'mention':

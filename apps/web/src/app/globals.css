@@ -72,6 +72,8 @@
   --input: var(--palette-ink-200);
   --ring: var(--palette-violet-500);
   --online: var(--palette-green-600); /* chấm trạng thái online */
+  /* Lớp phủ làm mờ nền dưới drawer/menu — cố ý giống nhau ở cả hai chế độ. */
+  --scrim: oklch(0 0 0 / 45%);
 
   /* Ba tầng nền kiểu chat: rail (server) đậm nhất → sidebar (channel) → vùng chat. */
   --rail: var(--palette-ink-200);
@@ -185,6 +187,7 @@ html[data-theme='dark'] {
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-scrim: var(--scrim);
   --color-rail: var(--rail);
   --color-rail-foreground: var(--rail-foreground);
   --color-sidebar: var(--sidebar);

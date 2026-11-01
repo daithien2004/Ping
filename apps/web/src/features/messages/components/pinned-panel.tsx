@@ -3,6 +3,7 @@
 import { PinOff } from 'lucide-react';
 import { useFormatter, useTranslations } from 'use-intl';
 import { Button } from '@/components/ui/button';
+import { pingToast } from '@/components/ui/ping-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useServerAbility } from '@/features/permissions/context';
 import { errorReference } from '@/lib/error-reference';
@@ -37,7 +38,7 @@ export function PinnedPanel({
     <aside
       aria-label={t('pinnedTitle')}
       data-testid="pinned-panel"
-      className="flex w-72 shrink-0 flex-col gap-1 overflow-y-auto border-l bg-sidebar p-2"
+      className="flex w-72 shrink-0 flex-col gap-1 overflow-y-auto border-l bg-sidebar p-2 max-lg:absolute max-lg:top-12 max-lg:right-0 max-lg:bottom-0 max-lg:z-20 max-lg:shadow-xl"
     >
       <h2 className="px-2 py-1 text-sm font-semibold">{t('pinnedTitle')}</h2>
       {query.isPending && (
@@ -112,7 +113,12 @@ export function PinnedPanel({
                 className="mt-1 size-7 shrink-0"
                 aria-label={t('unpin')}
                 disabled={!ready || setPinned.isPending}
-                onClick={() => setPinned.mutate({ messageId: pin.message.id, pin: false })}
+                onClick={() =>
+                  setPinned.mutate(
+                    { messageId: pin.message.id, pin: false },
+                    { onError: (error) => pingToast.error(errorMessage(error)) },
+                  )
+                }
               >
                 <PinOff />
               </Button>

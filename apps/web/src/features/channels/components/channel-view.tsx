@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, use, useState } from 'react';
+import { Suspense, use, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Pencil, Pin, Users } from 'lucide-react';
 import { useTranslations } from 'use-intl';
@@ -50,12 +50,25 @@ export function ChannelView({
   const t = useTranslations();
   const router = useRouter();
   const panelOpen = useMemberPanel((state) => state.open);
+  const setPanelOpen = useMemberPanel((state) => state.setOpen);
   const togglePanel = useMemberPanel((state) => state.toggle);
   const { ability } = useServerAbility();
   const canManage = ability.can('manage', 'Channel');
   const [askOpen, setAskOpen] = useState(false);
   const [pinsOpen, setPinsOpen] = useState(false);
   const [topicOpen, setTopicOpen] = useState(false);
+
+  // Dưới `lg` panel thành viên là overlay (T6.8) nên không được mặc định mở đè lên tin nhắn:
+  // đóng khi vào màn hẹp hoặc khi cửa sổ thu nhỏ qua mốc lg.
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 1023px)');
+    const closeOnNarrow = () => {
+      if (media.matches) setPanelOpen(false);
+    };
+    closeOnNarrow();
+    media.addEventListener('change', closeOnNarrow);
+    return () => media.removeEventListener('change', closeOnNarrow);
+  }, [setPanelOpen]);
 
   if (!channel) {
     return <p className="m-auto text-sm text-muted-foreground">{t('channels.notFound')}</p>;
@@ -67,7 +80,7 @@ export function ChannelView({
   }
 
   return (
-    <div className="flex min-h-0 flex-1">
+    <div className="relative flex min-h-0 flex-1">
       <section className="flex min-h-0 min-w-0 flex-1 flex-col">
         <header className="flex min-h-12 shrink-0 items-center border-b px-4 font-semibold shadow-xs">
           <div className="mr-1 flex min-w-0 flex-col justify-center py-1">

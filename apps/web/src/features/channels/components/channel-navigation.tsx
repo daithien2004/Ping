@@ -5,10 +5,12 @@ import { useEffect, useRef, useState } from 'react';
 import type { DragEvent, KeyboardEvent, ReactNode } from 'react';
 import { useTranslations } from 'use-intl';
 import { PingBadge } from '@/components/ui/ping-badge';
+import { pingToast } from '@/components/ui/ping-toast';
 import { useMe } from '@/features/auth/hooks';
 import { useServerAbility } from '@/features/permissions/context';
 import { channelPath } from '@/features/servers/navigation';
 import { useUnread } from '@/features/unread/hooks';
+import { useErrorMessage } from '@/lib/error-message';
 import {
   readCollapsedCategories,
   toggleCollapsed,
@@ -61,7 +63,10 @@ export function ChannelNavigation({ serverId, activeId }: { serverId: string; ac
   const positionsMutation = useUpdateChannelPositions(serverId);
   const reorderMutation = useReorderCategories(serverId);
   const t = useTranslations('channels');
+  const errorMessage = useErrorMessage();
   const canManage = ability.can('manage', 'Channel');
+  // Di chuyển là optimistic — lỗi mạng/server phải báo để người dùng biết thứ tự đã hoàn nguyên.
+  const onMoveError = (error: unknown) => pingToast.error(errorMessage(error));
 
   // Trạng thái thu gọn đọc MỘT lần cho cặp (user, server) — đổi server/user thì nạp lại.
   const [collapsed, setCollapsed] = useState<string[]>([]);
@@ -99,13 +104,14 @@ export function ChannelNavigation({ serverId, activeId }: { serverId: string; ac
   function moveChannelTo(channelId: string, categoryId: string | null, index: number) {
     const plan = planChannelMove(channels, channelId, categoryId, index);
     if (!plan) return;
-    if (plan.kind === 'move') moveMutation.mutate({ channelId, input: plan.input });
-    else positionsMutation.mutate(plan.updates);
+    if (plan.kind === 'move')
+      moveMutation.mutate({ channelId, input: plan.input }, { onError: onMoveError });
+    else positionsMutation.mutate(plan.updates, { onError: onMoveError });
   }
 
   function moveCategoryTo(categoryId: string, insertIndex: number) {
     const orderedIds = reorderCategoryTo(categories, categoryId, insertIndex);
-    if (orderedIds) reorderMutation.mutate(orderedIds);
+    if (orderedIds) reorderMutation.mutate(orderedIds, { onError: onMoveError });
   }
 
   function channelDragOver(event: DragEvent, channelId: string) {
@@ -201,8 +207,9 @@ export function ChannelNavigation({ serverId, activeId }: { serverId: string; ac
         const plan = planChannelMove(channels, channelId, target.categoryId, target.index);
         if (!plan) return;
         pendingFocus.current = current;
-        if (plan.kind === 'move') moveMutation.mutate({ channelId, input: plan.input });
-        else positionsMutation.mutate(plan.updates);
+        if (plan.kind === 'move')
+          moveMutation.mutate({ channelId, input: plan.input }, { onError: onMoveError });
+        else positionsMutation.mutate(plan.updates, { onError: onMoveError });
         return;
       }
       const key = current.slice(4);
@@ -210,7 +217,7 @@ export function ChannelNavigation({ serverId, activeId }: { serverId: string; ac
       const orderedIds = reorderedCategoryIds(categories, key, direction);
       if (orderedIds) {
         pendingFocus.current = current;
-        reorderMutation.mutate(orderedIds);
+        reorderMutation.mutate(orderedIds, { onError: onMoveError });
       }
       return;
     }
@@ -228,9 +235,15 @@ export function ChannelNavigation({ serverId, activeId }: { serverId: string; ac
     dropTarget?.slot === slot && dropTarget.edge === edge;
 
   return (
-    <nav aria-label={t('navLabel')} className="flex flex-col gap-0.5 p-2">
+    <nav
+      aria-label={t('navLabel')}
+      className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto p-2"
+    >
       {channelSidebarEmpty && (
         <p className="px-2 py-1.5 text-sm text-muted-foreground">{t('empty')}</p>
+      )}
+      {channels.length === 0 && canManage && (
+        <p className="px-2 py-1.5 text-sm text-muted-foreground">{t('emptyManage')}</p>
       )}
       {groups.map((group) => {
         const slotKey = group.categoryId ?? DEFAULT_GROUP_KEY;

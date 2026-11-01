@@ -32,7 +32,8 @@ export function StickerManager({ serverId }: { serverId: string }) {
   const t = useTranslations('admin');
   const tc = useTranslations('common');
   const errorMessage = useErrorMessage();
-  const { data } = useStickers(serverId);
+  const query = useStickers(serverId);
+  const { data } = query;
   const createMutation = useCreateSticker(serverId);
   const deleteMutation = useDeleteSticker(serverId);
   const upload = useProfileUpload('sticker', serverId);
@@ -141,7 +142,11 @@ export function StickerManager({ serverId }: { serverId: string }) {
             <PingInput maxLength={32} autoComplete="off" data-testid="sticker-name-input" />
           </PingFormItem>
           <PingFormItem label={t('stickerTags')} name="tags" rules={rules.tags}>
-            <PingInput maxLength={200} autoComplete="off" placeholder="hello, vui" />
+            <PingInput
+              maxLength={200}
+              autoComplete="off"
+              placeholder={t('stickerTagsPlaceholder')}
+            />
           </PingFormItem>
           {createMutation.isError && (
             <p role="alert" className="mb-2 text-sm text-destructive">
@@ -167,7 +172,23 @@ export function StickerManager({ serverId }: { serverId: string }) {
           </div>
         </PingForm>
       )}
-      {stickers.length === 0 ? (
+      {query.isPending ? (
+        <p role="status" className="text-sm text-muted-foreground">
+          {tc('loading')}
+        </p>
+      ) : query.isError ? (
+        <div role="alert" className="flex flex-col items-start gap-2 text-sm text-destructive">
+          <p>{errorMessage(query.error)}</p>
+          <PingButton
+            variant="secondary"
+            size="sm"
+            disabled={query.isFetching}
+            onClick={() => void query.refetch()}
+          >
+            {tc('retry')}
+          </PingButton>
+        </div>
+      ) : stickers.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t('stickersEmpty')}</p>
       ) : (
         <ul aria-label={t('stickers')} className="flex flex-wrap gap-3">
@@ -228,7 +249,8 @@ function EmojiManager({ serverId }: { serverId: string }) {
   const t = useTranslations('admin');
   const tc = useTranslations('common');
   const errorMessage = useErrorMessage();
-  const { data } = useEmojis(serverId);
+  const query = useEmojis(serverId);
+  const { data } = query;
   const createMutation = useCreateEmoji(serverId);
   const deleteMutation = useDeleteEmoji(serverId);
   const upload = useProfileUpload('customEmoji', serverId);
@@ -357,7 +379,23 @@ function EmojiManager({ serverId }: { serverId: string }) {
           </div>
         </PingForm>
       )}
-      {emojis.length === 0 ? (
+      {query.isPending ? (
+        <p role="status" className="text-sm text-muted-foreground">
+          {tc('loading')}
+        </p>
+      ) : query.isError ? (
+        <div role="alert" className="flex flex-col items-start gap-2 text-sm text-destructive">
+          <p>{errorMessage(query.error)}</p>
+          <PingButton
+            variant="secondary"
+            size="sm"
+            disabled={query.isFetching}
+            onClick={() => void query.refetch()}
+          >
+            {tc('retry')}
+          </PingButton>
+        </div>
+      ) : emojis.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t('emojisEmpty')}</p>
       ) : (
         <ul aria-label={t('emojis')} className="flex flex-wrap gap-3">
