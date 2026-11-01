@@ -74,19 +74,24 @@ các task).
 - Run [41289281084](https://github.com/daithien2004/Ping/actions/runs/41289281084) trên `9a4d767`:
   `verify`, `security`, `docker`, `drills`, `lighthouse` xanh; `api-e2e`/`web-e2e`/`visual`/
   `migrations` skip theo bộ lọc vùng thay đổi.
-- **Chưa có một commit đủ 6 check bắt buộc xanh**: web-e2e shard 1 chưa có kết quả CI cho lô 3
-  (local đã chạy 62 pass + 1 skip) và baseline Linux của job `visual` chưa commit (F13). K5 giữ
-  `chờ phát hành`.
+- **Bù ở commit chốt demo `8906310`**: run
+  [41292074926](https://github.com/daithien2004/Ping/actions/runs/41292074926) xanh `changes`,
+  `verify`, `security`, `api-e2e`, `web-e2e-gate` (cả 3 shard; shard 1 10 phút, 2/3 mỗi shard
+  7 phút), `visual` (4 phút), `docker`, `drills`, `lighthouse`; `migrations` skip (không đụng
+  `prisma/`). Lần này bộ lọc bật job nặng vì commit sửa `package.json` và thêm script trong
+  `scripts/`. Vậy **đã có một commit đủ 6 check bắt buộc xanh**; K5 vẫn `chờ phát hành` vì chưa
+  có tag `v0.2.0` (quyết định 2026-11-01).
 
 ## Review, giới hạn và tiếp tục
 
 - **Chưa đóng được**: V1–V9 (staging/backup/Sentry/load/chaos), H2 (pilot), H3 (OWNER ký + tag).
   Đây là các mục gắn với hạ tầng trả phí đã dời theo ADR-0059 và với người thật, không phải thiếu sót agent.
 - **Chờ OWNER**: F12 (TF.14) chưa ký; ADR-0039 (presence) còn `proposed`; ngân sách/kênh cảnh báo
-  chưa điền; quyết định tag v0.2.0.
+  chưa điền. Quyết định tag `v0.2.0` đã có ngày 2026-11-01: **hoãn tới khi triển khai phần vận hành**
+  (đóng băng ở mức demo).
 - **Chưa đo**: F14 — 10.000 tin cuộn mượt/long task > 50 ms (ghi từ TF.6, chưa có Performance trace).
-- **Chưa đóng**: F13 baseline Linux chưa commit (job `visual` đã bootstrap xanh trên CI); K5 chưa
-  có commit đủ 6 check xanh — web-e2e shard 1 chưa có kết quả CI cho lô 3.
+- **Chưa đóng**: F13 baseline Linux chưa commit (job `visual` đã bootstrap xanh trên CI và chạy
+  xanh trên `8906310`). K5 đã đủ 6 check trên `8906310`, chỉ còn điều kiện tag của commit phát hành.
 - **Nợ kỹ thuật mới ghi nhận**: F16 — trang `/dev/ui` liệt kê 12/33 wrapper, ảnh visual phủ màn hình
   chứ không theo từng wrapper.
 - Cách chạy lại: `pnpm docs:check && pnpm format:check`; mở
