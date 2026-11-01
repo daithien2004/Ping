@@ -90,8 +90,9 @@ các task).
   chưa điền. Quyết định tag `v0.2.0` đã có ngày 2026-11-01: **hoãn tới khi triển khai phần vận hành**
   (đóng băng ở mức demo).
 - **Chưa đo**: F14 — 10.000 tin cuộn mượt/long task > 50 ms (ghi từ TF.6, chưa có Performance trace).
-- **Chưa đóng**: F13 baseline Linux chưa commit (job `visual` đã bootstrap xanh trên CI và chạy
-  xanh trên `8906310`). K5 đã đủ 6 check trên `8906310`, chỉ còn điều kiện tag của commit phát hành.
+- **Đã đóng sau đó**: F13 — baseline Linux commit `13ea987`, run `41294800751` job `visual` xanh,
+  không upload artifact (so sánh thật). K5 đã đủ 6 check trên `8906310`, chỉ còn điều kiện tag của
+  commit phát hành.
 - **Nợ kỹ thuật mới ghi nhận**: F16 — trang `/dev/ui` liệt kê 12/33 wrapper, ảnh visual phủ màn hình
   chứ không theo từng wrapper.
 - Cách chạy lại: `pnpm docs:check && pnpm format:check`; mở

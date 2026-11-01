@@ -74,16 +74,25 @@ dateTime=…>` — vừa đúng ngữ nghĩa, vừa ẩn được bằng CSS tha
 - **Chưa gác hồi quy trên Linux**: artifact chưa được tải về/commit. Máy dev không có `gh`;
   endpoint artifact của GitHub API trả 401 khi không đăng nhập và URL UI trả 404. Lần CI đụng web
   kế tiếp vẫn đi nhánh bootstrap.
-- Đóng mục này: `gh run download 41288747574 -n visual-baselines-linux`, chép vào
-  `apps/web/visual/__screenshots__/linux/`, commit, rồi để một run CI web so sánh thật (log phải
-  không còn cảnh báo `Chưa có ... linux`).
+
+## Baseline Linux đã commit (2026-11-01)
+
+- Tải artifact `visual-baselines-linux` (id 13075953360, 1.585.158 byte) từ run 41288747574 bằng
+  tài khoản OWNER, giải nén 36 ảnh vào `apps/web/visual/__screenshots__/linux/`; danh sách tên
+  khớp đúng `win32/` (36 tệp), đã mở một ảnh xác nhận đúng màn chat, dữ liệu seed sạch.
+- Commit `13ea987` (chỉ thêm ảnh nhị phân, không đổi mã web).
+- Run [41294800751](https://github.com/daithien2004/Ping/actions/runs/41294800751) trên `13ea987`:
+  job `visual` **xanh 4 phút và không upload artifact** → đã đi nhánh so sánh, không bootstrap.
+  `web-e2e` 3 shard, `verify`, `security`, `docker`, `lighthouse` cũng xanh; `api-e2e`/`migrations`/
+  `drills` skip theo bộ lọc.
+- Hệ quả: từ nay mọi run CI có vùng web đều **gác hồi quy giao diện** trên Linux.
 
 ## Review, giới hạn và tiếp tục
 
-- **Bootstrap Linux chưa gác**: lần chạy CI đầu tiên trên Linux chưa có
-  `__screenshots__/linux`, job sinh ảnh và đạt kèm cảnh báo, đồng thời upload artifact
-  `visual-baselines-linux`. Phải commit bộ ảnh đó (sau khi xem) thì các lần sau mới so sánh thật.
-  Trước khi commit kiểm tra cảnh báo của job và tải artifact.
+- **Bootstrap Linux là lỗ hổng tiềm ẩn**: nếu ai đó xoá hoặc thêm test mới mà thiếu
+  `__screenshots__/linux`, job tự sinh ảnh, đạt kèm cảnh báo và không so sánh gì (đã commit bộ
+  36 ảnh ngày 2026-11-01 nên hiện tượng này không còn xảy ra). Cách phát hiện: run có artifact
+  `visual-baselines-linux` nghĩa là lượt đó không gác.
 - **Phạm vi ảnh**: chỉ chụp viewport đầu của mỗi màn; phần dưới (bảng audit, danh sách thành
   viên) không được gác. Không dùng full-page vì chiều cao phụ thuộc dữ liệu.
 - **Nền tảng**: chưa có baseline macOS; chỉ Chromium (không Firefox/WebKit).
