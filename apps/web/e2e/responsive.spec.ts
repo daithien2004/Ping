@@ -106,12 +106,23 @@ test('375: chọn kênh trong drawer thì drawer tự đóng, danh sách ảo v�
   // Đổi route đóng drawer (AppShell theo dõi pathname).
   await expect(page.getByRole('link', { name: '# general' })).toBeHidden();
   await expect(composer()).toBeVisible();
+
+  // Quay lại #long: <Activity> giữ trang cũ nên phải hiện lại đúng tin mới nhất. Về đáy tường
+  // minh trước khi khẳng định — vị trí cuộn của trang được giữ lại không phải hợp đồng của
+  // trình duyệt khi Activity ẩn/hiện.
   await page.goBack();
   await expect(composer()).toBeVisible();
+  await scroller().evaluate((element) => element.scrollTo(0, element.scrollHeight));
+  await expect(page.getByText(/^#300 /)).toBeVisible();
 
-  await expect(async () => {
-    await scroller().evaluate((element) => element.scrollTo(0, 0));
-    await expect(page.getByText(/^#1 /)).toBeVisible({ timeout: 1_000 });
-  }).toPass({ timeout: 30_000 });
+  // Danh sách ảo vẫn cuộn được sau chuyến đi qua drawer: lên đầu rồi về đáy, vẫn chỉ render
+  // phần đang thấy. Không đòi tải hết 6 trang tin cũ: mỗi trang là một request, một lần lỗi
+  // mạng giữa chừng là cả vòng chờ đứng im (đã hỏng CI ở bản trước) — việc tải tin cũ có spec
+  // riêng (messages.spec: "cuộn lên: tải dần tin cũ tới đầu channel").
+  await scroller().evaluate((element) => element.scrollTo(0, 0));
+  await expect(page.getByText(/^#300 /)).toBeHidden();
+  expect(await scroller().locator('article').count()).toBeGreaterThan(0);
+  await scroller().evaluate((element) => element.scrollTo(0, element.scrollHeight));
+  await expect(page.getByText(/^#300 /)).toBeVisible();
   await expectNoHorizontalOverflow();
 });
