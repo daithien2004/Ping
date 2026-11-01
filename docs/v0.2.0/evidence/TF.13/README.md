@@ -66,6 +66,18 @@ dateTime=…>` — vừa đúng ngữ nghĩa, vừa ẩn được bằng CSS tha
    báo lỗi của `visual/global-setup.ts` nay chỉ thẳng cách chạy đúng, và lệnh đầy đủ nằm ở mục
    "Chạy lại" bên dưới. Lần chạy lại trên `ping_visual`: **12/12, 2,3 phút**.
 
+## CI lần đầu trên Linux (2026-11-01)
+
+- Run [41288747574](https://github.com/daithien2004/Ping/actions/runs/41288747574) trên `main`
+  `fd4e05f`: job `visual` **xanh ở chế độ bootstrap** (repo chưa có `__screenshots__/linux`), sinh
+  36 ảnh Linux và upload artifact `visual-baselines-linux` (id 13075953360, 1.585.158 byte).
+- **Chưa gác hồi quy trên Linux**: artifact chưa được tải về/commit. Máy dev không có `gh`;
+  endpoint artifact của GitHub API trả 401 khi không đăng nhập và URL UI trả 404. Lần CI đụng web
+  kế tiếp vẫn đi nhánh bootstrap.
+- Đóng mục này: `gh run download 41288747574 -n visual-baselines-linux`, chép vào
+  `apps/web/visual/__screenshots__/linux/`, commit, rồi để một run CI web so sánh thật (log phải
+  không còn cảnh báo `Chưa có ... linux`).
+
 ## Review, giới hạn và tiếp tục
 
 - **Bootstrap Linux chưa gác**: lần chạy CI đầu tiên trên Linux chưa có

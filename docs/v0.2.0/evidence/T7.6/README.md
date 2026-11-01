@@ -61,6 +61,23 @@ các task).
   thông báo lỗi của `visual/global-setup.ts` để chỉ đúng cách chạy (DB sạch vừa migrate + seed)
   và bổ sung lệnh cụ thể vào [TF.13](../TF.13/README.md); chạy lại trên `ping_visual` → 12/12.
 
+## CI sau khi merge lô 3
+
+- Run [41288747574](https://github.com/daithien2004/Ping/actions/runs/41288747574) trên `main`
+  `fd4e05f`: `changes`, `visual`, `api-e2e`, `drills`, `lighthouse`, `docker`, `security` và
+  web-e2e shard 2/3 xanh; `migrations` skip (không đụng Prisma). `verify` **đỏ** ở `docs:check`:
+  `cs-06` link tới `docs/ping-v0.2.0-plan.md` — file bị `.gitignore`, máy dev có nên local xanh còn
+  clone/CI thì không. `web-e2e-gate` đỏ vì shard 1 bị cancel khi push bản sửa (concurrency
+  `cancel-in-progress`).
+- Bản sửa `9a4d767`: bỏ liên kết đó và cho `scripts/check-doc-links.mjs` coi đích bị gitignore là
+  liên kết hỏng (kiểm bằng file tạm: báo đúng; chạy trên bản export `git archive` cũng sạch).
+- Run [41289281084](https://github.com/daithien2004/Ping/actions/runs/41289281084) trên `9a4d767`:
+  `verify`, `security`, `docker`, `drills`, `lighthouse` xanh; `api-e2e`/`web-e2e`/`visual`/
+  `migrations` skip theo bộ lọc vùng thay đổi.
+- **Chưa có một commit đủ 6 check bắt buộc xanh**: web-e2e shard 1 chưa có kết quả CI cho lô 3
+  (local đã chạy 62 pass + 1 skip) và baseline Linux của job `visual` chưa commit (F13). K5 giữ
+  `chờ phát hành`.
+
 ## Review, giới hạn và tiếp tục
 
 - **Chưa đóng được**: V1–V9 (staging/backup/Sentry/load/chaos), H2 (pilot), H3 (OWNER ký + tag).
@@ -68,11 +85,12 @@ các task).
 - **Chờ OWNER**: F12 (TF.14) chưa ký; ADR-0039 (presence) còn `proposed`; ngân sách/kênh cảnh báo
   chưa điền; quyết định tag v0.2.0.
 - **Chưa đo**: F14 — 10.000 tin cuộn mượt/long task > 50 ms (ghi từ TF.6, chưa có Performance trace).
-- **Chưa chạy**: F13 job `visual` lần đầu trên CI Linux (bootstrap baseline); K5 xác nhận 6 check
-  xanh trên đúng commit merge.
+- **Chưa đóng**: F13 baseline Linux chưa commit (job `visual` đã bootstrap xanh trên CI); K5 chưa
+  có commit đủ 6 check xanh — web-e2e shard 1 chưa có kết quả CI cho lô 3.
 - **Nợ kỹ thuật mới ghi nhận**: F16 — trang `/dev/ui` liệt kê 12/33 wrapper, ảnh visual phủ màn hình
   chứ không theo từng wrapper.
 - Cách chạy lại: `pnpm docs:check && pnpm format:check`; mở
   [acceptance/v0.2.0.md](../../acceptance/v0.2.0.md) đối chiếu từng dòng với task evidence.
-- Bước tiếp theo: sau full gate + merge/push lô 3, cập nhật K5/F13 theo kết quả CI thật; khi OWNER
-  ký TF.14 và pilot xong, cập nhật F12/H2 rồi mới bàn tag.
+- Bước tiếp theo: tải + commit baseline Linux (`gh run download 41288747574 -n
+visual-baselines-linux`) và để một run CI web xác nhận so sánh thật; khi OWNER ký TF.14 và pilot
+  xong, cập nhật F12/H2 rồi mới bàn tag.
