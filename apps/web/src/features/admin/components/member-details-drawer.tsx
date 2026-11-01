@@ -129,9 +129,17 @@ export function MemberDetailsDrawer({ serverId, ownerId, member, onClose }: Prop
 
           {rolesQuery.isPending && <p className="text-sm text-muted-foreground">{tc('loading')}</p>}
           {rolesQuery.isError && (
-            <p role="alert" className="text-sm text-destructive">
+            <div role="alert" className="flex items-center gap-2 text-sm text-destructive">
               {t('rolesLoadFailed')}
-            </p>
+              <PingButton
+                variant="secondary"
+                size="sm"
+                disabled={rolesQuery.isFetching}
+                onClick={() => void rolesQuery.refetch()}
+              >
+                {tc('retry')}
+              </PingButton>
+            </div>
           )}
           {!permissions && <p className="text-sm text-muted-foreground">{tc('loading')}</p>}
           {permissions && !canManageTarget && (

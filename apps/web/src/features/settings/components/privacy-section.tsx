@@ -17,32 +17,48 @@ const DM_ALLOW_DEFAULT = 'server_members';
 /** Switch mức nhận DM: GET giá trị đã lưu, PATCH /users/me/privacy khi đổi (mọi thiết bị). */
 function DmAllowSwitch() {
   const t = useTranslations('settings.privacy');
+  const tc = useTranslations('common');
   const errorMessage = useErrorMessage();
-  const { data, isPending } = usePrivacy();
+  const { data, isPending, isError, error, refetch, isFetching } = usePrivacy();
   const updatePrivacy = useUpdatePrivacy();
   const dmAllow = data?.dmAllow ?? DM_ALLOW_DEFAULT;
 
   return (
-    <div className="flex items-center justify-between gap-4" data-testid="settings-dm-row">
-      <div className="flex flex-col">
-        <span className="text-sm font-medium" id="settings-dm-allow-label">
-          {t('dmAllow')}
-        </span>
-        <p className="text-xs text-muted-foreground">{t('dmAllowHint')}</p>
+    <div className="flex flex-col gap-2" data-testid="settings-dm-row">
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-col">
+          <span className="text-sm font-medium" id="settings-dm-allow-label">
+            {t('dmAllow')}
+          </span>
+          <p className="text-xs text-muted-foreground">{t('dmAllowHint')}</p>
+        </div>
+        <PingSwitch
+          size="small"
+          checked={dmAllow === 'server_members'}
+          disabled={isPending || isError || updatePrivacy.isPending}
+          aria-labelledby="settings-dm-allow-label"
+          data-testid="settings-dm-allow"
+          onChange={(value) => {
+            updatePrivacy.mutate(
+              { dmAllow: value ? 'server_members' : 'none' },
+              { onError: (error) => pingToast.error(errorMessage(error)) },
+            );
+          }}
+        />
       </div>
-      <PingSwitch
-        size="small"
-        checked={dmAllow === 'server_members'}
-        disabled={isPending || updatePrivacy.isPending}
-        aria-labelledby="settings-dm-allow-label"
-        data-testid="settings-dm-allow"
-        onChange={(value) => {
-          updatePrivacy.mutate(
-            { dmAllow: value ? 'server_members' : 'none' },
-            { onError: (error) => pingToast.error(errorMessage(error)) },
-          );
-        }}
-      />
+      {isError && (
+        <div role="alert" className="flex items-center gap-2 text-sm">
+          <p className="text-destructive">{errorMessage(error)}</p>
+          <PingButton
+            size="sm"
+            variant="secondary"
+            disabled={isFetching}
+            onClick={() => void refetch()}
+          >
+            {tc('retry')}
+          </PingButton>
+        </div>
+      )}
     </div>
   );
 }
@@ -54,9 +70,11 @@ function DmAllowSwitch() {
  */
 export function PrivacySection() {
   const t = useTranslations('settings.privacy');
-  const { data: blocks } = useBlockedUsers();
+  const tc = useTranslations('common');
+  const errorMessage = useErrorMessage();
+  const query = useBlockedUsers();
   const unblock = useToggleBlock();
-  const blocked = blocks?.blocked ?? [];
+  const blocked = query.data?.blocked ?? [];
 
   return (
     <SettingsSection title={t('title')} hint={t('hint')} testId="settings-privacy">
@@ -65,7 +83,23 @@ export function PrivacySection() {
 
         <section aria-label={t('blockedTitle')} className="flex flex-col">
           <h2 className="text-sm font-semibold">{t('blockedTitle')}</h2>
-          {blocked.length === 0 ? (
+          {query.isPending ? (
+            <p role="status" className="py-3 text-sm text-muted-foreground">
+              {tc('loading')}
+            </p>
+          ) : query.isError ? (
+            <div role="alert" className="flex flex-col items-start gap-2 py-3 text-sm">
+              <p className="text-destructive">{errorMessage(query.error)}</p>
+              <PingButton
+                size="sm"
+                variant="secondary"
+                disabled={query.isFetching}
+                onClick={() => void query.refetch()}
+              >
+                {tc('retry')}
+              </PingButton>
+            </div>
+          ) : blocked.length === 0 ? (
             <p className="py-3 text-sm text-muted-foreground" data-testid="settings-blocked-empty">
               {t('blockedEmpty')}
             </p>
@@ -90,7 +124,12 @@ export function PrivacySection() {
                     title={t('unblockConfirmTitle')}
                     okText={t('unblock')}
                     cancelText={t('cancel')}
-                    onConfirm={() => unblock.mutate({ userId: user.userId, block: false })}
+                    onConfirm={() =>
+                      unblock.mutate(
+                        { userId: user.userId, block: false },
+                        { onError: (error) => pingToast.error(errorMessage(error)) },
+                      )
+                    }
                   >
                     <PingButton
                       size="sm"

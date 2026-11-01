@@ -3,7 +3,10 @@
 import { SETTINGS_DENSITIES, SETTINGS_FONT_SIZES } from '@ping/shared';
 import type { SettingsDensity, SettingsFontSize, SettingsTheme } from '@ping/shared';
 import { useTranslations } from 'use-intl';
+import { PingButton } from '@/components/ui/ping-button';
 import { PingSegmented } from '@/components/ui/ping-segmented';
+import { pingToast } from '@/components/ui/ping-toast';
+import { useErrorMessage } from '@/lib/error-message';
 import { palette } from '@/lib/theme';
 import { usePatchSettings, useUserSettings } from '../hooks';
 import { SettingsSection } from './settings-section';
@@ -39,13 +42,26 @@ function ThemePreview({ mode }: { mode: 'light' | 'dark' | 'system' }) {
  */
 export function AppearanceSection() {
   const t = useTranslations('settings.appearance');
+  const tc = useTranslations('common');
+  const errorMessage = useErrorMessage();
   const patch = usePatchSettings();
   // Giá trị hiện hành từ cache (PATCH ghi optimistically nên segmented đổi ngay khi bấm).
-  const { data: settings } = useUserSettings();
+  const { data: settings, isError, refetch } = useUserSettings();
+  // PATCH hoàn nguyên giá trị cũ khi lỗi; báo toast để người dùng biết lựa chọn chưa lưu được.
+  const save = (values: Parameters<typeof patch.mutate>[0]) =>
+    patch.mutate(values, { onError: (error) => pingToast.error(errorMessage(error)) });
 
   return (
     <SettingsSection title={t('title')} hint={t('hint')} testId="settings-appearance">
       <div className="flex max-w-xl flex-col gap-4">
+        {isError && (
+          <div role="alert" className="flex items-center gap-3 text-sm text-destructive">
+            {t('loadFailed')}
+            <PingButton size="sm" variant="secondary" onClick={() => void refetch()}>
+              {tc('retry')}
+            </PingButton>
+          </div>
+        )}
         <div className="flex flex-col gap-2">
           <span className="text-sm font-medium" id="settings-theme-label">
             {t('theme')}
@@ -82,7 +98,7 @@ export function AppearanceSection() {
                 ),
               },
             ]}
-            onChange={(value) => patch.mutate({ theme: value as SettingsTheme })}
+            onChange={(value) => save({ theme: value as SettingsTheme })}
           />
           <p className="text-xs text-muted-foreground">{t('themeHint')}</p>
         </div>
@@ -102,7 +118,7 @@ export function AppearanceSection() {
                 </span>
               ),
             }))}
-            onChange={(value) => patch.mutate({ density: value as SettingsDensity })}
+            onChange={(value) => save({ density: value as SettingsDensity })}
           />
           <p className="text-xs text-muted-foreground">{t('densityHint')}</p>
         </div>
@@ -126,7 +142,7 @@ export function AppearanceSection() {
                 </span>
               ),
             }))}
-            onChange={(value) => patch.mutate({ fontSize: value as SettingsFontSize })}
+            onChange={(value) => save({ fontSize: value as SettingsFontSize })}
           />
           <p className="text-xs text-muted-foreground">{t('fontSizeHint')}</p>
         </div>

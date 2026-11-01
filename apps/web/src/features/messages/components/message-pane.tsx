@@ -375,6 +375,7 @@ export function MessagePane({
       )}
       <div
         ref={scrollRef}
+        data-testid="message-scroll"
         className="min-h-0 flex-1 overflow-y-auto"
         aria-label={
           isDm ? t('dmListLabel', { name: channelName }) : t('listLabel', { channel: channelName })
@@ -463,7 +464,12 @@ export function MessagePane({
       )}
 
       <TypingIndicator channelId={channelId} />
-      <div aria-live="polite" aria-atomic="true" className="sr-only">
+      <div
+        aria-live="polite"
+        aria-atomic="true"
+        className="sr-only"
+        data-testid="message-announcer"
+      >
         {announcement}
       </div>
       <MessageComposer

@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { pingToast } from '@/components/ui/ping-toast';
 import { useLeaveServer, useServer } from '@/features/servers/hooks';
 import { useServerAbility } from '@/features/permissions/context';
+import { useMobileNav } from '@/features/shell/store';
 import { useErrorMessage } from '@/lib/error-message';
 import { ChannelNavigation } from './channel-navigation';
 
@@ -19,6 +20,7 @@ export function ChannelSidebar() {
   const { data: server } = useServer(serverId);
   const { ability } = useServerAbility();
   const leaveMutation = useLeaveServer();
+  const mobileNavOpen = useMobileNav((state) => state.open);
   const t = useTranslations();
   const errorMessage = useErrorMessage();
 
@@ -44,7 +46,14 @@ export function ChannelSidebar() {
   }
 
   return (
-    <aside className="flex w-60 shrink-0 flex-col bg-sidebar text-sidebar-foreground">
+    <aside
+      data-mobile-nav
+      className={`flex min-h-0 w-60 shrink-0 flex-col bg-sidebar text-sidebar-foreground max-md:absolute max-md:inset-y-0 max-md:left-18 max-md:z-30 max-md:shadow-xl max-md:transition-transform max-md:duration-200 ${
+        mobileNavOpen
+          ? 'max-md:visible max-md:translate-x-0'
+          : 'max-md:invisible max-md:-translate-x-full'
+      }`}
+    >
       <header className="flex h-12 shrink-0 flex-col justify-center border-b border-sidebar-border px-4 shadow-xs">
         <h2 className="truncate font-semibold">{server.name}</h2>
         <div className="flex items-center gap-1">

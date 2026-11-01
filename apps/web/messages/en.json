@@ -22,6 +22,8 @@
     "processing": "Working…",
     "create": "Create",
     "close": "Close",
+    "openNavigation": "Open navigation",
+    "closeNavigation": "Close navigation",
     "retry": "Retry",
     "goHome": "Go home",
     "language": "Language",
@@ -30,6 +32,13 @@
       "en": "English"
     },
     "noResults": "No results"
+  },
+  "quickSwitcher": {
+    "title": "Quick switcher",
+    "placeholder": "Search servers, channels or DMs…",
+    "servers": "Server",
+    "dms": "Direct messages",
+    "channels": "Channel"
   },
   "auth": {
     "loginTitle": "Sign in",
@@ -237,6 +246,7 @@
     "stickerProcessing": "Validating file…",
     "stickerName": "Sticker name",
     "stickerTags": "Search tags (comma-separated)",
+    "stickerTagsPlaceholder": "hello, happy",
     "stickerCreate": "Add sticker",
     "stickerCreated": "Sticker added.",
     "stickerDeleted": "Sticker deleted.",
@@ -315,6 +325,7 @@
     "noPermissionCreate": "You don't have permission to create channels.",
     "notFound": "This channel does not exist.",
     "empty": "This server has no channels yet.",
+    "emptyManage": "No channels yet — use the button below to create the first one.",
     "rename": "Rename channel",
     "noPermissionManage": "You don't have permission to manage channels.",
     "created": "Channel created.",
@@ -373,6 +384,8 @@
     "emptyAction": "Send the first message",
     "newDivider": "New",
     "spoiler": "Hidden content, click to reveal",
+    "codeBlockLabel": "Code block",
+    "emojiLabel": "Emoji",
     "reply": "Reply",
     "replyingTo": "Replying to {author}",
     "cancelReply": "Cancel reply",
@@ -441,6 +454,7 @@
     "suggestionsLabel": "Emoji suggestions",
     "tabServerEmoji": "Server",
     "noServerEmojis": "No custom emojis in this server yet.",
+    "serverEmojisLoadFailed": "Could not load this server's emojis.",
     "pickCustomEmoji": "Insert emoji {name}"
   },
   "landing": {
@@ -531,6 +545,7 @@
     "open": "Pick a sticker",
     "search": "Search stickers",
     "searchPlaceholder": "Search by name or tag…",
+    "loadFailed": "Could not load stickers.",
     "tabsLabel": "Sticker tabs",
     "tabRecent": "Recent",
     "tabSystem": "System",
@@ -574,6 +589,8 @@
     "blockConfirm": "Block {name}?",
     "blockHint": "Neither of you will be able to message the other in the existing DM, and no new DM can be created.",
     "unblockConfirm": "Unblock {name}?",
+    "blockedToast": "Blocked {name}.",
+    "unblockedToast": "Unblocked {name}.",
     "blockedBanner": "You can't message this person right now."
   },
   "notifications": {
@@ -584,6 +601,7 @@
     "levelAll": "All",
     "levelMentions": "Mentions only",
     "levelNone": "Off",
+    "prefsLoadFailed": "Could not load notification settings.",
     "serverDefaultHint": "Following the server default",
     "globalDefaultHint": "Following the global default",
     "muteLabel": "Mute for a while",
@@ -659,7 +677,8 @@
       "fontSizeHint": "Base font size of the interface; message content inherits it.",
       "fontSizeSm": "Small",
       "fontSizeMd": "Medium",
-      "fontSizeLg": "Large"
+      "fontSizeLg": "Large",
+      "loadFailed": "Could not load appearance settings."
     },
     "language": {
       "title": "Language",
@@ -684,6 +703,7 @@
       "serverLevels": "Per-server levels",
       "serverLevelsHint": "The global default is “All”; changing it here applies to every channel of the server.",
       "serverDefaultHint": "Following the global default",
+      "serversEmpty": "You have not joined any server yet.",
       "channelOverrides": "Channel overrides",
       "channelOverridesHint": "Channels that set their own level, different from the server's.",
       "channelOverridesEmpty": "No channel overrides the server level yet.",

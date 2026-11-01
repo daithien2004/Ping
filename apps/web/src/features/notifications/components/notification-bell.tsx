@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button';
 import { PingPopover } from '@/components/ui/ping-popover';
 import { PingSegmented } from '@/components/ui/ping-segmented';
 import { PingSwitch } from '@/components/ui/ping-switch';
+import { pingToast } from '@/components/ui/ping-toast';
+import { useErrorMessage } from '@/lib/error-message';
 import { useNotificationPrefs, useSetNotificationPref } from '../hooks';
 import { findPref, remainingMuteMinutes } from '../notification-cache';
 import { readIgnoreEveryone, writeIgnoreEveryone } from '../notify-storage';
@@ -42,12 +44,15 @@ export function NotificationBell({
   dm?: boolean;
 }) {
   const t = useTranslations('notifications');
-  const { data } = useNotificationPrefs();
+  const tc = useTranslations('common');
+  const errorMessage = useErrorMessage();
+  const { data, isError, refetch } = useNotificationPrefs();
   const prefs = data?.prefs ?? [];
   const setPref = useSetNotificationPref('channel');
   const [open, setOpen] = useState(false);
   // Popover chỉ dựng nội dung sau lần mở đầu tiên nên đọc localStorage lúc này là an toàn (client).
   const [ignoreEveryone, setIgnoreEveryone] = useState(() => readIgnoreEveryone());
+  const onError = (error: unknown) => pingToast.error(errorMessage(error));
 
   const row = findPref(prefs, 'channel', channelId);
   const serverRow = serverId === null ? undefined : findPref(prefs, 'server', serverId);
@@ -60,14 +65,20 @@ export function NotificationBell({
 
   /** Đổi mức: giữ mute của CHÍNH kênh (nếu có), không kế thừa mute server vào dòng override. */
   function changeLevel(next: NotifyLevel) {
-    setPref.mutate({ targetId: channelId, level: next, mutedUntil: row?.mutedUntil ?? null });
+    setPref.mutate(
+      { targetId: channelId, level: next, mutedUntil: row?.mutedUntil ?? null },
+      { onError },
+    );
   }
   /** Mute: gửi kèm mức hiện hành để dòng prefs luôn tự đủ, không phụ thuộc thay đổi song song. */
   function muteFor(minutes: number) {
-    setPref.mutate({ targetId: channelId, level, mutedUntil: muteUntilFromNow(minutes) });
+    setPref.mutate(
+      { targetId: channelId, level, mutedUntil: muteUntilFromNow(minutes) },
+      { onError },
+    );
   }
   function unmute() {
-    setPref.mutate({ targetId: channelId, level, mutedUntil: null });
+    setPref.mutate({ targetId: channelId, level, mutedUntil: null }, { onError });
   }
 
   return (
@@ -87,6 +98,14 @@ export function NotificationBell({
           className="flex w-64 flex-col gap-2"
         >
           <p className="text-sm font-semibold">{t('title')}</p>
+          {isError ? (
+            <div role="alert" className="flex items-center gap-2 text-xs text-destructive">
+              {t('prefsLoadFailed')}
+              <Button variant="outline" size="sm" onClick={() => void refetch()}>
+                {tc('retry')}
+              </Button>
+            </div>
+          ) : null}
           <PingSegmented
             aria-label={t('levelLabel')}
             value={level}

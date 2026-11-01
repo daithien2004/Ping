@@ -246,9 +246,17 @@ function RolesSection({ serverId, enabled }: { serverId: string; enabled: boolea
       <h2 className="text-lg font-semibold">{t('roles')}</h2>
       {query.isPending && <p className="text-sm text-muted-foreground">{tc('loading')}</p>}
       {query.isError && (
-        <p role="alert" className="text-sm text-destructive">
-          {t('rolesLoadFailed')}
-        </p>
+        <div role="alert" className="flex flex-col items-start gap-2 text-sm text-destructive">
+          <p>{t('rolesLoadFailed')}</p>
+          <PingButton
+            variant="secondary"
+            size="sm"
+            disabled={query.isFetching}
+            onClick={() => void query.refetch()}
+          >
+            {tc('retry')}
+          </PingButton>
+        </div>
       )}
       {query.data && <RoleEditor serverId={serverId} roles={query.data} />}
     </section>
@@ -354,13 +362,26 @@ function MembersSection({
   return (
     <section aria-label={t('members')} className="flex flex-col gap-3">
       <h2 className="text-lg font-semibold">{t('members')}</h2>
+      {query.isError && (
+        <div role="alert" className="flex flex-col items-start gap-2 text-sm text-destructive">
+          <p>{errorMessage(query.error)}</p>
+          <PingButton
+            variant="secondary"
+            size="sm"
+            disabled={query.isFetching}
+            onClick={() => void query.refetch()}
+          >
+            {tc('retry')}
+          </PingButton>
+        </div>
+      )}
       <PingTable
         label={t('members')}
         columns={columns}
-        rows={members}
+        rows={query.isError ? [] : members}
         rowKey={(row) => row.id}
         loading={query.isPending}
-        empty={<PingEmpty description={t('membersEmpty')} />}
+        empty={query.isError ? null : <PingEmpty description={t('membersEmpty')} />}
       />
     </section>
   );

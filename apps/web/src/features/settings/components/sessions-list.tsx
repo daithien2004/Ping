@@ -19,7 +19,7 @@ export function SessionsList() {
   const tc = useTranslations('common');
   const locale = useLocale();
   const errorMessage = useErrorMessage();
-  const { data: sessions, isPending } = useSessions();
+  const { data: sessions, isPending, isError, error, refetch, isFetching } = useSessions();
   const revoke = useRevokeSession();
   const revokeOthers = useRevokeOtherSessions();
   const list = sessions ?? [];
@@ -54,6 +54,18 @@ export function SessionsList() {
 
       {isPending ? (
         <p className="py-3 text-sm text-muted-foreground">{tc('loading')}</p>
+      ) : isError ? (
+        <div role="alert" className="flex flex-col items-start gap-2 py-3 text-sm">
+          <p className="text-destructive">{errorMessage(error)}</p>
+          <PingButton
+            size="sm"
+            variant="secondary"
+            disabled={isFetching}
+            onClick={() => void refetch()}
+          >
+            {tc('retry')}
+          </PingButton>
+        </div>
       ) : list.length === 0 ? (
         <p className="py-3 text-sm text-muted-foreground" data-testid="settings-sessions-empty">
           {t('sessionsEmpty')}

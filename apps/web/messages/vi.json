@@ -22,6 +22,8 @@
     "processing": "Đang xử lý…",
     "create": "Tạo",
     "close": "Đóng",
+    "openNavigation": "Mở điều hướng",
+    "closeNavigation": "Đóng điều hướng",
     "retry": "Thử lại",
     "goHome": "Về trang chủ",
     "language": "Ngôn ngữ",
@@ -30,6 +32,13 @@
       "en": "English"
     },
     "noResults": "Không tìm thấy"
+  },
+  "quickSwitcher": {
+    "title": "Chuyển nhanh",
+    "placeholder": "Tìm server, kênh hoặc DM…",
+    "servers": "Server",
+    "dms": "Tin nhắn trực tiếp",
+    "channels": "Kênh"
   },
   "auth": {
     "loginTitle": "Đăng nhập",
@@ -237,6 +246,7 @@
     "stickerProcessing": "Đang kiểm định tệp…",
     "stickerName": "Tên sticker",
     "stickerTags": "Thẻ tìm kiếm (cách nhau bằng dấu phẩy)",
+    "stickerTagsPlaceholder": "hello, vui",
     "stickerCreate": "Thêm sticker",
     "stickerCreated": "Đã thêm sticker.",
     "stickerDeleted": "Đã xóa sticker.",
@@ -315,6 +325,7 @@
     "noPermissionCreate": "Bạn không có quyền tạo channel.",
     "notFound": "Channel không tồn tại.",
     "empty": "Server chưa có channel nào.",
+    "emptyManage": "Chưa có channel nào — dùng nút bên dưới để tạo channel đầu tiên.",
     "rename": "Đổi tên channel",
     "noPermissionManage": "Bạn không có quyền quản lý channel.",
     "created": "Đã tạo channel.",
@@ -373,6 +384,8 @@
     "emptyAction": "Gửi tin đầu tiên",
     "newDivider": "Tin mới",
     "spoiler": "Nội dung bị che, bấm để xem",
+    "codeBlockLabel": "Khối mã",
+    "emojiLabel": "Emoji",
     "reply": "Trả lời",
     "replyingTo": "Đang trả lời {author}",
     "cancelReply": "Hủy trả lời",
@@ -441,6 +454,7 @@
     "suggestionsLabel": "Gợi ý emoji",
     "tabServerEmoji": "Của server",
     "noServerEmojis": "Server chưa có emoji nào.",
+    "serverEmojisLoadFailed": "Không tải được emoji của server.",
     "pickCustomEmoji": "Chèn emoji {name}"
   },
   "landing": {
@@ -531,6 +545,7 @@
     "open": "Chọn sticker",
     "search": "Tìm sticker",
     "searchPlaceholder": "Tìm theo tên hoặc thẻ…",
+    "loadFailed": "Không tải được sticker.",
     "tabsLabel": "Nhóm sticker",
     "tabRecent": "Gần đây",
     "tabSystem": "Hệ thống",
@@ -574,6 +589,8 @@
     "blockConfirm": "Chặn {name}?",
     "blockHint": "Cả hai sẽ không gửi được tin cho nhau trong DM hiện có và không thể tạo DM mới.",
     "unblockConfirm": "Bỏ chặn {name}?",
+    "blockedToast": "Đã chặn {name}.",
+    "unblockedToast": "Đã bỏ chặn {name}.",
     "blockedBanner": "Bạn không thể nhắn tin cho người này lúc này."
   },
   "notifications": {
@@ -584,6 +601,7 @@
     "levelAll": "Tất cả",
     "levelMentions": "Chỉ đề cập",
     "levelNone": "Tắt",
+    "prefsLoadFailed": "Không tải được cài đặt thông báo.",
     "serverDefaultHint": "Đang theo mặc định server",
     "globalDefaultHint": "Đang theo mặc định chung",
     "muteLabel": "Tạm tắt tiếng",
@@ -659,7 +677,8 @@
       "fontSizeHint": "Cỡ chữ cơ sở của giao diện; nội dung tin nhắn kế thừa.",
       "fontSizeSm": "Nhỏ",
       "fontSizeMd": "Vừa",
-      "fontSizeLg": "To"
+      "fontSizeLg": "To",
+      "loadFailed": "Không tải được cài đặt giao diện."
     },
     "language": {
       "title": "Ngôn ngữ",
@@ -684,6 +703,7 @@
       "serverLevels": "Mức theo server",
       "serverLevelsHint": "Mặc định chung là «Tất cả»; đổi tại đây áp dụng cho mọi kênh của server.",
       "serverDefaultHint": "Đang theo mặc định chung",
+      "serversEmpty": "Bạn chưa tham gia server nào.",
       "channelOverrides": "Ghi đè theo kênh",
       "channelOverridesHint": "Các kênh đang đặt mức riêng, khác mức của server.",
       "channelOverridesEmpty": "Chưa có kênh nào ghi đè mức của server.",

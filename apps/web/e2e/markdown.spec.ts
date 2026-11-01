@@ -65,7 +65,7 @@ test('markdown: formatting renders, XSS payloads are inert, mention chip, spoile
       await expect(link).toBeVisible();
       expect(await link.getAttribute('rel')).toBe('noopener noreferrer nofollow');
       expect(await link.getAttribute('target')).toBe('_blank');
-      await expect(page.getByLabel('code').first()).toContainText('<script>');
+      await expect(page.getByLabel('Khối mã').first()).toContainText('<script>');
     });
 
     await test.step('payload XSS chỉ là văn bản thuần', async () => {

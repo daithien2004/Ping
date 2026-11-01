@@ -45,6 +45,8 @@ export function PingTable<T>({
       loading={loading}
       locale={{ emptyText: empty }}
       pagination={false}
+      // Bảng quản trị giữ nguyên cột; màn hẹp cuộn ngang thay vì bóp nội dung (T6.8).
+      scroll={{ x: 'max-content' }}
       columns={columns.map((column) => ({
         key: column.key,
         title: column.header,

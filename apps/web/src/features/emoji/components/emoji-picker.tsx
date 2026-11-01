@@ -73,6 +73,7 @@ export function EmojiPicker({
   onPickCustom?: (token: string) => void;
 }) {
   const t = useTranslations('emoji');
+  const tc = useTranslations('common');
   const [query, setQuery] = useState('');
   const [tab, setTab] = useState<EmojiTab>('recent');
   const [tone, setTone] = useState(0); // 0 = mặc định; 1-5 = Fitzpatrick modifier
@@ -84,7 +85,7 @@ export function EmojiPicker({
   const gridRef = useRef<HTMLDivElement>(null);
   // Emoji server (TG.24): cùng query với renderer và màn quản trị (cache chia sẻ, event
   // `expressions.updated` invalidate — tab tự cập nhật khi có emoji mới).
-  const { data: emojiData } = useEmojis(serverId ?? '');
+  const { data: emojiData, isError, refetch, isFetching } = useEmojis(serverId ?? '');
   const serverEmojis = useMemo(() => emojiData?.emojis ?? [], [emojiData]);
   // Tách hai mảng kết quả (hệ thống / server) để TS không hợp nhất kiểu phần tử.
   const serverVisible = useMemo(() => {
@@ -193,7 +194,22 @@ export function EmojiPicker({
         ))}
       </div>
       {tab === 'server' ? (
-        serverVisible.length === 0 ? (
+        isError ? (
+          <div
+            role="alert"
+            className="flex flex-col items-center gap-2 py-4 text-sm text-destructive"
+          >
+            <p>{t('serverEmojisLoadFailed')}</p>
+            <button
+              type="button"
+              disabled={isFetching}
+              onClick={() => void refetch()}
+              className="rounded border px-2 py-0.5 text-xs text-foreground transition-colors hover:bg-accent disabled:opacity-50"
+            >
+              {tc('retry')}
+            </button>
+          </div>
+        ) : serverVisible.length === 0 ? (
           <p className="py-6 text-center text-sm text-muted-foreground">
             {serverEmojis.length === 0 ? t('noServerEmojis') : t('noResults')}
           </p>

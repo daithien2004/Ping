@@ -92,6 +92,11 @@ export function SelfProfileCard() {
           </span>
         ) : null}
       </div>
+      {upload.error ? (
+        <p role="alert" className="text-xs text-destructive" data-testid="avatar-upload-error">
+          {errorMessage(upload.error)}
+        </p>
+      ) : null}
       <label className="flex flex-col gap-1 text-xs text-muted-foreground">
         {t('displayName')}
         <PingInput
@@ -167,6 +172,18 @@ export function MemberProfileCard({
       },
       onError: (error) => pingToast.error(errorMessage(error)),
     });
+  }
+
+  /** Chặn/bỏ chặn hai chiều — báo toast để người dùng biết trạng thái mới đã lưu. */
+  function setBlocked(block: boolean) {
+    toggleBlock.mutate(
+      { userId: member.user.id, block },
+      {
+        onSuccess: () =>
+          pingToast.success(block ? td('blockedToast', { name }) : td('unblockedToast', { name })),
+        onError: (error) => pingToast.error(errorMessage(error)),
+      },
+    );
   }
 
   return (
@@ -257,7 +274,7 @@ export function MemberProfileCard({
             // Bỏ chặn: xác nhận nhẹ, hành động mở lại tin nhắn cho cả hai chiều.
             <PingPopconfirm
               title={td('unblockConfirm', { name })}
-              onConfirm={() => toggleBlock.mutate({ userId: member.user.id, block: false })}
+              onConfirm={() => setBlocked(false)}
               okText={td('unblock')}
               cancelText={td('cancel')}
             >
@@ -270,7 +287,7 @@ export function MemberProfileCard({
             <PingPopconfirm
               title={td('blockConfirm', { name })}
               description={td('blockHint')}
-              onConfirm={() => toggleBlock.mutate({ userId: member.user.id, block: true })}
+              onConfirm={() => setBlocked(true)}
               okText={td('block')}
               cancelText={td('cancel')}
             >

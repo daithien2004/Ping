@@ -58,6 +58,8 @@ export default defineConfig([
       'src/features/channels/components/channel-redirect.tsx',
       // TG.9: cột hội thoại DM là component layout của /dms (như ChannelSidebar của server).
       'src/features/dms/components/dm-sidebar.tsx',
+      // T6.10: quick switcher gắn trong AppShell, cần server của URL hiện tại cho nhóm kênh.
+      'src/features/shell/components/quick-switcher-host.tsx',
     ],
     rules: { 'no-restricted-imports': ['error', { patterns: [noApp] }] },
   },
@@ -115,6 +117,8 @@ export default defineConfig([
       'src/features/channels/components/channel-redirect.tsx',
       // TG.9: cột hội thoại DM là component layout của /dms (như ChannelSidebar của server).
       'src/features/dms/components/dm-sidebar.tsx',
+      // T6.10: quick switcher gắn trong AppShell, cần server của URL hiện tại cho nhóm kênh.
+      'src/features/shell/components/quick-switcher-host.tsx',
     ],
     rules: {
       'no-restricted-imports': [

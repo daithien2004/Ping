@@ -87,6 +87,11 @@ export function ServerNameForm({ server }: { server: ServerDetail }) {
                 : t('serverIconUploading', { percent: icon.progress })}
             </span>
           ) : null}
+          {icon.error ? (
+            <p role="alert" className="text-xs text-destructive" data-testid="server-icon-error">
+              {errorMessage(icon.error)}
+            </p>
+          ) : null}
         </div>
       </div>
       <PingForm

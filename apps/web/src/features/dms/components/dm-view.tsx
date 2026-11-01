@@ -44,14 +44,34 @@ export function DmView({
   const { channelId } = use(params);
   const query = use(searchParams ?? EMPTY_QUERY);
   const focusId = focusIdProp ?? (typeof query.m === 'string' ? query.m : null);
-  const { data: dms, isPending, isSuccess } = useDms();
+  const { data: dms, isPending, isSuccess, isError, error, refetch, isFetching } = useDms();
   // Dữ liệu DM lấy từ GET /dms (một nguồn duy nhất — header, rail và badge cùng cache).
   const dm = dms?.find((row) => row.channelId === channelId);
   const t = useTranslations('dms');
+  const tc = useTranslations('common');
+  const errorMessage = useErrorMessage();
 
   let content: ReactNode;
   if (isPending) {
     content = <Loading />;
+  } else if (isError) {
+    content = (
+      <div
+        role="alert"
+        className="m-auto flex flex-col items-center gap-3 px-4 text-center text-sm"
+      >
+        <p className="text-destructive">{errorMessage(error)}</p>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={isFetching}
+          onClick={() => void refetch()}
+          data-testid="dm-retry"
+        >
+          {tc('retry')}
+        </Button>
+      </div>
+    );
   } else if (isSuccess && !dm) {
     // IDOR an toàn: DM của người khác chỉ "không tìm thấy" (API trả 404, không lộ tồn tại).
     content = <p className="m-auto text-sm text-muted-foreground">{t('notFound')}</p>;
