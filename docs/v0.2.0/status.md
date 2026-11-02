@@ -146,3 +146,8 @@ PR1 "nền UI bám Discord" và PR2 "skin Pixel" chốt cùng một lượt trê
   `/unread` bão hoà 6 kết nối HTTP/1.1 và ăn 429, không phải lỗi app.
 - Ghi chú: bộ baseline `linux/` do job CI `visual` bootstrap ở lần chạy đầu rồi upload artifact để
   commit; chưa có baseline macOS. Skin là lựa chọn theo thiết bị (cookie), không theo tài khoản.
+- CI sau merge: run **41403373663** (`d03174e`) đỏ ở `verify` → `pnpm lint` bắt
+  `PingLabel` thiếu liên kết control (`htmlFor` nằm trong props spread, rule không thấy); sửa
+  `d7b51c9` (truyền thẳng `htmlFor` xuống `<label>`). Run **41404822226** (`d7b51c9`) xanh
+  `verify`/`security`/`docker`/`lighthouse`/`web-e2e-gate` (đủ 3 shard)/`visual`; `api-e2e`,
+  `drills`, `migrations` skip theo bộ lọc vùng thay đổi. Lint gốc vẫn 0 error / 14 warning cũ.
