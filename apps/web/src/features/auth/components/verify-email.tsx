@@ -158,11 +158,9 @@ function ResendSection({ open, onOpen }: { open: boolean; onOpen: () => void }) 
 function BackToLoginLink() {
   const t = useTranslations('auth');
   return (
-    <Link
-      href="/login"
-      className="text-sm font-medium text-link underline-offset-4 hover:underline"
-    >
-      {t('backToLogin')}
+    <Link href="/login" className="text-sm font-medium underline-offset-4 hover:underline">
+      {/* Màu ở span con: antd tô <a> bằng màu link tự sinh, đè class text-* trên Link. */}
+      <span className="text-link">{t('backToLogin')}</span>
     </Link>
   );
 }

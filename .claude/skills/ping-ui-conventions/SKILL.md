@@ -4,7 +4,8 @@ description: Viết hoặc review màn hình, component, theme, i18n và trải 
 ---
 
 Đọc apps/web/CLAUDE.md, ADR-0023/0029 và ADR UI mới nếu đã accepted. Kiểm đúng Next/React/CSP
-đang dùng. Hiện shadcn/globals.css vẫn là nguồn thật; TF mới chuyển antd/Ping sau ADR và spike.
+đang dùng. Component nền tảng là antd 6 bọc thành `Ping*`; nguồn token duy nhất là
+`apps/web/src/lib/theme/tokens.ts`, sinh ra `styles/tokens.generated.css` (không sửa tay).
 
 Checklist sau khi bộ Ping được duyệt: feature dùng Ping* với Props riêng; antd chỉ trong
 components/ui; wrapper mỏng, ref/test-id, hover/focus/active/disabled/loading, ARIA; token dùng

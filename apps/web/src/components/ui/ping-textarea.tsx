@@ -1,59 +1,21 @@
 'use client';
 
 import { Input } from 'antd';
-import { forwardRef } from 'react';
+import { forwardRef, type ComponentProps } from 'react';
 
-export interface PingTextAreaProps {
-  value?: string;
-  onChange?: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
-  onKeyDown?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
-  onDragOver?: (e: React.DragEvent<HTMLTextAreaElement>) => void;
-  onDrop?: (e: React.DragEvent<HTMLTextAreaElement>) => void;
-  placeholder?: string;
-  rows?: number;
-  disabled?: boolean;
-  className?: string;
-  autoSize?: boolean | { minRows?: number; maxRows?: number };
-  maxLength?: number;
-  'aria-label'?: string;
+/** Truyền nguyên props của antd TextArea (id, aria-invalid, value, onChange…); chỉ thêm testid. */
+export type PingTextAreaProps = ComponentProps<typeof Input.TextArea> & {
   'data-testid'?: string;
-}
+};
 
 export const PingTextArea = forwardRef<HTMLTextAreaElement, PingTextAreaProps>(
-  function PingTextArea(
-    {
-      value,
-      onChange,
-      onKeyDown,
-      onDragOver,
-      onDrop,
-      placeholder,
-      rows = 3,
-      disabled,
-      className,
-      autoSize,
-      maxLength,
-      'aria-label': ariaLabel,
-      'data-testid': testId,
-    },
-    ref,
-  ) {
+  function PingTextArea({ className, 'data-testid': testId, ...rest }, ref) {
     return (
       <Input.TextArea
         ref={ref as never}
-        value={value}
-        onChange={onChange}
-        onKeyDown={onKeyDown}
-        onDragOver={onDragOver}
-        onDrop={onDrop}
-        placeholder={placeholder}
-        rows={rows}
-        disabled={disabled}
         className={className}
-        autoSize={autoSize}
-        maxLength={maxLength}
-        aria-label={ariaLabel}
-        data-testid={testId}
+        data-testid={testId ?? 'ping-textarea'}
+        {...rest}
       />
     );
   },

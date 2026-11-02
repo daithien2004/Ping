@@ -2,9 +2,10 @@
 
 import { PinOff } from 'lucide-react';
 import { useFormatter, useTranslations } from 'use-intl';
-import { Button } from '@/components/ui/button';
+import { PingButton } from '@/components/ui/ping-button';
+import { PingIconButton } from '@/components/ui/ping-icon-button';
+import { PingSkeleton } from '@/components/ui/ping-skeleton';
 import { pingToast } from '@/components/ui/ping-toast';
-import { Skeleton } from '@/components/ui/skeleton';
 import { useServerAbility } from '@/features/permissions/context';
 import { errorReference } from '@/lib/error-reference';
 import { useErrorMessage } from '@/lib/error-message';
@@ -38,7 +39,7 @@ export function PinnedPanel({
     <aside
       aria-label={t('pinnedTitle')}
       data-testid="pinned-panel"
-      className="flex w-72 shrink-0 flex-col gap-1 overflow-y-auto border-l bg-sidebar p-2 max-lg:absolute max-lg:top-12 max-lg:right-0 max-lg:bottom-0 max-lg:z-20 max-lg:shadow-xl"
+      className="flex w-72 shrink-0 flex-col gap-1 overflow-y-auto border-l bg-sidebar p-2 max-lg:absolute max-lg:top-12 max-lg:right-0 max-lg:bottom-0 max-lg:z-20 max-lg:shadow-overlay"
     >
       <h2 className="px-2 py-1 text-sm font-semibold">{t('pinnedTitle')}</h2>
       {query.isPending && (
@@ -50,8 +51,8 @@ export function PinnedPanel({
         >
           {[0, 1, 2].map((index) => (
             <div key={index} className="flex flex-col gap-1">
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-3 w-full" />
+              <PingSkeleton block className="h-4 w-24" />
+              <PingSkeleton block className="h-3 w-full" />
             </div>
           ))}
         </div>
@@ -66,14 +67,14 @@ export function PinnedPanel({
               </code>
             </p>
           )}
-          <Button
-            variant="outline"
-            size="xs"
+          <PingButton
+            variant="secondary"
+            size="sm"
             disabled={query.isFetching}
             onClick={() => void query.refetch()}
           >
             {tc('retry')}
-          </Button>
+          </PingButton>
         </div>
       )}
       {!query.isPending && !query.isError && pins.length === 0 && (
@@ -107,11 +108,10 @@ export function PinnedPanel({
               </span>
             </button>
             {canUnpin && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="mt-1 size-7 shrink-0"
+              <PingIconButton
+                icon={<PinOff />}
                 aria-label={t('unpin')}
+                className="mt-1 shrink-0"
                 disabled={!ready || setPinned.isPending}
                 onClick={() =>
                   setPinned.mutate(
@@ -119,9 +119,7 @@ export function PinnedPanel({
                     { onError: (error) => pingToast.error(errorMessage(error)) },
                   )
                 }
-              >
-                <PinOff />
-              </Button>
+              />
             )}
           </li>
         ))}

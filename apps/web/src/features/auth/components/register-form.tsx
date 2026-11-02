@@ -86,11 +86,13 @@ export function RegisterForm() {
         </PingButton>
         <p className="mt-2 text-sm">
           {t('haveAccount')}{' '}
+          {/* Màu ở span con: antd tô <a> bằng màu link nó tự sinh (đậm hơn token, 4,01:1 trên
+              card tối) nên class text-* trên Link bị đè. */}
           <Link
             href={`/login?next=${encodeURIComponent(next)}`}
-            className="font-medium text-link underline-offset-4 hover:underline"
+            className="font-medium underline-offset-4 hover:underline"
           >
-            {t('login')}
+            <span className="text-link">{t('login')}</span>
           </Link>
         </p>
       </PingForm>

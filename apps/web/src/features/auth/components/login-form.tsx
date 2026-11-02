@@ -74,17 +74,16 @@ export function LoginForm() {
           {t('login')}
         </PingButton>
         <div className="mt-2 flex items-center justify-between text-sm">
-          <Link
-            href="/forgot-password"
-            className="font-medium text-link underline-offset-4 hover:underline"
-          >
-            {t('forgotPassword')}
+          {/* Màu ở span con: antd tô <a> bằng màu link nó tự sinh (đậm hơn token, 4,01:1 trên
+              card tối) nên class text-* trên Link bị đè. */}
+          <Link href="/forgot-password" className="font-medium underline-offset-4 hover:underline">
+            <span className="text-link">{t('forgotPassword')}</span>
           </Link>
           <Link
             href={`/register?next=${encodeURIComponent(next)}`}
-            className="font-medium text-link underline-offset-4 hover:underline"
+            className="font-medium underline-offset-4 hover:underline"
           >
-            {t('register')}
+            <span className="text-link">{t('register')}</span>
           </Link>
         </div>
       </PingForm>

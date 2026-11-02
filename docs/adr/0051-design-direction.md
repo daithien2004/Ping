@@ -38,3 +38,28 @@ Xem `apps/web/src/lib/theme/tokens.ts` (được tạo trong T0.7). Token đư�
 - Lint chặn hex/khoảng cách tùy ý ngoài token.
 - `docs/design/direction.md` lưu palette, typography, ví dụ màn hình (sẽ bổ sung khi có mock).
 - Case study frontend dùng ảnh trước/sau theo hướng này.
+
+## Cập nhật 2026-11-02 — bám sát Discord
+
+**Bối cảnh.** OWNER dừng PR nền UI vì giao diện "chưa thật sự bám sát UI Discord", cấp link
+[Discord UI kit (Figma)](https://www.figma.com/design/qFSZpxlNYMr8mmuhyP3oGv/) và phiên đăng nhập
+Discord thật để đo.
+
+**Quyết định.**
+
+- Màu nhấn đổi từ violet-600 `#6558e0` sang **blurple `#5865F2`** (hover `#4752C4`) ở cả hai theme.
+  Chữ trắng trên `#5865F2` = **4,61:1**, vẫn đạt AA; đậm hơn brand-600 của Discord sẽ lệch màu.
+- Bề mặt lấy đúng mã đo từ Discord web: rail/cột kênh `#121214`, chat `#1a1a1e`, composer `#222327`;
+  bản sáng rail `#f3f3f4`, cột kênh `#fbfbfb`, chat `#ffffff`. Riêng sidebar tối giữ `#16161a`
+  (Discord dùng cùng `#121214` cho rail và sidebar) để cổng ba tầng nền còn phân biệt được.
+- Khung đo thành token Tailwind: cột kênh **303 px**, header **49 px**, ô tìm kiếm **244×32**,
+  avatar tin nhắn **40 px**, thụt nội dung **72 px**, nhóm tin cách **16 px**, composer cao
+  **57,6 px**. Cài đặt cá nhân: nav **232 px**, cột nội dung tối đa **740 px** (theo bố cục
+  visual refresh của Discord).
+- Màn đăng nhập theo dạng nền blurple phủ kín + thẻ trắng giữa màn hình.
+
+**Hệ quả.** Toàn bộ 36 ảnh baseline `win32` phải sinh lại; baseline `linux/` xoá để job `visual`
+bootstrap lại theo [ADR-0074](0074-visual-regression-baselines-va-ci.md). Logo, tên sản phẩm và tài
+sản hình ảnh vẫn của Ping — chỉ bảng màu, khung và mật độ lấy Discord làm chuẩn.
+
+Số liệu và nguồn: [ui-system §3](../design/ui-system.md), evidence `v0.2.0/evidence/UI-foundation`.

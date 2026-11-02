@@ -13,6 +13,10 @@ const noApp = {
   group: ['@/app/*', '**/app/*'],
   message: 'app/ chỉ định tuyến; không import từ app/.',
 };
+const noUiKit = {
+  group: ['radix-ui', 'radix-ui/*', '@radix-ui/*', 'shadcn', 'class-variance-authority'],
+  message: 'Chỉ một bộ component: bọc antd thành Ping* (ADR-0075), không dùng lại shadcn/Radix.',
+};
 const noFeatures = {
   group: ['@/features/*', '**/features/*'],
   message: 'components/ và lib/ không phụ thuộc features/ (phụ thuộc một chiều).',
@@ -42,12 +46,17 @@ export default defineConfig([
   // khối trước, nên mỗi khối liệt kê đủ hạn chế của nó.
   {
     files: ['src/**/*.{ts,tsx}'],
-    rules: { 'no-restricted-imports': ['error', { paths: [noUseParams], patterns: [noApp] }] },
+    rules: {
+      'no-restricted-imports': ['error', { paths: [noUseParams], patterns: [noApp, noUiKit] }],
+    },
   },
   {
     files: ['src/components/**', 'src/lib/**'],
     rules: {
-      'no-restricted-imports': ['error', { paths: [noUseParams], patterns: [noApp, noFeatures] }],
+      'no-restricted-imports': [
+        'error',
+        { paths: [noUseParams], patterns: [noApp, noFeatures, noUiKit] },
+      ],
     },
   },
   {
@@ -61,13 +70,12 @@ export default defineConfig([
       // T6.10: quick switcher gắn trong AppShell, cần server của URL hiện tại cho nhóm kênh.
       'src/features/shell/components/quick-switcher-host.tsx',
     ],
-    rules: { 'no-restricted-imports': ['error', { patterns: [noApp] }] },
+    rules: { 'no-restricted-imports': ['error', { patterns: [noApp, noUiKit] }] },
   },
   {
-    // Màu chỉ đi qua token trong globals.css (ADR-0023): cấm class màu thô của Tailwind.
-    // components/ui là code shadcn sinh ra, đã dùng token.
+    // Màu chỉ đi qua token (tokens.ts → globals.css, ADR-0075): cấm class màu thô của Tailwind,
+    // áp cho cả bộ Ping* trong components/ui — wrapper cũng lấy màu từ token, không có ngoại lệ.
     files: ['src/**/*.tsx'],
-    ignores: ['src/components/ui/**'],
     rules: {
       'no-restricted-syntax': [
         'error',
@@ -127,6 +135,7 @@ export default defineConfig([
           paths: [noUseParams],
           patterns: [
             noApp,
+            noUiKit,
             {
               group: ['antd', 'antd/*'],
               message: 'Antd chi duoc import trong components/ui (bo Ping*). (ADR-0050)',

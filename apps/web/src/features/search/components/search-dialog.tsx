@@ -4,7 +4,6 @@ import dynamic from 'next/dynamic';
 import { Search } from 'lucide-react';
 import { Suspense, useState } from 'react';
 import { useTranslations } from 'use-intl';
-import { Button } from '@/components/ui/button';
 
 // Tải lười: chỉ nạp chunk hộp thoại tìm kiếm ở lần mở đầu tiên (T6.10).
 const LazySearchModal = dynamic(
@@ -15,21 +14,25 @@ const LazySearchModal = dynamic(
 /**
  * Nút mở tìm kiếm tin nhắn trong server (T4.6, ADR-0045). Trigger nằm ở header kênh; hộp
  * thoại tách thành chunk riêng để không nằm trong bundle ban đầu.
+ *
+ * Ô tìm kiếm 240×32 như Discord ở màn rộng; dưới `lg` thu về nút icon để header 375 px không
+ * tràn — vẫn một nút nên tên tiếp cận không đổi.
  */
 export function SearchDialog({ serverId }: { serverId: string }) {
   const t = useTranslations('search');
   const [open, setOpen] = useState(false);
   return (
     <>
-      <Button
-        variant="ghost"
-        size="icon"
+      <button
+        type="button"
         aria-label={t('open')}
         aria-expanded={open}
         onClick={() => setOpen(true)}
+        className="flex h-8 w-8 shrink-0 items-center justify-center gap-1.5 rounded-md bg-field px-0 text-sm text-muted-foreground transition-colors hover:text-foreground focus-ring lg:w-61 lg:justify-start lg:px-2"
       >
-        <Search />
-      </Button>
+        <Search className="size-4 shrink-0" />
+        <span className="hidden truncate lg:inline">{t('short')}</span>
+      </button>
       {open && (
         <Suspense fallback={null}>
           <LazySearchModal serverId={serverId} onClose={() => setOpen(false)} />

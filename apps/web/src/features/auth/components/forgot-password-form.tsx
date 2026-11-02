@@ -31,11 +31,9 @@ export function ForgotPasswordForm() {
         <p className="text-sm text-muted-foreground" data-testid="forgot-sent">
           {t('forgotSent')}
         </p>
-        <Link
-          href="/login"
-          className="text-sm font-medium text-link underline-offset-4 hover:underline"
-        >
-          {t('backToLogin')}
+        <Link href="/login" className="text-sm font-medium underline-offset-4 hover:underline">
+          {/* Màu ở span con: antd tô <a> bằng màu link tự sinh, đè class text-* trên Link. */}
+          <span className="text-link">{t('backToLogin')}</span>
         </Link>
       </div>
     );
@@ -68,8 +66,9 @@ export function ForgotPasswordForm() {
         {t('forgotSend')}
       </PingButton>
       <p className="mt-2 text-sm">
-        <Link href="/login" className="font-medium text-link underline-offset-4 hover:underline">
-          {t('backToLogin')}
+        <Link href="/login" className="font-medium underline-offset-4 hover:underline">
+          {/* Màu ở span con: antd tô <a> bằng màu link tự sinh, đè class text-* trên Link. */}
+          <span className="text-link">{t('backToLogin')}</span>
         </Link>
       </p>
     </PingForm>

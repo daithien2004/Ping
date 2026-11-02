@@ -23,6 +23,14 @@
 /docker-compose*.yml                       @daithien2004
 /ops/                                      @daithien2004
 
+# Hệ thống thiết kế web: token là nguồn duy nhất, wrapper Ping*, ảnh baseline
+/apps/web/src/lib/theme/                   @daithien2004
+/apps/web/src/styles/                      @daithien2004
+/apps/web/src/components/ui/               @daithien2004
+/apps/web/scripts/design-audit.mjs         @daithien2004
+/apps/web/scripts/gen-theme-css.mjs        @daithien2004
+/apps/web/visual/__screenshots__/          @daithien2004
+
 # Header bảo mật và CSP của web
 /apps/web/next.config.ts                   @daithien2004
 

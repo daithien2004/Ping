@@ -6,7 +6,8 @@ import { useRouter } from 'next/navigation';
 import { use, useState, type ReactNode } from 'react';
 import { useTranslations } from 'use-intl';
 import { Loading } from '@/components/loading';
-import { Button } from '@/components/ui/button';
+import { PingButton } from '@/components/ui/ping-button';
+import { PingIconButton } from '@/components/ui/ping-icon-button';
 import { PingPopconfirm } from '@/components/ui/ping-popconfirm';
 import { pingToast } from '@/components/ui/ping-toast';
 import { PinnedPanel } from '@/features/messages/components/pinned-panel';
@@ -61,15 +62,15 @@ export function DmView({
         className="m-auto flex flex-col items-center gap-3 px-4 text-center text-sm"
       >
         <p className="text-destructive">{errorMessage(error)}</p>
-        <Button
-          variant="outline"
+        <PingButton
+          variant="secondary"
           size="sm"
           disabled={isFetching}
           onClick={() => void refetch()}
           data-testid="dm-retry"
         >
           {tc('retry')}
-        </Button>
+        </PingButton>
       </div>
     );
   } else if (isSuccess && !dm) {
@@ -123,26 +124,20 @@ function DmConversation({ dm, focusId }: { dm: DmSummary; focusId: string | null
 
   return (
     <DmAbilityProvider partnerId={dm.partner.id}>
-      <header
-        data-testid="dm-header"
-        className="flex h-12 shrink-0 items-center gap-2 border-b px-4 shadow-xs"
-      >
+      <header data-testid="dm-header" className="flex h-header shrink-0 items-center gap-2 px-4">
         <UserAvatar name={dm.partner.displayName} avatarUrl={dm.partner.avatarUrl} size="sm" />
         <p className="truncate font-semibold">{dm.partner.displayName}</p>
         <span className="truncate text-xs text-muted-foreground">@{dm.partner.username}</span>
         <div className="ml-auto flex items-center gap-1">
           {/* TG.12: DM không có dòng server — chuông đặt mức/mute riêng cho hội thoại này. */}
           <NotificationBell serverId={null} channelId={dm.channelId} dm />
-          <Button
-            variant="ghost"
-            size="icon"
+          <PingIconButton
+            icon={<Pin />}
             aria-pressed={pinsOpen}
             aria-label={tm(pinsOpen ? 'pinnedHide' : 'pinnedShow')}
             data-testid="pins-toggle"
             onClick={() => setPinsOpen((open) => !open)}
-          >
-            <Pin />
-          </Button>
+          />
           {blocked ? (
             // Bỏ chặn: xác nhận nhẹ — không phải hành động nguy hiểm như chặn.
             <PingPopconfirm
@@ -151,9 +146,9 @@ function DmConversation({ dm, focusId }: { dm: DmSummary; focusId: string | null
               okText={t('unblock')}
               cancelText={t('cancel')}
             >
-              <Button variant="outline" size="sm" data-testid="dm-unblock">
+              <PingButton variant="secondary" size="sm" data-testid="dm-unblock">
                 <Ban /> {t('unblock')}
-              </Button>
+              </PingButton>
             </PingPopconfirm>
           ) : (
             // Chặn: hành động ảnh hưởng hai chiều — luôn hỏi lại (quy ước PingPopconfirm).
@@ -164,9 +159,9 @@ function DmConversation({ dm, focusId }: { dm: DmSummary; focusId: string | null
               okText={t('block')}
               cancelText={t('cancel')}
             >
-              <Button variant="outline" size="sm" data-testid="dm-block">
+              <PingButton variant="secondary" size="sm" data-testid="dm-block">
                 <ShieldX /> {t('block')}
-              </Button>
+              </PingButton>
             </PingPopconfirm>
           )}
         </div>

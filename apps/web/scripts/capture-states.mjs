@@ -291,7 +291,9 @@ await capture(page, '08-channel-empty', async () => {
 await capture(page, '09-toast-copy-invite', async () => {
   await page.goto(channelUrl);
   await page.getByText(displayName).first().waitFor();
-  await page.getByRole('button', { name: 'Sao chép mã mời' }).click();
+  // Bám Discord: mã mời nằm trong menu của tên server.
+  await page.getByRole('button', { name: 'Menu server' }).click();
+  await page.getByRole('menuitem', { name: 'Sao chép mã mời' }).click();
   const toast = page.getByText('Đã sao chép mã mời.');
   await toast.waitFor();
   // Toast của antd trượt xuống từ trên: chờ animation lắng xuống thì mới thấy trong ảnh.

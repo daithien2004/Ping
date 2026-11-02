@@ -7,7 +7,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useLocale } from 'use-intl';
 import { PingToastHost } from '@/components/ui/ping-toast';
 import { useAppliedSettings } from '@/features/settings/store';
-import { buildAntdTheme, cssVariables, type ThemeMode } from '@/lib/theme';
+import { buildAntdTheme, type ThemeMode } from '@/lib/theme';
 
 function detectOsDark(): boolean {
   if (typeof window === 'undefined') return false;
@@ -15,17 +15,19 @@ function detectOsDark(): boolean {
 }
 
 /**
- * Theme của antd + ba thuộc tính cài đặt giao diện trên <html> (TG.13):
+ * Theme của antd + bốn thuộc tính cài đặt giao diện trên <html> (TG.13, ADR-0076):
  * - `data-theme`: 'dark' buộc tối, 'light' buộc sáng, 'system' theo hệ điều hành — CSS
  *   (globals.css) quyết định từ attr này; antd cần mode hiệu dụng nên resolve tại đây.
  * - `data-density`/`data-font`: mật độ tin nhắn + cỡ chữ gốc (biến CSS tương ứng).
+ * - `data-skin`: 'pixel' đổi hình thức (bo góc 0, viền 2 px, bóng cứng); antd nhận cùng skin.
  * Nguồn là store cài đặt đang áp dụng; SettingsSync bơm giá trị server vào store sau khi
- * đăng nhập — chưa đăng nhập store giữ mặc định ('system'/'comfortable'/'md'), app vẽ như cũ.
+ * đăng nhập — chưa đăng nhập store giữ mặc định ('system'/'comfortable'/'md'/'default'), app vẽ như cũ.
  */
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const theme = useAppliedSettings((state) => state.theme);
   const density = useAppliedSettings((state) => state.density);
   const fontSize = useAppliedSettings((state) => state.fontSize);
+  const skin = useAppliedSettings((state) => state.skin);
   // TF.12: chuỗi dựng sẵn của antd (Popconfirm, Select, Pagination…) theo cùng ngôn ngữ app.
   const locale = useLocale();
   const [osDark, setOsDark] = useState(detectOsDark);
@@ -37,23 +39,23 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     return () => mql.removeEventListener('change', handler);
   }, []);
 
-  // Đồng bộ với bên ngoài (DOM): CSS đọc data-theme/density/font, React không thấy được.
+  // Đồng bộ với bên ngoài (DOM): CSS đọc data-theme/density/font/skin, React không thấy được.
   useEffect(() => {
     const root = document.documentElement;
     root.setAttribute('data-theme', theme);
     root.setAttribute('data-density', density);
     root.setAttribute('data-font', fontSize);
-  }, [theme, density, fontSize]);
+    root.setAttribute('data-skin', skin);
+  }, [theme, density, fontSize, skin]);
 
   const mode: ThemeMode = theme === 'system' ? (osDark ? 'dark' : 'light') : theme;
-  const themeConfig = useMemo(() => buildAntdTheme(mode), [mode]);
-  const vars = useMemo(() => cssVariables(mode), [mode]);
+  const themeConfig = useMemo(() => buildAntdTheme(mode, skin), [mode, skin]);
 
   return (
     <ConfigProvider theme={themeConfig} locale={locale === 'en' ? enUS : viVN}>
       <AntdApp>
         <PingToastHost />
-        <div style={vars as React.CSSProperties}>{children}</div>
+        {children}
       </AntdApp>
     </ConfigProvider>
   );

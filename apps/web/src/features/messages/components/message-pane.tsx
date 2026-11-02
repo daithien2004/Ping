@@ -1,11 +1,12 @@
 'use client';
 
 import { useVirtualizer } from '@tanstack/react-virtual';
+import { MessageSquare } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'use-intl';
 import type { GifPayload, StickerDto } from '@ping/shared';
-import { Button } from '@/components/ui/button';
+import { PingButton } from '@/components/ui/ping-button';
 import { useChannelRealtime } from '@/features/realtime/hooks';
 import { TypingIndicator } from '@/features/realtime/components/typing-indicator';
 import { useMe } from '@/features/auth/hooks';
@@ -15,6 +16,7 @@ import { dmMessagePath } from '@/features/dms/navigation';
 import { incomingMessage } from '../announce';
 import { useLoadNewer, useMessages, useResetWindow, useSeedAround, useSendMessage } from '../hooks';
 import { type ClientMessage, oldestFirst } from '../message-cache';
+import { groupMessages } from '../grouping';
 import { MessageComposer } from './message-composer';
 import { MessageItem } from './message-item';
 import type { MessageSelection } from './message-actions';
@@ -73,6 +75,8 @@ export function MessagePane({
   const [jumpTarget, setJumpTarget] = useState<string | null>(null);
   const { ability, ready } = useServerAbility();
   const messages = useMemo(() => oldestFirst(data), [data]);
+  // D3: cờ nhóm/vạch ngày tính một lần theo danh sách, không lặp lại trong từng tin.
+  const rows = useMemo(() => groupMessages(messages), [messages]);
   const t = useTranslations('messages');
   const { data: me } = useMe();
   // Vùng aria-live: đọc tin mới của người khác (xem announce.ts). Tính ngay trong lúc render theo mẫu
@@ -399,17 +403,28 @@ export function MessagePane({
               className="absolute inset-x-0 flex flex-col items-center gap-3 px-4 pt-10 text-center"
               style={{ top: HEADER_HEIGHT }}
             >
+              {/* D9: trạng thái rỗng có chỗ đứng — biểu tượng, một câu, một hành động. */}
+              <MessageSquare
+                aria-hidden
+                className="size-8 text-muted-foreground"
+                data-testid="empty-icon"
+              />
               <p className="text-sm text-muted-foreground">{t('empty')}</p>
               {canSend && (
-                <Button size="sm" variant="outline" onClick={() => composerRef.current?.focus()}>
+                <PingButton
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => composerRef.current?.focus()}
+                >
                   {t('emptyAction')}
-                </Button>
+                </PingButton>
               )}
             </div>
           )}
           {virtualizer.getVirtualItems().map((item) => {
-            const message = messages[item.index];
-            if (!message) return null;
+            const row = rows[item.index];
+            if (!row) return null;
+            const { message } = row;
             return (
               <div
                 key={item.key}
@@ -440,6 +455,8 @@ export function MessagePane({
                   onReply={setReplyTo}
                   onJumpTo={jumpTo}
                   highlighted={message.id === focusId || message.id === jumpTarget}
+                  grouped={row.grouped}
+                  showDate={row.showDate}
                 />
               </div>
             );
@@ -451,15 +468,15 @@ export function MessagePane({
           Người dùng chủ động tải thêm từng trang mới hơn khi muốn đọc tiếp. */}
       {hasNewer && (
         <div className="flex justify-center border-t px-4 py-2">
-          <Button
+          <PingButton
             size="sm"
-            variant="outline"
+            variant="secondary"
             data-testid="load-newer"
             onClick={loadMoreNewer}
             disabled={loadingNewer}
           >
             {loadingNewer ? t('loadingNewer') : t('loadNewer')}
-          </Button>
+          </PingButton>
         </div>
       )}
 

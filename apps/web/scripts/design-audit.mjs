@@ -66,15 +66,23 @@ function parseColor(value, scope, seen = new Set()) {
     const alpha = alphaPart ? Number(alphaPart.replace('%', '')) / 100 : 1;
     return { rgb: oklchToSrgb({ l, c, h }), alpha };
   }
-  const hex = trimmed.match(/^#([0-9a-f]{6})$/i);
+  const hex = trimmed.match(/^#([0-9a-f]{3,8})$/i);
   if (hex) {
-    const n = Number.parseInt(hex[1], 16);
+    let digits = hex[1];
+    if (digits.length === 3 || digits.length === 4) {
+      digits = digits
+        .split('')
+        .map((digit) => digit + digit)
+        .join('');
+    }
+    const alpha = digits.length === 8 ? Number.parseInt(digits.slice(6, 8), 16) / 255 : 1;
+    const n = Number.parseInt(digits.slice(0, 6), 16);
     return {
       rgb: [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => {
         const s = v / 255;
         return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
       }),
-      alpha: 1,
+      alpha,
     };
   }
   throw new Error(`màu chưa hỗ trợ: ${trimmed}`);
@@ -91,18 +99,20 @@ function parseBlock(css, selector) {
   return map;
 }
 
-const css = readFileSync(join(srcDir, 'app/globals.css'), 'utf8');
-const roots = [...css.matchAll(/:root\s*\{([^}]*)\}/g)].map((m) => m[1]);
+// Token màu/radius sinh từ tokens.ts (ADR-0075): đọc file sinh để đo đúng giá trị đang phục vụ.
+const tokensCss = readFileSync(join(srcDir, 'styles/tokens.generated.css'), 'utf8');
+const roots = [...tokensCss.matchAll(/:root\s*\{([^}]*)\}/g)].map((m) => m[1]);
 const palette = new Map();
 const light = new Map();
 for (const [index, body] of roots.entries()) {
+  if (index > 1) break;
   const target = index === 0 ? palette : light;
   for (const line of body.replace(/\/\*[\s\S]*?\*\//g, '').split(';')) {
     const decl = line.match(/^\s*(--[\w-]+)\s*:\s*(.+?)\s*$/);
     if (decl && !target.has(decl[1])) target.set(decl[1], decl[2]);
   }
 }
-const dark = parseBlock(css, "html\\[data-theme='dark'\\]");
+const dark = parseBlock(tokensCss, "html\\[data-theme='dark'\\]");
 
 // Token nghĩa trỏ tới palette: gom hai scope lại để phân giải var().
 function resolve(mode, name) {
@@ -130,17 +140,20 @@ const TEXT_PAIRS = [
   ['--accent-foreground', '--accent', 4.5],
   ['--link', '--background', 4.5],
   ['--destructive', '--card', 4.5],
+  ['--success-foreground', '--success-background', 4.5],
   ['--primary-foreground', '--primary', 4.5],
   ['--rail-foreground', '--rail', 4.5],
   ['--sidebar-foreground', '--sidebar', 4.5],
   ['--sidebar-accent-foreground', '--sidebar-accent', 4.5],
 ];
+// Ranh giới điều khiển (WCAG 1.4.11) — dưới ngưỡng là đỏ, không miễn trừ.
 const UI_PAIRS = [
   ['--ring', '--background', 3],
   ['--sidebar-primary', '--sidebar', 3],
-  ['--border', '--card', 3],
   ['--input', '--card', 3],
 ];
+// Đường phân cách thuần trang trí: được miễn 1.4.11, ghi chú thay vì đỏ.
+const DECORATIVE_PAIRS = [['--border', '--card', 3]];
 
 function printContrast(mode) {
   const rows = [];
@@ -159,7 +172,20 @@ function printContrast(mode) {
   for (const [fg, bg, min] of UI_PAIRS) {
     const value = ratio(mode, fg, bg);
     const pass = value >= min;
-    // Viền phân cách thuần trang trí được miễn 1.4.11; ghi chú thay vì đỏ cả checklist.
+    if (!pass)
+      failures.push(`${mode}: ranh giới điều khiển ${fg} / ${bg} = ${value.toFixed(2)} < ${min}`);
+    rows.push({
+      cặp: `${fg} / ${bg}`,
+      loại: 'phi chữ',
+      'tỉ lệ': `${value.toFixed(2)}:1`,
+      ngưỡng: `${min}:1`,
+      kết: pass ? 'đạt' : 'KHÔNG ĐẠT',
+    });
+  }
+  // Viền phân cách thuần trang trí được miễn 1.4.11; ghi chú thay vì đỏ cả checklist.
+  for (const [fg, bg, min] of DECORATIVE_PAIRS) {
+    const value = ratio(mode, fg, bg);
+    const pass = value >= min;
     if (!pass)
       notes.push(
         `${mode}: ${fg} / ${bg} = ${value.toFixed(2)} (dưới ${min}:1 — chỉ là đường phân cách, không phải ranh giới bắt buộc)`,
@@ -187,15 +213,18 @@ const ANT_PAIRS = [
   ['link', 'card', 4.5],
   ['destructive', 'card', 4.5],
   ['railForeground', 'rail', 4.5],
-  ['border', 'card', 3],
+  // antd ghim colorBorder = borderStrong, nên phải đo ranh giới điều khiển thật.
+  ['borderStrong', 'card', 3],
 ];
 for (const mode of ['light', 'dark']) {
   const colors = semanticColors(mode);
+  const card = parseColor(colors.card, new Map()).rgb;
+  const rgbOf = (name) => {
+    const { rgb, alpha } = parseColor(colors[name], new Map());
+    return alpha < 1 ? composite(rgb, alpha, card) : rgb;
+  };
   const rows = ANT_PAIRS.map(([fg, bg, min]) => {
-    const value = contrast(
-      parseColor(colors[fg], new Map()).rgb,
-      parseColor(colors[bg], new Map()).rgb,
-    );
+    const value = contrast(rgbOf(fg), rgbOf(bg));
     const kind = min === 4.5 ? 'chữ' : 'phi chữ';
     if (kind === 'chữ' && value < min) {
       failures.push(`tokens.ts ${mode}: ${fg}/${bg} = ${value.toFixed(2)} < ${min}`);
@@ -213,6 +242,27 @@ for (const mode of ['light', 'dark']) {
   });
   console.log(`\nTương phản — token antd (tokens.ts), ${mode}`);
   console.table(rows);
+}
+
+// ---------- tầng nền (2.6) ----------
+// Ba mặt phẳng: rail (tối nhất) → sidebar → nội dung (sáng nhất). Giữ nguyên thứ tự ở cả hai
+// nền; đảo thứ tự là mất phân tầng, hai tầng bằng nhau là mất ranh giới.
+for (const mode of ['light', 'dark']) {
+  const tiers = ['--rail', '--sidebar', '--background'].map((name) => ({
+    name,
+    value: luminance(resolve(mode, name).rgb),
+  }));
+  const ordered = tiers[0].value < tiers[1].value && tiers[1].value < tiers[2].value;
+  if (!ordered) {
+    failures.push(
+      `tầng nền ${mode} sai thứ tự: ${tiers.map((t) => `${t.name}=${t.value.toFixed(3)}`).join(', ')}`,
+    );
+  }
+  console.log(
+    `\nTầng nền — ${mode === 'light' ? 'nền sáng' : 'nền tối'}: ${tiers
+      .map((t) => `${t.name} ${t.value.toFixed(3)}`)
+      .join(' → ')}${ordered ? '' : ' — SAI THỨ TỰ'}`,
+  );
 }
 
 // ---------- thang đo ----------
@@ -248,6 +298,7 @@ function walk(dir) {
 const files = walk(srcDir).filter((f) => /\.(ts|tsx|css)$/.test(f));
 const ALLOW_HEX = new Set([
   'app/globals.css',
+  'styles/tokens.generated.css', // file sinh từ tokens.ts — hex ở đây là kết quả, không phải nguồn
   'lib/theme/tokens.ts',
   'lib/theme/antd-theme.ts',
   'components/global-error-view.tsx', // root-level fallback, chạy khi CSS/app đã hỏng
@@ -258,10 +309,15 @@ const ALLOW_IMPORTANT = new Set(['app/globals.css']);
 const hexHits = [];
 const importantHits = [];
 const arbitraryHits = [];
+const tinyTextHits = [];
 const antdHits = [];
 const iconHits = [];
 const hoverFiles = new Set();
 const stateFiles = new Set();
+// Thang độ đậm (2.3): ba bậc trong token, ngoài ra Tailwind còn thin/light/bold/black.
+const ALLOWED_WEIGHTS = new Set(['normal', 'medium', 'semibold']);
+const weightCounts = new Map();
+const offWeightHits = [];
 
 for (const file of files) {
   const rel = relative(srcDir, file).replaceAll('\\', '/');
@@ -272,6 +328,10 @@ for (const file of files) {
   if (!ALLOW_IMPORTANT.has(rel) && source.includes('!important')) importantHits.push(rel);
   for (const match of source.matchAll(/\[[0-9.]+(?:px|rem)\]|text-\[\d+px\]/g)) {
     arbitraryHits.push({ file: rel, value: match[0] });
+  }
+  // Sàn chữ 12 px: dưới ngưỡng này chữ tiếng Việt có dấu mất chân/dấu, không đọc được ở 125%.
+  for (const match of source.matchAll(/text-\[([0-9.]+)px\]/g)) {
+    if (Number(match[1]) < 12) tinyTextHits.push({ file: rel, value: match[0] });
   }
   if (
     !rel.startsWith('components/ui/') &&
@@ -285,12 +345,18 @@ for (const file of files) {
     iconHits.push(`${rel}: ${match[1]}`);
   if (/hover:/.test(source)) hoverFiles.add(rel);
   if (/disabled:|disabled=/.test(source)) stateFiles.add(rel);
+  // Thang độ đậm (2.3): đếm theo bậc để thấy phân cấp thật đang dùng.
+  for (const match of source.matchAll(
+    /font-(thin|extralight|light|normal|medium|semibold|bold|extrabold|black)\b/g,
+  )) {
+    weightCounts.set(match[1], (weightCounts.get(match[1]) ?? 0) + 1);
+    if (!ALLOWED_WEIGHTS.has(match[1])) offWeightHits.push(`${rel}: ${match[0]}`);
+  }
 }
 
-const ALLOW_ARBITRARY = new Set([
-  'components/skeletons.tsx: w-[72px]', // rail 72 px theo hướng thiết kế
-  'components/ui/tooltip.tsx: rounded-[2px]', // mũi nhọn tooltip, trang trí
-]);
+// 303 px (cột kênh) và 49 px (header) đo từ Discord web đã thành token Tailwind
+// (`--spacing-sidebar` / `--spacing-header` trong globals.css) — không còn giá trị tuỳ ý.
+const ALLOW_ARBITRARY = new Set([]);
 const arbitraryOff = arbitraryHits.filter(
   (hit) => !ALLOW_ARBITRARY.has(`${hit.file}: ${hit.value}`),
 );
@@ -300,11 +366,22 @@ if (arbitraryOff.length) {
   );
 }
 if (hexHits.length) failures.push(`hex ngoài token: ${hexHits.join('; ')}`);
+if (tinyTextHits.length)
+  failures.push(
+    `chữ dưới 12 px: ${tinyTextHits.map((hit) => `${hit.file} ${hit.value}`).join('; ')}`,
+  );
 if (importantHits.length)
   failures.push(`!important ngoài globals.css: ${importantHits.join('; ')}`);
 if (antdHits.length)
   failures.push(`antd ngoài components/ui|lib/theme|providers: ${antdHits.join('; ')}`);
 if (iconHits.length) failures.push(`icon ngoài lucide-react: ${iconHits.join('; ')}`);
+if (offWeightHits.length)
+  failures.push(`độ đậm ngoài thang normal/medium/semibold: ${offWeightHits.join('; ')}`);
+
+const weightSummary = [...weightCounts.entries()]
+  .sort((a, b) => b[1] - a[1])
+  .map(([weight, count]) => `${weight}=${count}`)
+  .join(', ');
 
 console.log('\nQuét nguồn');
 console.log(`  file đã quét: ${files.length}`);
@@ -313,6 +390,7 @@ console.log(`  !important ngoài globals.css: ${importantHits.length}`);
 console.log(`  giá trị px/rem tuỳ ý ngoài thang: ${arbitraryOff.length}`);
 console.log(`  import antd ngoài components/ui|lib/theme|providers: ${antdHits.length}`);
 console.log(`  icon ngoài lucide-react: ${iconHits.length}`);
+console.log(`  độ đậm chữ ngoài thang: ${offWeightHits.length} (${weightSummary || 'chưa dùng'})`);
 console.log(`  file dùng hover:: ${hoverFiles.size}; file có disabled: ${stateFiles.size}`);
 
 if (notes.length) {

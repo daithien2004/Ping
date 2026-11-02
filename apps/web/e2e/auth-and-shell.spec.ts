@@ -48,7 +48,9 @@ test('register, sign out without ?next=, sign in, create server and channel', as
 
   await test.step('sao chép mã mời → toast xác nhận (quy ước toast của TF.9)', async () => {
     await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
-    await page.getByRole('button', { name: 'Sao chép mã mời' }).click();
+    // Bám Discord: mã mời nằm trong menu của tên server, không còn nút rời ở header sidebar.
+    await page.getByRole('button', { name: 'Menu server' }).click();
+    await page.getByRole('menuitem', { name: 'Sao chép mã mời' }).click();
     await expect(page.getByText('Đã sao chép mã mời.')).toBeVisible();
   });
 

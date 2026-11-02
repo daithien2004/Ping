@@ -3,7 +3,7 @@
 import { useQueryErrorResetBoundary } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { useTranslations } from 'use-intl';
-import { Button } from '@/components/ui/button';
+import { PingButton } from '@/components/ui/ping-button';
 import { errorReference } from '@/lib/error-reference';
 import { useErrorMessage } from '@/lib/error-message';
 import { reportError } from '@/lib/report-error';
@@ -35,15 +35,15 @@ export default function AuthError({ error, retry }: { error: Error; retry: () =>
           <code className="select-all">{t('app.errorId', { id: reference })}</code>
         </p>
       )}
-      <Button
-        variant="outline"
+      <PingButton
+        variant="secondary"
         onClick={() => {
           reset();
           retry();
         }}
       >
         {t('common.retry')}
-      </Button>
+      </PingButton>
     </div>
   );
 }

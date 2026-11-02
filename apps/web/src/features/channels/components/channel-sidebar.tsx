@@ -1,23 +1,28 @@
 'use client';
 
 import { ErrorCodes } from '@ping/shared';
-import { Copy, LogOut, Settings } from 'lucide-react';
+import { ChevronDown, Copy, LogOut, Settings } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
 import { useTranslations } from 'use-intl';
 import { FormError } from '@/components/form-parts';
-import { Button } from '@/components/ui/button';
+import { PingDropdown } from '@/components/ui/ping-dropdown';
+import { PingIconButton } from '@/components/ui/ping-icon-button';
 import { pingToast } from '@/components/ui/ping-toast';
+import { useMe } from '@/features/auth/hooks';
+import { UserAvatar } from '@/features/profile/components/user-avatar';
 import { useLeaveServer, useServer } from '@/features/servers/hooks';
 import { useServerAbility } from '@/features/permissions/context';
 import { useMobileNav } from '@/features/shell/store';
 import { useErrorMessage } from '@/lib/error-message';
 import { ChannelNavigation } from './channel-navigation';
 
-/** Cột giữa: tên server, mã mời, danh sách channel, rời server. */
+/** Cột giữa: tên server, danh sách channel, thẻ người dùng (Discord) — mã mời và rời server
+ *  nằm trong menu của header. */
 export function ChannelSidebar() {
   const { serverId, channelId } = useParams<{ serverId: string; channelId?: string }>();
   const router = useRouter();
   const { data: server } = useServer(serverId);
+  const { data: me } = useMe();
   const { ability } = useServerAbility();
   const leaveMutation = useLeaveServer();
   const mobileNavOpen = useMobileNav((state) => state.open);
@@ -48,61 +53,82 @@ export function ChannelSidebar() {
   return (
     <aside
       data-mobile-nav
-      className={`flex min-h-0 w-60 shrink-0 flex-col bg-sidebar text-sidebar-foreground max-md:absolute max-md:inset-y-0 max-md:left-18 max-md:z-30 max-md:shadow-xl max-md:transition-transform max-md:duration-200 ${
+      className={`flex min-h-0 w-sidebar shrink-0 flex-col bg-sidebar text-sidebar-foreground max-md:absolute max-md:inset-y-0 max-md:left-18 max-md:z-30 max-md:shadow-overlay max-md:transition-transform max-md:duration-200 ${
         mobileNavOpen
           ? 'max-md:visible max-md:translate-x-0'
           : 'max-md:invisible max-md:-translate-x-full'
       }`}
     >
-      <header className="flex h-12 shrink-0 flex-col justify-center border-b border-sidebar-border px-4 shadow-xs">
-        <h2 className="truncate font-semibold">{server.name}</h2>
-        <div className="flex items-center gap-1">
-          <p className="truncate text-xs text-muted-foreground">
-            {t('servers.inviteCode')}: <code className="select-all">{server.inviteCode}</code>
-          </p>
-          <Button
-            variant="ghost"
-            size="icon-xs"
-            aria-label={t('servers.copyInvite')}
-            onClick={() => void copyInvite()}
-          >
-            <Copy />
-          </Button>
-        </div>
+      {/* Discord: header 49 px một dòng, tên server mở menu (mã mời + rời server). */}
+      <header className="flex h-header shrink-0 items-center gap-1 border-b border-sidebar-border pl-4 pr-2">
+        <h2 className="min-w-0 flex-1 truncate text-base font-semibold">{server.name}</h2>
+        <PingDropdown
+          trigger={['click']}
+          placement="bottomRight"
+          menu={{
+            items: [
+              { key: 'copy', icon: <Copy />, label: t('servers.copyInvite') },
+              {
+                key: 'code',
+                disabled: true,
+                label: <code className="select-all text-xs">{server.inviteCode}</code>,
+              },
+              { type: 'divider' },
+              {
+                key: 'leave',
+                danger: true,
+                icon: <LogOut />,
+                label: t('servers.leave'),
+                disabled: leaveMutation.isPending,
+              },
+            ],
+            onClick: ({ key }) => {
+              if (key === 'copy') void copyInvite();
+              if (key === 'leave') leave();
+            },
+          }}
+        >
+          <PingIconButton
+            icon={<ChevronDown />}
+            size="small"
+            aria-label={t('servers.menu')}
+            aria-haspopup="menu"
+          />
+        </PingDropdown>
       </header>
 
       {ability.can('view', 'Channel') && (
         <ChannelNavigation serverId={serverId} activeId={channelId} />
       )}
 
-      <div className="mt-auto flex flex-col gap-1 border-t border-sidebar-border p-2">
-        {canOpenSettings && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="justify-start"
-            onClick={() => router.push(`/servers/${serverId}/settings`)}
-          >
-            <Settings /> {t('admin.open')}
-          </Button>
-        )}
+      {/* Discord: thẻ người dùng 52 px ở đáy cột kênh — danh tính + lối vào cài đặt server. */}
+      <div className="mt-auto shrink-0 border-t border-sidebar-border">
         {leaveMutation.isError && (
-          <FormError>
-            {errorMessage(leaveMutation.error, {
-              // 400 duy nhất của endpoint rời server: chủ server phải xóa server hoặc chuyển quyền.
-              [ErrorCodes.BAD_REQUEST]: t('servers.ownerCannotLeave'),
-            })}
-          </FormError>
+          <div className="px-2 pt-2">
+            <FormError>
+              {errorMessage(leaveMutation.error, {
+                // 400 duy nhất của endpoint rời server: chủ server phải xóa server hoặc chuyển quyền.
+                [ErrorCodes.BAD_REQUEST]: t('servers.ownerCannotLeave'),
+              })}
+            </FormError>
+          </div>
         )}
-        <Button
-          variant="destructive"
-          size="sm"
-          onClick={leave}
-          disabled={leaveMutation.isPending}
-          className="justify-start"
-        >
-          <LogOut /> {t('servers.leave')}
-        </Button>
+        <div className="flex h-13 items-center gap-2 px-2">
+          <UserAvatar name={me?.displayName ?? ''} avatarUrl={me?.avatarUrl} size={32} />
+          <div className="min-w-0 flex-1 leading-tight">
+            <p className="truncate text-sm font-medium">{me?.displayName}</p>
+            {me?.username && (
+              <p className="truncate text-xs text-muted-foreground">@{me.username}</p>
+            )}
+          </div>
+          {canOpenSettings && (
+            <PingIconButton
+              icon={<Settings />}
+              aria-label={t('admin.open')}
+              onClick={() => router.push(`/servers/${serverId}/settings`)}
+            />
+          )}
+        </div>
       </div>
     </aside>
   );

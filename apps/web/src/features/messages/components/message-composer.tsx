@@ -9,7 +9,7 @@ import {
 import { useEffect, useRef, useState, type KeyboardEvent, type RefObject } from 'react';
 import { useTranslations } from 'use-intl';
 import dynamic from 'next/dynamic';
-import { Paperclip, Smile, Sticker, X } from 'lucide-react';
+import { Plus, Send, Smile, Sticker, X } from 'lucide-react';
 import { PingTextArea } from '@/components/ui/ping-textarea';
 import { useRealtime } from '@/features/realtime/context';
 import { useServerAbility } from '@/features/permissions/context';
@@ -153,6 +153,29 @@ export function MessageComposer({
     setSuggestionIndex(0);
   }
 
+  function submit() {
+    if (!ready || !canSend || uploads.busy) return;
+    // nonce sinh MỘT lần cho mỗi tin; gửi lại dùng đúng nonce này (server chặn trùng).
+    const parsed = createMessageSchema.safeParse({
+      content: draft,
+      nonce: crypto.randomUUID(),
+      ...(uploads.ids.length ? { attachmentIds: uploads.ids } : {}),
+      ...(replyTo ? { replyToId: replyTo.id } : {}),
+    });
+    if (!parsed.success) {
+      return; // rỗng hoặc toàn khoảng trắng: không gửi
+    }
+    onSend(
+      parsed.data.content,
+      parsed.data.nonce,
+      parsed.data.replyToId,
+      parsed.data.attachmentIds,
+    );
+    uploads.sent();
+    setDraft('');
+    setPickerOpen(false);
+  }
+
   function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     // Gợi ý đang mở: mũi tên/Enter/Tab/Esc điều khiển danh sách trước khi gửi tin.
     if (suggestions.length > 0 && fragment !== null) {
@@ -183,30 +206,12 @@ export function MessageComposer({
       return; // Shift+Enter xuống dòng; đang gõ dấu (IME) thì Enter là chọn chữ, không phải gửi.
     }
     event.preventDefault();
-    // nonce sinh MỘT lần cho mỗi tin; gửi lại dùng đúng nonce này (server chặn trùng).
-    const parsed = createMessageSchema.safeParse({
-      content: draft,
-      nonce: crypto.randomUUID(),
-      ...(uploads.ids.length ? { attachmentIds: uploads.ids } : {}),
-      ...(replyTo ? { replyToId: replyTo.id } : {}),
-    });
-    if (!parsed.success) {
-      return; // rỗng hoặc toàn khoảng trắng: không gửi
-    }
-    onSend(
-      parsed.data.content,
-      parsed.data.nonce,
-      parsed.data.replyToId,
-      parsed.data.attachmentIds,
-    );
-    uploads.sent();
-    setDraft('');
-    setPickerOpen(false);
+    submit();
   }
 
   return (
     <div
-      className="shrink-0 px-4 pb-4"
+      className="shrink-0 px-2 pb-2"
       role="group"
       aria-label={label}
       onPaste={(event) => {
@@ -219,7 +224,6 @@ export function MessageComposer({
     >
       {canSend ? (
         <>
-          <p className="mb-1 text-xs text-muted-foreground">{ta('files')}</p>
           <input
             ref={inputRef}
             type="file"
@@ -329,7 +333,7 @@ export function MessageComposer({
             <ul
               role="listbox"
               aria-label={te('suggestionsLabel')}
-              className="mb-1 flex flex-col gap-0.5 rounded-lg border bg-popover p-1 shadow-sm"
+              className="mb-1 flex flex-col gap-0.5 rounded-lg border bg-popover p-1 shadow-panel"
               data-testid="emoji-suggestions"
             >
               {suggestions.map((entry, index) => (
@@ -355,9 +359,25 @@ export function MessageComposer({
                     ) : (
                       <span className="text-lg leading-none">{entry.unicode}</span>
                     )}
-                    <code className="text-xs text-muted-foreground">:{entry.shortcode}:</code>
+                    <code
+                      className={`text-xs ${
+                        index === suggestionIndex
+                          ? 'text-accent-foreground'
+                          : 'text-muted-foreground'
+                      }`}
+                    >
+                      :{entry.shortcode}:
+                    </code>
                     {entry.keywords[0] && (
-                      <span className="truncate text-xs text-muted-foreground">
+                      // Dòng đang chọn nền `accent`: chữ phụ trên nền đó dưới 4,5:1, nên dùng màu
+                      // chữ của dòng chọn.
+                      <span
+                        className={`truncate text-xs ${
+                          index === suggestionIndex
+                            ? 'text-accent-foreground'
+                            : 'text-muted-foreground'
+                        }`}
+                      >
                         {entry.keywords[0]}
                       </span>
                     )}
@@ -366,18 +386,22 @@ export function MessageComposer({
               ))}
             </ul>
           )}
-          <div className="flex items-end gap-1">
+          {/* D6: khung composer có biên rõ — vùng nhập là một khối nổi trên nền chat (Discord:
+              nền sáng hơn chat, bo 8, viền trắng 12%), focus-within đổi viền + ring. */}
+          {/* `p-2.5`: đo Discord 1280 → hộp cao 57,6 px (36 nội dung + 2×10 đệm + 1,6 viền). */}
+          <div className="flex items-end gap-1 rounded-md border border-border bg-card p-2.5 transition-colors focus-within:border-primary focus-within:ring-2 focus-within:ring-ring">
             <button
               type="button"
               onClick={() => inputRef.current?.click()}
               disabled={!ready || uploads.files.length >= 5}
               aria-label={ta('choose')}
-              className="shrink-0 rounded-md p-2 text-muted-foreground hover:bg-accent disabled:opacity-50"
+              className="mb-0.5 shrink-0 rounded-full border border-border p-0.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
             >
-              <Paperclip className="size-5" />
+              <Plus className="size-4" />
             </button>
             <PingTextArea
               ref={textareaRef}
+              variant="borderless"
               disabled={!ready}
               value={draft}
               onChange={(event) => {
@@ -427,6 +451,20 @@ export function MessageComposer({
                 className="shrink-0 rounded-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
               >
                 <Sticker className="size-5" />
+              </button>
+            )}
+            {/* D6: nút gửi chỉ hiện khi có nội dung — trạng thái rỗng không mời một hành động
+                chắc chắn bị từ chối (schema chặn nội dung rỗng). */}
+            {draft.trim().length > 0 && (
+              <button
+                type="button"
+                onClick={submit}
+                disabled={!ready || uploads.busy}
+                aria-label={t('send')}
+                data-testid="send-button"
+                className="shrink-0 rounded-md bg-primary p-2 text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+              >
+                <Send className="size-5" />
               </button>
             )}
           </div>

@@ -7,11 +7,11 @@ import { useParams, usePathname } from 'next/navigation';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslations } from 'use-intl';
 import { LanguageSwitcher } from '@/components/language-switcher';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
+import { PingAvatar } from '@/components/ui/ping-avatar';
 import { PingBadge } from '@/components/ui/ping-badge';
+import { PingIconButton } from '@/components/ui/ping-icon-button';
 import { PingModal } from '@/components/ui/ping-modal';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { PingTooltip } from '@/components/ui/ping-tooltip';
 import { dmUnreadTotal } from '@/features/dms/dm-cache';
 import { useDms } from '@/features/dms/hooks';
 import { dmsPath } from '@/features/dms/navigation';
@@ -47,16 +47,17 @@ function RailItem({
           active ? 'h-10' : 'h-0 group-hover:h-5'
         }`}
       />
-      <Tooltip>
-        <TooltipTrigger asChild>{children}</TooltipTrigger>
-        <TooltipContent side="right">{label}</TooltipContent>
-      </Tooltip>
+      <PingTooltip title={label} placement="right">
+        {children}
+      </PingTooltip>
     </div>
   );
 }
 
+/** Icon rail theo Discord: khung tròn 40 px, rê chuột bo vuông 16 px; không tô màu thương hiệu
+ *  cho mục đang chọn — mục chọn chỉ khác ở pill trái + bo góc (đo từ Discord web). */
 const railIcon =
-  'size-12 rounded-3xl bg-background text-foreground transition-all hover:rounded-2xl hover:bg-primary hover:text-primary-foreground';
+  'flex size-10 items-center justify-center rounded-full bg-secondary text-secondary-foreground transition-all hover:rounded-xl hover:brightness-110';
 
 /** Cột trái: mục DM, các server của tôi, tạo/tham gia server, tài khoản. */
 export function ServerRail() {
@@ -78,48 +79,49 @@ export function ServerRail() {
     <nav
       aria-label={t('servers.navLabel')}
       data-mobile-nav
-      className="flex min-h-0 w-18 shrink-0 flex-col items-center gap-2 overflow-x-hidden overflow-y-auto bg-rail py-3 text-rail-foreground"
+      className="flex min-h-0 w-18 shrink-0 flex-col items-center bg-rail py-2 text-rail-foreground"
     >
-      {/* TG.9: mục "Tin nhắn trực tiếp" nằm trên cùng của rail (như trang chủ Discord) — ngoài
-          ChannelSidebar per-server theo ADR-0070 mục 7. */}
-      <DmRailItem active={pathname.startsWith('/dms')} />
+      {/* Danh sách server cuộn riêng; cụm tài khoản ở đáy luôn cố định như Discord. */}
+      <div className="flex min-h-0 w-full flex-1 flex-col items-center gap-2 overflow-x-hidden overflow-y-auto">
+        {/* TG.9: mục "Tin nhắn trực tiếp" nằm trên cùng của rail (như trang chủ Discord) — ngoài
+            ChannelSidebar per-server theo ADR-0070 mục 7. */}
+        <DmRailItem active={pathname.startsWith('/dms')} />
 
-      {servers.map((server) => (
-        <ServerRailItem
-          key={server.id}
-          serverId={server.id}
-          name={server.name}
-          iconUrl={server.iconUrl}
-          active={server.id === serverId}
-        />
-      ))}
+        {servers.map((server) => (
+          <ServerRailItem
+            key={server.id}
+            serverId={server.id}
+            name={server.name}
+            iconUrl={server.iconUrl}
+            active={server.id === serverId}
+          />
+        ))}
 
-      <div aria-hidden className="h-px w-8 bg-border" />
+        <div aria-hidden className="h-px w-8 shrink-0 bg-border" />
 
-      <RailItem label={t('servers.create')}>
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label={t('servers.create')}
-          onClick={() => setWizard('create')}
-          className={railIcon}
-        >
-          <Plus className="size-5" />
-        </Button>
-      </RailItem>
-      <RailItem label={t('servers.join')}>
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label={t('servers.join')}
-          onClick={() => setWizard('join')}
-          className={railIcon}
-        >
-          <LogIn className="size-5" />
-        </Button>
-      </RailItem>
+        <RailItem label={t('servers.create')}>
+          <button
+            type="button"
+            aria-label={t('servers.create')}
+            onClick={() => setWizard('create')}
+            className={`${railIcon} flex items-center justify-center`}
+          >
+            <Plus className="size-5" />
+          </button>
+        </RailItem>
+        <RailItem label={t('servers.join')}>
+          <button
+            type="button"
+            aria-label={t('servers.join')}
+            onClick={() => setWizard('join')}
+            className={`${railIcon} flex items-center justify-center`}
+          >
+            <LogIn className="size-5" />
+          </button>
+        </RailItem>
+      </div>
 
-      <div className="mt-auto flex flex-col items-center gap-2">
+      <div className="mt-2 flex flex-col items-center gap-2">
         {/* TG.12: xin quyền Notification sau thao tác người dùng — chỉ hiện khi còn 'default'. */}
         <EnableNotificationsButton />
         {/* TG.13: cài đặt CÁ NHÂN (/settings) — khác nút "Cài đặt" của server ở sidebar kênh. */}
@@ -143,21 +145,18 @@ export function ServerRail() {
           aria-label={me ? t('profile.openSelfProfile') : undefined}
           aria-haspopup="dialog"
           data-testid="self-avatar"
-          className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="rounded-full focus-ring"
           onClick={() => setProfileOpen(true)}
         >
-          <UserAvatar name={me?.displayName ?? ''} avatarUrl={me?.avatarUrl} className="size-9" />
+          <UserAvatar name={me?.displayName ?? ''} avatarUrl={me?.avatarUrl} size={36} />
         </button>
         <RailItem label={t('auth.signOut')}>
-          <Button
-            variant="ghost"
-            size="icon"
+          <PingIconButton
+            icon={<LogOut />}
             aria-label={t('auth.signOut')}
             onClick={() => logoutMutation.mutate()}
             disabled={logoutMutation.isPending}
-          >
-            <LogOut />
-          </Button>
+          />
         </RailItem>
       </div>
 
@@ -260,18 +259,21 @@ function DmRailItem({ active }: { active: boolean }) {
             offset={[-4, 4]}
           >
             {/* TG.7: icon server (nếu có) đè lên fallback chữ cái; ảnh reencode WebP qua pipeline TG.6. */}
-            <Avatar
-              className={`size-12 transition-all ${active ? 'rounded-2xl' : 'rounded-3xl hover:rounded-2xl'}`}
+            {/* CSS của antd không nằm trong layer Tailwind nên class `bg-*`/`rounded-*` trên
+                avatar bị kiểu dựng sẵn của antd đè; đặt màu/bo góc qua `style` (vẫn là token). */}
+            <PingAvatar
+              size={40}
+              src={profileImageUrl(iconUrl)}
+              alt={name}
+              style={{
+                background: 'var(--secondary)',
+                color: 'var(--secondary-foreground)',
+                borderRadius: active ? 'var(--ping-radius-xl)' : 'var(--ping-radius-full)',
+              }}
+              className="transition-all"
             >
-              <AvatarImage src={profileImageUrl(iconUrl)} alt={name} />
-              <AvatarFallback
-                className={`rounded-[inherit] text-sm font-semibold ${
-                  active ? 'bg-primary text-primary-foreground' : 'bg-background'
-                }`}
-              >
-                {initials(name)}
-              </AvatarFallback>
-            </Avatar>
+              {initials(name)}
+            </PingAvatar>
           </PingBadge>
         </PingBadge>
       </Link>

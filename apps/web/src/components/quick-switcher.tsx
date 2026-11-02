@@ -125,7 +125,15 @@ export function QuickSwitcher({ items, open, onOpenChange }: QuickSwitcherProps)
             }}
           >
             {item.group ? (
-              <span className="mr-1.5 text-xs text-muted-foreground">{item.group} /</span>
+              // Dòng đang chọn nền `accent`: chữ phụ trên nền đó chỉ 4,20:1, nên dùng luôn màu
+              // chữ của dòng chọn để giữ AA.
+              <span
+                className={`mr-1.5 text-xs ${
+                  index === active ? 'text-accent-foreground' : 'text-muted-foreground'
+                }`}
+              >
+                {item.group} /
+              </span>
             ) : null}
             {item.label}
           </li>

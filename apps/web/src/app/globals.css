@@ -1,19 +1,14 @@
 @import 'tailwindcss';
-@import 'tw-animate-css';
-@import 'shadcn/tailwind.css';
+@import '../styles/tokens.generated.css';
 
 /*
- * TOKEN MÀU — chỗ DUY NHẤT định nghĩa màu của web (ADR-0023). Component chỉ dùng class theo
- * nghĩa (bg-muted, text-muted-foreground, bg-rail…); class màu thô (bg-gray-800) bị ESLint chặn.
- *
- *   1. Bảng màu gốc   --palette-*      chỉ dùng trong file này
- *   2. Token theo nghĩa (sáng / tối)   shadcn + riêng của app (--rail)
- *   3. Nối vào Tailwind (@theme)       sinh ra class bg-*, text-*, border-*
+ * TOKEN — nguồn duy nhất là `src/lib/theme/tokens.ts` (ADR-0075). Màu, palette và thang radius
+ * được sinh ra `src/styles/tokens.generated.css` bằng `pnpm --filter web gen:theme`; KHÔNG sửa
+ * tay các biến đó ở đây. File này chỉ còn phần nối token vào Tailwind, mật độ/cỡ chữ và base.
  *
  * Chế độ sáng/tối (TG.13): `data-theme` trên <html> do cài đặt người dùng điều khiển —
  * 'dark' buộc tối, 'light' buộc sáng, 'system' (mặc định, không ghi đè gì) theo hệ điều
- * hành (prefers-color-scheme). Class `dark:` của shadcn (variant bên dưới) cũng theo đúng
- * quy tắc đó.
+ * hành (prefers-color-scheme). Biến thể `dark:` bên dưới cũng theo đúng quy tắc đó.
  */
 @custom-variant dark {
   @media (prefers-color-scheme: dark) {
@@ -26,146 +21,16 @@
   }
 }
 
-/* ---------- 1. Bảng màu gốc (xám ánh lam + màu nhấn tím của ping) ---------- */
-:root {
-  --palette-ink-950: oklch(0.18 0.012 275);
-  --palette-ink-900: oklch(0.215 0.012 275);
-  --palette-ink-850: oklch(0.245 0.012 275);
-  --palette-ink-800: oklch(0.275 0.012 275);
-  --palette-ink-700: oklch(0.32 0.012 275);
-  --palette-ink-500: oklch(0.5 0.012 275);
-  --palette-ink-400: oklch(0.7 0.01 275);
-  --palette-ink-200: oklch(0.9 0.006 275);
-  --palette-ink-150: oklch(0.93 0.005 275);
-  --palette-ink-100: oklch(0.955 0.004 275);
-  --palette-ink-50: oklch(0.985 0.002 275);
-  --palette-white: oklch(1 0 0);
-  --palette-violet-600: oklch(0.55 0.2 282);
-  --palette-violet-500: oklch(0.62 0.19 282);
-  --palette-violet-300: oklch(0.76 0.14 282);
-  --palette-green-600: oklch(0.6 0.17 150);
-  --palette-red-600: oklch(0.5 0.22 27);
-  --palette-red-400: oklch(0.76 0.16 25);
-}
-
-/* ---------- 2. Token theo nghĩa: nền sáng ---------- */
-:root {
-  --radius: 0.5rem;
-
-  --background: var(--palette-white); /* vùng chat */
-  --foreground: var(--palette-ink-950);
-  --card: var(--palette-white);
-  --card-foreground: var(--palette-ink-950);
-  --popover: var(--palette-white);
-  --popover-foreground: var(--palette-ink-950);
-  --primary: var(--palette-violet-600);
-  --link: var(--palette-violet-600); /* chữ liên kết: nền tối cần sáng hơn nền nút */
-  --primary-foreground: var(--palette-white);
-  --secondary: var(--palette-ink-150);
-  --secondary-foreground: var(--palette-ink-950);
-  --muted: var(--palette-ink-100);
-  --muted-foreground: var(--palette-ink-500);
-  --accent: var(--palette-ink-150); /* nền khi rê chuột */
-  --accent-foreground: var(--palette-ink-950);
-  --destructive: var(--palette-red-600);
-  --border: var(--palette-ink-200);
-  --input: var(--palette-ink-200);
-  --ring: var(--palette-violet-500);
-  --online: var(--palette-green-600); /* chấm trạng thái online */
-  /* Lớp phủ làm mờ nền dưới drawer/menu — cố ý giống nhau ở cả hai chế độ. */
-  --scrim: oklch(0 0 0 / 45%);
-
-  /* Ba tầng nền kiểu chat: rail (server) đậm nhất → sidebar (channel) → vùng chat. */
-  --rail: var(--palette-ink-200);
-  --rail-foreground: var(--palette-ink-950);
-  --sidebar: var(--palette-ink-100);
-  --sidebar-foreground: var(--palette-ink-950);
-  --sidebar-primary: var(--palette-violet-600);
-  --sidebar-primary-foreground: var(--palette-white);
-  --sidebar-accent: var(--palette-ink-200);
-  --sidebar-accent-foreground: var(--palette-ink-950);
-  --sidebar-border: var(--palette-ink-200);
-  --sidebar-ring: var(--palette-violet-500);
-}
-
-/* ---------- 2. Token theo nghĩa: nền tối ---------- */
-/* Áp dụng khi hệ điều hành tối VÀ người dùng không buộc sáng ('light'). */
-@media (prefers-color-scheme: dark) {
-  html:not([data-theme='light']) {
-    --background: var(--palette-ink-850);
-    --foreground: var(--palette-ink-150);
-    --card: var(--palette-ink-900);
-    --card-foreground: var(--palette-ink-150);
-    --popover: var(--palette-ink-950);
-    --popover-foreground: var(--palette-ink-150);
-    --primary: var(--palette-violet-600); /* chữ trắng trên nút ≥ 4.5:1 */
-    --link: var(--palette-violet-300);
-    --primary-foreground: var(--palette-white);
-    --secondary: var(--palette-ink-700);
-    --secondary-foreground: var(--palette-ink-150);
-    --muted: var(--palette-ink-800);
-    --muted-foreground: var(--palette-ink-400);
-    --accent: var(--palette-ink-800);
-    --accent-foreground: var(--palette-ink-50);
-    --destructive: var(--palette-red-400);
-    --border: oklch(1 0 0 / 8%);
-    --input: oklch(1 0 0 / 12%);
-    --ring: var(--palette-violet-500);
-
-    --rail: var(--palette-ink-950);
-    --rail-foreground: var(--palette-ink-150);
-    --sidebar: var(--palette-ink-900);
-    --sidebar-foreground: var(--palette-ink-150);
-    --sidebar-primary: var(--palette-violet-500);
-    --sidebar-primary-foreground: var(--palette-white);
-    --sidebar-accent: var(--palette-ink-800);
-    --sidebar-accent-foreground: var(--palette-ink-50);
-    --sidebar-border: oklch(1 0 0 / 8%);
-    --sidebar-ring: var(--palette-violet-500);
-  }
-}
-
-/* Buộc tối bằng cài đặt (TG.13, data-theme='dark') — kể cả khi hệ điều hành đang sáng.
-   Token PHẢI GIỐNG HỆT khối media phía trên: CSS không gộp được selector với @media nên
-   nhân bản một lần; sửa khối này thì sửa khối kia. */
-html[data-theme='dark'] {
-  --background: var(--palette-ink-850);
-  --foreground: var(--palette-ink-150);
-  --card: var(--palette-ink-900);
-  --card-foreground: var(--palette-ink-150);
-  --popover: var(--palette-ink-950);
-  --popover-foreground: var(--palette-ink-150);
-  --primary: var(--palette-violet-600); /* chữ trắng trên nút ≥ 4.5:1 */
-  --link: var(--palette-violet-300);
-  --primary-foreground: var(--palette-white);
-  --secondary: var(--palette-ink-700);
-  --secondary-foreground: var(--palette-ink-150);
-  --muted: var(--palette-ink-800);
-  --muted-foreground: var(--palette-ink-400);
-  --accent: var(--palette-ink-800);
-  --accent-foreground: var(--palette-ink-50);
-  --destructive: var(--palette-red-400);
-  --border: oklch(1 0 0 / 8%);
-  --input: oklch(1 0 0 / 12%);
-  --ring: var(--palette-violet-500);
-
-  --rail: var(--palette-ink-950);
-  --rail-foreground: var(--palette-ink-150);
-  --sidebar: var(--palette-ink-900);
-  --sidebar-foreground: var(--palette-ink-150);
-  --sidebar-primary: var(--palette-violet-500);
-  --sidebar-primary-foreground: var(--palette-white);
-  --sidebar-accent: var(--palette-ink-800);
-  --sidebar-accent-foreground: var(--palette-ink-50);
-  --sidebar-border: oklch(1 0 0 / 8%);
-  --sidebar-ring: var(--palette-violet-500);
-}
-
-/* ---------- 3. Nối token vào Tailwind ---------- */
+/* ---------- Nối token vào Tailwind ---------- */
 @theme inline {
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-geist-sans);
+
+  /* Độ đậm đọc từ token: chỉ ba bậc (normal/medium/semibold) — audit chặn bậc khác. */
+  --font-weight-normal: var(--ping-weight-normal);
+  --font-weight-medium: var(--ping-weight-medium);
+  --font-weight-semibold: var(--ping-weight-semibold);
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -176,6 +41,12 @@ html[data-theme='dark'] {
   --color-primary: var(--primary);
   --color-link: var(--link);
   --color-online: var(--online);
+  --color-idle: var(--idle);
+  --color-dnd: var(--dnd);
+  --color-offline: var(--offline);
+  --color-success: var(--success);
+  --color-success-background: var(--success-background);
+  --color-success-foreground: var(--success-foreground);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
@@ -185,6 +56,7 @@ html[data-theme='dark'] {
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-scrim: var(--scrim);
@@ -198,25 +70,42 @@ html[data-theme='dark'] {
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-field: var(--field);
 
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  /* Bo góc đọc thẳng token: rounded-lg = 12 px, khớp thang antd (trước đây 8 px). */
+  --radius-sm: var(--ping-radius-sm);
+  --radius-md: var(--ping-radius-md);
+  --radius-lg: var(--ping-radius-lg);
+  --radius-xl: var(--ping-radius-xl);
+  --radius-2xl: var(--ping-radius-2xl);
+  --radius-3xl: var(--ping-radius-3xl);
+
+  /* Bóng đổ + đường cong chuyển động cũng đọc từ token (shadow-panel/overlay, ease-*). */
+  --shadow-panel: var(--ping-shadow-panel);
+  --shadow-overlay: var(--ping-shadow-overlay);
+  --ease-standard: var(--ping-ease-standard);
+  /* Khung đo từ Discord web (1280×800): cột kênh 303 px, header 49 px. Đặt ở đây để dùng
+     `w-sidebar` / `h-header` / `top-header` thay vì giá trị tuỳ ý trong từng component. */
+  --spacing-sidebar: 303px;
+  --spacing-header: 49px;
+  /* Cài đặt cá nhân (Discord visual refresh): nav 232 px, cột nội dung tối đa 740 px.
+     `max-w-*` đọc namespace `--container-*`, còn `w-*`/`h-*` đọc `--spacing-*`. */
+  --spacing-settings-nav: 232px;
+  --container-settings-content: 740px;
+  /* Mặc định cho mọi `transition-*`: một đường cong duy nhất (trước đây là mặc định Tailwind). */
+  --default-transition-timing-function: var(--ping-ease-standard);
 }
 
-/* ---------- 4. Cỡ chữ + mật độ tin nhắn (TG.13) ----------
+/* ---------- Cỡ chữ + mật độ tin nhắn (TG.13) ----------
  * `data-font`/`data-density` trên <html> do cài đặt người dùng điều khiển (theme-provider);
  * không đặt attr = mặc định (md / comfortable). Đổi cỡ chữ qua font-size gốc (rem) nên mọi
  * khoảng cách theo rem co theo, không đổi màu — contrast a11y giữ nguyên.
  */
 :root {
   --ping-root-font-size: 100%; /* md = 16px */
-  --ping-message-py: 6px; /* padding khối tin nhắn, khớp py-1.5 cũ */
-  --ping-message-leading: 1.5; /* giãn dòng nội dung tin */
+  --ping-message-py: 2px; /* padding trong một nhóm tin (Discord: 2px) */
+  --ping-message-gap: 16px; /* khoảng cách giữa hai nhóm tin khác tác giả (Discord: ~16px) */
+  --ping-message-leading: 1.375; /* giãn dòng nội dung tin = 22px ở 16px (Discord) */
 }
 
 html[data-font='sm'] {
@@ -229,6 +118,7 @@ html[data-font='lg'] {
 
 html[data-density='compact'] {
   --ping-message-py: 2px;
+  --ping-message-gap: 8px;
   --ping-message-leading: 1.3;
 }
 
@@ -242,6 +132,42 @@ html[data-density='compact'] {
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* Skin Pixel (ADR-0076): khung Tailwind dày 2 px thay vì 1 px cứng của `border-*`. Đặt ngoài
+   layer để thắng utility; không dùng !important — chọn từng cạnh để không phá phần tử chỉ có
+   `border-t`/`border-l`. Bo góc đã do token `--ping-radius-*` lo. */
+html[data-skin='pixel'] .border {
+  border-width: var(--ping-border-width);
+}
+html[data-skin='pixel'] .border-t {
+  border-top-width: var(--ping-border-width);
+}
+html[data-skin='pixel'] .border-r {
+  border-right-width: var(--ping-border-width);
+}
+html[data-skin='pixel'] .border-b {
+  border-bottom-width: var(--ping-border-width);
+}
+html[data-skin='pixel'] .border-l {
+  border-left-width: var(--ping-border-width);
+}
+html[data-skin='pixel'] .border-x {
+  border-left-width: var(--ping-border-width);
+  border-right-width: var(--ping-border-width);
+}
+html[data-skin='pixel'] .border-y {
+  border-top-width: var(--ping-border-width);
+  border-bottom-width: var(--ping-border-width);
+}
+
+/* Viền focus duy nhất cho phần tử tự vẽ (link, hàng danh sách, ô ảnh): 2 px màu --ring, cách
+   2 px. Thay cho ring-1/2/3 rải rác trước đây — cùng một hình dạng ở mọi chỗ. */
+@utility focus-ring {
+  &:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
   }
 }
 
