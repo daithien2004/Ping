@@ -9,10 +9,10 @@ và guide đúng phiên bản trong `node_modules/next/dist/docs/` trước khi 
   phép biến đổi cache là hàm thuần có test. Không copy dữ liệu server vào store.
 - Effect dùng đồng bộ bên ngoài. `<Activity>` giữ state/DOM của trang ẩn; form nhạy cảm cần
   `useClearOnHide`. Quyền UI chỉ qua CASL; chưa ready thì khóa thao tác, giữ nháp.
-- Hiện tại shadcn/Radix và màu trong `globals.css` theo ADR-0023. Chưa tự chuyển sang antd hay
-  thay nguồn token: cần ADR UI riêng, spike SSR/CSP/bundle và OWNER duyệt (T0.7/TF).
-- Khi bộ `Ping*` được duyệt, feature chỉ dùng API wrapper của Ping; không lộ prop antd. Chat
-  cốt lõi có thể tự dựng trên cùng token. Không tự thêm dependency.
+- Component nền tảng là antd 6 bọc thành `Ping*` trong `components/ui/` (ADR-0050); feature chỉ
+  dùng API wrapper của Ping, không lộ prop antd. Chất liệu giao diện (màu, radius, shadow) lấy từ
+  `src/lib/theme/tokens.ts`, sinh ra `styles/tokens.generated.css` (ADR-0075) — KHÔNG sửa tay file
+  sinh. Chat cốt lõi có thể tự dựng trên cùng token. Không tự thêm dependency hay nới CSP.
 - Chữ/ARIA qua i18n vi/en; lỗi qua `useErrorMessage`, trang lỗi gọi `reportError` và có mã tham chiếu.
   Mỗi màn đủ loading/rỗng/lỗi/quyền. Không dùng màu thô hay hiển thị message lỗi nội bộ.
 - UI thay đổi phải có Playwright, kiểm trình duyệt thật, axe và check bundle. Responsive mới theo

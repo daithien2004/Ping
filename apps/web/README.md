@@ -1,7 +1,8 @@
 # apps/web
 
 Next.js 16 (App Router, `cacheComponents`), React 19, TanStack Query (dữ liệu server), Zustand (trạng thái UI),
-shadcn/ui trên Radix, use-intl (tiếng Việt và tiếng Anh). Chỉ hỗ trợ desktop.
+antd 6 bọc thành bộ `Ping*` (`src/components/ui/`), design token từ `src/lib/theme/tokens.ts`, use-intl (tiếng Việt
+và tiếng Anh). Chỉ hỗ trợ desktop.
 
 Chạy cả dự án: xem [README gốc](../../README.md). Dưới đây chỉ là những thứ riêng của web.
 
@@ -12,7 +13,7 @@ app/         chỉ định tuyến (page, layout, error, loading). Không logic.
 features/    theo miền: auth, servers, channels, messages, members, permissions, realtime
              mỗi miền: api.ts, hooks.ts (nơi DUY NHẤT ghi dữ liệu server vào cache), *-cache.ts (hàm thuần có test),
              components/
-components/  thành phần dùng chung; ui/ là shadcn
+components/  thành phần dùng chung; ui/ là bộ vỏ `Ping*` trên antd 6
 lib/         api-client, env, query-keys, báo lỗi (reportError), Sentry (tải lười), tiện ích
 ```
 

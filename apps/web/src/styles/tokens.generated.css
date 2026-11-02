@@ -1,0 +1,234 @@
+/* AUTO-GENERATED từ src/lib/theme/tokens.ts — KHÔNG sửa tay.
+ * Sinh lại: pnpm --filter web gen:theme
+ * CI chạy --check và đỏ nếu file này lệch token.
+ */
+:root {
+  --palette-violet-300: #a4a5ff;
+  --palette-violet-500: #7870f3;
+  --palette-violet-600: #6558e0;
+  --palette-blurple-500: #5865f2;
+  --palette-blurple-600: #4752c4;
+  --palette-blue-400: #4d96ee;
+  --palette-blue-600: #006dd4;
+  --palette-ink-50: #fafafb;
+  --palette-ink-100: #eff0f3;
+  --palette-ink-140: #efeff1;
+  --palette-ink-150: #e7e8eb;
+  --palette-ink-200: #dddee2;
+  --palette-ink-400: #9c9ea5;
+  --palette-ink-420: #96979e;
+  --palette-ink-450: #87898f;
+  --palette-ink-500: #61636a;
+  --palette-ink-600: #6b6d78;
+  --palette-ink-700: #313239;
+  --palette-ink-750: #2e2e34;
+  --palette-ink-800: #26272e;
+  --palette-ink-850: #1f2026;
+  --palette-ink-900: #18191f;
+  --palette-ink-950: #101117;
+  --palette-surface-darkRail: #121214;
+  --palette-surface-darkSidebar: #16161a;
+  --palette-surface-darkChat: #1a1a1e;
+  --palette-surface-darkMuted: #202024;
+  --palette-surface-darkCard: #222327;
+  --palette-surface-darkMenu: #242429;
+  --palette-surface-darkSecondary: #28282d;
+  --palette-surface-lightRail: #f3f3f4;
+  --palette-surface-lightSidebar: #fbfbfb;
+  --palette-surface-lightChat: #ffffff;
+  --palette-green-600: #009b44;
+  --palette-emerald-100: #d1fae5;
+  --palette-emerald-300: #6ee7b7;
+  --palette-emerald-700: #047857;
+  --palette-emerald-950: #022c22;
+  --palette-amber-500: #d6a32a;
+  --palette-red-400: #ff847c;
+  --palette-red-600: #c20000;
+  --palette-white: #ffffff;
+
+  /* Bo góc: Tailwind rounded-* đọc các biến này qua @theme trong globals.css. */
+  --ping-radius-sm: 6px;
+  --ping-radius-md: 8px;
+  --ping-radius-lg: 12px;
+  --ping-radius-xl: 16px;
+  --ping-radius-2xl: 14px;
+  --ping-radius-3xl: 18px;
+  --ping-radius-full: 9999px;
+  --radius: 12px;
+
+  /* Độ dày viền mặc định của khung Tailwind (globals.css đọc khi có [data-skin]). */
+  --ping-border-width: 1px;
+
+  /* Đường cong chuyển động (ease-* của Tailwind). */
+  --ping-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+
+  /* Độ đậm chữ (font-* của Tailwind): ba bậc, xem ghi chú trong tokens.ts. */
+  --ping-weight-normal: 400;
+  --ping-weight-medium: 500;
+  --ping-weight-semibold: 600;
+
+  --background: #ffffff;
+  --foreground: #2e2e34;
+  --card: #ffffff;
+  --card-foreground: #2e2e34;
+  --popover: #ffffff;
+  --popover-foreground: #2e2e34;
+  --primary: #5865f2;
+  --primary-foreground: #ffffff;
+  --secondary: #e7e8eb;
+  --secondary-foreground: #2e2e34;
+  --muted: #f3f3f4;
+  --muted-foreground: #6b6d78;
+  --accent: #e7e8eb;
+  --accent-foreground: #18191f;
+  --destructive: #c20000;
+  --border: #dddee2;
+  --border-strong: #87898f;
+  --input: #87898f;
+  --ring: #5865f2;
+  --link: #006dd4;
+  --online: #009b44;
+  --idle: #d6a32a;
+  --dnd: #c20000;
+  --offline: #9c9ea5;
+  --success: #047857;
+  --success-background: #d1fae5;
+  --success-foreground: #047857;
+  --scrim: #00000073;
+  --rail: #f3f3f4;
+  --rail-foreground: #2e2e34;
+  --sidebar: #fbfbfb;
+  --sidebar-foreground: #2e2e34;
+  --sidebar-primary: #5865f2;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #dddee2;
+  --sidebar-accent-foreground: #101117;
+  --sidebar-border: #dddee2;
+  --sidebar-ring: #5865f2;
+  --field: #0000000f;
+
+  /* Bóng đổ theo nền (shadow-* của Tailwind). */
+  --ping-shadow-panel: 0 4px 12px rgb(16 17 23 / 10%);
+  --ping-shadow-overlay: 0 12px 32px rgb(16 17 23 / 16%);
+}
+
+/* Tối theo hệ điều hành, trừ khi người dùng buộc sáng. */
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme='light']) {
+    --background: #1a1a1e;
+    --foreground: #efeff1;
+    --card: #222327;
+    --card-foreground: #efeff1;
+    --popover: #242429;
+    --popover-foreground: #efeff1;
+    --primary: #5865f2;
+    --primary-foreground: #ffffff;
+    --secondary: #28282d;
+    --secondary-foreground: #efeff1;
+    --muted: #202024;
+    --muted-foreground: #96979e;
+    --accent: #202024;
+    --accent-foreground: #fafafb;
+    --destructive: #ff847c;
+    --border: #96979e1f;
+    --border-strong: #6b6d78;
+    --input: #6b6d78;
+    --ring: #5865f2;
+    --link: #4d96ee;
+    --online: #009b44;
+    --idle: #d6a32a;
+    --dnd: #ff847c;
+    --offline: #61636a;
+    --success: #6ee7b7;
+    --success-background: #022c22;
+    --success-foreground: #6ee7b7;
+    --scrim: #00000073;
+    --rail: #121214;
+    --rail-foreground: #efeff1;
+    --sidebar: #16161a;
+    --sidebar-foreground: #efeff1;
+    --sidebar-primary: #5865f2;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: #28282d;
+    --sidebar-accent-foreground: #fafafb;
+    --sidebar-border: #96979e1f;
+    --sidebar-ring: #5865f2;
+    --field: #0000001f;
+    --ping-shadow-panel: 0 4px 12px rgb(0 0 0 / 50%);
+    --ping-shadow-overlay: 0 12px 32px rgb(0 0 0 / 60%);
+  }
+}
+
+/* Buộc tối bằng cài đặt người dùng. */
+html[data-theme='dark'] {
+  --background: #1a1a1e;
+  --foreground: #efeff1;
+  --card: #222327;
+  --card-foreground: #efeff1;
+  --popover: #242429;
+  --popover-foreground: #efeff1;
+  --primary: #5865f2;
+  --primary-foreground: #ffffff;
+  --secondary: #28282d;
+  --secondary-foreground: #efeff1;
+  --muted: #202024;
+  --muted-foreground: #96979e;
+  --accent: #202024;
+  --accent-foreground: #fafafb;
+  --destructive: #ff847c;
+  --border: #96979e1f;
+  --border-strong: #6b6d78;
+  --input: #6b6d78;
+  --ring: #5865f2;
+  --link: #4d96ee;
+  --online: #009b44;
+  --idle: #d6a32a;
+  --dnd: #ff847c;
+  --offline: #61636a;
+  --success: #6ee7b7;
+  --success-background: #022c22;
+  --success-foreground: #6ee7b7;
+  --scrim: #00000073;
+  --rail: #121214;
+  --rail-foreground: #efeff1;
+  --sidebar: #16161a;
+  --sidebar-foreground: #efeff1;
+  --sidebar-primary: #5865f2;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #28282d;
+  --sidebar-accent-foreground: #fafafb;
+  --sidebar-border: #96979e1f;
+  --sidebar-ring: #5865f2;
+  --field: #0000001f;
+  --ping-shadow-panel: 0 4px 12px rgb(0 0 0 / 50%);
+  --ping-shadow-overlay: 0 12px 32px rgb(0 0 0 / 60%);
+}
+
+/* Skin Pixel (ADR-0076) — trục độc lập với sáng/tối: đặt sau các khối theme để thắng cascade
+ * ở cùng độ đặc hiệu. Chỉ hình thức; màu và nhịp giữ nguyên nên ảnh baseline mặc định không đổi. */
+html[data-skin='pixel'] {
+  --ping-radius-sm: 0px;
+  --ping-radius-md: 0px;
+  --ping-radius-lg: 0px;
+  --ping-radius-xl: 0px;
+  --ping-radius-2xl: 0px;
+  --ping-radius-3xl: 0px;
+  --ping-radius-full: 0px;
+  --radius: 0px;
+  --ping-border-width: 2px;
+  --ping-ease-standard: steps(2, end);
+  --ping-shadow-panel: 3px 3px 0 rgb(16 17 23 / 28%);
+  --ping-shadow-overlay: 5px 5px 0 rgb(16 17 23 / 28%);
+}
+
+@media (prefers-color-scheme: dark) {
+  html[data-skin='pixel']:not([data-theme='light']) {
+    --ping-shadow-panel: 3px 3px 0 rgb(0 0 0 / 70%);
+    --ping-shadow-overlay: 5px 5px 0 rgb(0 0 0 / 70%);
+  }
+}
+
+html[data-skin='pixel'][data-theme='dark'] {
+  --ping-shadow-panel: 3px 3px 0 rgb(0 0 0 / 70%);
+  --ping-shadow-overlay: 5px 5px 0 rgb(0 0 0 / 70%);
+}

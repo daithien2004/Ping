@@ -4,7 +4,7 @@ import { Suspense, use, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Pencil, Pin, Users } from 'lucide-react';
 import { useTranslations } from 'use-intl';
-import { Button } from '@/components/ui/button';
+import { PingIconButton } from '@/components/ui/ping-icon-button';
 import { MessageListSkeleton } from '@/components/skeletons';
 import { MemberPanel } from '@/features/members/components/member-panel';
 import { useMemberPanel } from '@/features/members/store';
@@ -82,62 +82,61 @@ export function ChannelView({
   return (
     <div className="relative flex min-h-0 flex-1">
       <section className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <header className="flex min-h-12 shrink-0 items-center border-b px-4 font-semibold shadow-xs">
-          <div className="mr-1 flex min-w-0 flex-col justify-center py-1">
-            <span className="flex min-w-0 items-center gap-1.5">
-              <span className="text-xl leading-none text-muted-foreground">#</span>
-              <span className="truncate">{channel.name}</span>
+        {/* Discord: header 49 px, nền trùng nền chat (không viền), tên kênh + chủ đề trên CÙNG
+            một dòng. Hàng icon theo thứ tự Discord (ghim, chuông, thành viên), ô tìm kiếm 244 px
+            nằm cuối; nút "Hỏi Ping" chỉ là icon để không phá nhịp header. */}
+        <header className="flex h-header shrink-0 items-center gap-2 px-4">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <span aria-hidden className="shrink-0 text-2xl leading-none text-muted-foreground">
+              #
             </span>
-            {/* TG.10: chủ đề hiển thị ngay dưới tên kênh (header), quản lý kênh sửa qua nút bút. */}
+            <h2 className="truncate text-base font-semibold">{channel.name}</h2>
+            {/* TG.10: chủ đề hiển thị ngay sau tên kênh (header), quản lý kênh sửa qua nút bút. */}
             {channel.topic && (
-              <p
-                className="truncate text-xs font-normal text-muted-foreground"
-                data-testid="channel-topic"
-              >
-                {channel.topic}
-              </p>
+              <>
+                <span aria-hidden className="h-4 w-px shrink-0 bg-border" />
+                <p
+                  className="min-w-0 truncate text-sm font-normal text-muted-foreground"
+                  data-testid="channel-topic"
+                >
+                  {channel.topic}
+                </p>
+              </>
             )}
           </div>
-          {canManage && (
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label={t('channels.editTopic')}
-              data-testid="channel-topic-edit"
-              onClick={() => setTopicOpen(true)}
-            >
-              <Pencil />
-            </Button>
-          )}
-          <SearchDialog serverId={serverId} />
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-pressed={pinsOpen}
-            aria-label={t(pinsOpen ? 'messages.pinnedHide' : 'messages.pinnedShow')}
-            data-testid="pins-toggle"
-            onClick={() => setPinsOpen((open) => !open)}
-          >
-            <Pin />
-          </Button>
-          {/* TG.12: chuông cài đặt thông báo của kênh (mức + mute), kế thừa mặc định server. */}
-          <NotificationBell serverId={serverId} channelId={channel.id} />
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-pressed={panelOpen}
-            aria-label={t(panelOpen ? 'members.hide' : 'members.show')}
-            onClick={togglePanel}
-          >
-            <Users />
-          </Button>
-          <AskDialog
-            serverId={serverId}
-            channelId={channel.id}
-            open={askOpen}
-            onOpenChange={setAskOpen}
-            onCitationClick={goToMessage}
-          />
+          <div className="flex shrink-0 items-center gap-1">
+            {canManage && (
+              <PingIconButton
+                icon={<Pencil />}
+                aria-label={t('channels.editTopic')}
+                data-testid="channel-topic-edit"
+                onClick={() => setTopicOpen(true)}
+              />
+            )}
+            <PingIconButton
+              icon={<Pin />}
+              aria-pressed={pinsOpen}
+              aria-label={t(pinsOpen ? 'messages.pinnedHide' : 'messages.pinnedShow')}
+              data-testid="pins-toggle"
+              onClick={() => setPinsOpen((open) => !open)}
+            />
+            {/* TG.12: chuông cài đặt thông báo của kênh (mức + mute), kế thừa mặc định server. */}
+            <NotificationBell serverId={serverId} channelId={channel.id} />
+            <PingIconButton
+              icon={<Users />}
+              aria-pressed={panelOpen}
+              aria-label={t(panelOpen ? 'members.hide' : 'members.show')}
+              onClick={togglePanel}
+            />
+            <AskDialog
+              serverId={serverId}
+              channelId={channel.id}
+              open={askOpen}
+              onOpenChange={setAskOpen}
+              onCitationClick={goToMessage}
+            />
+            <SearchDialog serverId={serverId} />
+          </div>
         </header>
         <Suspense fallback={<MessageListSkeleton />}>
           {/* key: mỗi channel một trạng thái riêng (nháp, vị trí cuộn lần đầu). Tin đích của

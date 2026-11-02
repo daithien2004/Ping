@@ -1,7 +1,6 @@
 'use client';
 
 import { Suspense, type ReactNode } from 'react';
-import { TooltipProvider } from '@/components/ui/tooltip';
 import { LocaleProvider } from '@/i18n/locale-provider';
 import { QueryProvider } from './query-provider';
 import { ThemeProvider } from './theme-provider';
@@ -12,9 +11,7 @@ export function Providers({ children }: { children: ReactNode }) {
     <Suspense fallback={null}>
       <LocaleProvider>
         <QueryProvider>
-          <ThemeProvider>
-            <TooltipProvider>{children}</TooltipProvider>
-          </ThemeProvider>
+          <ThemeProvider>{children}</ThemeProvider>
         </QueryProvider>
       </LocaleProvider>
     </Suspense>

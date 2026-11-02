@@ -100,7 +100,7 @@ export function StickerPicker({
 
   return (
     <div
-      className="flex w-80 flex-col gap-2 rounded-lg border bg-popover p-2 shadow-md"
+      className="flex w-80 flex-col gap-2 rounded-lg border bg-popover p-2 shadow-panel"
       data-testid="sticker-picker"
     >
       <PingInput

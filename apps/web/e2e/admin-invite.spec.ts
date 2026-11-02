@@ -76,8 +76,8 @@ test('admin invite: display, regenerate revokes old code, join reports clear err
         const joinerPage = await joinerContext.newPage();
         await joinerPage.goto('/');
         await joinerPage.getByRole('button', { name: 'Tham gia server' }).click();
-        // Hộp thoại mở trên trang server (carol đã ở Ping Playground): sidebar cũng có nút
-        // «Sao chép mã mời» nên phải giới hạn trong dialog.
+        // Hộp thoại mở trên trang server (carol đã ở Ping Playground): giới hạn trong dialog
+        // để không phụ thuộc phần nền (menu server cũng có mục «Sao chép mã mời»).
         await joinerPage.getByRole('dialog').getByLabel('Mã mời').fill(originalCode);
         await joinerPage.getByRole('button', { name: 'Tham gia', exact: true }).click();
         await expect(joinerPage.getByText('Mã mời đã bị thu hồi.')).toBeVisible();

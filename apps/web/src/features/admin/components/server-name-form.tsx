@@ -70,7 +70,12 @@ export function ServerNameForm({ server }: { server: ServerDetail }) {
         }}
       />
       <div className="flex items-center gap-3">
-        <UserAvatar name={server.name} avatarUrl={server.iconUrl} className="size-12 rounded-2xl" />
+        <UserAvatar
+          name={server.name}
+          avatarUrl={server.iconUrl}
+          size={48}
+          style={{ borderRadius: 'var(--ping-radius-2xl)' }}
+        />
         <div className="flex flex-col gap-1">
           <PingButton
             size="sm"

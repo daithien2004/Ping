@@ -1,10 +1,10 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { BotIcon } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import { Suspense } from 'react';
 import { useTranslations } from 'use-intl';
-import { Button } from '@/components/ui/button';
+import { PingIconButton } from '@/components/ui/ping-icon-button';
 
 // Tải lười: chunk ngăn kéo + xử lý SSE chỉ nạp ở lần bấm "Hỏi Ping" đầu tiên (T6.10).
 const LazyAskDrawer = dynamic(() => import('./ask-drawer').then((module) => module.AskDrawer), {
@@ -34,17 +34,12 @@ export function AskDialog({
   const t = useTranslations();
   return (
     <>
-      <Button
-        type="button"
-        size="sm"
-        variant="outline"
+      <PingIconButton
+        icon={<Sparkles />}
         aria-label={t('ask.title')}
         onClick={() => onOpenChange(true)}
         data-testid="ask-ai-button"
-      >
-        <BotIcon className="mr-1.5 size-4" />
-        {t('ask.askButton')}
-      </Button>
+      />
       {open && (
         <Suspense fallback={null}>
           <LazyAskDrawer

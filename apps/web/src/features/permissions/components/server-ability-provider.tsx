@@ -3,7 +3,7 @@ import { AbilityProvider } from '@casl/react';
 import { use, useMemo, type ReactNode } from 'react';
 import { useTranslations } from 'use-intl';
 import { useMe } from '@/features/auth/hooks';
-import { Button } from '@/components/ui/button';
+import { PingButton } from '@/components/ui/ping-button';
 import { Loading } from '@/components/loading';
 import { useErrorMessage } from '@/lib/error-message';
 import { buildServerAbility } from '../ability';
@@ -38,7 +38,7 @@ function AbilityScope({ serverId, children }: { serverId: string; children: Reac
     return (
       <div role="alert" className="m-auto flex flex-col items-center gap-3">
         <p>{errorMessage(query.error)}</p>
-        <Button onClick={() => void query.refetch()}>{t('retry')}</Button>
+        <PingButton onClick={() => void query.refetch()}>{t('retry')}</PingButton>
       </div>
     );
   if (!query.data) return <Loading />;

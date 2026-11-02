@@ -125,6 +125,11 @@ jobs:
         if: needs.changes.outputs.code == 'true'
       - run: pnpm format:check
       - run: pnpm docs:check
+      # CSS token sinh từ tokens.ts (ADR-0075): file sinh lệch token là đỏ, buộc commit lại.
+      - run: node apps/web/scripts/gen-theme-css.mjs --check
+      # Cổng thiết kế (TF.14): tương phản WCAG, lưới 4 px, sàn chữ 12 px, thang độ đậm, tầng nền.
+      - run: pnpm --filter web audit:design
+        if: needs.changes.outputs.web == 'true'
       - run: pnpm lint
         if: needs.changes.outputs.code == 'true'
       - run: pnpm typecheck

@@ -49,11 +49,9 @@ export function VerifyEmailBanner() {
       </PingButton>
       {/* Đi thẳng mục Tài khoản nơi có trạng thái chi tiết; nhãn tránh chứa chuỗi «Cài đặt»
           (bài học TG.12: va chạm accessible-name với nút Cài đặt của server). */}
-      <Link
-        href="/settings"
-        className="shrink-0 font-medium text-link underline-offset-4 hover:underline"
-      >
-        {t('unverifiedBannerMore')}
+      <Link href="/settings" className="shrink-0 font-medium underline-offset-4 hover:underline">
+        {/* Màu ở span con: antd tô <a> bằng màu link tự sinh, đè class text-* trên Link. */}
+        <span className="text-link">{t('unverifiedBannerMore')}</span>
       </Link>
     </div>
   );

@@ -5,10 +5,11 @@ import { useTranslations } from 'use-intl';
 import { ArrowRightIcon, SendIcon } from 'lucide-react';
 import { api } from '@/lib/api-client';
 import { useErrorMessage } from '@/lib/error-message';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { PingAlert } from '@/components/ui/ping-alert';
+import { PingButton } from '@/components/ui/ping-button';
 import { PingDrawer } from '@/components/ui/ping-drawer';
+import { PingIconButton } from '@/components/ui/ping-icon-button';
+import { PingInput } from '@/components/ui/ping-input';
 import { PingSkeleton } from '@/components/ui/ping-skeleton';
 import { PingSpinner } from '@/components/ui/ping-spinner';
 
@@ -186,18 +187,17 @@ export function AskDrawer({
       size={460}
       footer={
         isAsking ? (
-          <Button type="button" variant="outline" onClick={cancel} data-testid="ask-cancel">
+          <PingButton variant="secondary" onClick={cancel} data-testid="ask-cancel">
             {t('common.cancel')}
-          </Button>
+          </PingButton>
         ) : (
-          <Button
-            type="button"
-            variant="outline"
+          <PingButton
+            variant="secondary"
             onClick={() => handleOpenChange(false)}
             data-testid="ask-close"
           >
             {t('common.close')}
-          </Button>
+          </PingButton>
         )
       }
     >
@@ -211,7 +211,7 @@ export function AskDrawer({
             void ask();
           }}
         >
-          <Input
+          <PingInput
             type="text"
             value={question}
             onChange={(event) => setQuestion(event.target.value)}
@@ -219,15 +219,13 @@ export function AskDrawer({
             disabled={isAsking}
             data-testid="ask-input"
           />
-          <Button
-            type="submit"
-            size="icon"
+          <PingIconButton
+            icon={<SendIcon />}
+            htmlType="submit"
             disabled={!question.trim() || isAsking}
             aria-label={t('ask.askButton')}
             data-testid="ask-send"
-          >
-            <SendIcon />
-          </Button>
+          />
         </form>
 
         {isAsking && (
@@ -256,18 +254,17 @@ export function AskDrawer({
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <span className="text-xs text-muted-foreground">{t('ask.citations')}</span>
                   {citations.map((messageId) => (
-                    <Button
+                    <PingButton
                       key={messageId}
-                      type="button"
                       size="sm"
-                      variant="outline"
+                      variant="secondary"
                       onClick={() => onCitationClick?.(messageId, channelId)}
                       title={t('ask.goToMessage')}
                       data-testid={`ask-citation-${messageId}`}
                     >
                       <span className="font-mono">{messageId.slice(0, 8)}</span>
                       <ArrowRightIcon className="ml-1 size-3" />
-                    </Button>
+                    </PingButton>
                   ))}
                 </div>
               ) : (

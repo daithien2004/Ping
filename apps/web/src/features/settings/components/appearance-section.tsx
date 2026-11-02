@@ -8,7 +8,9 @@ import { PingSegmented } from '@/components/ui/ping-segmented';
 import { pingToast } from '@/components/ui/ping-toast';
 import { useErrorMessage } from '@/lib/error-message';
 import { palette } from '@/lib/theme';
+import { PIXEL_SKIN_ENABLED } from '@/lib/theme/skin';
 import { usePatchSettings, useUserSettings } from '../hooks';
+import { useAppliedSettings } from '../store';
 import { SettingsSection } from './settings-section';
 
 /**
@@ -45,6 +47,9 @@ export function AppearanceSection() {
   const tc = useTranslations('common');
   const errorMessage = useErrorMessage();
   const patch = usePatchSettings();
+  // Skin (ADR-0076) là lựa chọn của THIẾT BỊ: đổi ngay trong store/cookie, không PATCH server.
+  const skin = useAppliedSettings((state) => state.skin);
+  const applySettings = useAppliedSettings((state) => state.apply);
   // Giá trị hiện hành từ cache (PATCH ghi optimistically nên segmented đổi ngay khi bấm).
   const { data: settings, isError, refetch } = useUserSettings();
   // PATCH hoàn nguyên giá trị cũ khi lỗi; báo toast để người dùng biết lựa chọn chưa lưu được.
@@ -102,6 +107,30 @@ export function AppearanceSection() {
           />
           <p className="text-xs text-muted-foreground">{t('themeHint')}</p>
         </div>
+
+        {PIXEL_SKIN_ENABLED && (
+          <div className="flex flex-col gap-2">
+            <span className="text-sm font-medium" id="settings-skin-label">
+              {t('skin')}
+            </span>
+            <PingSegmented
+              aria-labelledby="settings-skin-label"
+              value={skin}
+              options={[
+                {
+                  value: 'default',
+                  label: <span data-testid="settings-skin-default">{t('skinDefault')}</span>,
+                },
+                {
+                  value: 'pixel',
+                  label: <span data-testid="settings-skin-pixel">{t('skinPixel')}</span>,
+                },
+              ]}
+              onChange={(value) => applySettings({ skin: value === 'pixel' ? 'pixel' : 'default' })}
+            />
+            <p className="text-xs text-muted-foreground">{t('skinHint')}</p>
+          </div>
+        )}
 
         <div className="flex flex-col gap-2">
           <span className="text-sm font-medium" id="settings-density-label">

@@ -10,6 +10,12 @@
 - [ ] Có test cho logic/lỗi mới, và test đỏ khi bỏ phần sửa (đã thử phá code)
 - [ ] E2E liên quan đã chạy (API: `pnpm --filter api test:e2e`; UI: `pnpm --filter web test:e2e`, gồm axe và `check:bundle`)
 
+**Giao diện (nếu đổi UI)**
+
+- [ ] `pnpm --filter web audit:design` xanh (tương phản, lưới 4 px, sàn chữ 12 px, thang độ đậm, tầng nền)
+- [ ] Đổi bố cục/màu: đã cập nhật ảnh baseline visual (`test:visual:update` trên DB `ping_visual`, xoá thư mục platform trước) và **mở ảnh diff xem từng ảnh**
+- [ ] Commit tách đôi: (a) token/component, (b) ảnh baseline — review đọc diff dễ hơn
+
 **Quyền và bảo mật**
 
 - [ ] Endpoint mới/đổi có validate zod, guard xác thực và kiểm quyền CASL ở backend

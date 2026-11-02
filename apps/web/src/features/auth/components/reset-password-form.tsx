@@ -42,9 +42,10 @@ export function ResetPasswordForm() {
         </p>
         <Link
           href="/forgot-password"
-          className="text-sm font-medium text-link underline-offset-4 hover:underline"
+          className="text-sm font-medium underline-offset-4 hover:underline"
         >
-          {t('forgotTitle')}
+          {/* Màu ở span con: antd tô <a> bằng màu link tự sinh, đè class text-* trên Link. */}
+          <span className="text-link">{t('forgotTitle')}</span>
         </Link>
       </div>
     );
@@ -112,8 +113,9 @@ export function ResetPasswordForm() {
         {t('resetSubmit')}
       </PingButton>
       <p className="mt-2 text-sm">
-        <Link href="/login" className="font-medium text-link underline-offset-4 hover:underline">
-          {t('backToLogin')}
+        <Link href="/login" className="font-medium underline-offset-4 hover:underline">
+          {/* Màu ở span con: antd tô <a> bằng màu link tự sinh, đè class text-* trên Link. */}
+          <span className="text-link">{t('backToLogin')}</span>
         </Link>
       </p>
     </PingForm>

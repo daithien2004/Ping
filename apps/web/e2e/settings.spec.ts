@@ -104,6 +104,43 @@ test('tg13 settings: theme sync hai tab, riêng tư/chặn, thông báo kênh, g
       }
     });
 
+    await test.step('(a2) skin Pixel: đổi cục bộ, tải lại giữ nguyên, trả về mặc định', async () => {
+      await expect(alicePage.getByTestId('settings-appearance')).toBeVisible();
+      const html = alicePage.locator('html');
+      await expect(html).toHaveAttribute('data-skin', 'default');
+
+      await alicePage.getByTestId('settings-skin-pixel').click();
+      await expect(html).toHaveAttribute('data-skin', 'pixel');
+      // Đổi hình thức THẬT chứ không chỉ đổi attr: token bo góc về 0 (ADR-0076).
+      await expect
+        .poll(() =>
+          alicePage.evaluate(() =>
+            getComputedStyle(document.documentElement).getPropertyValue('--ping-radius-lg').trim(),
+          ),
+        )
+        .toBe('0px');
+      await expect(alicePage.getByRole('radio', { name: 'Pixel' })).toBeChecked();
+
+      // Skin là cookie THIẾT BỊ: không PATCH server, tải lại vẫn giữ lựa chọn.
+      const skinCookie = (await aliceContext.cookies()).find((item) => item.name === 'ping-skin');
+      expect(skinCookie?.value).toBe('pixel');
+      await alicePage.reload();
+      await expect(alicePage.getByTestId('settings-appearance')).toBeVisible();
+      await expect(html).toHaveAttribute('data-skin', 'pixel');
+      await expect(alicePage.getByRole('radio', { name: 'Pixel' })).toBeChecked();
+
+      // Trả về mặc định để ảnh evidence và các spec sau không dính skin.
+      await alicePage.getByTestId('settings-skin-default').click();
+      await expect(html).toHaveAttribute('data-skin', 'default');
+      await expect
+        .poll(() =>
+          alicePage.evaluate(() =>
+            getComputedStyle(document.documentElement).getPropertyValue('--ping-radius-lg').trim(),
+          ),
+        )
+        .toBe('12px');
+    });
+
     await test.step('(b) riêng tư: tắt dmAllow → bob tạo DM 403 DM_BLOCKED; chặn/bỏ chặn', async () => {
       await alicePage.getByRole('link', { name: 'Riêng tư' }).click();
       await expect(alicePage.getByTestId('settings-privacy')).toBeVisible();

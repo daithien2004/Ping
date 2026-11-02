@@ -2,10 +2,9 @@
 
 import { ErrorCodes } from '@ping/shared';
 import { useQueryErrorResetBoundary } from '@tanstack/react-query';
-import Link from 'next/link';
 import { useEffect } from 'react';
 import { useTranslations } from 'use-intl';
-import { Button } from '@/components/ui/button';
+import { PingButton } from '@/components/ui/ping-button';
 import { errorReference } from '@/lib/error-reference';
 import { useErrorMessage } from '@/lib/error-message';
 import { reportError } from '@/lib/report-error';
@@ -42,18 +41,16 @@ export default function AppError({ error, retry }: { error: Error; retry: () => 
         </p>
       )}
       <div className="flex gap-2">
-        <Button
-          variant="outline"
+        <PingButton
+          variant="secondary"
           onClick={() => {
             reset();
             retry();
           }}
         >
           {t('common.retry')}
-        </Button>
-        <Button asChild>
-          <Link href="/servers">{t('common.goHome')}</Link>
-        </Button>
+        </PingButton>
+        <PingButton href="/servers">{t('common.goHome')}</PingButton>
       </div>
     </div>
   );

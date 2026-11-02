@@ -1,10 +1,10 @@
 'use client';
 
-import { Bell } from 'lucide-react';
+import { Bell, BellOff } from 'lucide-react';
 import { useSyncExternalStore } from 'react';
 import { useTranslations } from 'use-intl';
-import { Button } from '@/components/ui/button';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { PingIconButton } from '@/components/ui/ping-icon-button';
+import { PingTooltip } from '@/components/ui/ping-tooltip';
 
 /**
  * Quyền Notification là trạng thái CỦA TRÌNH DUYỆT (ngoài React) — đọc qua
@@ -54,35 +54,29 @@ export function EnableNotificationsButton() {
 
   if (permission === 'unsupported' || permission === 'granted') return null;
   if (permission === 'denied') {
+    // Trạng thái "bị chặn" là icon như Discord, không phải chữ nhiều dòng trong rail 72 px;
+    // nhãn + tooltip vẫn nói rõ lý do cho trình đọc màn hình.
     return (
-      <Tooltip>
-        <TooltipTrigger asChild>
-          {/* "Mờ" nhưng vẫn đạt contrast ≥ 4.5:1 trên nền rail ở CẢ hai theme (axe/a11y.spec). */}
-          <p
-            data-testid="notify-browser-blocked"
-            className="w-full text-center text-[10px] leading-tight text-rail-foreground/85"
-          >
-            {t('browserBlocked')}
-          </p>
-        </TooltipTrigger>
-        <TooltipContent side="right">{t('browserBlockedHint')}</TooltipContent>
-      </Tooltip>
+      <PingTooltip title={t('browserBlockedHint')} placement="right">
+        <span
+          role="img"
+          aria-label={t('browserBlocked')}
+          data-testid="notify-browser-blocked"
+          className="flex size-8 items-center justify-center text-rail-foreground/85"
+        >
+          <BellOff className="size-5" />
+        </span>
+      </PingTooltip>
     );
   }
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label={t('enableBrowser')}
-          data-testid="notify-enable"
-          onClick={requestNotificationPermission}
-        >
-          <Bell className="size-5" />
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent side="right">{t('enableBrowser')}</TooltipContent>
-    </Tooltip>
+    <PingTooltip title={t('enableBrowser')} placement="right">
+      <PingIconButton
+        icon={<Bell className="size-5" />}
+        aria-label={t('enableBrowser')}
+        data-testid="notify-enable"
+        onClick={requestNotificationPermission}
+      />
+    </PingTooltip>
   );
 }

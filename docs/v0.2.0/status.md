@@ -121,3 +121,28 @@ Hệ quả cho trạng thái từng task: T7.1/T7.6 vẫn `blocked` (chờ pilot
 các mục `chưa kiểm`/`chưa đo` của cổng giữ nguyên, không tự đánh dấu đạt. Bản demo chạy local theo
 [demo.md](demo.md); chuẩn bị DB bằng một lệnh `pnpm demo:prepare` (thêm `--fresh` cho buổi quay cần
 sạch tuyệt đối).
+
+## Nền UI + skin Pixel (2026-11-02)
+
+PR1 "nền UI bám Discord" và PR2 "skin Pixel" chốt cùng một lượt trên `feat/ui-foundation`, merge
+`--no-ff` vào `main` và push một lần (không push nhánh `feat/**`).
+
+- Commits: `7ce0bf9` (code/token/test/docs PR1+PR2 — PR2 dùng chung `tokens.ts`, `antd-theme.ts`,
+  `theme-provider.tsx` nên không tách hunk được), `97a4edf` (72 baseline `win32` + ảnh
+  evidence/screens chụp lại; bộ `linux` cũ xoá để CI bootstrap lại theo ADR-0074), `e5b3cd1`
+  (prettier).
+- Quyết định: [ADR-0075](../adr/0075-single-token-source-va-lop-ping.md),
+  [ADR-0076](../adr/0076-skin-pixel-truc-hinh-thuc-thiet-bi.md). Thiết kế:
+  [direction.md](../design/direction.md), [ui-system.md](../design/ui-system.md). Bằng chứng:
+  [UI-foundation](evidence/UI-foundation/README.md), [UI-skins](evidence/UI-skins/README.md).
+- Kết quả đo trên head: web unit **288/288**; web e2e production trên DB sạch (`ping_e2e_clean`)
+  **62 pass + 1 skip, 0 fail** (21,9 phút; skip `local-deployment` cần HTTPS local); visual
+  **72/72** (36 mặc định + 36 Pixel, sinh rồi chạy lại không `--update` để xác nhận); bundle
+  **248,2 KB** tải ban đầu (ngân sách 450 KB); `audit:design`/`gen:theme --check`/lint (0 error,
+  14 warning cũ)/typecheck/prettier/docs:check sạch.
+- Lỗi thật bắt được: axe đọc màu giữa transition ở màn Tài khoản (sửa test: tắt transition đúng
+  lúc quét rồi gỡ ngay, không đụng app); nút "Sao chép mã mời" đã chuyển vào menu server từ PR1
+  (cập nhật e2e + script chụp); `settings.spec` chỉ xanh trên DB sạch — DB dev chung khiến polling
+  `/unread` bão hoà 6 kết nối HTTP/1.1 và ăn 429, không phải lỗi app.
+- Ghi chú: bộ baseline `linux/` do job CI `visual` bootstrap ở lần chạy đầu rồi upload artifact để
+  commit; chưa có baseline macOS. Skin là lựa chọn theo thiết bị (cookie), không theo tài khoản.

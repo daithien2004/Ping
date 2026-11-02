@@ -36,7 +36,7 @@ export const PingButton = forwardRef<HTMLButtonElement, PingButtonProps>(functio
       type={antdType}
       danger={danger}
       size={sizeMap[size]}
-      className={cn(className)}
+      className={cn('[&_svg:not([class*=size-])]:size-4 [&_svg]:pointer-events-none', className)}
       data-testid="ping-button"
       {...rest}
     >

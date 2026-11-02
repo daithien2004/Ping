@@ -78,7 +78,7 @@ function GifGrid<T extends GifPayload>({
           onClick={() => onPickGif(gif)}
           onKeyDown={onGridKeyDown}
           data-testid="gif-option"
-          className="overflow-hidden rounded focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          className="overflow-hidden rounded focus-ring"
         >
           {reduced ? (
             <GifPlaceholder width={gif.width} height={gif.height} label={placeholderLabel} />
@@ -193,10 +193,7 @@ export function GifPanel({
       </div>
       {showAttribution && (
         // Ghi công bắt buộc theo điều khoản Tenor (ADR-0069): cố định chân tab, cả khi tìm lẫn trending.
-        <p
-          className="px-1 text-center text-[11px] text-muted-foreground"
-          data-testid="gif-attribution"
-        >
+        <p className="px-1 text-center text-xs text-muted-foreground" data-testid="gif-attribution">
           <a
             href="https://tenor.com"
             target="_blank"

@@ -7,10 +7,10 @@ export interface PingAvatarProps extends AntdAvatarProps {
 }
 
 const presenceColor: Record<NonNullable<PingAvatarProps['presence']>, string> = {
-  online: '#2f9e6a',
-  idle: '#d6a32a',
-  dnd: '#d63b2a',
-  offline: '#7a7a92',
+  online: 'var(--online)',
+  idle: 'var(--idle)',
+  dnd: 'var(--dnd)',
+  offline: 'var(--offline)',
 };
 
 export function PingAvatar({ presence, ...rest }: PingAvatarProps) {
@@ -28,7 +28,7 @@ export function PingAvatar({ presence, ...rest }: PingAvatarProps) {
             height: 10,
             borderRadius: 9999,
             background: presenceColor[presence],
-            border: '2px solid var(--ping-color-bg)',
+            border: '2px solid var(--background)',
           }}
         />
       ) : null}

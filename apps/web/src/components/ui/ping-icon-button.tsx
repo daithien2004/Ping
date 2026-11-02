@@ -1,33 +1,27 @@
 'use client';
 
 import { Button } from 'antd';
-import { forwardRef, type ReactNode } from 'react';
+import { forwardRef, type ComponentProps, type ReactNode } from 'react';
+import { cn } from '@/lib/utils';
 
-export interface PingIconButtonProps {
+type AntdButtonProps = ComponentProps<typeof Button>;
+
+export interface PingIconButtonProps extends Omit<AntdButtonProps, 'icon' | 'children'> {
   icon: ReactNode;
   'aria-label': string;
-  onClick?: () => void;
-  disabled?: boolean;
-  loading?: boolean;
-  className?: string;
 }
 
+/** Nút chỉ có icon (antd `type="text"`): luôn bắt buộc `aria-label` — không có chữ để đọc. */
 export const PingIconButton = forwardRef<HTMLButtonElement, PingIconButtonProps>(
-  function PingIconButton(
-    { icon, 'aria-label': ariaLabel, onClick, disabled, loading, className },
-    ref,
-  ) {
+  function PingIconButton({ icon, className, ...rest }, ref) {
     return (
       <Button
         ref={ref}
         type="text"
         icon={icon}
-        aria-label={ariaLabel}
-        onClick={onClick}
-        disabled={disabled}
-        loading={loading}
-        className={className}
+        className={cn('[&_svg:not([class*=size-])]:size-4 [&_svg]:pointer-events-none', className)}
         data-testid="ping-icon-button"
+        {...rest}
       />
     );
   },

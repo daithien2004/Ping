@@ -5,7 +5,8 @@ import { NOTIFY_DEFAULT_LEVEL } from '@ping/shared';
 import { Bell } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslations } from 'use-intl';
-import { Button } from '@/components/ui/button';
+import { PingButton } from '@/components/ui/ping-button';
+import { PingIconButton } from '@/components/ui/ping-icon-button';
 import { PingPopover } from '@/components/ui/ping-popover';
 import { PingSegmented } from '@/components/ui/ping-segmented';
 import { PingSwitch } from '@/components/ui/ping-switch';
@@ -101,9 +102,9 @@ export function NotificationBell({
           {isError ? (
             <div role="alert" className="flex items-center gap-2 text-xs text-destructive">
               {t('prefsLoadFailed')}
-              <Button variant="outline" size="sm" onClick={() => void refetch()}>
+              <PingButton variant="secondary" size="sm" onClick={() => void refetch()}>
                 {tc('retry')}
-              </Button>
+              </PingButton>
             </div>
           ) : null}
           <PingSegmented
@@ -134,18 +135,18 @@ export function NotificationBell({
           )}
           <div className="flex flex-wrap gap-1" role="group" aria-label={t('muteLabel')}>
             {MUTE_OPTIONS.map((option) => (
-              <Button
+              <PingButton
                 key={option.key}
-                variant="outline"
+                variant="secondary"
                 size="sm"
                 data-testid={option.testId}
                 disabled={setPref.isPending}
                 onClick={() => muteFor(option.minutes)}
               >
                 {t(option.key)}
-              </Button>
+              </PingButton>
             ))}
-            <Button
+            <PingButton
               variant="ghost"
               size="sm"
               data-testid="notify-unmute"
@@ -153,7 +154,7 @@ export function NotificationBell({
               onClick={unmute}
             >
               {t('unmute')}
-            </Button>
+            </PingButton>
           </div>
           {/* Tùy chọn toàn cục người dùng: áp dụng cho mọi kênh, lưu thiết bị này (localStorage). */}
           <div className="flex items-center justify-between gap-2 border-t pt-2">
@@ -174,15 +175,12 @@ export function NotificationBell({
         </div>
       }
     >
-      <Button
-        variant="ghost"
-        size="icon"
+      <PingIconButton
+        icon={<Bell />}
         aria-label={t(dm ? 'bellDm' : 'bellChannel')}
         aria-expanded={open}
         data-testid={dm ? 'notify-bell-dm' : 'notify-bell'}
-      >
-        <Bell />
-      </Button>
+      />
     </PingPopover>
   );
 }

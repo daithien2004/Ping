@@ -7,7 +7,7 @@ import { useTranslations } from 'use-intl';
 import { cn } from 'cn';
 import { Loading } from '@/components/loading';
 import { RailSkeleton } from '@/components/skeletons';
-import { buttonVariants } from '@/components/ui/button';
+import { PingIconButton } from '@/components/ui/ping-icon-button';
 import { ConnectionBanner } from '@/features/realtime/components/connection-banner';
 import { VerifyEmailBanner } from '@/features/auth/components/verify-email-banner';
 import { ServerRail } from '@/features/servers/components/server-rail';
@@ -88,17 +88,14 @@ export function AppShell({ children }: { children: ReactNode }) {
       <VerifyEmailBanner />
       <QuickSwitcherHost />
       <header className="flex h-12 shrink-0 items-center gap-2 border-b bg-background px-2 md:hidden">
-        <button
+        <PingIconButton
           id={TOGGLE_ID}
           data-testid="mobile-nav-toggle"
-          type="button"
+          icon={<Menu />}
           aria-label={open ? t('closeNavigation') : t('openNavigation')}
           aria-expanded={open}
           onClick={() => setOpen(!open)}
-          className={buttonVariants({ variant: 'ghost', size: 'icon' })}
-        >
-          <Menu />
-        </button>
+        />
         <span className="font-semibold">Ping</span>
       </header>
       <div className="relative flex min-h-0 flex-1">
@@ -117,7 +114,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           className={cn(
             // Đặt absolute trong hàng nội dung (đã ở dưới banner + thanh trên) nên drawer luôn
             // khớp chiều cao còn lại, kể cả khi banner đẩy thanh trên xuống.
-            'flex shrink-0 max-md:absolute max-md:inset-y-0 max-md:left-0 max-md:z-30 max-md:shadow-xl max-md:transition-transform max-md:duration-200 max-md:outline-none',
+            'flex shrink-0 max-md:absolute max-md:inset-y-0 max-md:left-0 max-md:z-30 max-md:shadow-overlay max-md:transition-transform max-md:duration-200 max-md:outline-none',
             open
               ? 'max-md:visible max-md:translate-x-0'
               : 'max-md:invisible max-md:-translate-x-full',

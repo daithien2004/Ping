@@ -10,9 +10,10 @@ import dynamic from 'next/dynamic';
 import { useState } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useTranslations } from 'use-intl';
-import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { PingAvatar } from '@/components/ui/ping-avatar';
+import { PingButton } from '@/components/ui/ping-button';
+import { PingIconButton } from '@/components/ui/ping-icon-button';
+import { PingModal } from '@/components/ui/ping-modal';
 import { pingToast } from '@/components/ui/ping-toast';
 import { useErrorMessage } from '@/lib/error-message';
 import { qk } from '@/lib/query-keys';
@@ -69,7 +70,6 @@ export function MessageReactions({
   channelId: string;
 }) {
   const t = useTranslations('messages');
-  const tCommon = useTranslations('common');
   const { ability, ready, serverId } = useServerAbility();
   const toggle = useToggleReaction(channelId);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -135,46 +135,44 @@ export function MessageReactions({
         </span>
       ))}
       {canReact && (
-        <Button
-          variant="ghost"
-          size="icon"
+        <PingIconButton
+          icon={<SmilePlus className="size-4" />}
           aria-label={t('addReaction')}
           data-testid="add-reaction"
           disabled={toggle.isPending}
           onClick={() => setPickerOpen(true)}
-          className="size-6 rounded-full text-muted-foreground"
-        >
-          <SmilePlus className="size-4" />
-        </Button>
+          className="size-6"
+        />
       )}
 
-      <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
-        <DialogContent closeLabel={tCommon('close')} aria-describedby={undefined}>
-          <DialogHeader>
-            <DialogTitle>{t('pickReaction')}</DialogTitle>
-          </DialogHeader>
-          {pickerOpen && (
-            <EmojiPicker
-              serverId={serverId}
-              onPick={(emoji) => {
-                setPickerOpen(false);
-                const existing = reactions.find((row) => row.emoji === emoji);
-                react(emoji, !existing?.me);
-              }}
-              onPickCustom={(token) => {
-                // TG.24: picker trả token đầy đủ `:ten:<id>` — reaction lưu dạng gọn `c:<id>`
-                // (reactionTokenSchema shared chấp nhận; API kiểm emoji thuộc server của tin).
-                setPickerOpen(false);
-                const id = customEmojiIdFromToken(token);
-                if (!id) return;
-                const emoji = customEmojiReactionToken(id);
-                const existing = reactions.find((row) => row.emoji === emoji);
-                react(emoji, !existing?.me);
-              }}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
+      <PingModal
+        open={pickerOpen}
+        onCancel={() => setPickerOpen(false)}
+        title={t('pickReaction')}
+        footer={null}
+        destroyOnHidden
+      >
+        {pickerOpen && (
+          <EmojiPicker
+            serverId={serverId}
+            onPick={(emoji) => {
+              setPickerOpen(false);
+              const existing = reactions.find((row) => row.emoji === emoji);
+              react(emoji, !existing?.me);
+            }}
+            onPickCustom={(token) => {
+              // TG.24: picker trả token đầy đủ `:ten:<id>` — reaction lưu dạng gọn `c:<id>`
+              // (reactionTokenSchema shared chấp nhận; API kiểm emoji thuộc server của tin).
+              setPickerOpen(false);
+              const id = customEmojiIdFromToken(token);
+              if (!id) return;
+              const emoji = customEmojiReactionToken(id);
+              const existing = reactions.find((row) => row.emoji === emoji);
+              react(emoji, !existing?.me);
+            }}
+          />
+        )}
+      </PingModal>
 
       <ReactorListDialog
         messageId={message.id}
@@ -200,7 +198,6 @@ function ReactorListDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const t = useTranslations('messages');
-  const tCommon = useTranslations('common');
   const errorMessage = useErrorMessage();
   const query = useInfiniteQuery({
     queryKey: qk.reactionUsers(messageId, emoji ?? ''),
@@ -212,39 +209,40 @@ function ReactorListDialog({
   const users = query.data?.pages.flatMap((page) => page.users) ?? [];
 
   return (
-    <Dialog open={emoji !== null} onOpenChange={onOpenChange}>
-      <DialogContent closeLabel={tCommon('close')} aria-describedby={undefined}>
-        <DialogHeader>
-          <DialogTitle>{t('reactorsTitle', { emoji: emojiLabel })}</DialogTitle>
-        </DialogHeader>
-        {query.isPending && emoji !== null ? (
-          <p className="py-4 text-center text-sm text-muted-foreground">{t('reactorsLoading')}</p>
-        ) : query.isError ? (
-          <p className="py-4 text-center text-sm text-destructive">{errorMessage(query.error)}</p>
-        ) : users.length === 0 ? (
-          <p className="py-4 text-center text-sm text-muted-foreground">{t('reactorsEmpty')}</p>
-        ) : (
-          <ul className="flex max-h-64 flex-col gap-1 overflow-y-auto">
-            {users.map((user) => (
-              <li key={user.id} className="flex items-center gap-2 rounded px-1 py-1 text-sm">
-                <PingAvatar size="small" src={user.avatarUrl ?? undefined} />
-                <span className="font-medium">{user.displayName}</span>
-                <span className="text-xs text-muted-foreground">@{user.username}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-        {query.hasNextPage && (
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={query.isFetchingNextPage}
-            onClick={() => void query.fetchNextPage()}
-          >
-            {t('reactorsLoadMore')}
-          </Button>
-        )}
-      </DialogContent>
-    </Dialog>
+    <PingModal
+      open={emoji !== null}
+      onCancel={() => onOpenChange(false)}
+      title={t('reactorsTitle', { emoji: emojiLabel })}
+      footer={null}
+      destroyOnHidden
+    >
+      {query.isPending && emoji !== null ? (
+        <p className="py-4 text-center text-sm text-muted-foreground">{t('reactorsLoading')}</p>
+      ) : query.isError ? (
+        <p className="py-4 text-center text-sm text-destructive">{errorMessage(query.error)}</p>
+      ) : users.length === 0 ? (
+        <p className="py-4 text-center text-sm text-muted-foreground">{t('reactorsEmpty')}</p>
+      ) : (
+        <ul className="flex max-h-64 flex-col gap-1 overflow-y-auto">
+          {users.map((user) => (
+            <li key={user.id} className="flex items-center gap-2 rounded px-1 py-1 text-sm">
+              <PingAvatar size="small" src={user.avatarUrl ?? undefined} />
+              <span className="font-medium">{user.displayName}</span>
+              <span className="text-xs text-muted-foreground">@{user.username}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {query.hasNextPage && (
+        <PingButton
+          variant="secondary"
+          size="sm"
+          disabled={query.isFetchingNextPage}
+          onClick={() => void query.fetchNextPage()}
+        >
+          {t('reactorsLoadMore')}
+        </PingButton>
+      )}
+    </PingModal>
   );
 }

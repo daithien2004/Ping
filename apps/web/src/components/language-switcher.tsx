@@ -21,7 +21,7 @@ export function LanguageSwitcher({
       aria-label={t('language')}
       value={locale}
       onChange={(event) => switchLocale(event.target.value as AppLocale)}
-      className={`rounded-md border border-input bg-background px-1 py-0.5 text-xs text-foreground ${className}`}
+      className={`rounded-md border border-border-strong bg-background px-1 py-0.5 text-xs text-foreground ${className}`}
     >
       {locales.map((option) => (
         <option key={option} value={option}>

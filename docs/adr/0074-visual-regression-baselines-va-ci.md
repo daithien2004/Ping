@@ -66,4 +66,7 @@ job visual và diff vượt ngưỡng chặn PR đến khi duyệt. Các ràng b
 - **Cập nhật 2026-11-01:** 36 ảnh `linux/` đã được commit (`13ea987`); run 41294800751 job `visual`
   so sánh thật, xanh 4 phút và không upload artifact. Cổng nay có hiệu lực trên Linux — run nào
   còn artifact `visual-baselines-linux` là lượt đó lại bootstrap (thiếu ảnh), không gác.
+- **Cập nhật 2026-11-02:** skin Pixel ([ADR-0076](0076-skin-pixel-truc-hinh-thuc-thiet-bi.md)) nhân
+  đôi số ảnh thành **72/nền tảng** (ảnh mặc định giữ tên cũ, ảnh Pixel thêm `-pixel`). Bộ baseline
+  đang được sinh lại một lượt cùng PR1+PR2 tại bước chốt; baseline cũ 36 ảnh hết hiệu lực.
 - Không thay thế e2e hành vi (axe, luồng chức năng) — chỉ gác hồi quy thị giác.

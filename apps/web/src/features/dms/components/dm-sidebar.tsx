@@ -4,8 +4,8 @@ import { MessageCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'use-intl';
-import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
+import { PingButton } from '@/components/ui/ping-button';
+import { PingSkeleton } from '@/components/ui/ping-skeleton';
 import { useErrorMessage } from '@/lib/error-message';
 import { PingBadge } from '@/components/ui/ping-badge';
 import { UserAvatar } from '@/features/profile/components/user-avatar';
@@ -34,13 +34,13 @@ export function DmSidebar() {
   return (
     <aside
       data-mobile-nav
-      className={`flex min-h-0 w-60 shrink-0 flex-col bg-sidebar text-sidebar-foreground max-md:absolute max-md:inset-y-0 max-md:left-18 max-md:z-30 max-md:shadow-xl max-md:transition-transform max-md:duration-200 ${
+      className={`flex min-h-0 w-sidebar shrink-0 flex-col bg-sidebar text-sidebar-foreground max-md:absolute max-md:inset-y-0 max-md:left-18 max-md:z-30 max-md:shadow-overlay max-md:transition-transform max-md:duration-200 ${
         mobileNavOpen
           ? 'max-md:visible max-md:translate-x-0'
           : 'max-md:invisible max-md:-translate-x-full'
       }`}
     >
-      <header className="flex h-12 shrink-0 items-center gap-2 border-b border-sidebar-border px-4 shadow-xs">
+      <header className="flex h-header shrink-0 items-center gap-2 border-b border-sidebar-border px-4">
         <MessageCircle className="size-4 text-muted-foreground" aria-hidden />
         <h2 className="font-semibold">{t('title')}</h2>
       </header>
@@ -49,8 +49,8 @@ export function DmSidebar() {
           <div role="status" aria-label={t('loading')} className="flex flex-col gap-2 p-1">
             {[0, 1, 2].map((index) => (
               <div key={index} className="flex items-center gap-2">
-                <Skeleton className="size-8 rounded-full" />
-                <Skeleton className="h-4 w-28" />
+                <PingSkeleton block className="size-8 rounded-full" />
+                <PingSkeleton block className="h-4 w-28" />
               </div>
             ))}
           </div>
@@ -60,14 +60,14 @@ export function DmSidebar() {
             className="flex flex-col items-start gap-2 p-2 text-sm text-destructive"
           >
             <p>{errorMessage(error)}</p>
-            <Button
-              variant="outline"
-              size="xs"
+            <PingButton
+              variant="secondary"
+              size="sm"
               disabled={isFetching}
               onClick={() => void refetch()}
             >
               {tc('retry')}
-            </Button>
+            </PingButton>
           </div>
         ) : rows.length === 0 ? (
           <p className="px-2 py-1.5 text-sm text-muted-foreground">{t('empty')}</p>
@@ -114,13 +114,13 @@ function DmRow({
         aria-label={label}
         aria-current={active ? 'page' : undefined}
         data-testid="dm-row"
-        className={`flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-accent ${
+        className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-sidebar-foreground transition-colors hover:bg-accent ${
           active ? 'bg-accent' : ''
         }`}
       >
-        <UserAvatar name={name} avatarUrl={avatarUrl} size="sm" />
+        <UserAvatar name={name} avatarUrl={avatarUrl} size={32} />
         <span
-          className={`min-w-0 flex-1 truncate text-sm ${unreadCount > 0 ? 'font-semibold' : ''}`}
+          className={`min-w-0 flex-1 truncate text-base text-sidebar-foreground ${unreadCount > 0 ? 'font-semibold' : 'font-medium'}`}
         >
           {name}
         </span>

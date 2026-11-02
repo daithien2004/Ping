@@ -3,9 +3,9 @@
 import type { MemberDto } from '@ping/shared';
 import { useTranslations } from 'use-intl';
 import { useState } from 'react';
-import { Button } from '@/components/ui/button';
+import { PingButton } from '@/components/ui/ping-button';
 import { PingModal } from '@/components/ui/ping-modal';
-import { Skeleton } from '@/components/ui/skeleton';
+import { PingSkeleton } from '@/components/ui/ping-skeleton';
 import { useMe } from '@/features/auth/hooks';
 import { MemberProfileCard } from '@/features/profile/components/profile-popover';
 import { UserAvatar } from '@/features/profile/components/user-avatar';
@@ -34,7 +34,7 @@ function MemberRow({
         type="button"
         data-testid="member-row"
         aria-haspopup="dialog"
-        className="flex w-full items-center gap-2 rounded-md text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="flex w-full items-center gap-2 rounded-md text-left focus-ring"
         onClick={() => setOpen(true)}
       >
         <span className="relative">
@@ -117,7 +117,7 @@ export function MemberPanel({ serverId }: { serverId: string }) {
   return (
     <aside
       aria-label={t('panel')}
-      className="flex w-60 shrink-0 flex-col overflow-y-auto bg-sidebar p-2 max-lg:absolute max-lg:top-12 max-lg:right-0 max-lg:bottom-0 max-lg:z-20 max-lg:shadow-xl"
+      className="flex w-60 shrink-0 flex-col overflow-y-auto bg-sidebar p-2 max-lg:absolute max-lg:top-header max-lg:right-0 max-lg:bottom-0 max-lg:z-20 max-lg:shadow-overlay"
     >
       {query.isPending && (
         <div
@@ -126,18 +126,18 @@ export function MemberPanel({ serverId }: { serverId: string }) {
           aria-label={t('loading')}
           className="flex flex-col gap-2 p-2"
         >
-          <Skeleton className="h-5 w-16" />
+          <PingSkeleton block className="h-5 w-16" />
           {[0, 1, 2, 3].map((index) => (
             <div key={index} className="flex items-center gap-2 px-1 py-1.5">
-              <Skeleton className="size-8 rounded-full" />
-              <Skeleton className="h-4 w-20" />
+              <PingSkeleton block className="size-8 rounded-full" />
+              <PingSkeleton block className="h-4 w-20" />
             </div>
           ))}
-          <Skeleton className="mt-2 h-5 w-16" />
+          <PingSkeleton block className="mt-2 h-5 w-16" />
           {[0, 1].map((index) => (
             <div key={index} className="flex items-center gap-2 px-1 py-1.5">
-              <Skeleton className="size-8 rounded-full" />
-              <Skeleton className="h-4 w-16" />
+              <PingSkeleton block className="size-8 rounded-full" />
+              <PingSkeleton block className="h-4 w-16" />
             </div>
           ))}
         </div>
@@ -150,14 +150,14 @@ export function MemberPanel({ serverId }: { serverId: string }) {
               <code className="select-all">{ta('errorId', { id: reference })}</code>
             </p>
           )}
-          <Button
-            variant="outline"
-            size="xs"
+          <PingButton
+            variant="secondary"
+            size="sm"
             disabled={query.isFetching}
             onClick={() => void query.refetch()}
           >
             {tc('retry')}
-          </Button>
+          </PingButton>
         </div>
       )}
       {!query.isPending && !query.isError && members.length === 0 && (
@@ -178,7 +178,7 @@ export function MemberPanel({ serverId }: { serverId: string }) {
         selfId={me?.id}
       />
       {query.hasNextPage && (
-        <Button
+        <PingButton
           variant="ghost"
           size="sm"
           className="mt-2"
@@ -186,7 +186,7 @@ export function MemberPanel({ serverId }: { serverId: string }) {
           onClick={() => void query.fetchNextPage()}
         >
           {t('loadMore')}
-        </Button>
+        </PingButton>
       )}
     </aside>
   );

@@ -2,7 +2,7 @@
 import { useTranslations } from 'use-intl';
 import { Dialog } from '@/components/dialog';
 import { FormError } from '@/components/form-parts';
-import { Button } from '@/components/ui/button';
+import { PingButton } from '@/components/ui/ping-button';
 import { useServerAbility } from '@/features/permissions/context';
 import { useErrorMessage } from '@/lib/error-message';
 import { useDeleteMessage } from '../hooks';
@@ -30,18 +30,18 @@ export function DeleteMessageDialog({
       </p>
       {mutation.isError && <FormError>{errorMessage(mutation.error)}</FormError>}
       <div className="flex justify-end gap-2">
-        <Button variant="outline" onClick={onClose}>
+        <PingButton variant="secondary" onClick={onClose}>
           {common('cancel')}
-        </Button>
-        <Button
-          variant="destructive"
+        </PingButton>
+        <PingButton
+          variant="danger"
           disabled={!ready || mutation.isPending}
           onClick={() => {
             if (ready && !mutation.isPending) mutation.mutate(message.id, { onSuccess: onClose });
           }}
         >
           {mutation.isPending ? common('processing') : t('delete')}
-        </Button>
+        </PingButton>
       </div>
     </Dialog>
   );

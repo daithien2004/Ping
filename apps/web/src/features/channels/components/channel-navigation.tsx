@@ -1,5 +1,5 @@
 'use client';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronRight, Hash } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import type { DragEvent, KeyboardEvent, ReactNode } from 'react';
@@ -350,7 +350,7 @@ function ChannelGroup(props: ChannelGroupProps) {
       : '';
 
   return (
-    <section className="flex flex-col">
+    <section className="mt-4 flex flex-col first:mt-0">
       <button
         type="button"
         id={`category-header-${slotKey}`}
@@ -374,7 +374,7 @@ function ChannelGroup(props: ChannelGroupProps) {
         onDrop={(event) => props.onCategoryDrop(event, group.categoryId)}
         onDragEnd={props.onDragEnd}
         onClick={onToggle}
-        className={`flex w-full items-center gap-1 rounded-md px-2 py-1.5 text-xs font-semibold tracking-wide text-muted-foreground uppercase transition-colors outline-none hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-3 focus-visible:ring-ring/50 ${
+        className={`flex w-full items-center gap-1 rounded-md px-2 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-ring ${
           headerDropHighlight ? 'bg-sidebar-accent text-sidebar-accent-foreground' : headerLine
         }`}
       >
@@ -501,22 +501,27 @@ function ChannelItem({
       // không đổi tên link theo trạng thái — trình đọc màn hình và mọi locator không bị
       // "nhảy tên" khi badge xuất hiện/biến mất.
       aria-label={`# ${name}`}
-      className={`flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm transition-colors outline-none hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-3 focus-visible:ring-ring/50 ${
+      className={`group flex h-8 items-center gap-2 rounded-md px-2 text-base transition-colors hover:bg-sidebar-accent focus-ring ${
         dropBefore
           ? 'shadow-[inset_0_2px_0_0_var(--sidebar-primary)]'
           : dropAfter
             ? 'shadow-[inset_0_-2px_0_0_var(--sidebar-primary)]'
             : ''
-      } ${
-        active
-          ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
-          : unreadCount > 0
-            ? 'font-medium text-sidebar-foreground'
-            : 'text-muted-foreground'
-      }`}
+      } ${active ? 'bg-sidebar-accent' : ''}`}
     >
-      <span className="text-lg leading-none text-muted-foreground">#</span>
-      <span className="min-w-0 flex-1 truncate">{name}</span>
+      <Hash className="size-5 shrink-0 text-muted-foreground" aria-hidden />
+      {/* Màu ở span con: antd tô <a> bằng rule ngoài layer nên class text-* trên Link bị đè. */}
+      <span
+        className={`min-w-0 flex-1 truncate ${
+          active
+            ? 'font-medium text-sidebar-accent-foreground'
+            : unreadCount > 0
+              ? 'font-semibold text-sidebar-foreground'
+              : 'text-muted-foreground group-hover:text-sidebar-accent-foreground'
+        }`}
+      >
+        {name}
+      </span>
       {mentionCount > 0 ? (
         <PingBadge
           count={mentionCount}

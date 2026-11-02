@@ -39,7 +39,7 @@ export function GifMessage({ gif }: { gif: MessageGifPreview | null }) {
         data-testid="gif-placeholder"
         onClick={() => setPlayed(true)}
         aria-label={t('play')}
-        className="block cursor-pointer rounded-lg text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        className="block cursor-pointer rounded-lg text-left focus-ring"
       >
         <GifPlaceholder width={gif.width} height={gif.height} label={t('play')} />
       </button>

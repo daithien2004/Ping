@@ -25,7 +25,7 @@ export function SettingsNav() {
   return (
     <nav
       aria-label={t('navLabel')}
-      className="flex w-full shrink-0 gap-1 overflow-x-auto border-b border-border p-2 md:w-56 md:flex-col md:overflow-visible md:border-r md:border-b-0 md:p-4"
+      className="flex w-full shrink-0 gap-1 overflow-x-auto border-b border-border bg-sidebar p-2 md:w-settings-nav md:flex-col md:overflow-visible md:border-0 md:p-2.5"
     >
       {ITEMS.map(({ href, key, icon: Icon }) => {
         const active = key === 'account' ? pathname === '/settings' : pathname.startsWith(href);
@@ -35,14 +35,22 @@ export function SettingsNav() {
             href={href}
             aria-current={active ? 'page' : undefined}
             data-testid={`settings-nav-${key}`}
-            className={`flex shrink-0 items-center gap-2 rounded-md px-3 py-2 text-sm whitespace-nowrap transition-colors ${
-              active
-                ? 'bg-accent font-medium text-accent-foreground'
-                : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
+            className={`group flex h-8 shrink-0 items-center rounded-md px-2 whitespace-nowrap transition-colors focus-ring ${
+              active ? 'bg-accent' : 'hover:bg-accent/50'
             }`}
           >
-            <Icon className="size-4 shrink-0" aria-hidden />
-            {t(`sections.${key}`)}
+            {/* Màu đặt ở span con: antd tô màu thẻ <a> bằng rule không nằm trong layer nên
+                class `text-*` trên chính Link không thắng được. */}
+            <span
+              className={`flex items-center gap-2 text-base font-medium ${
+                active
+                  ? 'text-accent-foreground'
+                  : 'text-muted-foreground group-hover:text-foreground'
+              }`}
+            >
+              <Icon className="size-5 shrink-0" aria-hidden />
+              {t(`sections.${key}`)}
+            </span>
           </Link>
         );
       })}

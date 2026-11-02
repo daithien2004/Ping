@@ -1,13 +1,8 @@
 'use client';
 import { Link2, MoreHorizontal, Pencil, Pin, PinOff, Reply, Trash2 } from 'lucide-react';
 import { useTranslations } from 'use-intl';
-import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { PingDropdown } from '@/components/ui/ping-dropdown';
+import { PingIconButton } from '@/components/ui/ping-icon-button';
 import { pingToast } from '@/components/ui/ping-toast';
 import { useServerAbility } from '@/features/permissions/context';
 import { messageSubject } from '@/features/permissions/ability';
@@ -55,52 +50,70 @@ export function MessageActions({
     }
   }
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          disabled={!ready}
-          aria-label={t('actions')}
-          className="ml-auto size-7"
-        >
-          <MoreHorizontal />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onSelect={() => void copyLink()} data-testid="copy-link">
-          <Link2 />
-          {t('copyLink')}
-        </DropdownMenuItem>
-        {canReply && (
-          <DropdownMenuItem onSelect={() => onReply(message)}>
-            <Reply />
-            {t('reply')}
-          </DropdownMenuItem>
-        )}
-        {canEdit && (
-          <DropdownMenuItem onSelect={() => onAction({ kind: 'edit', messageId: message.id })}>
-            <Pencil />
-            {t('edit')}
-          </DropdownMenuItem>
-        )}
-        {canPin && (
-          <DropdownMenuItem
-            disabled={!ready || setPinned.isPending}
-            data-testid={message.pinnedAt ? 'unpin' : 'pin'}
-            onSelect={() => setPinned.mutate({ messageId: message.id, pin: !message.pinnedAt })}
-          >
-            {message.pinnedAt ? <PinOff /> : <Pin />}
-            {message.pinnedAt ? t('unpin') : t('pin')}
-          </DropdownMenuItem>
-        )}
-        {canDelete && (
-          <DropdownMenuItem onSelect={() => onAction({ kind: 'delete', messageId: message.id })}>
-            <Trash2 />
-            {t('delete')}
-          </DropdownMenuItem>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <PingDropdown
+      trigger={['click']}
+      placement="bottomRight"
+      menu={{
+        items: [
+          {
+            key: 'copy-link',
+            label: t('copyLink'),
+            icon: <Link2 />,
+            'data-testid': 'copy-link',
+            onClick: () => void copyLink(),
+          },
+          ...(canReply
+            ? [
+                {
+                  key: 'reply',
+                  label: t('reply'),
+                  icon: <Reply />,
+                  onClick: () => onReply(message),
+                },
+              ]
+            : []),
+          ...(canEdit
+            ? [
+                {
+                  key: 'edit',
+                  label: t('edit'),
+                  icon: <Pencil />,
+                  onClick: () => onAction({ kind: 'edit', messageId: message.id }),
+                },
+              ]
+            : []),
+          ...(canPin
+            ? [
+                {
+                  key: 'pin',
+                  label: message.pinnedAt ? t('unpin') : t('pin'),
+                  icon: message.pinnedAt ? <PinOff /> : <Pin />,
+                  'data-testid': message.pinnedAt ? 'unpin' : 'pin',
+                  disabled: !ready || setPinned.isPending,
+                  onClick: () =>
+                    setPinned.mutate({ messageId: message.id, pin: !message.pinnedAt }),
+                },
+              ]
+            : []),
+          ...(canDelete
+            ? [
+                {
+                  key: 'delete',
+                  label: t('delete'),
+                  icon: <Trash2 />,
+                  onClick: () => onAction({ kind: 'delete', messageId: message.id }),
+                },
+              ]
+            : []),
+        ],
+      }}
+    >
+      <PingIconButton
+        icon={<MoreHorizontal />}
+        aria-label={t('actions')}
+        disabled={!ready}
+        className="ml-auto opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
+      />
+    </PingDropdown>
   );
 }
