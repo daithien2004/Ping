@@ -61,5 +61,6 @@
 - **Skin không theo tài khoản**: đổi máy phải chọn lại; đổi lại là đánh đổi để tránh migration và
   thêm trường vào API settings.
 - **Hai commit**: (a) code/token/test/docs của PR1+PR2 (dùng chung `tokens.ts`, `antd-theme.ts`,
-  `theme-provider.tsx` nên không tách hunk được), (b) ảnh baseline `win32` 72 ảnh — chờ OWNER
-  duyệt trước khi push/merge. Bộ `linux` cũ (UI trước PR1) đã xoá; CI bootstrap lại theo ADR-0074.
+  `theme-provider.tsx` nên không tách hunk được), (b) ảnh baseline `win32` 72 ảnh. OWNER duyệt chốt
+  2026-11-02 — merge `--no-ff` vào `main` và push cùng lượt. Bộ `linux` cũ (UI trước PR1) đã xoá;
+  CI bootstrap lại theo ADR-0074.

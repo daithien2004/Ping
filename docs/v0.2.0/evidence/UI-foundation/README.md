@@ -113,8 +113,8 @@
   `test-results/` vì Playwright xoá thư mục này lúc khởi động. Phải trỏ `DATABASE_URL` vào DB
   sạch vừa migrate + seed, không dùng DB dev chung (xem lỗi 429 ở trên).
 - **Hai commit** khi chốt: (a) code/token/test/docs của PR1+PR2, (b) ảnh baseline `win32` 72 ảnh +
-  ảnh evidence/screens chụp lại; bộ `linux` cũ đã xoá để CI bootstrap lại theo ADR-0074 — chờ
-  OWNER duyệt trước khi push/merge.
+  ảnh evidence/screens chụp lại; bộ `linux` cũ đã xoá để CI bootstrap lại theo ADR-0074. OWNER
+  duyệt chốt 2026-11-02 — merge `--no-ff` vào `main` và push cùng lượt.
 
 ## Việc chưa làm / bước tiếp theo
 
