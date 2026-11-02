@@ -8,7 +8,7 @@ export const PingLabel = forwardRef<HTMLLabelElement, LabelHTMLAttributes<HTMLLa
   function PingLabel({ className, ...rest }, ref) {
     return (
       // htmlFor do nơi gọi truyền (Field, edit-message-dialog) — rule không thấy qua props spread.
-       
+
       <label
         ref={ref}
         data-testid="ping-label"
