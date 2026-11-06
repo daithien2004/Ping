@@ -9,6 +9,7 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import {
   createCategorySchema,
   renameCategorySchema,
@@ -20,6 +21,7 @@ import {
 } from '@ping/shared';
 import { IdempotencyInterceptor } from '../../common/interceptors/idempotency.interceptor.js';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe.js';
+import { RATE_LIMIT_BUCKETS } from '../../common/rate-limit-buckets.js';
 import { AbilityGuard } from '../ability/ability.guard.js';
 import { CheckAbility } from '../ability/check-ability.decorator.js';
 import { CurrentUser, type AuthenticatedUser } from '../auth/current-user.decorator.js';
@@ -32,6 +34,7 @@ import { CategoriesService } from './categories.service.js';
  * Thứ bậc/đối tượng không cần kiểm thêm: category không mang dữ liệu riêng của ai.
  */
 @Controller('servers/:serverId/categories')
+@Throttle({ default: RATE_LIMIT_BUCKETS.writeStructure })
 @UseGuards(JwtAuthGuard, AbilityGuard)
 export class CategoriesController {
   constructor(private readonly categoriesService: CategoriesService) {}

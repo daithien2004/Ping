@@ -1,10 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { ServerEvents, type ChannelUnreadDto } from '@ping/shared';
+import { ServerEvents, type ChannelUnreadDto, type ServerUnreadDto } from '@ping/shared';
 import { Prisma } from '../../generated/prisma/client.js';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
 import { RealtimeService } from '../realtime/realtime.service.js';
 
-/** Trần đếm (ADR-0043): quá 100 hiển thị "99+" phía UI; SQL trả tối đa giá trị 100. */
+/** Trần đếm (ADR-0043): quá 100 hiển thị "99+" phía UI; truy vấn dừng quét ở 100 hàng khớp. */
 const COUNT_CAP = 100;
 
 /**
@@ -92,12 +92,47 @@ export class ReadStateService {
   }
 
   /**
-   * GET /servers/:serverId/unread — một truy vấn duy nhất cho mọi channel của server:
-   * unread = tin chưa xóa mềm sau cursor (không tính tin của chính người gọi — họ đã
-   * thấy mình gửi), mentionCount = hàng MessageMention sau cursor khớp mình trực tiếp /
-   * role của mình / everyone. Cả hai có trần 100 (LEAST), đúng ghi chú T4.1 về
-   * `message.deletedAt IS NULL`.
+   * Hai biểu thức đếm dùng chung cho cả hai endpoint unread (đếm theo channel `c`, cursor
+   * `rs`): unread = tin chưa xóa mềm sau cursor (không tính tin của chính người gọi — họ đã
+   * thấy mình gửi), mentionCount = hàng MessageMention sau cursor khớp mình trực tiếp / role
+   * của mình / everyone. Trần 100 chặn NGAY trong truy vấn (`LIMIT` trong truy vấn con) nên
+   * Postgres dừng quét sau 100 hàng khớp thay vì đếm hết lịch sử rồi mới `LEAST`: kênh 10k
+   * tin đo được 0,13 ms / 15 buffer so với 3,48 ms / 1012 buffer của `count(*)` toàn bộ.
+   * Đúng ghi chú T4.1 về `message.deletedAt IS NULL`.
+   *
+   * `memberIdRef` là tham chiếu tới thành viên đang xét: literal `member.id` ở truy vấn một
+   * server, `m.id` (alias Member) ở truy vấn gộp — nhờ vậy một tin được đếm đúng mention của
+   * từng thành viên trong cùng một câu SQL.
    */
+  private unreadCounts(userId: string, memberIdRef: Prisma.Sql): Prisma.Sql {
+    const zero = '00000000-0000-0000-0000-000000000000';
+    return Prisma.sql`
+      (SELECT count(*) FROM (
+        SELECT 1 FROM "Message" msg
+        WHERE msg."channelId" = c.id
+          AND msg."deletedAt" IS NULL
+          AND msg."authorId" <> ${userId}
+          AND msg.id > COALESCE(rs."lastReadMessageId", ${zero}::uuid)
+        LIMIT ${COUNT_CAP}
+      ) capped)::int AS "unreadCount",
+      (SELECT count(*) FROM (
+        SELECT 1 FROM "MessageMention" mm
+        JOIN "Message" msg2 ON msg2.id = mm."messageId" AND msg2."deletedAt" IS NULL
+        WHERE msg2."channelId" = c.id
+          AND msg2.id > COALESCE(rs."lastReadMessageId", ${zero}::uuid)
+          AND (
+            mm."mentionedMemberId" = ${memberIdRef}
+            OR mm.kind = 'everyone'
+            OR mm."roleId" IN (
+              SELECT "roleId" FROM "MemberRole" WHERE "memberId" = ${memberIdRef}
+            )
+          )
+        LIMIT ${COUNT_CAP}
+      ) capped)::int AS "mentionCount"
+    `;
+  }
+
+  /** GET /servers/:serverId/unread — một dòng mỗi channel của server. */
   async unreadForServer(serverId: string, userId: string): Promise<ChannelUnreadDto[]> {
     const member = await this.prisma.member.findUnique({
       where: { serverId_userId: { serverId, userId } },
@@ -107,36 +142,65 @@ export class ReadStateService {
       throw new NotFoundException('Member not found');
     }
 
-    const zero = '00000000-0000-0000-0000-000000000000';
     return this.prisma.$queryRaw<ChannelUnreadDto[]>(Prisma.sql`
       SELECT
         c.id::text AS "channelId",
         rs."lastReadMessageId"::text AS "lastReadMessageId",
-        LEAST((
-          SELECT count(*) FROM "Message" m
-          WHERE m."channelId" = c.id
-            AND m."deletedAt" IS NULL
-            AND m."authorId" <> ${userId}
-            AND m.id > COALESCE(rs."lastReadMessageId", ${zero}::uuid)
-        ), ${COUNT_CAP})::int AS "unreadCount",
-        LEAST((
-          SELECT count(*) FROM "MessageMention" mm
-          JOIN "Message" m2 ON m2.id = mm."messageId" AND m2."deletedAt" IS NULL
-          WHERE m2."channelId" = c.id
-            AND m2.id > COALESCE(rs."lastReadMessageId", ${zero}::uuid)
-            AND (
-              mm."mentionedMemberId" = ${member.id}
-              OR mm.kind = 'everyone'
-              OR mm."roleId" IN (
-                SELECT "roleId" FROM "MemberRole" WHERE "memberId" = ${member.id}
-              )
-            )
-        ), ${COUNT_CAP})::int AS "mentionCount"
+        ${this.unreadCounts(userId, Prisma.sql`${member.id}`)}
       FROM "Channel" c
       LEFT JOIN "ChannelReadState" rs
         ON rs."channelId" = c.id AND rs."memberId" = ${member.id}
       WHERE c."serverId" = ${serverId}
       ORDER BY c."position" ASC
     `);
+  }
+
+  /**
+   * GET /users/me/unread (ADR-0077) — unread của MỌI server người gọi là thành viên trong
+   * một truy vấn, nhóm theo server. Rail trước đây gọi `/servers/:id/unread` cho từng server
+   * (69 request, 38 bị 429 trên tài khoản 69 server — docs/discord-practices.md mục 1).
+   * Server không có channel vẫn trả về với `channels: []` (LEFT JOIN) để client biết mình
+   * còn thuộc server đó.
+   */
+  async unreadForUser(userId: string): Promise<ServerUnreadDto[]> {
+    const rows = await this.prisma.$queryRaw<
+      Array<{
+        serverId: string;
+        channelId: string | null;
+        lastReadMessageId: string | null;
+        unreadCount: number;
+        mentionCount: number;
+      }>
+    >(Prisma.sql`
+      SELECT
+        m."serverId"::text AS "serverId",
+        c.id::text AS "channelId",
+        rs."lastReadMessageId"::text AS "lastReadMessageId",
+        ${this.unreadCounts(userId, Prisma.sql`m.id`)}
+      FROM "Member" m
+      LEFT JOIN "Channel" c ON c."serverId" = m."serverId"
+      LEFT JOIN "ChannelReadState" rs
+        ON rs."channelId" = c.id AND rs."memberId" = m.id
+      WHERE m."userId" = ${userId}
+      ORDER BY m."joinedAt" ASC, m."serverId" ASC, c."position" ASC
+    `);
+
+    const grouped = new Map<string, ServerUnreadDto>();
+    for (const row of rows) {
+      let entry = grouped.get(row.serverId);
+      if (!entry) {
+        entry = { serverId: row.serverId, channels: [] };
+        grouped.set(row.serverId, entry);
+      }
+      if (row.channelId !== null) {
+        entry.channels.push({
+          channelId: row.channelId,
+          unreadCount: row.unreadCount,
+          mentionCount: row.mentionCount,
+          lastReadMessageId: row.lastReadMessageId,
+        });
+      }
+    }
+    return [...grouped.values()];
   }
 }

@@ -11,6 +11,7 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import {
   createServerSchema,
   joinServerSchema,
@@ -26,6 +27,7 @@ import {
   type UpdateServerInput,
 } from '@ping/shared';
 import { IdempotencyInterceptor } from '../../common/interceptors/idempotency.interceptor.js';
+import { RATE_LIMIT_BUCKETS } from '../../common/rate-limit-buckets.js';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe.js';
 import { AbilityGuard } from '../ability/ability.guard.js';
 import { CheckAbility } from '../ability/check-ability.decorator.js';
@@ -40,6 +42,7 @@ export class ServersController {
 
   /** Chỉ cần đăng nhập — chưa có bối cảnh server nên không có @CheckAbility. */
   @Post()
+  @Throttle({ default: RATE_LIMIT_BUCKETS.writeStructure })
   @UseInterceptors(IdempotencyInterceptor)
   create(
     @CurrentUser() user: AuthenticatedUser,
@@ -49,11 +52,13 @@ export class ServersController {
   }
 
   @Get()
+  @Throttle({ default: RATE_LIMIT_BUCKETS.readLight })
   list(@CurrentUser() user: AuthenticatedUser) {
     return this.serversService.listForUser(user.userId);
   }
 
   @Post('join')
+  @Throttle({ default: RATE_LIMIT_BUCKETS.writeStructure })
   join(
     @CurrentUser() user: AuthenticatedUser,
     @Body(new ZodValidationPipe(joinServerSchema)) body: JoinServerInput,
@@ -62,6 +67,7 @@ export class ServersController {
   }
 
   @Get(':serverId')
+  @Throttle({ default: RATE_LIMIT_BUCKETS.readLight })
   @CheckAbility(['view', 'Server'])
   detail(@Param('serverId') serverId: string) {
     return this.serversService.detail(serverId);
@@ -69,6 +75,7 @@ export class ServersController {
 
   /** Đổi tên/icon server: cần `update Server` (MANAGE_SERVER); service ghi audit trong transaction. */
   @Patch(':serverId')
+  @Throttle({ default: RATE_LIMIT_BUCKETS.writeStructure })
   @CheckAbility(['update', 'Server'])
   update(
     @CurrentUser() user: AuthenticatedUser,
@@ -83,6 +90,7 @@ export class ServersController {
    * service chỉ chạm member của caller và phát `member.updated` tới room server.
    */
   @Patch(':serverId/members/me')
+  @Throttle({ default: RATE_LIMIT_BUCKETS.writeStructure })
   @CheckAbility(['update', 'Member'])
   updateMyNickname(
     @CurrentUser() user: AuthenticatedUser,
@@ -97,6 +105,7 @@ export class ServersController {
    * mức quyền với đổi tên; service thu hồi/cấp mã + ghi audit trong một transaction.
    */
   @Post(':serverId/invite/regenerate')
+  @Throttle({ default: RATE_LIMIT_BUCKETS.writeStructure })
   @CheckAbility(['update', 'Server'])
   @UseInterceptors(IdempotencyInterceptor)
   regenerateInvite(
@@ -109,12 +118,14 @@ export class ServersController {
 
   /** Quyền hiệu lực của chính người gọi: frontend dựng CASL ability từ đây để ẩn/hiện nút. */
   @Get(':serverId/me/permissions')
+  @Throttle({ default: RATE_LIMIT_BUCKETS.readLight })
   @CheckAbility(['view', 'Server'])
   myPermissions(@CurrentUser() user: AuthenticatedUser, @Param('serverId') serverId: string) {
     return this.serversService.myPermissions(serverId, user.userId);
   }
 
   @Get(':serverId/members')
+  @Throttle({ default: RATE_LIMIT_BUCKETS.readLight })
   @CheckAbility(['view', 'Member'])
   members(
     @Param('serverId') serverId: string,
@@ -124,6 +135,7 @@ export class ServersController {
   }
 
   @Post(':serverId/leave')
+  @Throttle({ default: RATE_LIMIT_BUCKETS.writeStructure })
   @HttpCode(204)
   leave(@CurrentUser() user: AuthenticatedUser, @Param('serverId') serverId: string) {
     return this.serversService.leave(serverId, user.userId);
@@ -131,6 +143,7 @@ export class ServersController {
 
   /** Kick member. Guard: cần `delete Member` (KICK_MEMBERS); service: so quyền với người bị kick. */
   @Delete(':serverId/members/:memberId')
+  @Throttle({ default: RATE_LIMIT_BUCKETS.writeStructure })
   @HttpCode(204)
   @CheckAbility(['delete', 'Member'])
   kick(
@@ -143,6 +156,7 @@ export class ServersController {
 
   /** Không @CheckAbility: chỉ owner được xóa (service tier-2 kiểm tra). */
   @Delete(':serverId')
+  @Throttle({ default: RATE_LIMIT_BUCKETS.writeStructure })
   remove(@CurrentUser() user: AuthenticatedUser, @Param('serverId') serverId: string) {
     return this.serversService.remove(serverId, user.userId);
   }

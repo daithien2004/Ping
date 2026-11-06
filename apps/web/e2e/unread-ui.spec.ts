@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page, type Request } from '@playwright/test';
 import { type ServerDetail } from '@ping/shared';
 import { pacedLogin } from './login-pace';
 
@@ -7,16 +7,16 @@ const API = 'http://localhost:4000/api/v1';
 const SEED_PASSWORD = 'password123';
 
 /**
- * Mở app và chờ unread của server test nạp xong. Throttle toàn cục 100 req/phút/IP trả 429 và
- * block 60 s (T6.5); CI chạy nhiều spec nối tiếp trên cùng IP nên một tab mới có thể bị chặn
- * ngay lúc mở — khi đó unread không có dữ liệu và event realtime không cập nhật được. Gặp 429
- * thì chờ theo `Retry-After` rồi mở lại, quá 150 s mới coi là lỗi thật.
+ * Mở app và chờ unread (gộp mọi server một request, ADR-0077) nạp xong. Throttle toàn cục
+ * 100 req/phút/IP trả 429 và block 60 s (T6.5); CI chạy nhiều spec nối tiếp trên cùng IP nên
+ * một tab mới có thể bị chặn ngay lúc mở — khi đó unread không có dữ liệu và event realtime
+ * không cập nhật được. Gặp 429 thì chờ theo `Retry-After` rồi mở lại, quá 150 s mới là lỗi thật.
  */
-async function openWithUnread(page: Page, serverId: string) {
+async function openWithUnread(page: Page) {
   const deadline = Date.now() + 150_000;
   for (;;) {
     const unread = page
-      .waitForResponse((res) => res.url().includes(`/servers/${serverId}/unread`), {
+      .waitForResponse((res) => res.url().includes('/users/me/unread'), {
         timeout: 30_000,
       })
       .catch(() => null);
@@ -25,9 +25,7 @@ async function openWithUnread(page: Page, serverId: string) {
     const response = await unread;
     if (response?.ok()) return;
     if (Date.now() > deadline) {
-      throw new Error(
-        `unread của ${serverId} không nạp được (lần cuối: ${response?.status() ?? 'timeout'})`,
-      );
+      throw new Error(`unread không nạp được (lần cuối: ${response?.status() ?? 'timeout'})`);
     }
     const retryAfter = Number(response?.headers()['retry-after'] ?? 0);
     await page.waitForTimeout(Math.min(70_000, Math.max(2_000, retryAfter * 1_000 + 1_000)));
@@ -85,7 +83,7 @@ test('unread ui: server/channel badges, mention badge, title, divider and two-ta
     const tabA = await ownerContext.newPage();
     // Chờ app nạp xong unread của server test trước khi bob gửi: event đến giữa lúc query
     // đang bay sẽ bị lần fetch đó ghi đè (race có sẵn, không liên quan TG.1).
-    await openWithUnread(tabA, server.id);
+    await openWithUnread(tabA);
     // TG.12: title là TỔNG unread toàn cục (mọi server + DM) — các spec khác trên cùng shard
     // có thể để lại unread cho alice (CI chạy nối tiếp trên cùng seed). Mọi khẳng định title
     // của spec này đo THEO DELTA so với baseline lúc đầu, không khẳng định số tuyệt đối.
@@ -128,12 +126,31 @@ test('unread ui: server/channel badges, mention badge, title, divider and two-ta
       await expect(randomLink.getByTestId('mention-badge')).toBeVisible();
       await expect(randomLink.getByTestId('mention-badge')).toHaveText('1');
 
+      // Đếm PUT /read của #random từ đây: mở kênh ghi cache hai lần (nạp trang tin + channel.join
+      // vá khoảng trống) mà tin cuối không đổi, nên trước đây mỗi lần mở là 2–3 request cho CÙNG
+      // một tin. Chỉ một request mới là đúng (mark-read chốt theo ID tin cuối đã gửi).
+      let readPuts = 0;
+      const countRead = (request: Request) => {
+        if (
+          request.method() === 'PUT' &&
+          request.url().includes(`/channels/${randomChannel}/read`)
+        ) {
+          readPuts += 1;
+        }
+      };
+      tabA.on('request', countRead);
+
       // Lần đọc ĐẦU chưa có cursor cũ nên không có vạch; badge sạch sau mark-read.
       await randomLink.click();
       await expect(tabA).toHaveURL(new RegExp(randomChannel), { timeout: 15_000 });
       await expect(randomLink.getByTestId('mention-badge')).toHaveCount(0, { timeout: 10_000 });
       await expect(randomLink.getByTestId('unread-badge')).toHaveCount(0);
       await expect.poll(() => tabA.title(), { timeout: 10_000 }).toBe(titleFor(0));
+      await expect.poll(() => readPuts, { timeout: 10_000 }).toBe(1);
+      // Giữ thêm một nhịp: request lặp (nếu có) đến ngay sau request đầu, chờ hết mới kết luận.
+      await tabA.waitForTimeout(1_500);
+      expect(readPuts, 'chỉ một PUT /read cho cùng một tin cuối').toBe(1);
+      tabA.off('request', countRead);
     });
 
     await test.step('vạch Tin mới: đọc rồi có tin mới → vào lại thấy vạch trên tin mới', async () => {
@@ -157,7 +174,7 @@ test('unread ui: server/channel badges, mention badge, title, divider and two-ta
       // Tab B mở app ở server khác, chờ query unread xong rồi mới gửi: event đến khi query đang
       // bay sẽ bị response cũ ghi đè (cùng race với tab A ở trên).
       const tabB = await ownerContext.newPage();
-      await openWithUnread(tabB, server.id);
+      await openWithUnread(tabB);
       await expect(tabB.getByRole('link', { name: new RegExp(server.name) })).toBeVisible({
         timeout: 15_000,
       });

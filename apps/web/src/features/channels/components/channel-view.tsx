@@ -80,7 +80,7 @@ export function ChannelView({
   }
 
   return (
-    <div className="relative flex min-h-0 flex-1">
+    <div className="relative flex min-h-0 min-w-0 flex-1">
       <section className="flex min-h-0 min-w-0 flex-1 flex-col">
         {/* Discord: header 49 px, nền trùng nền chat (không viền), tên kênh + chủ đề trên CÙNG
             một dòng. Hàng icon theo thứ tự Discord (ghim, chuông, thành viên), ô tìm kiếm 244 px
@@ -104,7 +104,9 @@ export function ChannelView({
               </>
             )}
           </div>
-          <div className="flex shrink-0 items-center gap-1">
+          {/* `min-w-0`: cửa sổ hẹp thì ô tìm kiếm co lại (đến 96 px) thay vì đẩy header tràn
+              ra ngoài — trước đây 244 px cố định cộng 5 icon là nguồn tràn ngang của cả trang. */}
+          <div className="flex min-w-0 items-center gap-1">
             {canManage && (
               <PingIconButton
                 icon={<Pencil />}

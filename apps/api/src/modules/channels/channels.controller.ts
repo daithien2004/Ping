@@ -11,6 +11,7 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import {
   createChannelSchema,
   markChannelReadSchema,
@@ -25,6 +26,7 @@ import {
 } from '@ping/shared';
 import { IdempotencyInterceptor } from '../../common/interceptors/idempotency.interceptor.js';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe.js';
+import { RATE_LIMIT_BUCKETS } from '../../common/rate-limit-buckets.js';
 import { AbilityGuard } from '../ability/ability.guard.js';
 import { CheckAbility } from '../ability/check-ability.decorator.js';
 import { CurrentUser, type AuthenticatedUser } from '../auth/current-user.decorator.js';
@@ -42,6 +44,7 @@ export class ChannelsController {
   ) {}
 
   @Post('servers/:serverId/channels')
+  @Throttle({ default: RATE_LIMIT_BUCKETS.writeStructure })
   @CheckAbility(['manage', 'Channel'])
   @UseInterceptors(IdempotencyInterceptor)
   create(
@@ -52,6 +55,7 @@ export class ChannelsController {
   }
 
   @Get('servers/:serverId/channels')
+  @Throttle({ default: RATE_LIMIT_BUCKETS.readLight })
   @CheckAbility(['view', 'Channel'])
   list(@Param('serverId') serverId: string) {
     return this.channelsService.list(serverId);
@@ -62,6 +66,7 @@ export class ChannelsController {
    * tiến, không lùi. 204 — các tab khác của cùng user nhận `read.updated`.
    */
   @Put('channels/:channelId/read')
+  @Throttle({ default: RATE_LIMIT_BUCKETS.history })
   @CheckAbility(['view', 'Message'])
   @HttpCode(204)
   markRead(
@@ -74,12 +79,14 @@ export class ChannelsController {
 
   /** Số tin/mention chưa đọc của mọi channel trong server (T4.2); đếm có trần 100. */
   @Get('servers/:serverId/unread')
+  @Throttle({ default: RATE_LIMIT_BUCKETS.readLight })
   @CheckAbility(['view', 'Server'])
   unread(@CurrentUser() user: AuthenticatedUser, @Param('serverId') serverId: string) {
     return this.readState.unreadForServer(serverId, user.userId);
   }
 
   @Patch('channels/:channelId')
+  @Throttle({ default: RATE_LIMIT_BUCKETS.writeStructure })
   @CheckAbility(['manage', 'Channel'])
   update(
     @CurrentUser() user: AuthenticatedUser,
@@ -90,6 +97,7 @@ export class ChannelsController {
   }
 
   @Delete('channels/:channelId')
+  @Throttle({ default: RATE_LIMIT_BUCKETS.writeStructure })
   @CheckAbility(['manage', 'Channel'])
   remove(@CurrentUser() user: AuthenticatedUser, @Param('channelId') channelId: string) {
     return this.channelsService.remove(channelId, user.userId);
@@ -101,6 +109,7 @@ export class ChannelsController {
    * room server nhận `channel.reordered` với thứ tự mới của nhóm đích.
    */
   @Put('channels/:channelId/move')
+  @Throttle({ default: RATE_LIMIT_BUCKETS.writeStructure })
   @CheckAbility(['manage', 'Channel'])
   move(
     @CurrentUser() user: AuthenticatedUser,
@@ -112,6 +121,7 @@ export class ChannelsController {
 
   /** TG.10: đặt/xóa chủ đề hiển thị ở header (chuỗi rỗng = xóa); phát `channel.updated`. */
   @Patch('channels/:channelId/topic')
+  @Throttle({ default: RATE_LIMIT_BUCKETS.writeStructure })
   @CheckAbility(['manage', 'Channel'])
   setTopic(
     @Param('channelId') channelId: string,

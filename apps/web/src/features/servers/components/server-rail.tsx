@@ -70,10 +70,8 @@ export function ServerRail() {
   const [profileOpen, setProfileOpen] = useState(false);
   const t = useTranslations();
   // TG.12: tab title + favicon theo tổng unread mọi server + DM (trước đây chỉ tổng mention).
-  useNotifyBadge(
-    servers.map((server) => server.id),
-    'Ping',
-  );
+  // ADR-0077: badge đọc cache gộp `qk.unreadAll` — không cần danh sách id server.
+  useNotifyBadge('Ping');
 
   return (
     <nav

@@ -2,9 +2,10 @@
 import { useEffect, useRef, useState, type RefObject } from 'react';
 
 /**
- * Tải lười bằng IntersectionObserver (TG.25, ADR-0069) — không thêm dependency. Trả về ref gắn
- * vào khung lưới và cờ "đã từng hiện": cổng `/gifs/*` có rate limit theo user nên chỉ fetch khi
- * lưới thực sự hiện ra, một lần hiện là đủ (lưới trong picker không rời mắt khi đang mở).
+ * Tải lười bằng IntersectionObserver — không thêm dependency. Trả về ref gắn vào phần tử và
+ * cờ "đã từng hiện": một lần hiện là đủ để fetch (lưới GIF trong picker không rời mắt khi mở;
+ * tệp đính kèm đã có link thì cache TanStack giữ tiếp). Dùng cho lưới GIF (TG.25, ADR-0069)
+ * và ảnh đính kèm (ADR-0079).
  */
 export function useInView<T extends HTMLElement>(
   rootMargin = '100px',

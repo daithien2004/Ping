@@ -2,7 +2,7 @@
 
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { MessageSquare } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'use-intl';
 import type { GifPayload, StickerDto } from '@ping/shared';
@@ -60,6 +60,10 @@ export function MessagePane({
   const roomDenied = useChannelRealtime(serverId, channelId);
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useMessages(channelId);
   const sendMutation = useSendMessage(channelId);
+  // `mutate` ổn định, còn object `sendMutation` đổi mỗi lần mutation đổi trạng thái. Đưa object
+  // vào deps của `send`/`retry` làm hai hàm đó đổi identity mỗi tick cuộn → `React.memo` của
+  // MessageItem bị vô hiệu hoá ở MỌI hàng.
+  const sendMutate = sendMutation.mutate;
   const seedAround = useSeedAround(channelId);
   const resetWindow = useResetWindow(channelId);
   const loadNewer = useLoadNewer(channelId);
@@ -82,10 +86,13 @@ export function MessagePane({
   // Vùng aria-live: đọc tin mới của người khác (xem announce.ts). Tính ngay trong lúc render theo mẫu
   // "state dẫn xuất" của React: so tin cuối với lần render trước, không cần effect.
   const tail = messages.at(-1);
+  // ID tin cuối: ổn định qua mọi lần ghi cache (chỉ đổi khi thật sự có tin mới) — dùng làm
+  // khóa chống gửi trùng mark-read, xem effect bên dưới.
+  const tailId = tail?.id ?? null;
   const [seenTailId, setSeenTailId] = useState<string | null>(tail?.id ?? null);
   const [announcement, setAnnouncement] = useState('');
-  if ((tail?.id ?? null) !== seenTailId) {
-    setSeenTailId(tail?.id ?? null);
+  if (tailId !== seenTailId) {
+    setSeenTailId(tailId);
     const incoming = incomingMessage(seenTailId, tail, me?.id);
     if (incoming) setAnnouncement(t('newMessage', incoming));
   }
@@ -106,7 +113,9 @@ export function MessagePane({
     count: messages.length,
     getScrollElement: () => scrollRef.current,
     estimateSize: () => 56,
-    overscan: 8,
+    // Hàng đã `memo` nên chi phí mỗi tick cuộn tỉ lệ với số hàng dựng sẵn ngoài vùng nhìn:
+    // overscan 4 đủ đệm cho cuộn nhanh mà bớt một nửa số hàng mount thừa (đo p95 ở bước 1).
+    overscan: 4,
     paddingStart: HEADER_HEIGHT,
     // Key theo nonce trước: tin tạm `temp-<nonce>` và tin thật cùng nonce là CÙNG một hàng,
     // nên xác nhận tin không làm danh sách tưởng có hàng mới (không nhảy, không mất neo).
@@ -192,16 +201,36 @@ export function MessagePane({
   }, [loadOlderEnabled, firstVisible, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   // T4.3: vào kênh / có tin mới ở kênh đang xem → đánh dấu đã đọc tới tin cuối. Tin optimistic
-  // (id `temp-…`) chưa tồn tại ở server nên bỏ qua; cursor chỉ tiến nên gửi lặp vẫn vô hại.
+  // (id `temp-…`) chưa tồn tại ở server nên bỏ qua.
   // TG.5: cửa sổ permalink chưa phải tin mới nhất — không mark-read (sẽ xóa oan badge chưa đọc);
   // chỉ đánh dấu khi đã tải tới đáy thật (hasNewer = false).
+  // Chống gửi trùng: `messages` là memo của cache nên identity đổi sau MỖI lần ghi cache (mount,
+  // StrictMode chạy effect hai lần ở dev, useChannelSync vá khoảng trống sau `channel.join`, rồi
+  // mỗi lần refetch khi focus/reconnect) trong khi tin cuối vẫn y nguyên — mỗi lần như thế là một
+  // PUT /read lặp lại. Vì vậy chốt theo ID tin cuối ĐÃ GỬI (`lastMarked`) thay vì theo identity
+  // mảng: cùng ID thì thôi, ID đổi (có tin mới) mới gửi lại. Kèm `channelId` trong khóa để guard
+  // vẫn đúng nếu sau này pane đổi kênh mà không remount (hiện ChannelView/DmView đặt `key` theo
+  // channel nên mỗi kênh là một phiên mới, ref cũng mới).
+  const lastMarked = useRef<string | null>(null);
+  // PUT lỗi mạng thì xoá mốc để gửi lại; mỗi tin chỉ thử lại MỘT lần, tránh vòng gửi liên tục khi
+  // API/Redis đang chết (mỗi lần lỗi lại bump state sẽ tự khuếch đại thành retry storm).
+  const retriedMarked = useRef<string | null>(null);
+  const [readRetry, setReadRetry] = useState(0);
   useEffect(() => {
-    if (hasNewer) return;
-    const last = messages.at(-1);
-    if (last && !last.id.startsWith('temp-')) {
-      mutateRead(last.id);
-    }
-  }, [messages, mutateRead, hasNewer]);
+    if (hasNewer || !tailId || tailId.startsWith('temp-')) return;
+    const marked = `${channelId}:${tailId}`;
+    if (lastMarked.current === marked) return;
+    lastMarked.current = marked;
+    mutateRead(tailId, {
+      onError: () => {
+        if (lastMarked.current !== marked) return; // đã có tin mới hơn: để lần đó lo
+        lastMarked.current = null;
+        if (retriedMarked.current === marked) return;
+        retriedMarked.current = marked;
+        setReadRetry((tick) => tick + 1); // đổi dep để effect chạy lại và gửi lại
+      },
+    });
+  }, [tailId, hasNewer, mutateRead, channelId, readRetry]);
 
   // T4.3: vạch "Tin mới" — cursor ĐÃ ĐỌC được chốt MỘT lần mỗi phiên xem kênh: mark-read
   // của chính mình (đi kèm `read.updated`) không kéo vạch chạy xuống. `<Activity>` giữ
@@ -228,26 +257,32 @@ export function MessagePane({
       ? (messages.find((message) => message.id > dividerCursor.current!)?.id ?? null)
       : null;
 
-  function send(content: string, nonce: string, replyToId?: string, attachmentIds?: string[]) {
-    if (!ready || !ability.can('create', 'Message')) return;
-    sendMutation.mutate(
-      {
-        content,
-        nonce,
-        ...(replyToId ? { replyToId } : {}),
-        ...(attachmentIds?.length ? { attachmentIds } : {}),
-      },
-      // TG.9: DM bị chặn hai chiều trả 403 DM_BLOCKED — báo DmView bật banner + tắt composer.
-      dm?.onSendError ? { onError: dm.onSendError } : undefined,
-    );
-  }
+  // Identity ổn định: `retry` đi xuống từng hàng, hàng được `memo` nên prop hàm đổi mỗi
+  // lần pane render (mỗi tick cuộn) sẽ vô hiệu hoá memo. `sendMutate` và `ability` đã ổn định.
+  const onSendError = dm?.onSendError;
+  const send = useCallback(
+    (content: string, nonce: string, replyToId?: string, attachmentIds?: string[]) => {
+      if (!ready || !ability.can('create', 'Message')) return;
+      sendMutate(
+        {
+          content,
+          nonce,
+          ...(replyToId ? { replyToId } : {}),
+          ...(attachmentIds?.length ? { attachmentIds } : {}),
+        },
+        // TG.9: DM bị chặn hai chiều trả 403 DM_BLOCKED — báo DmView bật banner + tắt composer.
+        onSendError ? { onError: onSendError } : undefined,
+      );
+    },
+    [ready, ability, sendMutate, onSendError],
+  );
 
   // TG.22: gửi tin sticker — preview của sticker vừa chọn đi kèm để tin optimistic render
   // ảnh ngay (response của API sẽ thay bằng preview chuẩn có URL ký mới).
   function sendSticker(sticker: StickerDto, nonce: string, replyToId?: string) {
     if (!ready || !ability.can('create', 'Message')) return;
     scrollOnAppend.current = true;
-    sendMutation.mutate({
+    sendMutate({
       content: '',
       nonce,
       stickerId: sticker.id,
@@ -262,7 +297,7 @@ export function MessagePane({
   function sendGif(gif: GifPayload, nonce: string, replyToId?: string) {
     if (!ready || !ability.can('create', 'Message')) return;
     scrollOnAppend.current = true;
-    sendMutation.mutate({
+    sendMutate({
       content: '',
       nonce,
       gif,
@@ -289,60 +324,69 @@ export function MessagePane({
     virtualizer.scrollToIndex(messages.length - 1, { align: 'end' });
   }, [messages.length, virtualizer]);
 
-  const retry = (message: ClientMessage) => {
-    if (!message.nonce) return;
-    // TG.22: gửi lại tin sticker giữ đúng sticker (preview có sẵn trong cache).
-    if (message.kind === 'sticker') {
-      scrollOnAppend.current = true;
-      sendMutation.mutate({
-        content: '',
-        nonce: message.nonce,
-        ...(message.replyTo?.id ? { replyToId: message.replyTo.id } : {}),
-        stickerId: message.sticker?.id,
-        stickerPreview: message.sticker ?? null,
-      });
-      return;
-    }
-    // TG.25: gửi lại tin gif — id payload được giữ lại trên tin optimistic (preview không có id);
-    // thiếu id/preview thì không gửi lại được (server sẽ từ chối payload thiếu id).
-    if (message.kind === 'gif') {
-      if (!message.gif || !message.gifId) return;
-      scrollOnAppend.current = true;
-      sendMutation.mutate({
-        content: '',
-        nonce: message.nonce,
-        ...(message.replyTo?.id ? { replyToId: message.replyTo.id } : {}),
-        gif: {
-          id: message.gifId,
-          url: message.gif.url,
-          width: message.gif.width,
-          height: message.gif.height,
-        },
-        gifPreview: message.gif,
-      });
-      return;
-    }
-    send(
-      message.content,
-      message.nonce,
-      message.replyTo?.id,
-      message.pendingAttachmentIds ?? message.attachments?.map((file) => file.id),
-    );
-  };
+  const retry = useCallback(
+    (message: ClientMessage) => {
+      if (!message.nonce) return;
+      // TG.22: gửi lại tin sticker giữ đúng sticker (preview có sẵn trong cache).
+      if (message.kind === 'sticker') {
+        scrollOnAppend.current = true;
+        sendMutate({
+          content: '',
+          nonce: message.nonce,
+          ...(message.replyTo?.id ? { replyToId: message.replyTo.id } : {}),
+          stickerId: message.sticker?.id,
+          stickerPreview: message.sticker ?? null,
+        });
+        return;
+      }
+      // TG.25: gửi lại tin gif — id payload được giữ lại trên tin optimistic (preview không có id);
+      // thiếu id/preview thì không gửi lại được (server sẽ từ chối payload thiếu id).
+      if (message.kind === 'gif') {
+        if (!message.gif || !message.gifId) return;
+        scrollOnAppend.current = true;
+        sendMutate({
+          content: '',
+          nonce: message.nonce,
+          ...(message.replyTo?.id ? { replyToId: message.replyTo.id } : {}),
+          gif: {
+            id: message.gifId,
+            url: message.gif.url,
+            width: message.gif.width,
+            height: message.gif.height,
+          },
+          gifPreview: message.gif,
+        });
+        return;
+      }
+      send(
+        message.content,
+        message.nonce,
+        message.replyTo?.id,
+        message.pendingAttachmentIds ?? message.attachments?.map((file) => file.id),
+      );
+    },
+    [send, sendMutate],
+  );
 
   // TG.5: nhảy tới tin gốc của một reply. Tin đã có trong cửa sổ → cuộn + tô sáng; tin cũ hơn
   // (chưa tải) → mở permalink để pane nạp `?around=` quanh nó (TG.5, ADR-0063).
-  const permalinkOf = (messageId: string) =>
-    isDm ? dmMessagePath(channelId, messageId) : messagePath(serverId, channelId, messageId);
-  function jumpTo(messageId: string) {
-    const index = messages.findIndex((message) => message.id === messageId);
-    if (index < 0) {
-      router.push(permalinkOf(messageId));
-      return;
-    }
-    virtualizer.scrollToIndex(index, { align: 'center' });
-    setJumpTarget(messageId);
-  }
+  const permalinkOf = useCallback(
+    (messageId: string) =>
+      isDm ? dmMessagePath(channelId, messageId) : messagePath(serverId, channelId, messageId),
+    [isDm, channelId, serverId],
+  );
+  const jumpTo = useCallback(
+    (messageId: string) => {
+      const index = messages.findIndex((message) => message.id === messageId);
+      if (index < 0) {
+        router.push(permalinkOf(messageId));
+        return;
+      }
+      virtualizer.scrollToIndex(index, { align: 'center' });
+      setJumpTarget(messageId);
+    },
+    [messages, router, permalinkOf, virtualizer],
+  );
   useEffect(() => {
     if (!jumpTarget) return;
     const timer = setTimeout(() => setJumpTarget(null), 2000);

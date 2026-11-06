@@ -13,7 +13,9 @@ còn `'unsafe-inline'` cho script (ADR-0027) nên phòng thủ chính là **khô
 ## Quyết định
 
 - **Upload:** reserve → PUT → worker kiểm magic bytes, reencode WebP bỏ EXIF, thumbnail; phục vụ
-  qua URL ký 60 giây **và** đọc lại quyền từ Postgres ([TG.6](../evidence/TG.6/README.md)).
+  qua URL ký 60 giây **và** đọc lại quyền từ Postgres ([TG.6](../evidence/TG.6/README.md)); hạn
+  link nâng lên 24 giờ từ [ADR-0079](../../adr/0079-tai-tep-dinh-kem-luoi.md), việc đọc lại quyền
+  mỗi lần tải không đổi.
 - **Markdown:** parser tự viết + AST allowlist, render React trực tiếp, không `innerHTML`
   ([ADR-0054](../../adr/0054-safe-markdown.md)).
 - **DM:** mở rộng `Channel` với `serverId` nullable + `DmParticipant` là nguồn quyền; người ngoài
@@ -49,7 +51,8 @@ flowchart LR
 
 Không antivirus: allowlist + kiểm cấu trúc không chứng minh tệp “sạch”, PDF vẫn cần trình đọc cập
 nhật; không preview PDF trong iframe. Đĩa local không có độ bền độc lập. URL ký là bearer
-capability chia sẻ được trong 60 giây. DM không audit, không E2EE, không tìm kiếm (FTS scope theo
+capability chia sẻ được trong 60 giây (24 giờ từ [ADR-0079](../../adr/0079-tai-tep-dinh-kem-luoi.md);
+quyền vẫn kiểm lại từ Postgres mỗi lần tải). DM không audit, không E2EE, không tìm kiếm (FTS scope theo
 server), người đã đọc trước khi bị chặn vẫn giữ nội dung cũ.
 
 ## Nửa frontend

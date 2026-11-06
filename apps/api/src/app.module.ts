@@ -84,7 +84,10 @@ import { UsersModule } from './modules/users/users.module.js';
     ThrottlerModule.forRootAsync({
       inject: [RedisProvider],
       useFactory: (redis: RedisProvider) => ({
-        throttlers: [{ ttl: 60_000, limit: 100, blockDuration: 60_000 }],
+        // ADR-0080: đây chỉ là lưới hứng cho route chưa khai bucket; từng nhóm route khai
+        // `@Throttle` với hạn mức riêng (xem common/rate-limit-buckets.ts). Khóa 5 giây thay vì
+        // 60 giây để một đợt burst không biến thành cả phút ngưng trệ.
+        throttlers: [{ ttl: 60_000, limit: 100, blockDuration: 5_000 }],
         storage: new RedisThrottlerStorage(redis),
       }),
     }),

@@ -102,8 +102,16 @@ export function useAttachmentDrafts(channelId: string) {
   };
 }
 
-/** Only the authenticated metadata request is cached. Signed URLs refresh before expiry. */
-export function useAttachmentLink(id: string, thumbnail = false) {
+/**
+ * Link tải có ký (ADR-0079). Chỉ chạy khi `enabled` — nơi gọi bật theo viewport và theo thao
+ * tác (mở ảnh/tải tệp), nên ảnh ngoài màn hình không tốn request. Bỏ `refetchInterval`: link
+ * sống 24 giờ, không có lý do hỏi lại mỗi 45 giây; ảnh lỗi (link hết hạn) do nơi gọi chủ
+ * động `refetch` một lần. `retry: false` giữ nguyên — 403 hết hạn không tự thử lại.
+ */
+export function useAttachmentLink(
+  id: string,
+  { thumbnail = false, enabled = true }: { thumbnail?: boolean; enabled?: boolean } = {},
+) {
   return useQuery({
     queryKey: ['attachments', id, thumbnail],
     queryFn: async () => {
@@ -112,9 +120,9 @@ export function useAttachmentLink(id: string, thumbnail = false) {
       );
       return { ...link, url: new URL(link.url, env.NEXT_PUBLIC_API_URL).href };
     },
-    staleTime: 30_000,
-    gcTime: 60_000,
-    refetchInterval: 45_000,
+    enabled,
+    staleTime: 15 * 60_000,
+    gcTime: 20 * 60_000,
     retry: false,
   });
 }

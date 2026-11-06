@@ -1,6 +1,16 @@
 import { QueryClient } from '@tanstack/react-query';
 import { ApiError } from './api-client';
 
+/**
+ * Chỉ thử lại lỗi mạng/5xx, tối đa 2 lần. 4xx — gồm 429 — không thử lại: hàng đợi trong
+ * `api-client` đã tạm dừng đúng `Retry-After` (ADR-0078), retry ngay chỉ bắn thêm request
+ * vào cửa sổ đang bị khóa.
+ */
+export function shouldRetryRequest(failureCount: number, error: unknown): boolean {
+  if (failureCount >= 2) return false;
+  return !(error instanceof ApiError && error.status >= 400 && error.status < 500);
+}
+
 function makeQueryClient(): QueryClient {
   return new QueryClient({
     defaultOptions: {
@@ -8,10 +18,7 @@ function makeQueryClient(): QueryClient {
         // Dữ liệu ít đổi ngoài realtime (server, channel, quyền): dùng lại 30s rồi mới refetch.
         // Tin nhắn mới đến qua socket và được ghi thẳng vào cache, không chờ refetch.
         staleTime: 30_000,
-        // Lỗi 4xx (403, 404, 400...) thử lại cũng vậy; chỉ retry lỗi mạng/5xx, tối đa 2 lần.
-        retry: (failureCount, error) =>
-          failureCount < 2 &&
-          !(error instanceof ApiError && error.status >= 400 && error.status < 500),
+        retry: shouldRetryRequest,
       },
     },
   });

@@ -4,7 +4,12 @@ export const AttachmentLimits = {
   PER_MESSAGE: 5,
   FILE_BYTES: 10 * 1024 * 1024,
   IMAGE_PIXELS: 16_000_000,
-  URL_SECONDS: 60,
+  /**
+   * ADR-0079: nâng từ 60 giây (ADR-0053) lên 24 giờ. Client chỉ xin link khi ảnh vào vùng nhìn
+   * hoặc khi mở/tải, giữ cache lâu; link vẫn là bearer capability ràng buộc user và mỗi lần tải
+   * đều đọc lại quyền/membership từ Postgres.
+   */
+  URL_SECONDS: 24 * 60 * 60,
   /** URL hồ sơ (avatar/icon) sống lâu để event `user.updated` render được ở mọi client (TG.7). */
   PROFILE_URL_SECONDS: 30 * 24 * 60 * 60,
 } as const;

@@ -74,10 +74,13 @@ export function useCreateChannel(serverId: string) {
   return useMutation({
     mutationFn: (input: CreateChannelInput) => createChannel(serverId, input),
     // Event realtime có thể tới trước response; upsert để không chèn trùng.
-    onSuccess: (channel) =>
+    onSuccess: (channel) => {
       queryClient.setQueryData<ChannelDto[]>(qk.channels(serverId), (old) =>
         old ? upsertChannel(old, channel) : old,
-      ),
+      );
+      // ADR-0077: unread gộp cần thêm dòng cho channel mới (mặc định 0).
+      void queryClient.invalidateQueries({ queryKey: qk.unreadAll });
+    },
   });
 }
 
@@ -102,6 +105,8 @@ export function useDeleteChannel(serverId: string) {
         old?.filter((channel) => channel.id !== channelId),
       );
       queryClient.removeQueries({ queryKey: qk.messages(channelId), exact: true });
+      // ADR-0077: bỏ dòng của channel đã xóa khỏi unread gộp.
+      void queryClient.invalidateQueries({ queryKey: qk.unreadAll });
     },
   });
 }

@@ -55,6 +55,8 @@ export function useCreateServer() {
       // Response đã đủ cho trang server: ghi thẳng vào cache, khỏi gọi GET lần nữa.
       queryClient.setQueryData(qk.server(server.id), server);
       queryClient.setQueryData(qk.channels(server.id), server.channels);
+      // ADR-0077: server mới cần xuất hiện trong unread gộp (dù mọi channel đang 0).
+      void queryClient.invalidateQueries({ queryKey: qk.unreadAll });
       return queryClient.invalidateQueries({ queryKey: qk.servers, exact: true });
     },
   });
@@ -64,7 +66,10 @@ export function useJoinServer() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: joinServer,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: qk.servers, exact: true }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: qk.unreadAll });
+      return queryClient.invalidateQueries({ queryKey: qk.servers, exact: true });
+    },
   });
 }
 
@@ -75,6 +80,8 @@ export function useLeaveServer() {
     onSuccess: (_result, serverId) => {
       // Key xếp theo cây: xóa qk.server(id) là xóa luôn channels/members/permissions của nó.
       queryClient.removeQueries({ queryKey: qk.server(serverId) });
+      // ADR-0077: unread gộp phải bỏ server vừa rời.
+      void queryClient.invalidateQueries({ queryKey: qk.unreadAll });
       return queryClient.invalidateQueries({ queryKey: qk.servers, exact: true });
     },
   });
@@ -101,6 +108,8 @@ export function useServerEvents(session: RealtimeSession) {
     );
     if (pathname === `/servers/${serverId}` || pathname.startsWith(`/servers/${serverId}/`))
       router.replace('/servers');
+    // ADR-0077: bị kick khỏi server — unread gộp không được còn server đó.
+    void queryClient.invalidateQueries({ queryKey: qk.unreadAll });
     void queryClient.invalidateQueries({ queryKey: qk.servers, exact: true });
   });
   useEffect(() => {

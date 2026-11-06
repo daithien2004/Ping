@@ -37,7 +37,10 @@ test('Ctrl+K mở chuyển nhanh, lọc theo dữ liệu thật, Enter/Arrow đi
   const options = page.getByTestId('quick-switcher-item');
   // Dữ liệu thật: server của người dùng + kênh của server đang mở (nhóm "Kênh").
   await expect(options.filter({ hasText: '# long' })).toBeVisible();
-  await expect(options.filter({ hasText: 'E2E' })).toBeVisible();
+  // `hasText` của Playwright là substring KHÔNG phân biệt hoa thường: tên kênh do spec khác tạo
+  // (vd. `empty-e1ae2e`) cũng khớp "E2E". Bám nhóm + tên server để không phụ thuộc dữ liệu may mắn.
+  const e2eServer = page.getByRole('option', { name: /^Server \/E2E / });
+  await expect(e2eServer).toBeVisible();
 
   // Điều hướng bằng phím: active chuyển từ option đầu sang option kế. KHÔNG Enter ở bước này:
   // spec khác trong cùng run có thể đã tạo thêm server cho user này, nên option kế không cố
@@ -66,7 +69,7 @@ test('Ctrl+K mở chuyển nhanh, lọc theo dữ liệu thật, Enter/Arrow đi
   await expect(dialog).toBeVisible();
   await expect(input).toHaveValue('');
   await input.fill('E2E');
-  await expect(options).toHaveCount(1);
+  await expect(e2eServer).toHaveCount(1);
   await input.press('Enter');
   await expect(dialog).toHaveCount(0);
   await expect(page).toHaveURL(new RegExp(`/servers/${serverId()}/(channels/|$)`));

@@ -27,8 +27,15 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
 });
+
+/** Đợi các promise nối tiếp (acquireSlot → fetch) chạy xong trong một lượt microtask. */
+async function flushMicrotasks(): Promise<void> {
+  await Promise.resolve();
+  await Promise.resolve();
+}
 
 const authHeader = (init: RequestInit) => new Headers(init.headers).get('Authorization');
 
@@ -245,6 +252,110 @@ describe('api-client', () => {
       status: 0,
     });
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('GET gặp 429 tự chờ Retry-After rồi thử lại một lần; hàng đợi cũng chờ theo (ADR-0078)', async () => {
+    vi.useFakeTimers();
+    const { api } = await load();
+    fetchMock.mockImplementation((url) =>
+      url.endsWith('/a') && fetchMock.mock.calls.length === 1
+        ? json(429, { code: 'TOO_MANY_REQUESTS' }, { 'Retry-After': '2' })
+        : json(200, { ok: true }),
+    );
+
+    const a = api.get('/a');
+    await flushMicrotasks();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const b = api.get('/b');
+    await flushMicrotasks();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    await vi.advanceTimersByTimeAsync(1_999);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    await expect(a).resolves.toEqual({ ok: true });
+    await expect(b).resolves.toEqual({ ok: true });
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it('GET gặp 429 hai lần liên tiếp thì báo lỗi, không thử lần ba', async () => {
+    vi.useFakeTimers();
+    const { api } = await load();
+    fetchMock.mockResolvedValue(json(429, { code: 'TOO_MANY_REQUESTS' }, { 'Retry-After': '1' }));
+
+    const request = api.get('/a').catch((error: unknown) => error);
+    await vi.advanceTimersByTimeAsync(1_000);
+    const error = await request;
+
+    expect(error).toMatchObject({ status: 429, code: ErrorCodes.TOO_MANY_REQUESTS });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('POST gặp 429 không tự thử lại (không chắc idempotent)', async () => {
+    vi.useFakeTimers();
+    const { api } = await load();
+    fetchMock.mockResolvedValue(json(429, { code: 'TOO_MANY_REQUESTS' }, { 'Retry-After': '1' }));
+
+    await expect(api.post('/messages', { content: 'x' })).rejects.toMatchObject({ status: 429 });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('X-RateLimit-Remaining: 0 tạm dừng tới X-RateLimit-Reset (không bắn vào bucket cạn)', async () => {
+    vi.useFakeTimers();
+    const { api } = await load();
+    fetchMock.mockImplementationOnce(() =>
+      json(200, { ok: 1 }, { 'X-RateLimit-Remaining': '0', 'X-RateLimit-Reset': '3' }),
+    );
+
+    await api.get('/a');
+    const next = api.get('/b');
+    await flushMicrotasks();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    await vi.advanceTimersByTimeAsync(2_999);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    fetchMock.mockResolvedValue(json(200, { ok: 2 }));
+    await vi.advanceTimersByTimeAsync(1);
+    await expect(next).resolves.toEqual({ ok: 2 });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('giới hạn số request đang bay (hàng đợi FIFO)', async () => {
+    const { api } = await load();
+    const pending: Array<(response: Response) => void> = [];
+    fetchMock.mockImplementation(() => new Promise<Response>((resolve) => pending.push(resolve)));
+
+    const requests = Array.from({ length: 8 }, (_, index) => api.get(`/r${index}`));
+    await flushMicrotasks();
+    expect(fetchMock).toHaveBeenCalledTimes(6);
+
+    pending.shift()!(json(200, { ok: true }));
+    await flushMicrotasks();
+    expect(fetchMock).toHaveBeenCalledTimes(7);
+
+    while (pending.length > 0) {
+      pending.shift()!(json(200, { ok: true }));
+      await flushMicrotasks();
+    }
+    await expect(Promise.all(requests)).resolves.toHaveLength(8);
+    expect(fetchMock).toHaveBeenCalledTimes(8);
+  });
+
+  it('hủy khi còn trong hàng đợi → AbortError, không gửi request', async () => {
+    const { api } = await load();
+    fetchMock.mockImplementation(() => new Promise<Response>(() => {}));
+    const blockers = Array.from({ length: 6 }, (_, index) => api.get(`/b${index}`));
+    await flushMicrotasks();
+    expect(fetchMock).toHaveBeenCalledTimes(6);
+
+    const controller = new AbortController();
+    const queued = api.stream('GET', '/later', undefined, { signal: controller.signal });
+    await flushMicrotasks();
+    controller.abort();
+
+    await expect(queued).rejects.toMatchObject({ name: 'AbortError' });
+    expect(fetchMock).toHaveBeenCalledTimes(6);
+    void blockers;
   });
 
   it('stream trả nguyên Response để đọc dần, kèm Bearer và header thêm', async () => {

@@ -10,6 +10,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import {
   createMessageSchema,
   reactionUsersQuerySchema,
@@ -20,6 +21,7 @@ import {
   type UpdateMessageInput,
 } from '@ping/shared';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe.js';
+import { RATE_LIMIT_BUCKETS } from '../../common/rate-limit-buckets.js';
 import { AbilityGuard } from '../ability/ability.guard.js';
 import { CheckAbility, CurrentAbility } from '../ability/check-ability.decorator.js';
 import { CurrentUser, type AuthenticatedUser } from '../auth/current-user.decorator.js';
@@ -45,6 +47,7 @@ export class MessagesController {
    * được đọc nội dung tin qua search; where luôn ràng buộc serverId.
    */
   @Get('servers/:serverId/search')
+  @Throttle({ default: RATE_LIMIT_BUCKETS.search })
   @CheckAbility(['view', 'Message'])
   async search(
     @CurrentUser() user: AuthenticatedUser,
@@ -56,6 +59,7 @@ export class MessagesController {
   }
 
   @Get('channels/:channelId/messages')
+  @Throttle({ default: RATE_LIMIT_BUCKETS.history })
   @CheckAbility(['view', 'Message'])
   list(
     @CurrentUser() user: AuthenticatedUser,
@@ -66,6 +70,7 @@ export class MessagesController {
   }
 
   @Post('channels/:channelId/messages')
+  @Throttle({ default: RATE_LIMIT_BUCKETS.writeMessage })
   @CheckAbility(['create', 'Message'])
   create(
     @CurrentUser() user: AuthenticatedUser,
@@ -81,6 +86,7 @@ export class MessagesController {
    * (tier 2). Guard vẫn đảm bảo người gọi là member của server chứa tin.
    */
   @Patch('messages/:messageId')
+  @Throttle({ default: RATE_LIMIT_BUCKETS.writeMessage })
   update(
     @CurrentUser() user: AuthenticatedUser,
     @CurrentAbility() ability: AppAbility,
@@ -91,6 +97,7 @@ export class MessagesController {
   }
 
   @Delete('messages/:messageId')
+  @Throttle({ default: RATE_LIMIT_BUCKETS.writeMessage })
   remove(
     @CurrentUser() user: AuthenticatedUser,
     @CurrentAbility() ability: AppAbility,
@@ -105,18 +112,21 @@ export class MessagesController {
    * Quyền: `MANAGE_MESSAGES` + `VIEW_CHANNEL` (subject `Pin` trong `defineAbilityFor`).
    */
   @Get('channels/:channelId/pins')
+  @Throttle({ default: RATE_LIMIT_BUCKETS.history })
   @CheckAbility(['view', 'Message'])
   pins(@CurrentUser() user: AuthenticatedUser, @Param('channelId') channelId: string) {
     return this.messagesService.listPins(channelId, user.userId);
   }
 
   @Put('messages/:messageId/pin')
+  @Throttle({ default: RATE_LIMIT_BUCKETS.writeMessage })
   @CheckAbility(['create', 'Pin'])
   pin(@CurrentUser() user: AuthenticatedUser, @Param('messageId') messageId: string) {
     return this.messagesService.pin(messageId, user.userId);
   }
 
   @Delete('messages/:messageId/pin')
+  @Throttle({ default: RATE_LIMIT_BUCKETS.writeMessage })
   @CheckAbility(['delete', 'Pin'])
   unpin(@CurrentUser() user: AuthenticatedUser, @Param('messageId') messageId: string) {
     return this.messagesService.unpin(messageId, user.userId);
@@ -128,6 +138,7 @@ export class MessagesController {
    * service (param `:emoji` đã được Express giải mã URL).
    */
   @Get('messages/:messageId/reactions/:emoji')
+  @Throttle({ default: RATE_LIMIT_BUCKETS.history })
   @CheckAbility(['view', 'Message'])
   reactionUsers(
     @Param('messageId') messageId: string,
@@ -138,6 +149,7 @@ export class MessagesController {
   }
 
   @Put('messages/:messageId/reactions/:emoji')
+  @Throttle({ default: RATE_LIMIT_BUCKETS.writeMessage })
   @CheckAbility(['create', 'Reaction'])
   addReaction(
     @CurrentUser() user: AuthenticatedUser,
@@ -148,6 +160,7 @@ export class MessagesController {
   }
 
   @Delete('messages/:messageId/reactions/:emoji')
+  @Throttle({ default: RATE_LIMIT_BUCKETS.writeMessage })
   @CheckAbility(['create', 'Reaction'])
   removeReaction(
     @CurrentUser() user: AuthenticatedUser,

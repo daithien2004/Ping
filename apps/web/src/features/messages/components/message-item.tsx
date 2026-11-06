@@ -1,4 +1,5 @@
 import { Pin } from 'lucide-react';
+import { memo } from 'react';
 import { useFormatter, useTranslations } from 'use-intl';
 import type { ClientMessage } from '../message-cache';
 import { useServerAbility } from '@/features/permissions/context';
@@ -33,7 +34,7 @@ interface Props {
   showDate?: boolean;
 }
 
-export function MessageItem({
+export const MessageItem = memo(function MessageItem({
   message,
   channelId,
   serverId,
@@ -209,4 +210,4 @@ export function MessageItem({
       </article>
     </>
   );
-}
+});

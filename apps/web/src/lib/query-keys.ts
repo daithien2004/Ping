@@ -13,7 +13,12 @@ export const qk = {
   permissions: (serverId: string) => ['servers', serverId, 'permissions'] as const,
   roles: (serverId: string) => ['servers', serverId, 'roles'] as const,
   auditLog: (serverId: string) => ['servers', serverId, 'audit-log'] as const,
-  unread: (serverId: string) => ['servers', serverId, 'unread'] as const,
+  /**
+   * ADR-0077: unread của MỌI server trong một query (GET /users/me/unread). Các hook
+   * `useUnread(serverId)` cùng trỏ key này và chọn phần của server mình — TanStack gộp
+   * thành một request, thay cho `qk.unread(serverId)` bắn N request.
+   */
+  unreadAll: ['unread', 'all'] as const,
   search: (serverId: string) => ['servers', serverId, 'search'] as const,
   messages: (channelId: string) => ['channels', channelId, 'messages'] as const,
   /** TG.2: danh sách người thả một emoji trên một tin (phân trang keyset). */

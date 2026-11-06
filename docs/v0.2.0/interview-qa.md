@@ -292,10 +292,12 @@ Quyền không suy từ `Member` mà từ bảng `DmParticipant`; người thứ
 DM, kể cả URL tệp đính kèm, và không join được room. e2e 13/13 × 2 lần; DM không vào FTS/vector
 nên không lộ qua search hay AI ([ADR-0070](../adr/0070-dm-and-user-blocks.md)).
 
-**44. URL tệp có chữ ký 60 giây thì đủ chưa?**
+**44. URL tệp có chữ ký và hạn dài thì có rủi ro chia sẻ không?**
 
 Chữ ký chỉ là lớp một. Mỗi lần tải, server đọc lại quyền từ Postgres, nên rời server là mất quyền
-ngay dù URL còn hạn (403). Đổi lại, URL không chia sẻ được quá 60 giây — đúng ý đồ.
+ngay dù URL còn hạn (403). Hạn link là 24 giờ từ [ADR-0079](../adr/0079-tai-tep-dinh-kem-luoi.md)
+(trước đó 60 giây) vì client tải lười, không hỏi lại link định kỳ; URL ràng buộc `userId` trong chữ
+ký nên chia sẻ cho người khác vẫn bị chặn ở bước kiểm quyền.
 
 **45. Nếu được hỏi "hệ thống này chịu được bao nhiêu người"?**
 

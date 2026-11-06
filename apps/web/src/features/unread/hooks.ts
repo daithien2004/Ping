@@ -2,29 +2,34 @@
 
 import type {
   ChannelActivityPayload,
-  ChannelUnreadDto,
   MentionCreatedPayload,
   ReadUpdatedPayload,
+  ServerUnreadDto,
 } from '@ping/shared';
 import { ServerEvents } from '@ping/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { qk } from '@/lib/query-keys';
 import type { RealtimeSession } from '@/features/realtime/session';
-import { listUnread, markChannelRead } from './api';
-import { applyIncoming, applyRead } from './unread-cache';
+import { listAllUnread, markChannelRead } from './api';
+import { applyIncomingAll, applyReadAll } from './unread-cache';
 
 /**
- * Unread của một server (T4.3). Không suspense: rail cần render ngay cả khi chưa có số.
- * Cache được các event realtime cập nhật tinh (xem useUnreadEvents) và fetch lại khi
- * socket reconnect (đối soát tin đến lúc mất mạng).
- * TG.9: `null` = xem DM (không thuộc server nào) — không gọi API, unread DM do `qk.dms` lo.
+ * Unread của một server (T4.3, ADR-0077). Không suspense: rail cần render ngay cả khi chưa
+ * có số. Mọi lời gọi dùng CHUNG một query gộp (`qk.unreadAll`) rồi `select` phần của server
+ * mình — rail 69 server vẫn chỉ bắn một request thay vì 69. Cache được event realtime cập
+ * nhật tinh (xem useUnreadEvents) và fetch lại một lần khi socket reconnect.
+ * TG.9: `null` = xem DM (không thuộc server nào) — không có phần server để chọn, unread DM
+ * do `qk.dms` lo.
  */
 export function useUnread(serverId: string | null) {
   return useQuery({
-    queryKey: qk.unread(serverId ?? ''),
-    queryFn: () => listUnread(serverId ?? ''),
-    enabled: serverId !== null,
+    queryKey: qk.unreadAll,
+    queryFn: listAllUnread,
+    select: (servers: ServerUnreadDto[]) =>
+      serverId === null
+        ? undefined
+        : servers.find((server) => server.serverId === serverId)?.channels,
   });
 }
 
@@ -50,27 +55,14 @@ export function useUnreadEvents(
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    const serverIdOfChannel = (channelId: string): string | null => {
-      // Đổi cache unread channel thuộc server nào: quét key ['servers', id, 'unread'] đang có.
-      for (const query of queryClient.getQueryCache().getAll()) {
-        if (query.queryKey[0] === 'servers' && query.queryKey[2] === 'unread') {
-          const rows = query.state.data as ChannelUnreadDto[] | undefined;
-          if (rows?.some((row) => row.channelId === channelId)) {
-            return query.queryKey[1] as string;
-          }
-        }
-      }
-      return null;
-    };
-
+    // ADR-0077: cache là một mảng server; helper tự tìm server chứa channel, không tìm thấy
+    // (channel ngoài cache gộp) thì giữ nguyên — lần fetch sau tự đúng.
     const bump = (
       channelId: string,
       options: { isOwn: boolean; mention: boolean; countsUnread?: boolean },
     ) => {
-      const serverId = serverIdOfChannel(channelId);
-      if (!serverId) return; // server chưa nạp unread (đang không ở rail?) — lần fetch sau tự đúng
-      queryClient.setQueryData<ChannelUnreadDto[]>(qk.unread(serverId), (old) =>
-        old ? applyIncoming(old, channelId, options) : old,
+      queryClient.setQueryData<ServerUnreadDto[]>(qk.unreadAll, (old) =>
+        old ? applyIncomingAll(old, channelId, options) : old,
       );
     };
 
@@ -85,17 +77,14 @@ export function useUnreadEvents(
       bump(event.channelId, { isOwn: false, mention: true, countsUnread: false });
     };
     const read = (event: ReadUpdatedPayload) => {
-      const serverId = serverIdOfChannel(event.channelId);
-      if (!serverId) return;
-      queryClient.setQueryData<ChannelUnreadDto[]>(qk.unread(serverId), (old) =>
-        old ? applyRead(old, event.channelId, event.lastReadMessageId) : old,
+      queryClient.setQueryData<ServerUnreadDto[]>(qk.unreadAll, (old) =>
+        old ? applyReadAll(old, event.channelId, event.lastReadMessageId) : old,
       );
     };
-    // Reconnect: tin đến lúc mất kết nối không có event — fetch lại unread mọi server.
+    // Reconnect: tin đến lúc mất kết nối không có event — MỘT lần fetch unread gộp
+    // (ADR-0077), thay cho việc invalidate N key per-server như trước.
     const connected = () => {
-      void queryClient.invalidateQueries({
-        predicate: (query) => query.queryKey[0] === 'servers' && query.queryKey[2] === 'unread',
-      });
+      void queryClient.invalidateQueries({ queryKey: qk.unreadAll });
     };
 
     session.socket.on(ServerEvents.ChannelActivity, message);

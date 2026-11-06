@@ -62,3 +62,7 @@ Biến thể "restart một instance giữa tải": `node tools/loadtest/run-ins
 - Không có cờ tắt rate limit trong code. Các instance chạy `TRUST_PROXY=1` và mỗi người dùng ảo gửi
   `X-Forwarded-For` riêng, nên rate limit theo IP không chặn phép đo.
 - Một lần chạy là một mẫu. Muốn kết luận thì chạy lại và so sánh.
+
+## Việc còn lại sau tối ưu tải trang
+
+Danh sách việc nhỏ, hướng xử lý cuộn tin nhắn và cách đo: [Việc còn lại và cuộn tin nhắn](viec-con-lai-va-cuon-tin-nhan.md).

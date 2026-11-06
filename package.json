@@ -27,7 +27,7 @@
       "eslint --config apps/api/eslint.config.mjs --fix"
     ],
     "apps/web/**/*.{ts,tsx}": [
-      "eslint --config apps/web/eslint.config.mjs --fix"
+      "pnpm --filter web exec eslint --fix"
     ],
     "**/*.{ts,tsx,js,mjs,json,md}": [
       "prettier --write"
