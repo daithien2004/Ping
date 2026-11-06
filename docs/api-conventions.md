@@ -63,9 +63,11 @@ trùng khi lần đầu còn đang chạy → 409).
 
 Reaction (TG.2, [ADR-0064](adr/0064-message-reactions.md)): `PUT` và `DELETE
 /messages/:messageId/reactions/:emoji` đều idempotent, trả **200** cùng
-`{ messageId, reactions: [{ emoji, count, me }] }` để client đối soát trạng thái sau thao tác.
+`{ messageId, reactions: [{ emoji, count, me, emojiName? }] }` để client đối soát trạng thái sau thao tác.
 `GET` cùng URL trả `{ users, total, hasMore, nextCursor }`; cursor `after` là id hàng reaction,
 không phải id user. Danh sách tin kèm `reactions`, cờ `me` luôn tính theo người gọi API.
+`emojiName` chỉ có với token `c:<id>` (emoji tùy chỉnh, kể cả đã xóa); `DELETE` vẫn gỡ được reaction của
+emoji đã xóa, còn `PUT` bằng emoji đã xóa trả 400 ([ADR-0081](adr/0081-reaction-cua-emoji-da-xoa.md)).
 
 Ghim (TG.3, [ADR-0066](adr/0066-message-pins.md)): `PUT`/`DELETE /messages/:messageId/pin` idempotent,
 trả **200** cùng `{ messageId, channelId, pinnedAt, pinnedById }` (`pinnedAt: null` khi đã bỏ ghim);

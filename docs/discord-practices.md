@@ -388,6 +388,8 @@ Nên bắt đầu từ việc 1 đến 3: tác động cao, công sức thấp �
 
 **Trạng thái 2026-11-06 (nhánh `feat/discord-practices`):** việc 1–5 và một phần việc 11 đã làm — [ADR-0077](adr/0077-unread-gop-mot-request.md) gộp unread, [ADR-0078](adr/0078-hang-doi-request-va-retry-after.md) hàng đợi tôn trọng `Retry-After`, [ADR-0079](adr/0079-tai-tep-dinh-kem-luoi.md) tải tệp lười, [ADR-0080](adr/0080-rate-limit-theo-bucket-va-nguoi-dung.md) rate limit theo bucket + khoá theo người dùng. Đo lại một lần F5 trên tài khoản 69 server (bản dev, cùng cách đo): 1 request `/users/me/unread`, 0 lỗi 429, `/me/permissions` 0,57 giây (trước 8,0 giây), tổng 22 request API khi tải kênh (trước 92). Việc 5: SQL unread dừng quét ở 100 hàng khớp (kênh 10k tin: 3,48 ms / 1012 buffer → 0,13 ms / 15 buffer). Việc 11 (phần socket): `maxHttpBufferSize` 4 KB; trần chờ nối lại 10 giây (trước 5 giây — jitter ±50% vốn là mặc định của Socket.IO).
 
+**Việc 13 (phát sinh 2026-11-06, emoji đã xóa):** gỡ được reaction của emoji đã xóa (hiện `removeReaction` trả 400), trả tên emoji trong reaction để pill không lộ `c:<id>`, rồi tách CSDL cho e2e. Hướng dẫn từng bước và tiêu chí hoàn thành: [Triển khai emoji đã xóa](emoji-da-xoa-trien-khai.md). Căn cứ Discord: reaction có thể sống lâu hơn emoji (`name` có thể `null`), tài liệu không nói về việc tự xóa reaction.
+
 **Đề xuất ADR:** việc 1 (endpoint mới) và việc 4 (đổi chính sách rate limit) đáng có mỗi việc một ADR ngắn; việc 6 bắt buộc có ADR. Các việc còn lại là sửa cài đặt, không đổi kiến trúc.
 
 ## Nguồn và mức độ chắc chắn
