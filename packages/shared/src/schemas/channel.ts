@@ -37,6 +37,17 @@ export interface ChannelUnreadDto {
   lastReadMessageId: string | null;
 }
 
+/**
+ * Một server trong GET /users/me/unread (ADR-0077): gộp unread của MỌI server người gọi là
+ * thành viên vào một request, thay cho N lời gọi GET /servers/:id/unread mà rail từng bắn ra
+ * (mỗi server một query, dễ vượt hạn mức chung). Server không có channel vẫn có mặt với
+ * `channels: []` để client biết mình còn thuộc server đó.
+ */
+export interface ServerUnreadDto {
+  serverId: string;
+  channels: ChannelUnreadDto[];
+}
+
 export interface ChannelDto {
   id: string;
   serverId: string;

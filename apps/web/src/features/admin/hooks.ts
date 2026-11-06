@@ -79,6 +79,8 @@ export function useAssignMemberRoles(serverId: string) {
       void queryClient.invalidateQueries({ queryKey: qk.roles(serverId) });
       void queryClient.invalidateQueries({ queryKey: qk.server(serverId) });
       void queryClient.invalidateQueries({ queryKey: qk.permissions(serverId) });
+      // ADR-0077: mention theo role đổi khi gán/gỡ role → phải làm mới unread gộp.
+      void queryClient.invalidateQueries({ queryKey: qk.unreadAll });
     },
   });
 }
@@ -107,6 +109,8 @@ export function useDeleteRole(serverId: string) {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: qk.roles(serverId) });
       void queryClient.invalidateQueries({ queryKey: qk.server(serverId) });
+      // ADR-0077: xóa role gỡ luôn mention theo role của các thành viên.
+      void queryClient.invalidateQueries({ queryKey: qk.unreadAll });
     },
   });
 }
@@ -149,6 +153,8 @@ export function useDeleteServer() {
     mutationFn: (serverId: string) => deleteServer(serverId),
     onSuccess: (_result, serverId) => {
       void queryClient.removeQueries({ queryKey: qk.server(serverId) });
+      // ADR-0077: server đã xóa không còn trong unread gộp.
+      void queryClient.invalidateQueries({ queryKey: qk.unreadAll });
       return queryClient.invalidateQueries({ queryKey: qk.servers, exact: true });
     },
   });

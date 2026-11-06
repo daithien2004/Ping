@@ -1,6 +1,13 @@
-import type { ChannelUnreadDto } from '@ping/shared';
+import type { ChannelUnreadDto, ServerUnreadDto } from '@ping/shared';
 import { describe, expect, it } from 'vitest';
-import { applyIncoming, applyRead, firstUnreadId, totals } from './unread-cache.js';
+import {
+  applyIncoming,
+  applyIncomingAll,
+  applyRead,
+  applyReadAll,
+  firstUnreadId,
+  totals,
+} from './unread-cache.js';
 
 const row = (over: Partial<ChannelUnreadDto>): ChannelUnreadDto => ({
   channelId: 'c1',
@@ -50,6 +57,43 @@ describe('applyIncoming (T4.3)', () => {
 
   it('channel lạ (chưa có dòng) bỏ qua, không thêm dòng đoán', () => {
     expect(applyIncoming([row({})], 'other', { isOwn: false, mention: false })).toHaveLength(1);
+  });
+});
+
+describe('applyIncomingAll (ADR-0077)', () => {
+  const grouped = (): ServerUnreadDto[] => [
+    { serverId: 's1', channels: [row({ channelId: 'c1', unreadCount: 4 })] },
+    { serverId: 's2', channels: [row({ channelId: 'c2', unreadCount: 2 })] },
+  ];
+
+  it('chỉ sửa server chứa channel và giữ nguyên server khác', () => {
+    const next = applyIncomingAll(grouped(), 'c2', { isOwn: false, mention: true });
+    expect(next[0]!.channels[0]!.unreadCount).toBe(4);
+    expect(next[1]!.channels[0]).toMatchObject({ unreadCount: 3, mentionCount: 1 });
+  });
+
+  it('channel không có trong cache gộp giữ nguyên tham chiếu mảng', () => {
+    const before = grouped();
+    expect(applyIncomingAll(before, 'other', { isOwn: false, mention: false })).toBe(before);
+  });
+});
+
+describe('applyReadAll (ADR-0077)', () => {
+  it('đưa channel ở đúng server về 0 và cập nhật cursor', () => {
+    const next = applyReadAll(
+      [
+        { serverId: 's1', channels: [row({ channelId: 'c1', unreadCount: 7, mentionCount: 2 })] },
+        { serverId: 's2', channels: [row({ channelId: 'c2', unreadCount: 3 })] },
+      ],
+      'c1',
+      'm9',
+    );
+    expect(next[0]!.channels[0]).toMatchObject({
+      unreadCount: 0,
+      mentionCount: 0,
+      lastReadMessageId: 'm9',
+    });
+    expect(next[1]!.channels[0]!.unreadCount).toBe(3);
   });
 });
 

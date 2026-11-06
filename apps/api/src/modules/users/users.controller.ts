@@ -14,6 +14,7 @@ import { AccountService } from '../auth/account.service.js';
 import { AuthService } from '../auth/auth.service.js';
 import { CurrentUser, type AuthenticatedUser } from '../auth/current-user.decorator.js';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
+import { ReadStateService } from '../channels/read-state.service.js';
 import { UsersService } from './users.service.js';
 
 /** Toàn bộ /users yêu cầu đăng nhập — khai báo guard một lần ở controller. */
@@ -24,11 +25,22 @@ export class UsersController {
     private readonly authService: AuthService,
     private readonly usersService: UsersService,
     private readonly accountService: AccountService,
+    private readonly readState: ReadStateService,
   ) {}
 
   @Get('me')
   me(@CurrentUser() user: AuthenticatedUser) {
     return this.authService.me(user.userId);
+  }
+
+  /**
+   * ADR-0077: unread của mọi server người gọi là thành viên, một request thay cho N lời
+   * gọi `/servers/:id/unread`. Không có id trên path — chỉ dữ liệu của chính người gọi nên
+   * không cần AbilityGuard/IDOR.
+   */
+  @Get('me/unread')
+  unread(@CurrentUser() user: AuthenticatedUser) {
+    return this.readState.unreadForUser(user.userId);
   }
 
   /** TG.7: đổi tên hiển thị/ avatar; controller mỏng — bind attachment và phát event ở service. */

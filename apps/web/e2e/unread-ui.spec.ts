@@ -7,16 +7,16 @@ const API = 'http://localhost:4000/api/v1';
 const SEED_PASSWORD = 'password123';
 
 /**
- * Mở app và chờ unread của server test nạp xong. Throttle toàn cục 100 req/phút/IP trả 429 và
- * block 60 s (T6.5); CI chạy nhiều spec nối tiếp trên cùng IP nên một tab mới có thể bị chặn
- * ngay lúc mở — khi đó unread không có dữ liệu và event realtime không cập nhật được. Gặp 429
- * thì chờ theo `Retry-After` rồi mở lại, quá 150 s mới coi là lỗi thật.
+ * Mở app và chờ unread (gộp mọi server một request, ADR-0077) nạp xong. Throttle toàn cục
+ * 100 req/phút/IP trả 429 và block 60 s (T6.5); CI chạy nhiều spec nối tiếp trên cùng IP nên
+ * một tab mới có thể bị chặn ngay lúc mở — khi đó unread không có dữ liệu và event realtime
+ * không cập nhật được. Gặp 429 thì chờ theo `Retry-After` rồi mở lại, quá 150 s mới là lỗi thật.
  */
-async function openWithUnread(page: Page, serverId: string) {
+async function openWithUnread(page: Page) {
   const deadline = Date.now() + 150_000;
   for (;;) {
     const unread = page
-      .waitForResponse((res) => res.url().includes(`/servers/${serverId}/unread`), {
+      .waitForResponse((res) => res.url().includes('/users/me/unread'), {
         timeout: 30_000,
       })
       .catch(() => null);
@@ -25,9 +25,7 @@ async function openWithUnread(page: Page, serverId: string) {
     const response = await unread;
     if (response?.ok()) return;
     if (Date.now() > deadline) {
-      throw new Error(
-        `unread của ${serverId} không nạp được (lần cuối: ${response?.status() ?? 'timeout'})`,
-      );
+      throw new Error(`unread không nạp được (lần cuối: ${response?.status() ?? 'timeout'})`);
     }
     const retryAfter = Number(response?.headers()['retry-after'] ?? 0);
     await page.waitForTimeout(Math.min(70_000, Math.max(2_000, retryAfter * 1_000 + 1_000)));
@@ -85,7 +83,7 @@ test('unread ui: server/channel badges, mention badge, title, divider and two-ta
     const tabA = await ownerContext.newPage();
     // Chờ app nạp xong unread của server test trước khi bob gửi: event đến giữa lúc query
     // đang bay sẽ bị lần fetch đó ghi đè (race có sẵn, không liên quan TG.1).
-    await openWithUnread(tabA, server.id);
+    await openWithUnread(tabA);
     // TG.12: title là TỔNG unread toàn cục (mọi server + DM) — các spec khác trên cùng shard
     // có thể để lại unread cho alice (CI chạy nối tiếp trên cùng seed). Mọi khẳng định title
     // của spec này đo THEO DELTA so với baseline lúc đầu, không khẳng định số tuyệt đối.
@@ -157,7 +155,7 @@ test('unread ui: server/channel badges, mention badge, title, divider and two-ta
       // Tab B mở app ở server khác, chờ query unread xong rồi mới gửi: event đến khi query đang
       // bay sẽ bị response cũ ghi đè (cùng race với tab A ở trên).
       const tabB = await ownerContext.newPage();
-      await openWithUnread(tabB, server.id);
+      await openWithUnread(tabB);
       await expect(tabB.getByRole('link', { name: new RegExp(server.name) })).toBeVisible({
         timeout: 15_000,
       });

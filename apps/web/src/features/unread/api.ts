@@ -1,9 +1,11 @@
-import type { ChannelUnreadDto } from '@ping/shared';
+import type { ServerUnreadDto } from '@ping/shared';
 import { api } from '@/lib/api-client';
 
-/** GET /servers/:serverId/unread — một dòng mỗi channel (T4.2). */
-export const listUnread = (serverId: string) =>
-  api.get<ChannelUnreadDto[]>(`/servers/${serverId}/unread`);
+/**
+ * GET /users/me/unread — unread của mọi server người gọi là thành viên trong một request
+ * (ADR-0077). Endpoint per-server cũ vẫn tồn tại cho client khác; web chỉ dùng bản gộp.
+ */
+export const listAllUnread = () => api.get<ServerUnreadDto[]>('/users/me/unread');
 
 /**
  * PUT /channels/:channelId/read — đánh dấu đã đọc đến `messageId` (T4.2). 204, không body;
