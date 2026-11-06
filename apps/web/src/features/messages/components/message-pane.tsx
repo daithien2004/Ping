@@ -206,13 +206,25 @@ export function MessagePane({
   // vẫn đúng nếu sau này pane đổi kênh mà không remount (hiện ChannelView/DmView đặt `key` theo
   // channel nên mỗi kênh là một phiên mới, ref cũng mới).
   const lastMarked = useRef<string | null>(null);
+  // PUT lỗi mạng thì xoá mốc để gửi lại; mỗi tin chỉ thử lại MỘT lần, tránh vòng gửi liên tục khi
+  // API/Redis đang chết (mỗi lần lỗi lại bump state sẽ tự khuếch đại thành retry storm).
+  const retriedMarked = useRef<string | null>(null);
+  const [readRetry, setReadRetry] = useState(0);
   useEffect(() => {
     if (hasNewer || !tailId || tailId.startsWith('temp-')) return;
     const marked = `${channelId}:${tailId}`;
     if (lastMarked.current === marked) return;
     lastMarked.current = marked;
-    mutateRead(tailId);
-  }, [tailId, hasNewer, mutateRead, channelId]);
+    mutateRead(tailId, {
+      onError: () => {
+        if (lastMarked.current !== marked) return; // đã có tin mới hơn: để lần đó lo
+        lastMarked.current = null;
+        if (retriedMarked.current === marked) return;
+        retriedMarked.current = marked;
+        setReadRetry((tick) => tick + 1); // đổi dep để effect chạy lại và gửi lại
+      },
+    });
+  }, [tailId, hasNewer, mutateRead, channelId, readRetry]);
 
   // T4.3: vạch "Tin mới" — cursor ĐÃ ĐỌC được chốt MỘT lần mỗi phiên xem kênh: mark-read
   // của chính mình (đi kèm `read.updated`) không kéo vạch chạy xuống. `<Activity>` giữ
