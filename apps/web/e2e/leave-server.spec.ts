@@ -1,5 +1,5 @@
 import { expect, type Page, test } from '@playwright/test';
-import { paceLogin } from './login-pace';
+import { paceLogin, pacedLogin } from './login-pace';
 
 // Tìm ra bằng test tay (2026-11-06): rời server sang /dms thì layout `servers/[serverId]` bị
 // <Activity> giữ ẩn, `useParams()` trong đó trả serverId = undefined và web gọi
@@ -43,4 +43,56 @@ test('rời server sang tin nhắn trực tiếp (và quay lại) không gọi A
   await page.waitForTimeout(1500);
 
   expect(bad, 'request tới /servers/undefined').toEqual([]);
+});
+
+// Race thấy trên CI (admin-invite: "Tham gia" xong URL vẫn ở server cũ): người dùng bấm sang server B
+// khi trang gốc `/servers/A` còn chờ danh sách kênh. Điều hướng sang B chưa commit nên URL vẫn là A;
+// nếu danh sách kênh của A về lúc đó, ChannelRedirect của A gọi router.replace(kênh của A) và lần
+// điều hướng sau này thắng → người dùng bị kéo ngược về A. Ở đây B chuyển chậm (3 giây), kênh của A về trước.
+// FIXME (docs/tech-debt.md): lỗi có thật và có sẵn từ trước ADR-0020 amendment; test đỏ trên cả
+// code cũ lẫn mới. Bỏ `.fixme` khi sửa ChannelRedirect không đè lên điều hướng đang chờ.
+test.fixme('chuyển sang server khác khi trang gốc server cũ vừa nhận kênh: không bị kéo ngược về', async ({
+  browser,
+}) => {
+  const API = 'http://localhost:4000/api/v1';
+  const serverA = process.env.E2E_SERVER_ID!;
+  const context = await browser.newContext();
+  try {
+    const auth = await pacedLogin(
+      context.request,
+      process.env.E2E_EMAIL!,
+      process.env.E2E_PASSWORD!,
+    );
+    const headers = { Authorization: `Bearer ${auth.accessToken}` };
+    const created = await context.request.post(`${API}/servers`, {
+      headers,
+      data: { name: `Race ${Date.now().toString(36)}` },
+    });
+    expect(created.ok()).toBeTruthy();
+    const serverB = (await created.json()) as { id: string; name: string };
+
+    try {
+      const page = await context.newPage();
+      const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+      // Danh sách kênh của A về sau ~1,5 giây; tải trang B (RSC/document) về sau 3 giây.
+      await page.route(`**/api/v1/servers/${serverA}/channels`, async (route) => {
+        await delay(1_500);
+        await route.continue();
+      });
+      await page.route(new RegExp(`localhost:3000/servers/${serverB.id}`), async (route) => {
+        await delay(3_000);
+        await route.continue();
+      });
+      await page.goto(`/servers/${serverA}`);
+      await page.getByRole('link', { name: serverB.name }).click();
+
+      // Chờ quá cả hai độ trễ: URL phải kết thúc ở B, không bị kéo về kênh của A.
+      await page.waitForTimeout(6_000);
+      await expect(page).toHaveURL(new RegExp(`/servers/${serverB.id}`));
+    } finally {
+      await context.request.delete(`${API}/servers/${serverB.id}`, { headers });
+    }
+  } finally {
+    await context.close();
+  }
 });
