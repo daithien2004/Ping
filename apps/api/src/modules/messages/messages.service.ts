@@ -1030,9 +1030,11 @@ export class MessagesService {
 
     const result = await this.prisma.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${messageId}))`;
-      // TG.24: gỡ cảm xúc token custom cũng kiểm emoji còn sống của server — token không
-      // hợp lệ/của server khác bị chặn thay vì xóa im lặng.
-      await this.assertCustomReactionEmoji(tx, emoji, message.serverId);
+      // TG.24: gỡ cảm xúc token custom vẫn kiểm token thuộc đúng server của tin — token lạ hoặc
+      // của server khác bị chặn thay vì xóa im lặng. Emoji ĐÃ XÓA thì vẫn cho gỡ (ADR-0081): cảm
+      // xúc của emoji đã xóa được giữ lại, nên người đã thả phải có đường gỡ; `deleteMany` dưới
+      // đây giới hạn theo `userId` của người gọi nên không đụng cảm xúc của người khác.
+      await this.assertCustomReactionEmoji(tx, emoji, message.serverId, { allowDeleted: true });
       const deleted = await tx.messageReaction.deleteMany({ where: { messageId, userId, emoji } });
       const count = await tx.messageReaction.count({ where: { messageId, emoji } });
       return { deleted: deleted.count, count };
@@ -1102,7 +1104,8 @@ export class MessagesService {
   }
 
   /**
-   * TG.24: cảm xúc token `c:<id>` phải trỏ tới emoji CÒN SỐNG thuộc server chứa tin —
+   * TG.24: cảm xúc token `c:<id>` phải trỏ tới emoji CÒN SỐNG thuộc server chứa tin (khi THÊM;
+   * khi GỠ chỉ cần thuộc đúng server, xem `allowDeleted` và ADR-0081) —
    * sai hình thức hay sai server đều trả cùng mã `REACTION_EMOJI_INVALID` (client hiển
    * thị câu chung, không lộ sự tồn tại của emoji server khác). Token unicode bỏ qua.
    * TG.9: trong DM `serverId` NULL mà emoji sống luôn thuộc một server → không emoji nào
@@ -1112,6 +1115,7 @@ export class MessagesService {
     tx: Prisma.TransactionClient,
     emoji: string,
     serverId: string | null,
+    options: { allowDeleted?: boolean } = {},
   ): Promise<void> {
     const match = CUSTOM_EMOJI_REACTION_TOKEN.exec(emoji);
     if (!match) return;
@@ -1123,8 +1127,13 @@ export class MessagesService {
         message: 'Emoji is not allowed',
       });
     }
+    // `allowDeleted` (chỉ dùng khi GỠ, ADR-0081): bỏ điều kiện còn sống nhưng vẫn đòi đúng server.
     const live = await tx.customEmoji.findFirst({
-      where: { id: match[1], deletedAt: null, serverId },
+      where: {
+        id: match[1],
+        serverId,
+        ...(options.allowDeleted ? {} : { deletedAt: null }),
+      },
       select: { id: true },
     });
     if (!live) {
@@ -1187,12 +1196,30 @@ export class MessagesService {
       set.add(row.emoji);
       mineByMessage.set(row.messageId, set);
     }
+    // ADR-0081: tên emoji tùy chỉnh để client hiện `:ten:` khi emoji đã xóa (soft-delete nên tên
+    // còn trong CSDL). Chỉ truy vấn khi trang tin có cảm xúc custom; không lọc `deletedAt`.
+    const customIds = new Set<string>();
+    for (const row of counts) {
+      const match = CUSTOM_EMOJI_REACTION_TOKEN.exec(row.emoji);
+      if (match) customIds.add(match[1]);
+    }
+    const nameById = new Map<string, string>();
+    if (customIds.size > 0) {
+      const emojis = await this.prisma.customEmoji.findMany({
+        where: { id: { in: [...customIds] } },
+        select: { id: true, name: true },
+      });
+      for (const emoji of emojis) nameById.set(emoji.id, emoji.name);
+    }
     for (const row of counts) {
       const list = map.get(row.messageId) ?? [];
+      const customId = CUSTOM_EMOJI_REACTION_TOKEN.exec(row.emoji)?.[1];
+      const emojiName = customId ? nameById.get(customId) : undefined;
       list.push({
         emoji: row.emoji,
         count: row._count._all,
         me: mineByMessage.get(row.messageId)?.has(row.emoji) ?? false,
+        ...(emojiName ? { emojiName } : {}),
       });
       map.set(row.messageId, list);
     }
