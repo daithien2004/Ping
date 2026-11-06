@@ -14,7 +14,8 @@
   Không dùng `pnpm setup` (lệnh có sẵn của pnpm). Cài riêng: `pnpm install`
 - Dev: `pnpm dev` | Build: `pnpm build`
 - Lint/Typecheck/Test: `pnpm lint` / `pnpm typecheck` / `pnpm test`
-- E2E web (Playwright, cần Docker; dùng lại dev server nếu đang chạy): `pnpm --filter web test:e2e`
+- E2E web (Playwright, cần Docker; CSDL riêng `ping_e2e`, tự bật server nên phải tắt `pnpm dev`
+  trước — ADR-0082): `pnpm --filter web test:e2e`
 - E2E api: `pnpm --filter api test:e2e` (cần Docker; tự nạp `.env` gốc)
 - Dò liên kết hỏng trong tài liệu: `pnpm docs:check` (chạy cả trong CI)
 - Format: `pnpm format` (ghi), `pnpm format:check` (chỉ kiểm tra)
