@@ -160,6 +160,10 @@ test('app shell with a channel, the message menu and the create-server dialog, l
     await expect(toggle).toHaveAttribute('aria-expanded', 'false');
   }
   await page.setViewportSize({ width: 768, height: 900 });
+  // Chuột còn ở chỗ nút drawer (góc trên trái) = trên nút DM của rail ở 768 → tooltip mở trễ sau
+  // settleAnimations và axe đo nó giữa lúc fade-in (3,7:1, đỏ lúc có lúc không). Dời chuột khỏi rail.
+  await page.mouse.move(700, 450);
+  await expect(page.getByRole('tooltip')).toHaveCount(0);
   for (const colorScheme of SCHEMES) {
     await page.emulateMedia({ colorScheme });
     await scan(page, `shell 768 ${colorScheme}`);
