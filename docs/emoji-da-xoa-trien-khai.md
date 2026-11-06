@@ -4,11 +4,9 @@ Tài liệu giao việc cho người hoặc agent triển khai. Đọc hết m�
 sửa code. Căn cứ Discord: [Thực hành của Discord](discord-practices.md); ADR liên quan: ADR-0068
 (emoji tùy chỉnh), ADR-0064 (cảm xúc), ADR-0080 (rate limit).
 
-**Trạng thái (2026-11-06):** việc 1–4 đã làm trên nhánh `fix/emoji-da-xoa` (chưa commit); việc 5
-(tách CSDL cho e2e) chưa làm. Đã chạy được: typecheck web, shared và API, ESLint các file đổi, Prettier,
-unit test web và shared, e2e API `emojis`, `reactions`, `idor`, `dms`, `gifs`, `api-conventions`,
-`rate-limit-buckets` (Postgres 16 và Redis dựng tạm). Chưa chạy: e2e web `emoji-custom` (cần trình
-duyệt và server web) và `pnpm test` toàn repo.
+**Trạng thái (2026-11-06):** việc 1–4 đã merge vào `main` (CI xanh). Việc 5 làm trên nhánh
+`chore/e2e-csdl-rieng` theo [ADR-0082](adr/0082-csdl-rieng-cho-e2e-web.md). Dữ liệu `test_emoji` trong
+playground dev đã dọn theo yêu cầu của chủ dự án (83 tin, 54 reaction; 29 emoji xóa mềm giữ lại).
 
 ## Bối cảnh
 

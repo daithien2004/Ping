@@ -42,6 +42,8 @@ Luôn chạy: `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, `pnpm test`, `
 | Dependency                                 | nêu lý do trong PR (không thêm dependency mới mà chưa nói lý do); ghim phiên bản chính xác; commit `pnpm-lock.yaml`  |
 
 Chạy e2e cần Docker (`docker compose up -d`). `pnpm bootstrap` lo cả việc đó cho lần đầu.
+E2E web chạy trên CSDL riêng `ping_e2e` (tự tạo, migrate, seed) và tự bật API + web: **tắt `pnpm dev`
+trước khi chạy** (ADR-0082).
 
 ## Điều reviewer sẽ nhìn vào
 
