@@ -23,7 +23,9 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
     <html lang="vi" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col">
+      {/* `overflow-x-clip`: chặn scrollbar ngang của trang (không tạo scroll container, nên
+          trang auth/public vẫn cuộn dọc được) — scrollbar ngang là gốc của chuỗi giật. */}
+      <body className="min-h-full flex flex-col overflow-x-clip">
         {/* Ở root để cả trang login/register dùng được useMutation và bản dịch. lang="vi" chỉ là mặc định của HTML tĩnh; LocaleProvider đặt lại theo cookie. */}
         <Providers>{children}</Providers>
       </body>

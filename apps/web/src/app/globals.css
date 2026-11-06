@@ -135,6 +135,16 @@ html[data-density='compact'] {
   }
 }
 
+/* Shell đã đăng nhập: document không cuộn ở cả hai chiều. Popup của antd (tooltip/menu) portal
+   vào <body> chứ không nằm trong shell, nên nếu chỉ khoá ở shell thì hover gần mép vẫn kéo dài
+   vùng cuộn của document và sinh scrollbar dọc. Khoá cả <html> vì trình duyệt có thể không
+   chuyển tiếp `overflow` của body lên viewport. Trang auth/public không có `data-app-shell`
+   nên vẫn cuộn được khi cửa sổ thấp. */
+html:has([data-app-shell]),
+body:has([data-app-shell]) {
+  overflow: clip;
+}
+
 /* Skin Pixel (ADR-0076): khung Tailwind dày 2 px thay vì 1 px cứng của `border-*`. Đặt ngoài
    layer để thắng utility; không dùng !important — chọn từng cạnh để không phá phần tử chỉ có
    `border-t`/`border-l`. Bo góc đã do token `--ping-radius-*` lo. */

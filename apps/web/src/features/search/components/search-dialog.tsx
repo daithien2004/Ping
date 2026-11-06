@@ -28,10 +28,10 @@ export function SearchDialog({ serverId }: { serverId: string }) {
         aria-label={t('open')}
         aria-expanded={open}
         onClick={() => setOpen(true)}
-        className="flex h-8 w-8 shrink-0 items-center justify-center gap-1.5 rounded-md bg-field px-0 text-sm text-muted-foreground transition-colors hover:text-foreground focus-ring lg:w-61 lg:justify-start lg:px-2"
+        className="flex h-8 w-8 shrink-0 items-center justify-center gap-1.5 rounded-md bg-field px-0 text-sm text-muted-foreground transition-colors hover:text-foreground focus-ring lg:max-w-61 lg:min-w-24 lg:flex-1 lg:shrink lg:justify-start lg:px-2"
       >
         <Search className="size-4 shrink-0" />
-        <span className="hidden truncate lg:inline">{t('short')}</span>
+        <span className="hidden min-w-0 truncate lg:inline">{t('short')}</span>
       </button>
       {open && (
         <Suspense fallback={null}>

@@ -83,7 +83,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="flex h-dvh flex-col">
+    // Trang không được cuộn: nếu nội dung con rộng hơn cửa sổ, scrollbar của trang xuất hiện
+    // và Windows lấy mất 17 px chiều cao → `h-dvh` tràn → thêm scrollbar dọc (layout giật).
+    <div data-app-shell className="flex h-dvh flex-col overflow-hidden">
       <ConnectionBanner />
       <VerifyEmailBanner />
       <QuickSwitcherHost />
