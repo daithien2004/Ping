@@ -4,7 +4,8 @@
 và guide đúng phiên bản trong `node_modules/next/dist/docs/` trước khi dùng API Next.
 
 - Chiều phụ thuộc `app → features → components → lib`; app chỉ định tuyến. Page lấy params từ
-  props; chỉ các component layout được quy định mới dùng `useParams()` (ADR-0020).
+  props; dưới `servers/[serverId]` lấy serverId từ `useServerAbility()`, chỉ server rail còn dùng
+  `useParams()` (ADR-0020, bản sửa 2026-11-06).
 - TanStack Query giữ server state, Zustand chỉ giữ UI state. Cache ghi qua hooks feature;
   phép biến đổi cache là hàm thuần có test. Không copy dữ liệu server vào store.
 - Effect dùng đồng bộ bên ngoài. `<Activity>` giữ state/DOM của trang ẩn; form nhạy cảm cần

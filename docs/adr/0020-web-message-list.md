@@ -32,6 +32,14 @@ Date: 2026-10-20
   `#dev`, the `MessagePane` key changed and the draft and scroll position were lost. Layout-level
   components (server rail, channel sidebar) keep using `useParams()` since they should follow the
   URL. This refines ADR-0019.
+- **Amendment 2026-11-06:** that exception holds only while the URL stays inside the segment. A
+  layout under `servers/[serverId]` is also kept hidden when the user leaves for `/dms` or
+  `/servers`, and there `useParams()` returns `serverId = undefined`: `ChannelSidebar` and
+  `ChannelRedirect` fired `GET /servers/undefined` and `/servers/undefined/channels` (400) on every
+  such navigation (found by manual testing). Components below the layout therefore take `serverId`
+  from `ServerPermissionContext` (`useServerAbility()`), which is frozen from the layout's `params`
+  prop. Only the server rail, which also renders outside a server, still uses `useParams()`
+  (with `serverId` optional), plus the optional `channelId` highlight in `ChannelSidebar`.
 - `apps/api/prisma/seed-messages.ts` is a dev-only tool that writes N messages directly to the DB
   (the API's rate limit blocks bulk sends).
 

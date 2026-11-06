@@ -19,11 +19,14 @@ import { ChannelNavigation } from './channel-navigation';
 /** Cột giữa: tên server, danh sách channel, thẻ người dùng (Discord) — mã mời và rời server
  *  nằm trong menu của header. */
 export function ChannelSidebar() {
-  const { serverId, channelId } = useParams<{ serverId: string; channelId?: string }>();
+  // serverId lấy từ provider của layout (đóng băng theo params prop), KHÔNG từ useParams():
+  // rời server sang /dms thì <Activity> giữ layout này ẩn và useParams() trả serverId = undefined
+  // → GET /servers/undefined 400 (ADR-0020). channelId chỉ để tô sáng nên đọc từ URL là đủ.
+  const { channelId } = useParams<{ channelId?: string }>();
   const router = useRouter();
+  const { ability, serverId } = useServerAbility();
   const { data: server } = useServer(serverId);
   const { data: me } = useMe();
-  const { ability } = useServerAbility();
   const leaveMutation = useLeaveServer();
   const mobileNavOpen = useMobileNav((state) => state.open);
   const t = useTranslations();
