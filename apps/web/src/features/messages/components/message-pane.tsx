@@ -82,10 +82,13 @@ export function MessagePane({
   // Vùng aria-live: đọc tin mới của người khác (xem announce.ts). Tính ngay trong lúc render theo mẫu
   // "state dẫn xuất" của React: so tin cuối với lần render trước, không cần effect.
   const tail = messages.at(-1);
+  // ID tin cuối: ổn định qua mọi lần ghi cache (chỉ đổi khi thật sự có tin mới) — dùng làm
+  // khóa chống gửi trùng mark-read, xem effect bên dưới.
+  const tailId = tail?.id ?? null;
   const [seenTailId, setSeenTailId] = useState<string | null>(tail?.id ?? null);
   const [announcement, setAnnouncement] = useState('');
-  if ((tail?.id ?? null) !== seenTailId) {
-    setSeenTailId(tail?.id ?? null);
+  if (tailId !== seenTailId) {
+    setSeenTailId(tailId);
     const incoming = incomingMessage(seenTailId, tail, me?.id);
     if (incoming) setAnnouncement(t('newMessage', incoming));
   }
@@ -192,16 +195,24 @@ export function MessagePane({
   }, [loadOlderEnabled, firstVisible, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   // T4.3: vào kênh / có tin mới ở kênh đang xem → đánh dấu đã đọc tới tin cuối. Tin optimistic
-  // (id `temp-…`) chưa tồn tại ở server nên bỏ qua; cursor chỉ tiến nên gửi lặp vẫn vô hại.
+  // (id `temp-…`) chưa tồn tại ở server nên bỏ qua.
   // TG.5: cửa sổ permalink chưa phải tin mới nhất — không mark-read (sẽ xóa oan badge chưa đọc);
   // chỉ đánh dấu khi đã tải tới đáy thật (hasNewer = false).
+  // Chống gửi trùng: `messages` là memo của cache nên identity đổi sau MỖI lần ghi cache (mount,
+  // StrictMode chạy effect hai lần ở dev, useChannelSync vá khoảng trống sau `channel.join`, rồi
+  // mỗi lần refetch khi focus/reconnect) trong khi tin cuối vẫn y nguyên — mỗi lần như thế là một
+  // PUT /read lặp lại. Vì vậy chốt theo ID tin cuối ĐÃ GỬI (`lastMarked`) thay vì theo identity
+  // mảng: cùng ID thì thôi, ID đổi (có tin mới) mới gửi lại. Kèm `channelId` trong khóa để guard
+  // vẫn đúng nếu sau này pane đổi kênh mà không remount (hiện ChannelView/DmView đặt `key` theo
+  // channel nên mỗi kênh là một phiên mới, ref cũng mới).
+  const lastMarked = useRef<string | null>(null);
   useEffect(() => {
-    if (hasNewer) return;
-    const last = messages.at(-1);
-    if (last && !last.id.startsWith('temp-')) {
-      mutateRead(last.id);
-    }
-  }, [messages, mutateRead, hasNewer]);
+    if (hasNewer || !tailId || tailId.startsWith('temp-')) return;
+    const marked = `${channelId}:${tailId}`;
+    if (lastMarked.current === marked) return;
+    lastMarked.current = marked;
+    mutateRead(tailId);
+  }, [tailId, hasNewer, mutateRead, channelId]);
 
   // T4.3: vạch "Tin mới" — cursor ĐÃ ĐỌC được chốt MỘT lần mỗi phiên xem kênh: mark-read
   // của chính mình (đi kèm `read.updated`) không kéo vạch chạy xuống. `<Activity>` giữ

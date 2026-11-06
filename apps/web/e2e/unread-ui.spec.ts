@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page, type Request } from '@playwright/test';
 import { type ServerDetail } from '@ping/shared';
 import { pacedLogin } from './login-pace';
 
@@ -126,12 +126,31 @@ test('unread ui: server/channel badges, mention badge, title, divider and two-ta
       await expect(randomLink.getByTestId('mention-badge')).toBeVisible();
       await expect(randomLink.getByTestId('mention-badge')).toHaveText('1');
 
+      // Đếm PUT /read của #random từ đây: mở kênh ghi cache hai lần (nạp trang tin + channel.join
+      // vá khoảng trống) mà tin cuối không đổi, nên trước đây mỗi lần mở là 2–3 request cho CÙNG
+      // một tin. Chỉ một request mới là đúng (mark-read chốt theo ID tin cuối đã gửi).
+      let readPuts = 0;
+      const countRead = (request: Request) => {
+        if (
+          request.method() === 'PUT' &&
+          request.url().includes(`/channels/${randomChannel}/read`)
+        ) {
+          readPuts += 1;
+        }
+      };
+      tabA.on('request', countRead);
+
       // Lần đọc ĐẦU chưa có cursor cũ nên không có vạch; badge sạch sau mark-read.
       await randomLink.click();
       await expect(tabA).toHaveURL(new RegExp(randomChannel), { timeout: 15_000 });
       await expect(randomLink.getByTestId('mention-badge')).toHaveCount(0, { timeout: 10_000 });
       await expect(randomLink.getByTestId('unread-badge')).toHaveCount(0);
       await expect.poll(() => tabA.title(), { timeout: 10_000 }).toBe(titleFor(0));
+      await expect.poll(() => readPuts, { timeout: 10_000 }).toBe(1);
+      // Giữ thêm một nhịp: request lặp (nếu có) đến ngay sau request đầu, chờ hết mới kết luận.
+      await tabA.waitForTimeout(1_500);
+      expect(readPuts, 'chỉ một PUT /read cho cùng một tin cuối').toBe(1);
+      tabA.off('request', countRead);
     });
 
     await test.step('vạch Tin mới: đọc rồi có tin mới → vào lại thấy vạch trên tin mới', async () => {
