@@ -15,5 +15,6 @@ Claude Code thật. Không ghi hoạt động fixture/temp trong test thành s�
 Hook tự append một dòng cho mỗi lần chặn, chỉ timestamp UTC và reason; tổng số là số dòng
 `hook-block` bên dưới. Không dùng phần mô tả này làm một sự kiện.
 
-| Thời điểm UTC | Loại | Lý do |
-| ------------- | ---- | ----- |
+| Thời điểm UTC            | Loại       | Lý do             |
+| ------------------------ | ---------- | ----------------- |
+| 2026-11-06T14:38:26.466Z | hook-block | outside-workspace |
