@@ -55,6 +55,15 @@ describe('HTTP hardening (e2e)', () => {
     expect(allowed.headers['access-control-allow-origin']).toBe(WEB_ORIGIN);
     expect(allowed.headers['access-control-allow-credentials']).toBe('true');
 
+    // ADR-0078: web phải đọc được header điều tiết trên response thật (khác origin).
+    const actual = await request(app.getHttpServer())
+      .get('/api/v1/health')
+      .set('Origin', WEB_ORIGIN);
+    const exposed = actual.headers['access-control-expose-headers'] ?? '';
+    expect(exposed).toContain('Retry-After');
+    expect(exposed).toContain('X-RateLimit-Remaining');
+    expect(exposed).toContain('X-RateLimit-Reset');
+
     const foreign = await request(app.getHttpServer())
       .options('/api/v1/auth/refresh')
       .set('Origin', 'https://evil.example')

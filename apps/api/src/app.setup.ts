@@ -22,8 +22,19 @@ export function configureApp(app: NestExpressApplication): void {
   app.useBodyParser('json', { limit: '32kb' });
   // Đọc cookie httpOnly (refresh token) — req.cookies do cookie-parser gắn vào.
   app.use(cookieParser());
-  // exposedHeaders: trình duyệt chỉ cho JS đọc header X-Request-Id của response khác origin
-  // khi API khai báo rõ — web cần nó để hiển thị "Mã lỗi" (hướng dẫn 15.1.1).
-  app.enableCors({ origin: webOrigin, credentials: true, exposedHeaders: ['X-Request-Id'] });
+  // exposedHeaders: trình duyệt chỉ cho JS đọc header của response khác origin khi API khai
+  // báo rõ. X-Request-Id để hiển thị "Mã lỗi" (hướng dẫn 15.1.1); các header rate limit để
+  // client tạm dừng hàng đợi đúng lúc (ADR-0078) — thiếu chúng thì 429 trong suốt với web.
+  app.enableCors({
+    origin: webOrigin,
+    credentials: true,
+    exposedHeaders: [
+      'X-Request-Id',
+      'Retry-After',
+      'X-RateLimit-Limit',
+      'X-RateLimit-Remaining',
+      'X-RateLimit-Reset',
+    ],
+  });
   app.setGlobalPrefix('api/v1');
 }

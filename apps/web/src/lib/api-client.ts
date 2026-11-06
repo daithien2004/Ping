@@ -56,8 +56,129 @@ type Method = 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
 /** Chờ giữa hai lần thử khi lỗi mạng (ms). */
 const NETWORK_RETRY_DELAY_MS = 300;
 
+/**
+ * Số request tối đa đang bay. Trình duyệt tự giới hạn ~6 kết nối/host; giữ đúng mức đó để
+ * hàng đợi không dồn request vào socket mà vẫn che được các đợt bắn đồng loạt (rail nhiều
+ * server, nhiều component cùng mount).
+ */
+const MAX_IN_FLIGHT = 6;
+/** 429 không kèm header: chờ ngắn rồi thử tiếp thay vì bắn lại ngay. */
+const RETRY_AFTER_FALLBACK_MS = 1_000;
+/** Trần chờ: server khóa 60 giây (app.module) — không để một header lạ treo tab vô hạn. */
+const RETRY_AFTER_MAX_MS = 60_000;
+
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+interface QueueWaiter {
+  resolve: () => void;
+  reject: (error: unknown) => void;
+  signal?: AbortSignal;
+  onAbort?: () => void;
+}
+
+let inFlight = 0;
+const waiters: QueueWaiter[] = [];
+let pausedUntil = 0;
+let pauseTimer: ReturnType<typeof setTimeout> | undefined;
+
+const abortError = () => new DOMException('Aborted', 'AbortError');
+
+/** Cấp một suất chạy: FIFO, tôn trọng trạng thái tạm dừng và signal của từng request. */
+function acquireSlot(signal?: AbortSignal): Promise<void> {
+  if (signal?.aborted) return Promise.reject(abortError());
+  return new Promise<void>((resolve, reject) => {
+    const waiter: QueueWaiter = { resolve, reject, signal };
+    if (signal) {
+      waiter.onAbort = () => {
+        const index = waiters.indexOf(waiter);
+        if (index >= 0) waiters.splice(index, 1);
+        reject(abortError());
+      };
+      signal.addEventListener('abort', waiter.onAbort, { once: true });
+    }
+    waiters.push(waiter);
+    pump();
+  });
+}
+
+function releaseSlot(): void {
+  inFlight = Math.max(0, inFlight - 1);
+  pump();
+}
+
+/**
+ * Nhả hàng đợi khi còn suất. Trong lúc tạm dừng thì đứng yên: request mới (kể cả refresh)
+ * chờ đúng `Retry-After`, không bắn vào cửa sổ đang bị khóa.
+ */
+function pump(): void {
+  if (pausedUntil > Date.now()) return;
+  while (inFlight < MAX_IN_FLIGHT && waiters.length > 0) {
+    const waiter = waiters.shift()!;
+    if (waiter.signal?.aborted) {
+      waiter.reject(abortError());
+      continue;
+    }
+    if (waiter.signal && waiter.onAbort) {
+      waiter.signal.removeEventListener('abort', waiter.onAbort);
+    }
+    inFlight += 1;
+    waiter.resolve();
+  }
+}
+
+/** Tạm dừng TOÀN BỘ hàng đợi tới `ms` nữa; lần tạm dừng dài hơn thắng. */
+function pauseFor(ms: number): void {
+  if (ms <= 0) return;
+  const until = Date.now() + ms;
+  if (until <= pausedUntil) return;
+  pausedUntil = until;
+  if (pauseTimer !== undefined) clearTimeout(pauseTimer);
+  pauseTimer = setTimeout(() => {
+    pauseTimer = undefined;
+    pausedUntil = 0;
+    pump();
+  }, ms);
+  // Node (test/SSR) giữ timer sống ngoài request — không cần chặn process thoát.
+  (pauseTimer as { unref?: () => void }).unref?.();
+}
+
+/** Đổi "số giây" của header (Retry-After / Reset) sang ms; `null` khi không đọc được. */
+function headerMs(value: string | null): number | null {
+  if (!value) return null;
+  const seconds = Number(value);
+  return Number.isFinite(seconds) && seconds >= 0 ? seconds * 1000 : null;
+}
+
+/**
+ * Điều tiết theo phản hồi (ADR-0078): 429 → chờ `Retry-After`; còn `X-RateLimit-Remaining: 0`
+ * → chờ tới `X-RateLimit-Reset` để không bắn vào bucket đã cạn (Discord yêu cầu đúng điều
+ * này ở phía client). Gọi cả sau lần thử lại lỗi mạng.
+ */
+function noteRateLimit(rate: {
+  status: number;
+  retryAfter: string | null;
+  remaining: string | null;
+  reset: string | null;
+}): void {
+  if (rate.status === 429) {
+    pauseFor(Math.min(headerMs(rate.retryAfter) ?? RETRY_AFTER_FALLBACK_MS, RETRY_AFTER_MAX_MS));
+    return;
+  }
+  if (rate.remaining === '0') {
+    const reset = headerMs(rate.reset);
+    if (reset !== null) pauseFor(Math.min(reset, RETRY_AFTER_MAX_MS));
+  }
+}
+
+function noteResponse(response: Response): void {
+  noteRateLimit({
+    status: response.status,
+    retryAfter: response.headers.get('Retry-After'),
+    remaining: response.headers.get('X-RateLimit-Remaining'),
+    reset: response.headers.get('X-RateLimit-Reset'),
+  });
 }
 
 /** Header thêm cho một request cụ thể (ví dụ `Accept: text/event-stream`). */
@@ -95,8 +216,21 @@ async function send(
       body: body === undefined ? undefined : JSON.stringify(body),
       signal: options?.signal,
     });
+  // Mỗi lần gọi thật chiếm một suất (ADR-0078); nhả ngay khi fetch trả về — kể cả SSE, để
+  // một kết nối dài không giữ suất của cả app.
+  const attempt = async (): Promise<Response> => {
+    await acquireSlot(options?.signal);
+    try {
+      return await request();
+    } finally {
+      releaseSlot();
+    }
+  };
+
   try {
-    return await request();
+    const response = await attempt();
+    noteResponse(response);
+    return response;
   } catch (error) {
     // Người dùng hủy (đóng dialog, rời trang): để AbortError đi tiếp, không thử lại.
     if (options?.signal?.aborted) throw error;
@@ -108,8 +242,12 @@ async function send(
     if (method === 'GET') {
       await delay(NETWORK_RETRY_DELAY_MS);
       try {
-        return await request();
-      } catch {
+        const response = await attempt();
+        noteResponse(response);
+        return response;
+      } catch (retryError) {
+        // Trong lúc chờ, người dùng đóng dialog/rời trang: giữ nguyên AbortError.
+        if (options?.signal?.aborted) throw retryError;
         // Vẫn không tới được server: báo lỗi mạng như bên dưới.
       }
     }
@@ -238,37 +376,52 @@ export const api = {
     signal: AbortSignal,
     progress: (percent: number) => void,
   ): Promise<void> => {
-    const run = () =>
-      new Promise<void>((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open('PUT', `${apiBaseUrl}${path}`);
-        xhr.withCredentials = true;
-        xhr.setRequestHeader('Content-Type', 'application/octet-stream');
-        if (accessToken) xhr.setRequestHeader('Authorization', `Bearer ${accessToken}`);
-        xhr.upload.onprogress = (event) => {
-          if (event.lengthComputable) progress(Math.round((event.loaded / event.total) * 100));
-        };
-        const abort = () => xhr.abort();
-        const cleanup = () => signal.removeEventListener('abort', abort);
-        xhr.onload = () => {
-          cleanup();
-          if (xhr.status >= 200 && xhr.status < 300) resolve();
-          else void toApiError(new Response(xhr.responseText, { status: xhr.status })).then(reject);
-        };
-        xhr.onerror = () => {
-          cleanup();
-          reject(new ApiError(0, ErrorCodes.SERVICE_UNAVAILABLE, 'Network error'));
-        };
-        xhr.onabort = () => {
-          cleanup();
-          reject(new DOMException('Aborted', 'AbortError'));
-        };
-        signal.addEventListener('abort', abort, { once: true });
-        if (signal.aborted) {
-          cleanup();
-          reject(new DOMException('Aborted', 'AbortError'));
-        } else xhr.send(file);
-      });
+    // Upload cũng đi qua hàng đợi (ADR-0078): file lớn chiếm suất lâu hơn request thường,
+    // và cần dừng khi cả API đang bị khóa vì 429.
+    const run = async () => {
+      await acquireSlot(signal);
+      try {
+        return await new Promise<void>((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('PUT', `${apiBaseUrl}${path}`);
+          xhr.withCredentials = true;
+          xhr.setRequestHeader('Content-Type', 'application/octet-stream');
+          if (accessToken) xhr.setRequestHeader('Authorization', `Bearer ${accessToken}`);
+          xhr.upload.onprogress = (event) => {
+            if (event.lengthComputable) progress(Math.round((event.loaded / event.total) * 100));
+          };
+          const abort = () => xhr.abort();
+          const cleanup = () => signal.removeEventListener('abort', abort);
+          xhr.onload = () => {
+            cleanup();
+            noteRateLimit({
+              status: xhr.status,
+              retryAfter: xhr.getResponseHeader('Retry-After'),
+              remaining: xhr.getResponseHeader('X-RateLimit-Remaining'),
+              reset: xhr.getResponseHeader('X-RateLimit-Reset'),
+            });
+            if (xhr.status >= 200 && xhr.status < 300) resolve();
+            else
+              void toApiError(new Response(xhr.responseText, { status: xhr.status })).then(reject);
+          };
+          xhr.onerror = () => {
+            cleanup();
+            reject(new ApiError(0, ErrorCodes.SERVICE_UNAVAILABLE, 'Network error'));
+          };
+          xhr.onabort = () => {
+            cleanup();
+            reject(new DOMException('Aborted', 'AbortError'));
+          };
+          signal.addEventListener('abort', abort, { once: true });
+          if (signal.aborted) {
+            cleanup();
+            reject(new DOMException('Aborted', 'AbortError'));
+          } else xhr.send(file);
+        });
+      } finally {
+        releaseSlot();
+      }
+    };
     try {
       await run();
     } catch (error) {
