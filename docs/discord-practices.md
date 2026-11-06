@@ -386,6 +386,8 @@ Nên bắt đầu từ việc 1 đến 3: tác động cao, công sức thấp �
 
 **Cách kiểm chứng sau mỗi việc:** F5 một lần trên tài khoản 69 server rồi đếm lại bằng `performance.getEntriesByType('resource')`: số request `/unread`, số 429, thời gian `/me/permissions`. Mục tiêu hợp lý sau việc 1: 1 request unread, 0 lỗi 429, `/permissions` quay về khoảng 0,4 giây. Sau đó chạy `pnpm lint`, `pnpm typecheck`, `pnpm test` và e2e khi đổi UI.
 
+**Trạng thái 2026-11-06 (nhánh `feat/discord-practices`):** việc 1–3 đã làm — [ADR-0077](adr/0077-unread-gop-mot-request.md) gộp unread, [ADR-0078](adr/0078-hang-doi-request-va-retry-after.md) hàng đợi tôn trọng `Retry-After`, [ADR-0079](adr/0079-tai-tep-dinh-kem-luoi.md) tải tệp lười. Đo lại một lần F5 trên tài khoản 69 server (bản dev, cùng cách đo): 1 request `/users/me/unread`, 0 lỗi 429, `/me/permissions` 1,1 giây (trước 8,0 giây), tổng 18 request API (trước 92). Số 1,1 giây cao hơn mục tiêu 0,4 giây (máy dev local, số tuyệt đối có thể khác production), nhưng đã hết cảnh xếp hàng sau 69 request unread.
+
 **Đề xuất ADR:** việc 1 (endpoint mới) và việc 4 (đổi chính sách rate limit) đáng có mỗi việc một ADR ngắn; việc 6 bắt buộc có ADR. Các việc còn lại là sửa cài đặt, không đổi kiến trúc.
 
 ## Nguồn và mức độ chắc chắn
