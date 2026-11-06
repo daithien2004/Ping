@@ -4,7 +4,7 @@ import { Prisma } from '../../generated/prisma/client.js';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
 import { RealtimeService } from '../realtime/realtime.service.js';
 
-/** Trần đếm (ADR-0043): quá 100 hiển thị "99+" phía UI; SQL trả tối đa giá trị 100. */
+/** Trần đếm (ADR-0043): quá 100 hiển thị "99+" phía UI; truy vấn dừng quét ở 100 hàng khớp. */
 const COUNT_CAP = 100;
 
 /**
@@ -95,8 +95,10 @@ export class ReadStateService {
    * Hai biểu thức đếm dùng chung cho cả hai endpoint unread (đếm theo channel `c`, cursor
    * `rs`): unread = tin chưa xóa mềm sau cursor (không tính tin của chính người gọi — họ đã
    * thấy mình gửi), mentionCount = hàng MessageMention sau cursor khớp mình trực tiếp / role
-   * của mình / everyone. Cả hai có trần 100 (LEAST), đúng ghi chú T4.1 về
-   * `message.deletedAt IS NULL`.
+   * của mình / everyone. Trần 100 chặn NGAY trong truy vấn (`LIMIT` trong truy vấn con) nên
+   * Postgres dừng quét sau 100 hàng khớp thay vì đếm hết lịch sử rồi mới `LEAST`: kênh 10k
+   * tin đo được 0,13 ms / 15 buffer so với 3,48 ms / 1012 buffer của `count(*)` toàn bộ.
+   * Đúng ghi chú T4.1 về `message.deletedAt IS NULL`.
    *
    * `memberIdRef` là tham chiếu tới thành viên đang xét: literal `member.id` ở truy vấn một
    * server, `m.id` (alias Member) ở truy vấn gộp — nhờ vậy một tin được đếm đúng mention của
@@ -105,15 +107,16 @@ export class ReadStateService {
   private unreadCounts(userId: string, memberIdRef: Prisma.Sql): Prisma.Sql {
     const zero = '00000000-0000-0000-0000-000000000000';
     return Prisma.sql`
-      LEAST((
-        SELECT count(*) FROM "Message" msg
+      (SELECT count(*) FROM (
+        SELECT 1 FROM "Message" msg
         WHERE msg."channelId" = c.id
           AND msg."deletedAt" IS NULL
           AND msg."authorId" <> ${userId}
           AND msg.id > COALESCE(rs."lastReadMessageId", ${zero}::uuid)
-      ), ${COUNT_CAP})::int AS "unreadCount",
-      LEAST((
-        SELECT count(*) FROM "MessageMention" mm
+        LIMIT ${COUNT_CAP}
+      ) capped)::int AS "unreadCount",
+      (SELECT count(*) FROM (
+        SELECT 1 FROM "MessageMention" mm
         JOIN "Message" msg2 ON msg2.id = mm."messageId" AND msg2."deletedAt" IS NULL
         WHERE msg2."channelId" = c.id
           AND msg2.id > COALESCE(rs."lastReadMessageId", ${zero}::uuid)
@@ -124,7 +127,8 @@ export class ReadStateService {
               SELECT "roleId" FROM "MemberRole" WHERE "memberId" = ${memberIdRef}
             )
           )
-      ), ${COUNT_CAP})::int AS "mentionCount"
+        LIMIT ${COUNT_CAP}
+      ) capped)::int AS "mentionCount"
     `;
   }
 

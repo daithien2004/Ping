@@ -257,13 +257,14 @@ export class DmsService {
         u.username AS "partnerUsername",
         u."displayName" AS "partnerDisplayName",
         u."avatarUrl" AS "partnerAvatarUrl",
-        LEAST((
-          SELECT count(*) FROM "Message" m
+        (SELECT count(*) FROM (
+          SELECT 1 FROM "Message" m
           WHERE m."channelId" = c.id
             AND m."deletedAt" IS NULL
             AND m."authorId" <> ${meId}
             AND m.id > COALESCE(p."lastReadMessageId", ${zero}::uuid)
-        ), ${COUNT_CAP})::int AS "unreadCount",
+          LIMIT ${COUNT_CAP}
+        ) capped)::int AS "unreadCount",
         (
           SELECT max(m."createdAt") FROM "Message" m
           WHERE m."channelId" = c.id AND m."deletedAt" IS NULL
