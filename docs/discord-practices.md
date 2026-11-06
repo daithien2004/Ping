@@ -343,13 +343,13 @@ Ping đã bảo vệ kết nối socket theo đúng tinh thần của Discord (g
 
 **Ping hiện tại** (`realtime.gateway.ts`, `redis-io.adapter.ts`, `socket.ts`):
 
-| Khía cạnh                           | Discord                             | Ping                                                                                     |
-| ----------------------------------- | ----------------------------------- | ---------------------------------------------------------------------------------------- |
-| Số sự kiện mỗi kết nối              | 120 mỗi 60 giây, vượt là ngắt       | cửa sổ 1 giây: trên 20 sự kiện thì bỏ qua, trên 60 thì ngắt (`overBudget`)               |
-| Kích thước gói client gửi           | 4096 byte                           | `maxHttpBufferSize: 4 * 1024` (4 KB, bằng Discord)                                       |
-| Số kết nối mỗi người                | không nêu ở nguồn đã đọc            | tối đa 10 (`MAX_SOCKETS_PER_USER`)                                                       |
-| Heartbeat và phát hiện kết nối chết | heartbeat tự định nghiệm, có jitter | do Socket.IO lo; Ping không cấu hình `pingInterval` hay `pingTimeout`                    |
-| Nối lại phía client                 | resume với `seq`                    | `createSocket` đặt nối lại có jitter (1–10 s, lệch ±50% mỗi lần); chưa resume theo `seq` |
+| Khía cạnh                           | Discord                             | Ping                                                                                                        |
+| ----------------------------------- | ----------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Số sự kiện mỗi kết nối              | 120 mỗi 60 giây, vượt là ngắt       | cửa sổ 1 giây: trên 20 sự kiện thì bỏ qua, trên 60 thì ngắt (`overBudget`)                                  |
+| Kích thước gói client gửi           | 4096 byte                           | `maxHttpBufferSize: 4 * 1024` (4 KB, bằng Discord)                                                          |
+| Số kết nối mỗi người                | không nêu ở nguồn đã đọc            | tối đa 10 (`MAX_SOCKETS_PER_USER`)                                                                          |
+| Heartbeat và phát hiện kết nối chết | heartbeat tự định nghiệm, có jitter | do Socket.IO lo; Ping không cấu hình `pingInterval` hay `pingTimeout`                                       |
+| Nối lại phía client                 | resume với `seq`                    | `createSocket` đặt trần chờ nối lại 10 s (jitter ±50% đã là mặc định của Socket.IO); chưa resume theo `seq` |
 
 **Đề xuất cho Ping:**
 
@@ -381,12 +381,12 @@ Nên bắt đầu từ việc 1 đến 3: tác động cao, công sức thấp �
 | --- | ------------------------------------------------------------------------------------------------------------------ | ------------------------- | ----------------- | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
 | 9   | Chạy `EXPLAIN ANALYZE` cho tìm kiếm; xử lý nhánh `ILIKE` (chỉ chạy khi full-text ít kết quả, hoặc index `pg_trgm`) | Trung bình với server lớn | Thấp – trung bình | `search.service.ts`                                                       | `EXPLAIN` trước và sau; nếu thêm index thì expand/contract (13) và ADR (15)        |
 | 10  | Chốt luật ưu tiên thông báo channel hơn server và thêm test cho trường hợp channel đặt All trong server đang mute  | Thấp                      | Thấp              | `packages/shared/src/schemas/notification.ts`, `notifications.service.ts` | Vitest cho `shouldNotify`                                                          |
-| 11  | Hạ `maxHttpBufferSize`, đặt tùy chọn nối lại có ngẫu nhiên hóa thời gian chờ                                       | Thấp                      | Thấp              | `redis-io.adapter.ts`, `features/realtime/socket.ts`                      | e2e realtime, kịch bản reconnect storm                                             |
+| 11  | Hạ `maxHttpBufferSize`, nâng trần chờ nối lại (jitter ±50% đã là mặc định của Socket.IO)                           | Thấp                      | Thấp              | `redis-io.adapter.ts`, `features/realtime/socket.ts`                      | e2e realtime, kịch bản reconnect storm                                             |
 | 12  | Quyết định có thứ bậc role kiểu Discord và ghi đè quyền theo channel hay không                                     | Tuỳ nhu cầu               | Cao nếu làm       | `packages/shared/src/ability.ts`, `schema.prisma`                         | ADR, expand/contract (13), test IDOR (16); chỉ làm khi có nhu cầu channel riêng tư |
 
 **Cách kiểm chứng sau mỗi việc:** F5 một lần trên tài khoản 69 server rồi đếm lại bằng `performance.getEntriesByType('resource')`: số request `/unread`, số 429, thời gian `/me/permissions`. Mục tiêu hợp lý sau việc 1: 1 request unread, 0 lỗi 429, `/permissions` quay về khoảng 0,4 giây. Sau đó chạy `pnpm lint`, `pnpm typecheck`, `pnpm test` và e2e khi đổi UI.
 
-**Trạng thái 2026-11-06 (nhánh `feat/discord-practices`):** việc 1–4 đã làm — [ADR-0077](adr/0077-unread-gop-mot-request.md) gộp unread, [ADR-0078](adr/0078-hang-doi-request-va-retry-after.md) hàng đợi tôn trọng `Retry-After`, [ADR-0079](adr/0079-tai-tep-dinh-kem-luoi.md) tải tệp lười, [ADR-0080](adr/0080-rate-limit-theo-bucket-va-nguoi-dung.md) rate limit theo bucket + khoá theo người dùng. Đo lại một lần F5 trên tài khoản 69 server (bản dev, cùng cách đo): 1 request `/users/me/unread`, 0 lỗi 429, `/me/permissions` 1,1 giây (trước 8,0 giây), tổng 18 request API (trước 92). Số 1,1 giây cao hơn mục tiêu 0,4 giây (máy dev local, số tuyệt đối có thể khác production), nhưng đã hết cảnh xếp hàng sau 69 request unread.
+**Trạng thái 2026-11-06 (nhánh `feat/discord-practices`):** việc 1–5 và một phần việc 11 đã làm — [ADR-0077](adr/0077-unread-gop-mot-request.md) gộp unread, [ADR-0078](adr/0078-hang-doi-request-va-retry-after.md) hàng đợi tôn trọng `Retry-After`, [ADR-0079](adr/0079-tai-tep-dinh-kem-luoi.md) tải tệp lười, [ADR-0080](adr/0080-rate-limit-theo-bucket-va-nguoi-dung.md) rate limit theo bucket + khoá theo người dùng. Đo lại một lần F5 trên tài khoản 69 server (bản dev, cùng cách đo): 1 request `/users/me/unread`, 0 lỗi 429, `/me/permissions` 0,57 giây (trước 8,0 giây), tổng 22 request API khi tải kênh (trước 92). Việc 5: SQL unread dừng quét ở 100 hàng khớp (kênh 10k tin: 3,48 ms / 1012 buffer → 0,13 ms / 15 buffer). Việc 11 (phần socket): `maxHttpBufferSize` 4 KB; trần chờ nối lại 10 giây (trước 5 giây — jitter ±50% vốn là mặc định của Socket.IO).
 
 **Đề xuất ADR:** việc 1 (endpoint mới) và việc 4 (đổi chính sách rate limit) đáng có mỗi việc một ADR ngắn; việc 6 bắt buộc có ADR. Các việc còn lại là sửa cài đặt, không đổi kiến trúc.
 
