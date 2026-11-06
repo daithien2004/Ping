@@ -71,9 +71,9 @@ export class AttachmentsController {
   cancel(@CurrentUser() user: AuthenticatedUser, @Param('uploadId') id: string) {
     return this.service.cancel(id, user.userId);
   }
+  // Có Authorization nên khoá theo người dùng (ADR-0080); chỉ `/file` bên dưới cần khoá theo IP.
   @Get('attachments/:attachmentId/download')
   @Throttle({ default: RATE_LIMIT_BUCKETS.attachmentRead })
-  @RateLimitByIp()
   @UseGuards(JwtAuthGuard, AbilityGuard)
   @CheckAbility(['view', 'Attachment'])
   link(

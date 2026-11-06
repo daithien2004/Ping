@@ -37,7 +37,7 @@ mọi bucket phải nằm trên throttler tên `default`.
    | `writeMessage`   | 60 / 10 s  | 3 s           | POST `/channels/:id/messages`; PATCH/DELETE `/messages/:id`; pin/unpin; thả/gỡ cảm xúc                                                                                                              |
    | `writeStructure` | 20 / 60 s  | 10 s          | Tạo/sửa/xóa server, kênh, category, role, lời mời, ban, kick, leave, biệt danh; đổi mật khẩu, cài đặt riêng tư, thu hồi phiên                                                                       |
    | `uploads`        | 30 / 60 s  | 5 s           | POST `/uploads`, PUT `/uploads/:id/content`, complete/cancel, GET `/uploads/:id`                                                                                                                    |
-   | `attachmentRead` | 600 / 60 s | 2 s           | GET `/attachments/:id/file`, `/attachments/:id/download` — **luôn khoá theo IP**                                                                                                                    |
+   | `attachmentRead` | 600 / 60 s | 2 s           | GET `/attachments/:id/file` — **khoá theo IP**; `/attachments/:id/download` khoá theo người dùng (có Authorization)                                                                                 |
    | `authCredential` | 10 / 60 s  | 60 s          | POST `/auth/login` — **IP**                                                                                                                                                                         |
    | `authRegister`   | 5 / 60 s   | 60 s          | POST `/auth/register` — **IP**                                                                                                                                                                      |
    | `authSession`    | 30 / 60 s  | 5 s           | POST `/auth/refresh`, POST `/auth/logout` — **IP**                                                                                                                                                  |
@@ -60,10 +60,10 @@ mọi bucket phải nằm trên throttler tên `default`.
    `getTracker` không bao giờ ném: mọi lỗi verify đều là "về IP".
 
 4. **`@RateLimitByIp()`** (`common/decorators.ts`) buộc bucket bỏ qua danh tính người dùng. Áp cho
-   `/attachments/:id/file` + `/download` (byte tệp khoá theo IP, không tách mỗi người một hạn mức;
-   mỗi handler vẫn giữ bộ đếm riêng như mặc định của thư viện) và `AuthController`
+   `/attachments/:id/file` (link ký, không có header Authorization) và `AuthController`
    (`/auth/login`, `/register`, `/refresh`, `/logout`) — người gọi chưa có token thật; khoá theo IP
-   mới chặn được dò mật khẩu từ một máy.
+   mới chặn được dò mật khẩu từ một máy. `/attachments/:id/download` có Authorization nên khoá theo
+   người dùng như mọi route đã xác thực.
 
 5. **Hợp đồng header không đổi**: chỉ một throttler tên `default`, nên header vẫn là
    `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`, `Retry-After` không hậu tố.

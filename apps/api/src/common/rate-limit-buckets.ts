@@ -24,8 +24,9 @@ export const RATE_LIMIT_BUCKETS = {
   /** Upload: tạo phiên, đẩy byte, hoàn tất/hủy, xem trạng thái. */
   uploads: { limit: 30, ttl: 60_000, blockDuration: 5_000 },
   /**
-   * Byte tệp đính kèm (link ký sẵn, ảnh thumbnail): một kênh nhiều ảnh bắn hàng trăm request.
-   * Luôn khoá theo IP (`@RateLimitByIp`) vì `/file` không có header Authorization.
+   * Đọc tệp đính kèm (link ký sẵn, ảnh thumbnail): một kênh nhiều ảnh bắn hàng trăm request.
+   * `/file` khoá theo IP (`@RateLimitByIp`) vì không có header Authorization; `/download` có
+   * Authorization nên khoá theo người dùng như mọi route đã xác thực.
    */
   attachmentRead: { limit: 600, ttl: 60_000, blockDuration: 2_000 },
   /** Đăng nhập: mỗi lần thử là một argon2.verify tốn CPU. */
