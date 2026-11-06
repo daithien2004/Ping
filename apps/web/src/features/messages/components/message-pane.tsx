@@ -60,6 +60,10 @@ export function MessagePane({
   const roomDenied = useChannelRealtime(serverId, channelId);
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useMessages(channelId);
   const sendMutation = useSendMessage(channelId);
+  // `mutate` ổn định, còn object `sendMutation` đổi mỗi lần mutation đổi trạng thái. Đưa object
+  // vào deps của `send`/`retry` làm hai hàm đó đổi identity mỗi tick cuộn → `React.memo` của
+  // MessageItem bị vô hiệu hoá ở MỌI hàng.
+  const sendMutate = sendMutation.mutate;
   const seedAround = useSeedAround(channelId);
   const resetWindow = useResetWindow(channelId);
   const loadNewer = useLoadNewer(channelId);
@@ -254,12 +258,12 @@ export function MessagePane({
       : null;
 
   // Identity ổn định: `retry` đi xuống từng hàng, hàng được `memo` nên prop hàm đổi mỗi
-  // lần pane render (mỗi tick cuộn) sẽ vô hiệu hoá memo. `mutate` và `ability` đã ổn định.
+  // lần pane render (mỗi tick cuộn) sẽ vô hiệu hoá memo. `sendMutate` và `ability` đã ổn định.
   const onSendError = dm?.onSendError;
   const send = useCallback(
     (content: string, nonce: string, replyToId?: string, attachmentIds?: string[]) => {
       if (!ready || !ability.can('create', 'Message')) return;
-      sendMutation.mutate(
+      sendMutate(
         {
           content,
           nonce,
@@ -270,7 +274,7 @@ export function MessagePane({
         onSendError ? { onError: onSendError } : undefined,
       );
     },
-    [ready, ability, sendMutation, onSendError],
+    [ready, ability, sendMutate, onSendError],
   );
 
   // TG.22: gửi tin sticker — preview của sticker vừa chọn đi kèm để tin optimistic render
@@ -278,7 +282,7 @@ export function MessagePane({
   function sendSticker(sticker: StickerDto, nonce: string, replyToId?: string) {
     if (!ready || !ability.can('create', 'Message')) return;
     scrollOnAppend.current = true;
-    sendMutation.mutate({
+    sendMutate({
       content: '',
       nonce,
       stickerId: sticker.id,
@@ -293,7 +297,7 @@ export function MessagePane({
   function sendGif(gif: GifPayload, nonce: string, replyToId?: string) {
     if (!ready || !ability.can('create', 'Message')) return;
     scrollOnAppend.current = true;
-    sendMutation.mutate({
+    sendMutate({
       content: '',
       nonce,
       gif,
@@ -326,7 +330,7 @@ export function MessagePane({
       // TG.22: gửi lại tin sticker giữ đúng sticker (preview có sẵn trong cache).
       if (message.kind === 'sticker') {
         scrollOnAppend.current = true;
-        sendMutation.mutate({
+        sendMutate({
           content: '',
           nonce: message.nonce,
           ...(message.replyTo?.id ? { replyToId: message.replyTo.id } : {}),
@@ -340,7 +344,7 @@ export function MessagePane({
       if (message.kind === 'gif') {
         if (!message.gif || !message.gifId) return;
         scrollOnAppend.current = true;
-        sendMutation.mutate({
+        sendMutate({
           content: '',
           nonce: message.nonce,
           ...(message.replyTo?.id ? { replyToId: message.replyTo.id } : {}),
@@ -361,7 +365,7 @@ export function MessagePane({
         message.pendingAttachmentIds ?? message.attachments?.map((file) => file.id),
       );
     },
-    [send, sendMutation],
+    [send, sendMutate],
   );
 
   // TG.5: nhảy tới tin gốc của một reply. Tin đã có trong cửa sổ → cuộn + tô sáng; tin cũ hơn
