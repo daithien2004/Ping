@@ -10,8 +10,10 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { IdempotencyInterceptor } from '../../common/interceptors/idempotency.interceptor.js';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe.js';
+import { RATE_LIMIT_BUCKETS } from '../../common/rate-limit-buckets.js';
 import { AbilityGuard } from '../ability/ability.guard.js';
 import { CheckAbility } from '../ability/check-ability.decorator.js';
 import { CurrentUser, type AuthenticatedUser } from '../auth/current-user.decorator.js';
@@ -27,6 +29,7 @@ import {
 } from './schemas.js';
 
 @Controller()
+@Throttle({ default: RATE_LIMIT_BUCKETS.writeStructure })
 @UseGuards(JwtAuthGuard, AbilityGuard)
 export class RolesController {
   constructor(private readonly rolesService: RolesService) {}
@@ -44,6 +47,7 @@ export class RolesController {
 
   /** Màn quản trị role — cần manage Role, member thường xem role qua chi tiết server. */
   @Get('servers/:serverId/roles')
+  @Throttle({ default: RATE_LIMIT_BUCKETS.readLight })
   @CheckAbility(['manage', 'Role'])
   list(@Param('serverId') serverId: string) {
     return this.rolesService.list(serverId);

@@ -3,14 +3,17 @@ import { ConfigService } from '@nestjs/config';
 import { Throttle } from '@nestjs/throttler';
 import { loginSchema, registerSchema, type LoginInput, type RegisterInput } from '@ping/shared';
 import type { Request, Response } from 'express';
-import { RateLimitFailClosed } from '../../common/decorators.js';
+import { RateLimitByIp, RateLimitFailClosed } from '../../common/decorators.js';
 import { CsrfGuard } from '../../common/guards/csrf.guard.js';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe.js';
+import { RATE_LIMIT_BUCKETS } from '../../common/rate-limit-buckets.js';
 import type { Env } from '../../config/env.schema.js';
 import { REFRESH_COOKIE_NAME, REFRESH_COOKIE_PATH } from './auth.constants.js';
 import { AuthService, type AuthRequestContext, type RefreshCookieValue } from './auth.service.js';
 
 @Controller('auth')
+// Cửa khẩu chưa/không cần access token: khoá theo IP (ADR-0080), không theo danh tính người gọi.
+@RateLimitByIp()
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
@@ -18,13 +21,12 @@ export class AuthController {
   ) {}
 
   /**
-   * Rate limit riêng 5 lần/phút/IP — chặt hơn global 100/phút vì đây là cửa khẩu
-   * credential stuffing: attacker thử hàng nghìn mật khẩu/phút, mỗi thử là một
-   * lần argon2.verify tốn CPU. Global 100 là phòng cháy, cái này là khóa cửa.
+   * Rate limit riêng 5 lần/phút/IP (ADR-0080, bucket auth-register) — chặt hơn lưới hứng
+   * 100/phút vì mỗi lần đăng ký là một lần argon2.hash tốn CPU. Khoá 60 giây khi vượt.
    */
   @Post('register')
   @RateLimitFailClosed()
-  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Throttle({ default: RATE_LIMIT_BUCKETS.authRegister })
   @UsePipes(new ZodValidationPipe(registerSchema))
   async register(
     @Body() body: RegisterInput,
@@ -42,7 +44,7 @@ export class AuthController {
   @Post('login')
   @RateLimitFailClosed()
   @HttpCode(200)
-  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Throttle({ default: RATE_LIMIT_BUCKETS.authCredential })
   @UsePipes(new ZodValidationPipe(loginSchema))
   async login(
     @Body() body: LoginInput,
@@ -61,6 +63,7 @@ export class AuthController {
   @Post('refresh')
   @UseGuards(CsrfGuard)
   @RateLimitFailClosed()
+  @Throttle({ default: RATE_LIMIT_BUCKETS.authSession })
   @HttpCode(200)
   async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const { accessToken, refreshCookie } = await this.authService.refresh(
@@ -73,6 +76,7 @@ export class AuthController {
 
   @Post('logout')
   @UseGuards(CsrfGuard)
+  @Throttle({ default: RATE_LIMIT_BUCKETS.authSession })
   @HttpCode(204)
   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     await this.authService.logout(this.refreshCookie(req));

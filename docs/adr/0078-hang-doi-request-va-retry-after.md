@@ -6,8 +6,11 @@ Date: 2026-11-06
 
 ## Context
 
-API dùng một bộ đếm chung `100 request/phút/IP` và khóa 60 giây khi vượt (`app.module.ts`), có trả
-`Retry-After` cùng `X-RateLimit-Reset` qua `RedisThrottlerStorage`. Nhưng hai phía còn hở:
+API dùng một cửa sổ `100 request/phút/IP` **cho mỗi route** với khóa 60 giây khi vượt
+(`app.module.ts`; đọc kỹ `@nestjs/throttler` cho thấy khoá đếm ghép Controller-Handler, không phải
+một bộ đếm chung — ADR-0080 sau này tách tiếp thành bucket theo nhóm route và khoá theo người
+dùng). Guard có trả `Retry-After` cùng `X-RateLimit-Reset` qua `RedisThrottlerStorage`. Nhưng hai
+phía còn hở:
 
 - **Client không đọc các header đó.** `api-client` chỉ xử lý 401 và lỗi mạng; gặp 429 là ném
   `ApiError` ngay, còn TanStack Query retry theo lịch riêng. Trình duyệt lại chỉ cho JS đọc header

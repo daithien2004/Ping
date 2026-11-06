@@ -96,8 +96,14 @@ trả **200** cùng `{ messageId, channelId, pinnedAt, pinnedById }` (`pinnedAt:
 
 ## 6. Giới hạn tần suất
 
-Chi tiết ở ADR-0027. Tóm tắt: 100 request/phút/IP; đăng nhập 10/phút; khóa đăng nhập sau 5 lần sai
-(cặp email + IP) hoặc 20 lần (email); 10 tin/10 giây/user/channel. Tất cả trả 429 + `Retry-After`.
+Chi tiết ở [ADR-0080](adr/0080-rate-limit-theo-bucket-va-nguoi-dung.md) (thay chính sách cũ của
+ADR-0027). Tóm tắt: bucket theo nhóm route — đọc nhẹ 240/phút, lịch sử 120/phút, tìm kiếm
+40/phút, ghi tin 60/10 giây, ghi cấu trúc 20/phút, upload 30/phút, byte tệp đính kèm 600/phút
+(theo IP) — lưới hứng 100/phút; khoá 2–10 giây (login/register 60 giây). Khoá đếm theo người dùng
+sau khi verify access token, theo IP khi chưa xác thực. Ngoài ra: khóa đăng nhập sau 5 lần sai
+(cặp email + IP) hoặc 20 lần (email); 10 tin/10 giây/user/channel. Request được đáp thường mang
+`X-RateLimit-Limit/Remaining/Reset`; 429 mang `Retry-After` cùng `X-RateLimit-Limit/Remaining` của
+bucket vừa cạn — tất cả không hậu tố.
 
 ## 7. Versioning
 

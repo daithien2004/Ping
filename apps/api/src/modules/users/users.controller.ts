@@ -1,4 +1,5 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Patch, UseGuards } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import {
   changePasswordSchema,
   updatePrivacySchema,
@@ -10,6 +11,7 @@ import {
   type UpdateUserSettingsInput,
 } from '@ping/shared';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe.js';
+import { RATE_LIMIT_BUCKETS } from '../../common/rate-limit-buckets.js';
 import { AccountService } from '../auth/account.service.js';
 import { AuthService } from '../auth/auth.service.js';
 import { CurrentUser, type AuthenticatedUser } from '../auth/current-user.decorator.js';
@@ -29,6 +31,7 @@ export class UsersController {
   ) {}
 
   @Get('me')
+  @Throttle({ default: RATE_LIMIT_BUCKETS.readLight })
   me(@CurrentUser() user: AuthenticatedUser) {
     return this.authService.me(user.userId);
   }
@@ -39,12 +42,14 @@ export class UsersController {
    * không cần AbilityGuard/IDOR.
    */
   @Get('me/unread')
+  @Throttle({ default: RATE_LIMIT_BUCKETS.readLight })
   unread(@CurrentUser() user: AuthenticatedUser) {
     return this.readState.unreadForUser(user.userId);
   }
 
   /** TG.7: đổi tên hiển thị/ avatar; controller mỏng — bind attachment và phát event ở service. */
   @Patch('me')
+  @Throttle({ default: RATE_LIMIT_BUCKETS.writeStructure })
   updateMe(
     @CurrentUser() user: AuthenticatedUser,
     @Body(new ZodValidationPipe(updateProfileSchema)) body: UpdateProfileInput,
@@ -57,6 +62,7 @@ export class UsersController {
    * chỉ có PATCH; thiếu GET thì switch hiển thị mặc định, sai sau khi đổi ở thiết bị khác).
    */
   @Get('me/privacy')
+  @Throttle({ default: RATE_LIMIT_BUCKETS.readLight })
   getPrivacy(@CurrentUser() user: AuthenticatedUser) {
     return this.usersService.getPrivacy(user.userId);
   }
@@ -67,6 +73,7 @@ export class UsersController {
    * riêng với `updatePrivacySchema` giữ nguyên hợp đồng cũ và mỗi schema một luồng rõ ràng.
    */
   @Patch('me/privacy')
+  @Throttle({ default: RATE_LIMIT_BUCKETS.writeStructure })
   updatePrivacy(
     @CurrentUser() user: AuthenticatedUser,
     @Body(new ZodValidationPipe(updatePrivacySchema)) body: UpdatePrivacyInput,
@@ -80,11 +87,13 @@ export class UsersController {
    * UsersService.getSettings); PATCH upsert: body rỗng/giá trị lạ bị zod chặn ở pipe → 400.
    */
   @Get('me/settings')
+  @Throttle({ default: RATE_LIMIT_BUCKETS.readLight })
   getSettings(@CurrentUser() user: AuthenticatedUser) {
     return this.usersService.getSettings(user.userId);
   }
 
   @Patch('me/settings')
+  @Throttle({ default: RATE_LIMIT_BUCKETS.writeStructure })
   updateSettings(
     @CurrentUser() user: AuthenticatedUser,
     @Body(new ZodValidationPipe(updateUserSettingsSchema)) body: UpdateUserSettingsInput,
@@ -97,6 +106,7 @@ export class UsersController {
    * thu hồi (phiên hiện tại sống nhờ claim `sid` trong JWT). 204 không body.
    */
   @Patch('me/password')
+  @Throttle({ default: RATE_LIMIT_BUCKETS.writeStructure })
   @HttpCode(204)
   changePassword(
     @CurrentUser() user: AuthenticatedUser,
@@ -107,12 +117,14 @@ export class UsersController {
 
   /** TG.8: danh sách phiên (thiết bị, lần dùng gần nhất, phiên hiện tại) — mới dùng trước. */
   @Get('me/sessions')
+  @Throttle({ default: RATE_LIMIT_BUCKETS.readLight })
   listSessions(@CurrentUser() user: AuthenticatedUser) {
     return this.accountService.listSessions(user.userId, user.sessionId);
   }
 
   /** TG.8: thu hồi MỌI phiên khác — đăng xuất các thiết bị còn lại, giữ phiên hiện tại. */
   @Delete('me/sessions')
+  @Throttle({ default: RATE_LIMIT_BUCKETS.writeStructure })
   @HttpCode(204)
   revokeOtherSessions(@CurrentUser() user: AuthenticatedUser) {
     return this.accountService.revokeOtherSessions(user.userId, user.sessionId);
@@ -123,6 +135,7 @@ export class UsersController {
    * người gọi — phiên của người khác là 404; đưa vào ID_ROUTES + bảng tấn công idor.e2e).
    */
   @Delete('me/sessions/:sessionId')
+  @Throttle({ default: RATE_LIMIT_BUCKETS.writeStructure })
   @HttpCode(204)
   revokeSession(@CurrentUser() user: AuthenticatedUser, @Param('sessionId') sessionId: string) {
     return this.accountService.revokeSession(user.userId, sessionId);

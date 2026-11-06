@@ -1,4 +1,5 @@
 import { Body, Controller, Delete, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import {
   createCustomEmojiSchema,
   type CreateCustomEmojiInput,
@@ -7,6 +8,7 @@ import {
 } from '@ping/shared';
 import type { AppAbility } from '@ping/shared';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe.js';
+import { RATE_LIMIT_BUCKETS } from '../../common/rate-limit-buckets.js';
 import { AbilityGuard } from '../ability/ability.guard.js';
 import { CheckAbility, CurrentAbility } from '../ability/check-ability.decorator.js';
 import { CurrentUser, type AuthenticatedUser } from '../auth/current-user.decorator.js';
@@ -20,6 +22,7 @@ import { EmojisService } from './emojis.service.js';
  * server qua chính emoji (nhánh `:emojiId` của AbilityGuard), service ghi audit `EMOJI_DELETE`.
  */
 @Controller()
+@Throttle({ default: RATE_LIMIT_BUCKETS.writeStructure })
 @UseGuards(JwtAuthGuard, AbilityGuard)
 export class EmojisController {
   constructor(private readonly emojisService: EmojisService) {}
@@ -35,6 +38,7 @@ export class EmojisController {
   }
 
   @Get('servers/:serverId/emojis')
+  @Throttle({ default: RATE_LIMIT_BUCKETS.readLight })
   @CheckAbility(['view', 'Sticker'])
   list(@Param('serverId') serverId: string): Promise<CustomEmojiListResponse> {
     return this.emojisService.list(serverId);

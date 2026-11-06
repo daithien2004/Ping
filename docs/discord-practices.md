@@ -8,7 +8,7 @@ Lag và lỗi 429 của Ping đến từ việc web bắn 69 request `/unread` m
 
 1. **Nguyên nhân đã đo:** 69 request unread trong 83 ms, 38 request trả 429, `/permissions` mất 8 giây vì bị xếp hàng sau các request đó.
 2. **Unread:** Discord lưu con trỏ đã đọc theo channel, so sánh ID ở client và giữ bộ đếm mention sẵn; Ping đếm lại bằng SQL cho từng server.
-3. **Rate limit:** Discord chia bucket theo route và tài nguyên, trả header và bắt client chờ `Retry-After`; Ping có một bộ đếm 100/phút/IP cho mọi route, khóa 60 giây khi vượt, và client không xử lý 429.
+3. **Rate limit:** Discord chia bucket theo route và tài nguyên, trả header và bắt client chờ `Retry-After`; Ping từng dùng 100/phút/IP cho mỗi route với khóa 60 giây và client không xử lý 429. Từ [ADR-0080](adr/0080-rate-limit-theo-bucket-va-nguoi-dung.md), Ping chia bucket theo nhóm route, khoá theo người dùng sau xác thực (IP cho route chưa xác thực), khóa 2–10 giây; client đã chờ đúng `Retry-After` từ [ADR-0078](adr/0078-hang-doi-request-va-retry-after.md).
 4. **Ảnh đính kèm:** Ping phục vụ byte ảnh qua chính API với link sống 60 giây, làm mới mỗi 45 giây cho từng file; Discord dùng CDN riêng và link sống 24 giờ. Từ ADR-0079, Ping bỏ làm mới định kỳ và nâng hạn link lên 24 giờ.
 5. **Đã đúng, không cần sửa:** ID sắp theo thời gian, index và cursor cho tin nhắn và thành viên, gộp presence, giới hạn typing, mô hình quyền tập trung, nonce và giới hạn gửi tin, thông báo hai tầng, tìm kiếm Postgres đúng quy mô, giới hạn sự kiện socket.
 
@@ -76,7 +76,7 @@ Lưu ý ràng buộc: `notifications/badge.ts` cộng unread của mọi server 
 
 ## Rate limit và 429
 
-Discord chia giới hạn theo từng route và từng tài nguyên, trả header để client tự điều tiết, và chờ đúng `Retry-After` thay vì khóa cả API; Ping đang dùng một bộ đếm 100/phút/IP cho mọi route và khóa một phút khi vượt.
+Discord chia giới hạn theo từng route và từng tài nguyên, trả header để client tự điều tiết, và chờ đúng `Retry-After` thay vì khóa cả API; Ping trước đây dùng 100/phút/IP cho mỗi route và khóa một phút khi vượt. [ADR-0080](adr/0080-rate-limit-theo-bucket-va-nguoi-dung.md) đã thay bằng bucket theo nhóm route, khoá theo người dùng sau xác thực và khóa 2–10 giây; mục này giữ lại để đối chiếu với cách Discord làm.
 
 **Discord làm gì** ([Rate Limits, tài liệu Discord](https://docs.discord.com/developers/topics/rate-limits)):
 
@@ -88,13 +88,13 @@ Discord chia giới hạn theo từng route và từng tài nguyên, trả heade
 
 **Ping hiện tại so với Discord:**
 
-| Khía cạnh         | Discord                            | Ping hiện tại                                                     |
-| ----------------- | ---------------------------------- | ----------------------------------------------------------------- |
-| Đơn vị đếm        | theo route và tài nguyên           | một bộ đếm cho mọi route, theo IP (`app.module.ts:87`)            |
-| Khi vượt          | chờ `retry_after`, thường vài giây | khóa toàn bộ API 60 giây (`blockDuration: 60_000`)                |
-| Header cho client | đầy đủ                             | có `Retry-After`, `X-RateLimit-Reset` qua `RedisThrottlerStorage` |
-| Client xử lý 429  | đọc header, chờ, không gửi thêm    | tìm trong `apps/web/src` không thấy đoạn nào đọc `Retry-After`    |
-| Ai bị đếm         | theo token (người dùng/bot)        | theo IP, dùng chung IP thì chung hạn mức                          |
+| Khía cạnh         | Discord                            | Ping hiện tại                                                                                                         |
+| ----------------- | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Đơn vị đếm        | theo route và tài nguyên           | theo route và nhóm route; khoá theo `user:<sub>` sau xác thực, IP cho route chưa xác thực (`http-throttler.guard.ts`) |
+| Khi vượt          | chờ `retry_after`, thường vài giây | khoá 2–10 giây theo bucket (login/register 60 giây)                                                                   |
+| Header cho client | đầy đủ                             | đầy đủ, không hậu tố: `X-RateLimit-*` + `Retry-After` (ADR-0078)                                                      |
+| Client xử lý 429  | đọc header, chờ, không gửi thêm    | hàng đợi trong `api-client` đọc header và chờ đúng `Retry-After` (ADR-0078)                                           |
+| Ai bị đếm         | theo token (người dùng/bot)        | theo access token sau khi verify; IP khi chưa đăng nhập hoặc token sai (ADR-0080)                                     |
 
 **Đề xuất cho Ping**, theo thứ tự ưu tiên:
 
@@ -386,7 +386,7 @@ Nên bắt đầu từ việc 1 đến 3: tác động cao, công sức thấp �
 
 **Cách kiểm chứng sau mỗi việc:** F5 một lần trên tài khoản 69 server rồi đếm lại bằng `performance.getEntriesByType('resource')`: số request `/unread`, số 429, thời gian `/me/permissions`. Mục tiêu hợp lý sau việc 1: 1 request unread, 0 lỗi 429, `/permissions` quay về khoảng 0,4 giây. Sau đó chạy `pnpm lint`, `pnpm typecheck`, `pnpm test` và e2e khi đổi UI.
 
-**Trạng thái 2026-11-06 (nhánh `feat/discord-practices`):** việc 1–3 đã làm — [ADR-0077](adr/0077-unread-gop-mot-request.md) gộp unread, [ADR-0078](adr/0078-hang-doi-request-va-retry-after.md) hàng đợi tôn trọng `Retry-After`, [ADR-0079](adr/0079-tai-tep-dinh-kem-luoi.md) tải tệp lười. Đo lại một lần F5 trên tài khoản 69 server (bản dev, cùng cách đo): 1 request `/users/me/unread`, 0 lỗi 429, `/me/permissions` 1,1 giây (trước 8,0 giây), tổng 18 request API (trước 92). Số 1,1 giây cao hơn mục tiêu 0,4 giây (máy dev local, số tuyệt đối có thể khác production), nhưng đã hết cảnh xếp hàng sau 69 request unread.
+**Trạng thái 2026-11-06 (nhánh `feat/discord-practices`):** việc 1–4 đã làm — [ADR-0077](adr/0077-unread-gop-mot-request.md) gộp unread, [ADR-0078](adr/0078-hang-doi-request-va-retry-after.md) hàng đợi tôn trọng `Retry-After`, [ADR-0079](adr/0079-tai-tep-dinh-kem-luoi.md) tải tệp lười, [ADR-0080](adr/0080-rate-limit-theo-bucket-va-nguoi-dung.md) rate limit theo bucket + khoá theo người dùng. Đo lại một lần F5 trên tài khoản 69 server (bản dev, cùng cách đo): 1 request `/users/me/unread`, 0 lỗi 429, `/me/permissions` 1,1 giây (trước 8,0 giây), tổng 18 request API (trước 92). Số 1,1 giây cao hơn mục tiêu 0,4 giây (máy dev local, số tuyệt đối có thể khác production), nhưng đã hết cảnh xếp hàng sau 69 request unread.
 
 **Đề xuất ADR:** việc 1 (endpoint mới) và việc 4 (đổi chính sách rate limit) đáng có mỗi việc một ADR ngắn; việc 6 bắt buộc có ADR. Các việc còn lại là sửa cài đặt, không đổi kiến trúc.
 

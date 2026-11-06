@@ -11,6 +11,7 @@ import {
   Res,
   UseGuards,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import {
   createUploadSchema,
   downloadQuerySchema,
@@ -19,14 +20,19 @@ import {
   type SignedFileQuery,
 } from '@ping/shared';
 import type { Request, Response } from 'express';
+import { RateLimitByIp } from '../../common/decorators.js';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe.js';
+import { RATE_LIMIT_BUCKETS } from '../../common/rate-limit-buckets.js';
 import { AbilityGuard } from '../ability/ability.guard.js';
 import { CheckAbility } from '../ability/check-ability.decorator.js';
 import { CurrentUser, type AuthenticatedUser } from '../auth/current-user.decorator.js';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { AttachmentsService } from './attachments.service.js';
 
+// Mặc định cả controller là bucket uploads (30/phút); hai route đọc byte tệp có bucket riêng
+// bên dưới vì chúng bị gọi hàng loạt khi một kênh nhiều ảnh.
 @Controller()
+@Throttle({ default: RATE_LIMIT_BUCKETS.uploads })
 export class AttachmentsController {
   constructor(private readonly service: AttachmentsService) {}
   @Post('uploads')
@@ -66,6 +72,8 @@ export class AttachmentsController {
     return this.service.cancel(id, user.userId);
   }
   @Get('attachments/:attachmentId/download')
+  @Throttle({ default: RATE_LIMIT_BUCKETS.attachmentRead })
+  @RateLimitByIp()
   @UseGuards(JwtAuthGuard, AbilityGuard)
   @CheckAbility(['view', 'Attachment'])
   link(
@@ -77,6 +85,8 @@ export class AttachmentsController {
   }
   // Authentication: short-lived HMAC capability, followed by fresh CASL/membership.
   @Get('attachments/:attachmentId/file')
+  @Throttle({ default: RATE_LIMIT_BUCKETS.attachmentRead })
+  @RateLimitByIp()
   file(
     @Param('attachmentId') id: string,
     @Query(new ZodValidationPipe(signedFileQuerySchema)) query: SignedFileQuery,

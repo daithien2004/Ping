@@ -1,4 +1,5 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Put, UseGuards } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import {
   setNotificationPrefSchema,
   type NotificationPrefDto,
@@ -6,6 +7,7 @@ import {
   type SetNotificationPrefInput,
 } from '@ping/shared';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe.js';
+import { RATE_LIMIT_BUCKETS } from '../../common/rate-limit-buckets.js';
 import { CurrentUser, type AuthenticatedUser } from '../auth/current-user.decorator.js';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { NotificationsService } from './notifications.service.js';
@@ -26,6 +28,7 @@ export class NotificationsController {
 
   /** Mọi dòng prefs của người gọi — client fetch một lần khi boot, tính badge tại chỗ. */
   @Get()
+  @Throttle({ default: RATE_LIMIT_BUCKETS.readLight })
   list(@CurrentUser() user: AuthenticatedUser): Promise<NotificationPrefsResponse> {
     return this.notifications.list(user.userId);
   }

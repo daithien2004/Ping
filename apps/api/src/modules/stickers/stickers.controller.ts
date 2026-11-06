@@ -1,4 +1,5 @@
 import { Body, Controller, Delete, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import {
   createStickerSchema,
   type CreateStickerInput,
@@ -6,6 +7,7 @@ import {
   type StickerListResponse,
 } from '@ping/shared';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe.js';
+import { RATE_LIMIT_BUCKETS } from '../../common/rate-limit-buckets.js';
 import { AbilityGuard } from '../ability/ability.guard.js';
 import { CheckAbility, CurrentAbility } from '../ability/check-ability.decorator.js';
 import type { AppAbility } from '@ping/shared';
@@ -20,6 +22,7 @@ import { StickersService } from './stickers.service.js';
  * xóa sticker gói hệ thống và ghi audit.
  */
 @Controller()
+@Throttle({ default: RATE_LIMIT_BUCKETS.writeStructure })
 @UseGuards(JwtAuthGuard, AbilityGuard)
 export class StickersController {
   constructor(private readonly stickersService: StickersService) {}
@@ -35,6 +38,7 @@ export class StickersController {
   }
 
   @Get('servers/:serverId/stickers')
+  @Throttle({ default: RATE_LIMIT_BUCKETS.readLight })
   @CheckAbility(['view', 'Sticker'])
   list(@Param('serverId') serverId: string): Promise<StickerListResponse> {
     return this.stickersService.list(serverId);

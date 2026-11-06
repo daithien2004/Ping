@@ -10,6 +10,7 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import {
   createBanSchema,
   listBansQuerySchema,
@@ -18,6 +19,7 @@ import {
 } from '@ping/shared';
 import { IdempotencyInterceptor } from '../../common/interceptors/idempotency.interceptor.js';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe.js';
+import { RATE_LIMIT_BUCKETS } from '../../common/rate-limit-buckets.js';
 import { AbilityGuard } from '../ability/ability.guard.js';
 import { CheckAbility } from '../ability/check-ability.decorator.js';
 import { CurrentUser, type AuthenticatedUser } from '../auth/current-user.decorator.js';
@@ -30,6 +32,7 @@ import { BansService } from './bans.service.js';
  * Thứ bậc theo đối tượng (không ban owner/người mạnh hơn, không tự ban) ở BansService.
  */
 @Controller('servers/:serverId/bans')
+@Throttle({ default: RATE_LIMIT_BUCKETS.writeStructure })
 @UseGuards(JwtAuthGuard, AbilityGuard)
 export class BansController {
   constructor(private readonly bansService: BansService) {}
@@ -64,6 +67,7 @@ export class BansController {
 
   /** Danh sách ban, mới nhất trước — công cụ quản lý của người mang KICK_MEMBERS. */
   @Get()
+  @Throttle({ default: RATE_LIMIT_BUCKETS.readLight })
   @CheckAbility(['view', 'ServerBan'])
   list(
     @Param('serverId') serverId: string,
