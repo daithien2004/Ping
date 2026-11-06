@@ -5,7 +5,7 @@ import { useTranslations } from 'use-intl';
 import { useErrorMessage } from '@/lib/error-message';
 import { GIF_QUERY_MIN_LENGTH, useGifSearch, useGifTrending } from '../hooks';
 import { isGifProviderUnavailable } from '../gif-utils';
-import { useInView } from '../use-in-view';
+import { useInView } from '@/lib/use-in-view';
 import { usePrefersReducedMotion } from '../use-prefers-reduced-motion';
 import { GifPlaceholder } from './gif-placeholder';
 
