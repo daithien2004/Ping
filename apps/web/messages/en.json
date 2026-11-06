@@ -405,6 +405,7 @@
     "pickReaction": "Pick a reaction",
     "reactWith": "React with {emoji}",
     "removeReaction": "Remove your {emoji} reaction",
+    "reactionDeleted": "Deleted emoji",
     "viewReactors": "View {count} people who reacted",
     "reactorsTitle": "People who reacted with {emoji}",
     "reactorsLoading": "Loading people…",

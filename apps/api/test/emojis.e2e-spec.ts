@@ -369,11 +369,13 @@ describe('TG.24 custom emoji (real Postgres + disk)', () => {
     // Token `c:<id>` của emoji còn sống đúng server → 200, tổng hợp mang nguyên token.
     const liveToken = `c:${firstEmojiId}`;
     const added = await react(liveToken).expect(200);
-    expect(added.body.reactions).toEqual([{ emoji: liveToken, count: 1, me: true }]);
+    expect(added.body.reactions).toEqual([
+      { emoji: liveToken, count: 1, me: true, emojiName: 'parrot' },
+    ]);
     // GET messages: pill cảm xúc trả token `c:<id>` cho client render ảnh.
     const page = await auth(http().get(`/api/v1/channels/${channelId}/messages`)).expect(200);
     const old = page.body.messages.find((m: { id: string }) => m.id === reactionMessageId);
-    expect(old.reactions).toEqual([{ emoji: liveToken, count: 1, me: true }]);
+    expect(old.reactions).toEqual([{ emoji: liveToken, count: 1, me: true, emojiName: 'parrot' }]);
     // Token của emoji server khác (còn sống) → 400 REACTION_EMOJI_INVALID, không lộ emoji.
     const cross = await react(`c:${rivalEmojiId}`).expect(400);
     expect(cross.body.code).toBe(ErrorCodes.REACTION_EMOJI_INVALID);
@@ -394,6 +396,15 @@ describe('TG.24 custom emoji (real Postgres + disk)', () => {
   it('deletes an emoji: member forbidden, manager succeeds, old messages keep the raw token', async () => {
     // Member thường thiếu delete Sticker (subject tái dùng của TG.22).
     await auth(http().delete(`/api/v1/emojis/${firstEmojiId}`), member).expect(403);
+    // ADR-0081: owner thả cảm xúc bằng emoji sắp xóa — sau khi emoji bị xóa mềm, cảm xúc được giữ
+    // lại và người đã thả vẫn phải gỡ được (trước đây gỡ trả 400 REACTION_EMOJI_INVALID).
+    const orphan = await auth(http().post(`/api/v1/channels/${channelId}/messages`), member)
+      .send({ content: 'cảm xúc mồ côi', nonce: randomUUID() })
+      .expect(201);
+    const orphanToken = `c:${firstEmojiId}`;
+    const reactionUrl = (emoji: string) =>
+      `/api/v1/messages/${orphan.body.id}/reactions/${encodeURIComponent(emoji)}`;
+    await auth(http().put(reactionUrl(orphanToken))).expect(200);
     // Manager xóa mềm; tệp emoji chuyển 'deleting' cho worker dọn.
     const removed = await auth(http().delete(`/api/v1/emojis/${firstEmojiId}`)).expect(200);
     expect(removed.body).toEqual({ id: firstEmojiId });
@@ -406,6 +417,29 @@ describe('TG.24 custom emoji (real Postgres + disk)', () => {
     expect(old.content).toBe(`xin chào :parrot:${firstEmojiId}`);
     // Xóa lần nữa → 404 (đã soft-delete).
     await auth(http().delete(`/api/v1/emojis/${firstEmojiId}`)).expect(404);
+
+    // ADR-0081: cảm xúc của emoji đã xóa được giữ lại và vẫn mang tên để client hiện `:ten:`.
+    const afterPage = await auth(http().get(`/api/v1/channels/${channelId}/messages`)).expect(200);
+    const orphanRow = afterPage.body.messages.find((m: { id: string }) => m.id === orphan.body.id);
+    expect(orphanRow.reactions).toEqual([
+      { emoji: orphanToken, count: 1, me: true, emojiName: 'parrot' },
+    ]);
+    // THÊM cảm xúc bằng emoji đã xóa vẫn bị chặn.
+    const readd = await auth(http().put(reactionUrl(orphanToken)), member).expect(400);
+    expect(readd.body.code).toBe(ErrorCodes.REACTION_EMOJI_INVALID);
+    // GỠ bằng token của server khác hoặc id không tồn tại vẫn bị chặn như cũ.
+    const crossRemove = await auth(http().delete(reactionUrl(`c:${rivalEmojiId}`))).expect(400);
+    expect(crossRemove.body.code).toBe(ErrorCodes.REACTION_EMOJI_INVALID);
+    const ghostRemove = await auth(http().delete(reactionUrl(`c:${randomUUID()}`))).expect(400);
+    expect(ghostRemove.body.code).toBe(ErrorCodes.REACTION_EMOJI_INVALID);
+    // Người khác gỡ bằng token này không xóa được cảm xúc của owner (deleteMany theo userId).
+    const byMember = await auth(http().delete(reactionUrl(orphanToken)), member).expect(200);
+    expect(byMember.body.reactions).toEqual([
+      { emoji: orphanToken, count: 1, me: false, emojiName: 'parrot' },
+    ]);
+    // Chính owner gỡ được dù emoji đã xóa; tin không còn cảm xúc mồ côi chiếm slot.
+    const byOwner = await auth(http().delete(reactionUrl(orphanToken))).expect(200);
+    expect(byOwner.body.reactions).toEqual([]);
   });
 
   it('writes an EMOJI_DELETE audit row for the manager deletion above', async () => {

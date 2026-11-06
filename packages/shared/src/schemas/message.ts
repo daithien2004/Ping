@@ -57,6 +57,11 @@ export interface MessageReactionDto {
   emoji: string;
   count: number;
   me: boolean;
+  /**
+   * Tên emoji tùy chỉnh khi `emoji` là token `c:<id>` (ADR-0081): có cả khi emoji đã bị xóa
+   * (soft-delete) để client hiện `:ten:` thay cho id. Thiếu với emoji Unicode.
+   */
+  emojiName?: string;
 }
 
 /** Kết quả thêm/gỡ cảm xúc: toàn bộ nhóm cảm xúc hiện tại của tin (để client hoà giải). */

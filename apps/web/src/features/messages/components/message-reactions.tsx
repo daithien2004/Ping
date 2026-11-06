@@ -1,11 +1,7 @@
 'use client';
 
-import {
-  CUSTOM_EMOJI_REACTION_PATTERN,
-  customEmojiReactionToken,
-  type CustomEmojiDto,
-} from '@ping/shared';
-import { SmilePlus } from 'lucide-react';
+import { customEmojiReactionToken, type CustomEmojiDto } from '@ping/shared';
+import { ImageOff, SmilePlus } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
@@ -24,6 +20,7 @@ import { profileImageUrl } from '@/features/profile/hooks';
 import { listReactionUsers } from '../api';
 import { useToggleReaction } from '../hooks';
 import type { ClientMessage } from '../message-cache';
+import { customReactionId, reactionLabel as buildReactionLabel } from '../reaction-label';
 
 // Picker nặng (toàn bộ dataset emoji) chỉ tải khi người dùng thực sự mở hộp chọn — không đụng
 // bundle ban đầu của kênh chat.
@@ -32,20 +29,42 @@ const EmojiPicker = dynamic(
   { ssr: false },
 );
 
-/** id UUID trong token reaction `c:<id>` (TG.24); không phải token custom → null. */
-function customReactionId(emoji: string): string | null {
-  return CUSTOM_EMOJI_REACTION_PATTERN.exec(emoji)?.[1] ?? null;
-}
-
 /**
- * Nội dung emoji của một pill reaction (TG.24): unicode hiển thị thẳng; token `c:<id>` resolve
- * qua cache server → ảnh 20px, không resolve được (đã xóa/chưa tải) → chữ `c:<8 ký tự cuối>`.
+ * Nội dung emoji của một pill reaction (TG.24, ADR-0081): unicode hiển thị thẳng; token `c:<id>`
+ * resolve qua cache server → ảnh. Emoji đã xóa (không resolve được) thì hiện chip `:ten:` nếu API
+ * trả `emojiName`, không thì biểu tượng chung có nhãn — không bao giờ hiện id.
  */
-function ReactionEmoji({ emoji, map }: { emoji: string; map: Map<string, CustomEmojiDto> }) {
+function ReactionEmoji({
+  emoji,
+  emojiName,
+  map,
+  deletedLabel,
+}: {
+  emoji: string;
+  emojiName?: string;
+  map: Map<string, CustomEmojiDto>;
+  deletedLabel: string;
+}) {
   const id = customReactionId(emoji);
   if (!id) return <>{emoji}</>;
   const resolved = map.get(id);
-  if (!resolved) return <span className="text-xs">c:{id.slice(-8)}</span>;
+  if (!resolved) {
+    if (emojiName) {
+      return (
+        <span className="text-xs" data-testid="reaction-deleted-emoji">
+          :{emojiName}:
+        </span>
+      );
+    }
+    return (
+      <ImageOff
+        aria-label={deletedLabel}
+        role="img"
+        className="size-4"
+        data-testid="reaction-deleted-emoji"
+      />
+    );
+  }
   return (
     <img
       src={profileImageUrl(resolved.previewUrl || resolved.url)}
@@ -78,12 +97,17 @@ export function MessageReactions({
   const canReact = ready && ability.can('create', 'Reaction') && message.status === undefined;
   // TG.24: map id → emoji server để render token `c:<id>` trong pill và nhãn dialog.
   const emojiMap = useEmojiMap(serverId);
-  // Nhãn hiển thị/aria: emoji unicode giữ nguyên; token custom → `:ten:` hoặc rút gọn.
+  // Nhãn hiển thị/aria: emoji unicode giữ nguyên; token custom → `:ten:` (cache server, rồi tên
+  // do API trả cho emoji đã xóa), cuối cùng là nhãn "đã xóa" — không để id lộ ra (ADR-0081).
+  const deletedLabel = t('reactionDeleted');
   const reactionLabel = (emoji: string): string => {
     const id = customReactionId(emoji);
-    if (!id) return emoji;
-    const name = emojiMap.get(id)?.name;
-    return name ? `:${name}:` : `c:${id.slice(-8)}`;
+    return buildReactionLabel({
+      emoji,
+      resolvedName: id ? emojiMap.get(id)?.name : undefined,
+      emojiName: reactions.find((row) => row.emoji === emoji)?.emojiName,
+      deletedLabel,
+    });
   };
 
   function react(emoji: string, active: boolean) {
@@ -121,7 +145,12 @@ export function MessageReactions({
             onClick={() => react(reaction.emoji, !reaction.me)}
             className="px-2 py-0.5 text-sm transition-colors hover:bg-accent/60 disabled:opacity-60"
           >
-            <ReactionEmoji emoji={reaction.emoji} map={emojiMap} />
+            <ReactionEmoji
+              emoji={reaction.emoji}
+              emojiName={reaction.emojiName}
+              map={emojiMap}
+              deletedLabel={deletedLabel}
+            />
           </button>
           <button
             type="button"
