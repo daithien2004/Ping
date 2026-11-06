@@ -75,6 +75,9 @@ test('admin invite: display, regenerate revokes old code, join reports clear err
       await test.step('join bằng mã thu hồi qua UI hiện đúng thông báo', async () => {
         const joinerPage = await joinerContext.newPage();
         await joinerPage.goto('/');
+        // `/` → /servers/:id → kênh đầu: đợi chuyển hướng xong. Bấm "Tham gia" giữa chừng thì
+        // router.replace muộn của trang gốc server cũ đè lên điều hướng sang server mới (thấy trên CI).
+        await expect(joinerPage).toHaveURL(/\/servers\/[^/]+\/channels\//);
         await joinerPage.getByRole('button', { name: 'Tham gia server' }).click();
         // Hộp thoại mở trên trang server (carol đã ở Ping Playground): giới hạn trong dialog
         // để không phụ thuộc phần nền (menu server cũng có mục «Sao chép mã mời»).
@@ -86,6 +89,9 @@ test('admin invite: display, regenerate revokes old code, join reports clear err
       await test.step('join bằng mã mới qua UI vào được server', async () => {
         const joinerPage = await joinerContext.newPage();
         await joinerPage.goto('/');
+        // `/` → /servers/:id → kênh đầu: đợi chuyển hướng xong. Bấm "Tham gia" giữa chừng thì
+        // router.replace muộn của trang gốc server cũ đè lên điều hướng sang server mới (thấy trên CI).
+        await expect(joinerPage).toHaveURL(/\/servers\/[^/]+\/channels\//);
         await joinerPage.getByRole('button', { name: 'Tham gia server' }).click();
         await joinerPage.getByRole('dialog').getByLabel('Mã mời').fill(newCode);
         await joinerPage.getByRole('button', { name: 'Tham gia', exact: true }).click();
