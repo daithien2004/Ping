@@ -2,7 +2,7 @@
 
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { MessageSquare } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'use-intl';
 import type { GifPayload, StickerDto } from '@ping/shared';
@@ -109,7 +109,9 @@ export function MessagePane({
     count: messages.length,
     getScrollElement: () => scrollRef.current,
     estimateSize: () => 56,
-    overscan: 8,
+    // Hàng đã `memo` nên chi phí mỗi tick cuộn tỉ lệ với số hàng dựng sẵn ngoài vùng nhìn:
+    // overscan 4 đủ đệm cho cuộn nhanh mà bớt một nửa số hàng mount thừa (đo p95 ở bước 1).
+    overscan: 4,
     paddingStart: HEADER_HEIGHT,
     // Key theo nonce trước: tin tạm `temp-<nonce>` và tin thật cùng nonce là CÙNG một hàng,
     // nên xác nhận tin không làm danh sách tưởng có hàng mới (không nhảy, không mất neo).
@@ -251,19 +253,25 @@ export function MessagePane({
       ? (messages.find((message) => message.id > dividerCursor.current!)?.id ?? null)
       : null;
 
-  function send(content: string, nonce: string, replyToId?: string, attachmentIds?: string[]) {
-    if (!ready || !ability.can('create', 'Message')) return;
-    sendMutation.mutate(
-      {
-        content,
-        nonce,
-        ...(replyToId ? { replyToId } : {}),
-        ...(attachmentIds?.length ? { attachmentIds } : {}),
-      },
-      // TG.9: DM bị chặn hai chiều trả 403 DM_BLOCKED — báo DmView bật banner + tắt composer.
-      dm?.onSendError ? { onError: dm.onSendError } : undefined,
-    );
-  }
+  // Identity ổn định: `retry` đi xuống từng hàng, hàng được `memo` nên prop hàm đổi mỗi
+  // lần pane render (mỗi tick cuộn) sẽ vô hiệu hoá memo. `mutate` và `ability` đã ổn định.
+  const onSendError = dm?.onSendError;
+  const send = useCallback(
+    (content: string, nonce: string, replyToId?: string, attachmentIds?: string[]) => {
+      if (!ready || !ability.can('create', 'Message')) return;
+      sendMutation.mutate(
+        {
+          content,
+          nonce,
+          ...(replyToId ? { replyToId } : {}),
+          ...(attachmentIds?.length ? { attachmentIds } : {}),
+        },
+        // TG.9: DM bị chặn hai chiều trả 403 DM_BLOCKED — báo DmView bật banner + tắt composer.
+        onSendError ? { onError: onSendError } : undefined,
+      );
+    },
+    [ready, ability, sendMutation, onSendError],
+  );
 
   // TG.22: gửi tin sticker — preview của sticker vừa chọn đi kèm để tin optimistic render
   // ảnh ngay (response của API sẽ thay bằng preview chuẩn có URL ký mới).
@@ -312,60 +320,69 @@ export function MessagePane({
     virtualizer.scrollToIndex(messages.length - 1, { align: 'end' });
   }, [messages.length, virtualizer]);
 
-  const retry = (message: ClientMessage) => {
-    if (!message.nonce) return;
-    // TG.22: gửi lại tin sticker giữ đúng sticker (preview có sẵn trong cache).
-    if (message.kind === 'sticker') {
-      scrollOnAppend.current = true;
-      sendMutation.mutate({
-        content: '',
-        nonce: message.nonce,
-        ...(message.replyTo?.id ? { replyToId: message.replyTo.id } : {}),
-        stickerId: message.sticker?.id,
-        stickerPreview: message.sticker ?? null,
-      });
-      return;
-    }
-    // TG.25: gửi lại tin gif — id payload được giữ lại trên tin optimistic (preview không có id);
-    // thiếu id/preview thì không gửi lại được (server sẽ từ chối payload thiếu id).
-    if (message.kind === 'gif') {
-      if (!message.gif || !message.gifId) return;
-      scrollOnAppend.current = true;
-      sendMutation.mutate({
-        content: '',
-        nonce: message.nonce,
-        ...(message.replyTo?.id ? { replyToId: message.replyTo.id } : {}),
-        gif: {
-          id: message.gifId,
-          url: message.gif.url,
-          width: message.gif.width,
-          height: message.gif.height,
-        },
-        gifPreview: message.gif,
-      });
-      return;
-    }
-    send(
-      message.content,
-      message.nonce,
-      message.replyTo?.id,
-      message.pendingAttachmentIds ?? message.attachments?.map((file) => file.id),
-    );
-  };
+  const retry = useCallback(
+    (message: ClientMessage) => {
+      if (!message.nonce) return;
+      // TG.22: gửi lại tin sticker giữ đúng sticker (preview có sẵn trong cache).
+      if (message.kind === 'sticker') {
+        scrollOnAppend.current = true;
+        sendMutation.mutate({
+          content: '',
+          nonce: message.nonce,
+          ...(message.replyTo?.id ? { replyToId: message.replyTo.id } : {}),
+          stickerId: message.sticker?.id,
+          stickerPreview: message.sticker ?? null,
+        });
+        return;
+      }
+      // TG.25: gửi lại tin gif — id payload được giữ lại trên tin optimistic (preview không có id);
+      // thiếu id/preview thì không gửi lại được (server sẽ từ chối payload thiếu id).
+      if (message.kind === 'gif') {
+        if (!message.gif || !message.gifId) return;
+        scrollOnAppend.current = true;
+        sendMutation.mutate({
+          content: '',
+          nonce: message.nonce,
+          ...(message.replyTo?.id ? { replyToId: message.replyTo.id } : {}),
+          gif: {
+            id: message.gifId,
+            url: message.gif.url,
+            width: message.gif.width,
+            height: message.gif.height,
+          },
+          gifPreview: message.gif,
+        });
+        return;
+      }
+      send(
+        message.content,
+        message.nonce,
+        message.replyTo?.id,
+        message.pendingAttachmentIds ?? message.attachments?.map((file) => file.id),
+      );
+    },
+    [send, sendMutation],
+  );
 
   // TG.5: nhảy tới tin gốc của một reply. Tin đã có trong cửa sổ → cuộn + tô sáng; tin cũ hơn
   // (chưa tải) → mở permalink để pane nạp `?around=` quanh nó (TG.5, ADR-0063).
-  const permalinkOf = (messageId: string) =>
-    isDm ? dmMessagePath(channelId, messageId) : messagePath(serverId, channelId, messageId);
-  function jumpTo(messageId: string) {
-    const index = messages.findIndex((message) => message.id === messageId);
-    if (index < 0) {
-      router.push(permalinkOf(messageId));
-      return;
-    }
-    virtualizer.scrollToIndex(index, { align: 'center' });
-    setJumpTarget(messageId);
-  }
+  const permalinkOf = useCallback(
+    (messageId: string) =>
+      isDm ? dmMessagePath(channelId, messageId) : messagePath(serverId, channelId, messageId),
+    [isDm, channelId, serverId],
+  );
+  const jumpTo = useCallback(
+    (messageId: string) => {
+      const index = messages.findIndex((message) => message.id === messageId);
+      if (index < 0) {
+        router.push(permalinkOf(messageId));
+        return;
+      }
+      virtualizer.scrollToIndex(index, { align: 'center' });
+      setJumpTarget(messageId);
+    },
+    [messages, router, permalinkOf, virtualizer],
+  );
   useEffect(() => {
     if (!jumpTarget) return;
     const timer = setTimeout(() => setJumpTarget(null), 2000);
