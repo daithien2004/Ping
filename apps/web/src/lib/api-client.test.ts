@@ -254,25 +254,50 @@ describe('api-client', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it('429 tạm dừng cả hàng đợi tới hết Retry-After rồi mới gửi tiếp (ADR-0078)', async () => {
+  it('GET gặp 429 tự chờ Retry-After rồi thử lại một lần; hàng đợi cũng chờ theo (ADR-0078)', async () => {
     vi.useFakeTimers();
     const { api } = await load();
-    fetchMock.mockImplementation(() =>
-      fetchMock.mock.calls.length === 1
+    fetchMock.mockImplementation((url) =>
+      url.endsWith('/a') && fetchMock.mock.calls.length === 1
         ? json(429, { code: 'TOO_MANY_REQUESTS' }, { 'Retry-After': '2' })
         : json(200, { ok: true }),
     );
 
-    await expect(api.get('/a')).rejects.toMatchObject({ status: 429 });
-    const next = api.get('/b');
+    const a = api.get('/a');
+    await flushMicrotasks();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const b = api.get('/b');
     await flushMicrotasks();
     expect(fetchMock).toHaveBeenCalledTimes(1);
 
     await vi.advanceTimersByTimeAsync(1_999);
     expect(fetchMock).toHaveBeenCalledTimes(1);
     await vi.advanceTimersByTimeAsync(1);
-    await expect(next).resolves.toEqual({ ok: true });
+    await expect(a).resolves.toEqual({ ok: true });
+    await expect(b).resolves.toEqual({ ok: true });
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it('GET gặp 429 hai lần liên tiếp thì báo lỗi, không thử lần ba', async () => {
+    vi.useFakeTimers();
+    const { api } = await load();
+    fetchMock.mockResolvedValue(json(429, { code: 'TOO_MANY_REQUESTS' }, { 'Retry-After': '1' }));
+
+    const request = api.get('/a').catch((error: unknown) => error);
+    await vi.advanceTimersByTimeAsync(1_000);
+    const error = await request;
+
+    expect(error).toMatchObject({ status: 429, code: ErrorCodes.TOO_MANY_REQUESTS });
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('POST gặp 429 không tự thử lại (không chắc idempotent)', async () => {
+    vi.useFakeTimers();
+    const { api } = await load();
+    fetchMock.mockResolvedValue(json(429, { code: 'TOO_MANY_REQUESTS' }, { 'Retry-After': '1' }));
+
+    await expect(api.post('/messages', { content: 'x' })).rejects.toMatchObject({ status: 429 });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it('X-RateLimit-Remaining: 0 tạm dừng tới X-RateLimit-Reset (không bắn vào bucket cạn)', async () => {

@@ -1,6 +1,7 @@
 # ADR-0053: Tệp riêng trên đĩa và pipeline upload có kiểm định
 
-Status: accepted — OWNER duyệt phương án TG.6 ngày 2026-10-26
+Status: accepted — OWNER duyệt phương án TG.6 ngày 2026-10-26. Hạn URL tệp tin nhắn 60 giây
+được nâng lên 24 giờ bởi [ADR-0079](0079-tai-tep-dinh-kem-luoi.md) (2026-11-06).
 Date: 2026-10-26
 
 ## Context
@@ -36,7 +37,8 @@ trả phí. Task TG.7/TG.22/TG.24 sẽ tái sử dụng pipeline, nhưng chưa t
   nhất; sau xử lý giữ dung lượng thật của original + output, sau dọn original chỉ tính output.
   Do đó một tệp nhỏ đang chờ cũng tạm giữ hơn 10 MiB. Hàng rejected/deleted không tính quota;
   deleting vẫn tính cho tới khi dọn xong. `sizeBytes` DTO là dung lượng **tệp gốc**.
-- URL tải ký HMAC-SHA256 có prefix riêng, ràng buộc attachment/user/variant/expiry, hạn 60 giây;
+- URL tải ký HMAC-SHA256 có prefix riêng, ràng buộc attachment/user/variant/expiry, hạn 60 giây
+  (nay 24 giờ — [ADR-0079](0079-tai-tep-dinh-kem-luoi.md));
   endpoint file xác thực chữ ký rồi **đọc quyền/membership mới từ Postgres**, bỏ cache quyền
   Redis. Tệp chưa gắn chỉ uploader xem; tin đã xóa hoặc channel đã mất không tải được. URL là
   bearer capability có thể chia sẻ trong thời hạn; không phải chứng minh danh tính người cầm URL.

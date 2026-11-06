@@ -71,6 +71,22 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/** Như `delay` nhưng dừng ngay khi signal bị hủy (đóng dialog/rời trang giữa lúc chờ 429). */
+function wait(ms: number, signal?: AbortSignal): Promise<void> {
+  if (signal?.aborted) return Promise.reject(abortError());
+  return new Promise((resolve, reject) => {
+    const onAbort = () => {
+      clearTimeout(timer);
+      reject(abortError());
+    };
+    const timer = setTimeout(() => {
+      signal?.removeEventListener('abort', onAbort);
+      resolve();
+    }, ms);
+    signal?.addEventListener('abort', onAbort, { once: true });
+  });
+}
+
 interface QueueWaiter {
   resolve: () => void;
   reject: (error: unknown) => void;
@@ -228,8 +244,19 @@ async function send(
   };
 
   try {
-    const response = await attempt();
+    let response = await attempt();
     noteResponse(response);
+    // 429 của chính request GET: chờ đúng Retry-After rồi thử lại một lần (ADR-0078). Không thử
+    // lần hai; POST/PUT/PATCH/DELETE không thử lại vì không chắc idempotent.
+    if (method === 'GET' && response.status === 429) {
+      const retryAfter = Math.min(
+        headerMs(response.headers.get('Retry-After')) ?? RETRY_AFTER_FALLBACK_MS,
+        RETRY_AFTER_MAX_MS,
+      );
+      await wait(retryAfter, options?.signal);
+      response = await attempt();
+      noteResponse(response);
+    }
     return response;
   } catch (error) {
     // Người dùng hủy (đóng dialog, rời trang): để AbortError đi tiếp, không thử lại.

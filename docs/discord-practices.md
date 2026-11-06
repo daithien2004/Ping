@@ -9,7 +9,7 @@ Lag và lỗi 429 của Ping đến từ việc web bắn 69 request `/unread` m
 1. **Nguyên nhân đã đo:** 69 request unread trong 83 ms, 38 request trả 429, `/permissions` mất 8 giây vì bị xếp hàng sau các request đó.
 2. **Unread:** Discord lưu con trỏ đã đọc theo channel, so sánh ID ở client và giữ bộ đếm mention sẵn; Ping đếm lại bằng SQL cho từng server.
 3. **Rate limit:** Discord chia bucket theo route và tài nguyên, trả header và bắt client chờ `Retry-After`; Ping có một bộ đếm 100/phút/IP cho mọi route, khóa 60 giây khi vượt, và client không xử lý 429.
-4. **Ảnh đính kèm:** Ping phục vụ byte ảnh qua chính API với link sống 60 giây, làm mới mỗi 45 giây cho từng file; Discord dùng CDN riêng và link sống 24 giờ.
+4. **Ảnh đính kèm:** Ping phục vụ byte ảnh qua chính API với link sống 60 giây, làm mới mỗi 45 giây cho từng file; Discord dùng CDN riêng và link sống 24 giờ. Từ ADR-0079, Ping bỏ làm mới định kỳ và nâng hạn link lên 24 giờ.
 5. **Đã đúng, không cần sửa:** ID sắp theo thời gian, index và cursor cho tin nhắn và thành viên, gộp presence, giới hạn typing, mô hình quyền tập trung, nonce và giới hạn gửi tin, thông báo hai tầng, tìm kiếm Postgres đúng quy mô, giới hạn sự kiện socket.
 
 Làm trước việc 1 đến 3 trong mục Lộ trình; chúng khắc phục phần lớn 429 và lag.
@@ -179,7 +179,7 @@ Danh sách thành viên (`servers.service.ts:292`) cũng đã phân trang bằng
 
 ## Attachments và CDN
 
-Ping phục vụ file ảnh qua chính API với link ký sống 60 giây, nên mỗi ảnh tốn hạn mức rate limit nhiều lần; Discord tách CDN khỏi API và dùng link ký sống 24 giờ.
+Ping phục vụ file ảnh qua chính API với link ký sống 60 giây, nên mỗi ảnh tốn hạn mức rate limit nhiều lần; Discord tách CDN khỏi API và dùng link ký sống 24 giờ. [ADR-0079](adr/0079-tai-tep-dinh-kem-luoi.md) đã nâng hạn link lên 24 giờ và bỏ làm mới định kỳ; byte ảnh vẫn đi qua API nên hạn mức chung vẫn là điểm khác biệt còn lại.
 
 **Discord làm gì** ([BleepingComputer, 2023](https://www.bleepingcomputer.com/news/security/discord-will-switch-to-temporary-file-links-to-block-malware-delivery)):
 
@@ -187,16 +187,16 @@ Ping phục vụ file ảnh qua chính API với link ký sống 60 giây, nên 
 - Khi client lấy dữ liệu có chứa link (ví dụ tin nhắn), API tự trả link còn hạn; link hết hạn thì xin link mới.
 - File tải từ CDN riêng nên không đụng vào giới hạn của API (suy ra từ việc Discord dùng tên miền CDN riêng; nguồn trên không nói rõ điều này).
 
-**Ping hiện tại** (đọc từ code):
+**Ping hiện tại** (đọc từ code, sau ADR-0079):
 
 | Khía cạnh                    | Discord                     | Ping                                                                                           |
 | ---------------------------- | --------------------------- | ---------------------------------------------------------------------------------------------- |
 | Nơi phục vụ byte file        | CDN riêng                   | chính API: `GET /api/v1/attachments/:id/file?...&signature=...` (`attachments.service.ts:358`) |
-| Thời hạn link                | 24 giờ                      | 60 giây (`AttachmentLimits.URL_SECONDS`)                                                       |
+| Thời hạn link                | 24 giờ                      | 24 giờ (`AttachmentLimits.URL_SECONDS`, nâng từ 60 giây — ADR-0079)                            |
 | Link đi kèm dữ liệu tin nhắn | có, API tự trả link còn hạn | không: client phải gọi `GET /attachments/:id/download` cho từng file                           |
-| Làm mới link                 | khi hết hạn                 | `refetchInterval: 45_000` cho mỗi file đang hiển thị                                           |
+| Làm mới link                 | khi hết hạn                 | không làm mới định kỳ; ảnh lỗi tải thì refetch đúng một lần (ADR-0079)                         |
 
-Hệ quả: mỗi ảnh trên màn hình là hai request lấy link (`attachment-list.tsx` gọi `useAttachmentLink` hai lần, một cho file, một cho thumbnail), lặp lại mỗi 45 giây, cộng với request tải byte ảnh mỗi khi URL đổi. `grep` chỉ thấy route health được `@SkipThrottle()`, nên theo code thì cả route `/file` cũng bị đếm vào 100 request/phút. Với 30 ảnh trên màn hình, ước tính thô: 30 × 2 request lấy link mỗi 45 giây ≈ 80 request/phút, chưa tính tải byte ảnh. Đây là ước tính từ code, chưa đo trên một kênh thật.
+Hệ quả trước ADR-0079: mỗi ảnh trên màn hình là hai request lấy link (`attachment-list.tsx` gọi `useAttachmentLink` hai lần, một cho file, một cho thumbnail), lặp lại mỗi 45 giây, cộng với request tải byte ảnh mỗi khi URL đổi. `grep` chỉ thấy route health được `@SkipThrottle()`, nên theo code thì cả route `/file` cũng bị đếm vào 100 request/phút. Với 30 ảnh trên màn hình, ước tính thô: 30 × 2 request lấy link mỗi 45 giây ≈ 80 request/phút, chưa tính tải byte ảnh. Đây là ước tính từ code, chưa đo trên một kênh thật.
 
 **Đề xuất cho Ping**, từ nhẹ đến nặng:
 
