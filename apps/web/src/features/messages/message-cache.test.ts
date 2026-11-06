@@ -385,6 +385,20 @@ describe('reactions (TG.2)', () => {
     expect(ids(applyReaction(base, 'missing', { emoji: '👍', count: 1 }))).toEqual(ids(base));
   });
 
+  it('applyReaction giữ `emojiName` của emoji tùy chỉnh khi event realtime đổi số đếm', () => {
+    const token = 'c:01a1b017-9dec-7381-886a-28c02713f875';
+    const base = cache([
+      withReactions('m1', [{ emoji: token, count: 1, me: false, emojiName: 'test_emoji' }]),
+    ]);
+    const updated = applyReaction(base, 'm1', { emoji: token, count: 2 })!;
+    expect(reactionsOf(updated, 'm1')).toEqual([
+      { emoji: token, count: 2, me: false, emojiName: 'test_emoji' },
+    ]);
+    // Emoji Unicode không có trường `emojiName`.
+    const plain = applyReaction(cache([withReactions('m1', [])]), 'm1', { emoji: '👍', count: 1 })!;
+    expect(reactionsOf(plain, 'm1')).toEqual([{ emoji: '👍', count: 1, me: false }]);
+  });
+
   it('setReactions thay toàn bộ nhóm bằng response chuẩn, không đụng tin khác', () => {
     const base = cache([
       withReactions('m2', [{ emoji: '🔥', count: 9, me: false }]),

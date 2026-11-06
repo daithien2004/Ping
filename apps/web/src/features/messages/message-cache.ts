@@ -269,7 +269,16 @@ export function applyReaction(
         const reactions =
           change.count <= 0
             ? rest
-            : sortReactions([...rest, { emoji: change.emoji, count: change.count, me }]);
+            : sortReactions([
+                ...rest,
+                // ADR-0081: giữ `emojiName` do server trả, event realtime không mang tên.
+                {
+                  emoji: change.emoji,
+                  count: change.count,
+                  me,
+                  ...(existing?.emojiName ? { emojiName: existing.emojiName } : {}),
+                },
+              ]);
         return { ...message, reactions };
       }),
     })),

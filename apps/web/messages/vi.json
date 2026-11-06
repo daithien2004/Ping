@@ -405,6 +405,7 @@
     "pickReaction": "Chọn cảm xúc",
     "reactWith": "Thả {emoji}",
     "removeReaction": "Gỡ cảm xúc {emoji} của bạn",
+    "reactionDeleted": "emoji đã xóa",
     "viewReactors": "Xem {count} người đã thả",
     "reactorsTitle": "Người đã thả {emoji}",
     "reactorsLoading": "Đang tải danh sách…",

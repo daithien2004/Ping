@@ -447,7 +447,9 @@ test('emoji tùy chỉnh: xóa → placeholder + pill degrade, đồng bộ hai 
       const pill = bobArticle.getByTestId(`reaction-c:${emoji.id}`);
       await expect(pill).toBeVisible();
       await expect(pill.locator('img')).toHaveCount(0);
-      await expect(pill).toContainText(`c:${emoji.id.slice(-8)}`); // nhãn rút gọn khi không resolve
+      // ADR-0081: API trả `emojiName` nên pill hiện `:ten:` thay cho id; tuyệt đối không lộ UUID.
+      await expect(pill.getByTestId('reaction-deleted-emoji')).toHaveText(`:${EMOJI_NAME}:`);
+      await expect(pill).not.toContainText(emoji.id.slice(-8));
       await expect(bobPage.getByTestId('message-composer')).toBeVisible(); // trang vẫn dùng được
     });
 
@@ -458,6 +460,14 @@ test('emoji tùy chỉnh: xóa → placeholder + pill degrade, đồng bộ hai 
         `:${EMOJI_NAME}:`,
         { timeout: 20_000 },
       );
+    });
+
+    await test.step('alice gỡ được reaction của emoji đã xóa (không còn lỗi 400)', async () => {
+      const pill = aliceArticle.getByTestId(`reaction-c:${emoji.id}`);
+      await expect(pill).toBeVisible();
+      await expect(pill).toHaveAttribute('data-me', 'true');
+      await pill.getByRole('button').first().click();
+      await expect(pill).toHaveCount(0, { timeout: 15_000 });
     });
   } finally {
     await alice.close();
