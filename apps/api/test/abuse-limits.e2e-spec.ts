@@ -218,7 +218,7 @@ describe('abuse limits (e2e)', () => {
       expect(await disconnected(socket)).toBe(true);
     });
 
-    it('drops a socket that sends a packet over 16 KB (maxHttpBufferSize)', async () => {
+    it('drops a socket that sends a packet over 4 KB (maxHttpBufferSize)', async () => {
       await redis.flushdb();
       const user = await registerUser('big');
       const socket = await connect(user.token);

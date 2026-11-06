@@ -124,7 +124,7 @@ bucket vừa cạn — tất cả không hậu tố.
 - Thay đổi payload phá vỡ → event mới (`message.created.v2`), không thêm trường `version`.
 - Event **không đảm bảo giao**: client phải bù bằng REST khi kết nối lại (đã có từ F5).
 - `channel.join` có ack `{ ok: true } | { ok: false, code }` với `code` thuộc `ErrorCodes`.
-- Giới hạn: gói ≤ 16 KB, 20 event/giây (bỏ qua) và 60 event/giây (ngắt) mỗi socket, 10 socket/user.
+- Giới hạn: gói ≤ 4 KB, 20 event/giây (bỏ qua) và 60 event/giây (ngắt) mỗi socket, 10 socket/user.
 
 ## 9. Thêm một endpoint mới
 

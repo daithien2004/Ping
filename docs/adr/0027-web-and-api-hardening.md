@@ -27,7 +27,7 @@ Date: 2026-10-20
   authentication. Redis down: allowed (fail-open).
 - **Sockets.** Per socket: 20 events/s are processed, beyond that ignored, beyond 60/s the socket is
   disconnected (counter lives in `socket.data`, it belongs to one live connection); at most 10
-  sockets per user across instances; `maxHttpBufferSize` 16 KB.
+  sockets per user across instances; `maxHttpBufferSize` 4 KB.
 - **Web headers.** `next.config.ts` sets CSP, `X-Content-Type-Options`, `Referrer-Policy`,
   `X-Frame-Options`, `Permissions-Policy`, and HSTS in production. CSP has no wildcard, `connect-src`
   is `'self'` plus the API origin and its `ws(s)` twin, `frame-ancestors 'none'`,

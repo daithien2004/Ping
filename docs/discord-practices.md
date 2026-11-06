@@ -343,13 +343,13 @@ Ping đã bảo vệ kết nối socket theo đúng tinh thần của Discord (g
 
 **Ping hiện tại** (`realtime.gateway.ts`, `redis-io.adapter.ts`, `socket.ts`):
 
-| Khía cạnh                           | Discord                             | Ping                                                                       |
-| ----------------------------------- | ----------------------------------- | -------------------------------------------------------------------------- |
-| Số sự kiện mỗi kết nối              | 120 mỗi 60 giây, vượt là ngắt       | cửa sổ 1 giây: trên 20 sự kiện thì bỏ qua, trên 60 thì ngắt (`overBudget`) |
-| Kích thước gói client gửi           | 4096 byte                           | `maxHttpBufferSize: 16 * 1024` (16 KB)                                     |
-| Số kết nối mỗi người                | không nêu ở nguồn đã đọc            | tối đa 10 (`MAX_SOCKETS_PER_USER`)                                         |
-| Heartbeat và phát hiện kết nối chết | heartbeat tự định nghiệm, có jitter | do Socket.IO lo; Ping không cấu hình `pingInterval` hay `pingTimeout`      |
-| Nối lại phía client                 | resume với `seq`                    | `createSocket` dùng mặc định của Socket.IO, chưa đặt tùy chọn nối lại      |
+| Khía cạnh                           | Discord                             | Ping                                                                                     |
+| ----------------------------------- | ----------------------------------- | ---------------------------------------------------------------------------------------- |
+| Số sự kiện mỗi kết nối              | 120 mỗi 60 giây, vượt là ngắt       | cửa sổ 1 giây: trên 20 sự kiện thì bỏ qua, trên 60 thì ngắt (`overBudget`)               |
+| Kích thước gói client gửi           | 4096 byte                           | `maxHttpBufferSize: 4 * 1024` (4 KB, bằng Discord)                                       |
+| Số kết nối mỗi người                | không nêu ở nguồn đã đọc            | tối đa 10 (`MAX_SOCKETS_PER_USER`)                                                       |
+| Heartbeat và phát hiện kết nối chết | heartbeat tự định nghiệm, có jitter | do Socket.IO lo; Ping không cấu hình `pingInterval` hay `pingTimeout`                    |
+| Nối lại phía client                 | resume với `seq`                    | `createSocket` đặt nối lại có jitter (1–10 s, lệch ±50% mỗi lần); chưa resume theo `seq` |
 
 **Đề xuất cho Ping:**
 
