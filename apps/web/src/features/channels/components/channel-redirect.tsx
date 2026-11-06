@@ -1,14 +1,15 @@
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { useTranslations } from 'use-intl';
+import { useServerAbility } from '@/features/permissions/context';
 import { channelPath } from '@/features/servers/navigation';
 import { useChannels } from '../hooks';
 
-/** /servers/:id → channel đầu tiên của server. */
+/** /servers/:id → channel đầu tiên của server. serverId từ provider, không từ useParams() (ADR-0020). */
 export function ChannelRedirect() {
-  const { serverId } = useParams<{ serverId: string }>();
+  const { serverId } = useServerAbility();
   const router = useRouter();
   const { data: channels } = useChannels(serverId);
   const first = channels[0];
