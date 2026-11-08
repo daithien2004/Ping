@@ -1,0 +1,164 @@
+name: Publish and deploy
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      rollback_tag:
+        description: Existing 40-character commit SHA image tag to deploy (rollback)
+        required: true
+        type: string
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Build and publish GHCR images
+    if: >-
+      github.event_name == 'workflow_run' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Check out the commit tested by CI
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Normalize GHCR owner
+        id: image
+        run: echo "owner=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push API image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          target: runner
+          push: true
+          tags: ghcr.io/${{ steps.image.outputs.owner }}/ping-api:${{ github.event.workflow_run.head_sha }}
+          labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,mode=max,scope=api
+
+      - name: Build and push migration image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          target: migrate
+          push: true
+          tags: ghcr.io/${{ steps.image.outputs.owner }}/ping-migrate:${{ github.event.workflow_run.head_sha }}
+          labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,mode=max,scope=api
+
+      - name: Build and push web image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/web/Dockerfile
+          push: true
+          tags: ghcr.io/${{ steps.image.outputs.owner }}/ping-web:${{ github.event.workflow_run.head_sha }}
+          labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
+          build-args: |
+            NEXT_PUBLIC_API_URL=${{ vars.PRODUCTION_URL }}
+            NEXT_PUBLIC_SENTRY_DSN=${{ vars.NEXT_PUBLIC_SENTRY_DSN }}
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
+
+  deploy:
+    name: Deploy to VPS
+    needs: publish
+    if: >-
+      always() && !cancelled() &&
+      vars.VPS_DEPLOY_ENABLED == 'true' &&
+      ((github.event_name == 'workflow_run' && needs.publish.result == 'success') ||
+       (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.rollback_tag != ''))
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ vars.PRODUCTION_ENVIRONMENT }}
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Check out deployment files
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Select and validate image tag
+        id: release
+        env:
+          AUTO_TAG: ${{ github.event.workflow_run.head_sha }}
+          ROLLBACK_TAG: ${{ inputs.rollback_tag }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = workflow_run ]; then
+            tag="$AUTO_TAG"
+          else
+            tag="$ROLLBACK_TAG"
+          fi
+          [[ "$tag" =~ ^[a-f0-9]{40}$ ]] || { echo 'Expected a 40-character lowercase commit SHA tag.' >&2; exit 2; }
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Configure restricted SSH access
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          test -n "$VPS_SSH_KEY"
+          test -n "$VPS_KNOWN_HOSTS"
+          install -m 700 -d "$HOME/.ssh"
+          printf '%s\n' "$VPS_SSH_KEY" > "$HOME/.ssh/id_ed25519"
+          printf '%s\n' "$VPS_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"
+          printf 'Host *\n  BatchMode yes\n  StrictHostKeyChecking yes\n  ServerAliveInterval 30\n' > "$HOME/.ssh/config"
+          chmod 600 "$HOME/.ssh/config"
+
+      - name: Upload deployment configuration through the forced command
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+        run: |
+          set -euo pipefail
+          test -n "$VPS_HOST"
+          target="deploy@$VPS_HOST"
+          tar -czf - docker-compose.prod.example.yml docker-compose.prod.tls.yml \
+            ops/nginx/nginx.conf ops/nginx/routes.conf ops/nginx/http.conf.template ops/nginx/tls.conf.template \
+            deploy/omni-ci deploy/deploy.sh deploy/backup.sh \
+            deploy/certbot-pre.sh deploy/certbot-post.sh deploy/certbot-sync.sh | ssh "$target" config
+
+      - name: Deploy the selected image tag
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_OWNER: ${{ github.repository_owner }}
+          IMAGE_TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          set -euo pipefail
+          target="deploy@$VPS_HOST"
+          printf '%s' "$GHCR_TOKEN" | ssh "$target" deploy "${GHCR_OWNER,,}" "$IMAGE_TAG"

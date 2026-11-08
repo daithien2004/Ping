@@ -439,11 +439,13 @@ jobs:
           {
             echo "POSTGRES_PASSWORD=ci-password-ci-password"
             echo "JWT_ACCESS_SECRET=ci-only-secret-ci-only-secret-ci-only-0123456789"
+            echo "GHCR_OWNER=local"
+            echo "IMAGE_TAG=ci"
             echo "PUBLIC_URL=https://localhost:8443"
+            echo "TLS_CERT_DIR=$RUNNER_TEMP/ping-certs"
             echo "BIND_ADDRESS=127.0.0.1"
             echo "HTTP_PORT=8080"
             echo "HTTPS_PORT=8443"
-            echo "TLS_CERT_DIR=$RUNNER_TEMP/ping-certs"
           } > .env.prod
           mkdir -p "$RUNNER_TEMP/ping-certs"
           openssl req -x509 -newkey rsa:2048 -nodes -days 1 \

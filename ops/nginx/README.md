@@ -17,7 +17,7 @@ Không cần cài Nginx trên Windows; Docker chạy nó trong container.
 5. Tắt buffering response để Next có thể stream; tắt buffering request để API sớm áp giới hạn
    body 32 KB. API trả lỗi JSON có `requestId`, thay vì Nginx trả trang HTML cho request 40 KB.
 6. Log proxy chỉ ghi method, status và mã tham chiếu (ưu tiên `X-Request-Id` từ API), không ghi URL,
-   query, cookie hoặc body. HTTPS đọc khóa/chứng chỉ được mount read-only từ ngoài repo.
+   query, cookie hoặc body. HTTPS đọc thư mục chỉ chứa chứng chỉ của Ping, mount read-only từ ngoài repo.
 
 ## Local HTTP
 
@@ -51,7 +51,7 @@ PUBLIC_URL=https://localhost:8443
 BIND_ADDRESS=127.0.0.1
 HTTP_PORT=8080
 HTTPS_PORT=8443
-TLS_CERT_DIR=C:/absolute/path/to/certs
+TLS_CERT_DIR=C:/absolute/path/to/server-certs
 ```
 
 ```sh
@@ -67,24 +67,32 @@ Smoke HTTPS (PowerShell, CA thật hoặc CA thử được tin, không tắt ki
 ```powershell
 $env:BASE_URL = 'https://localhost:8443'
 $env:HTTP_URL = 'http://localhost:8080'
-$env:NODE_EXTRA_CA_CERTS = 'C:/absolute/path/to/certs/fullchain.pem'
+$env:NODE_EXTRA_CA_CERTS = 'C:/absolute/path/to/server-certs/fullchain.pem'
 node apps/api/test/smoke/prod-stack.mjs
 ```
 
 `NODE_EXTRA_CA_CERTS` chỉ dành cho CA thử; không đặt thành chứng chỉ leaf nếu sử dụng chuỗi chứng chỉ
 công khai bình thường. Sau kiểm tra, xóa các biến khỏi phiên shell nếu chuyển về kiểm HTTP.
 
-## Khi có domain thật
+## HTTPS trên VPS bằng IP hoặc domain
 
-Đặt `PUBLIC_URL=https://ping.example.com`, `BIND_ADDRESS=0.0.0.0`, `HTTP_PORT=80`, `HTTPS_PORT=443` và
-`TLS_CERT_DIR` tương ứng. Phải có chứng chỉ hợp lệ trước khi chạy compose TLS. Nginx không tự xin hoặc
-gia hạn chứng chỉ: hệ thống cấp chứng chỉ bên ngoài cần gia hạn file rồi chạy:
+Đặt `PUBLIC_URL=https://20.193.75.48`, `BIND_ADDRESS=0.0.0.0`, `HTTP_PORT=80`, `HTTPS_PORT=443`,
+`TLS_CERT_DIR=/opt/ping/tls`. Thư mục này chỉ chứa bản sao `fullchain.pem` và `privkey.pem` của Ping,
+không chứa CA key hay certificate khác. Nginx không tự xin chứng chỉ. Bootstrap VPS cài Certbot
+standalone và hooks dừng Nginx trước khi gia hạn, chép chứng chỉ mới rồi khởi động lại proxy. Lần đầu:
+
+```sh
+sudo certbot certonly --standalone --preferred-profile shortlived --ip-address 20.193.75.48 --agree-tos -m you@example.com --non-interactive
+sudo /usr/local/bin/ping-cert-sync
+```
+
+Nếu chứng chỉ được gia hạn bởi công cụ khác, chép file mới vào `TLS_CERT_DIR`, rồi kiểm tra và reload Nginx:
 
 ```sh
 docker compose -p pingprod -f docker-compose.prod.example.yml -f docker-compose.prod.tls.yml --env-file .env.prod exec -T nginx nginx -t
 docker compose -p pingprod -f docker-compose.prod.example.yml -f docker-compose.prod.tls.yml --env-file .env.prod exec -T nginx nginx -s reload
 ```
 
-Quản lý domain, ACME, tự động gia hạn, registry, backup và firewall thuộc pha staging; hướng dẫn này
-chưa chứng minh đã triển khai trên cloud. Không đặt thêm proxy phía trước mà chưa xem lại
+Bootstrap và cấp chứng chỉ IP đã chạy thành công trên VPS. Chưa xác minh end-to-end việc deploy ứng dụng,
+gia hạn chứng chỉ, backup/restore hay vận hành production. Không đặt thêm proxy phía trước mà chưa xem lại
 `TRUST_PROXY` và các header IP/giao thức.

@@ -7,7 +7,7 @@ services:
     volumes:
       - ./ops/nginx/tls.conf.template:/etc/nginx/templates/default.conf.template:ro
       - type: bind
-        source: ${TLS_CERT_DIR:?Dat TLS_CERT_DIR toi thu muc chua fullchain.pem va privkey.pem}
+        source: ${TLS_CERT_DIR:?Set TLS_CERT_DIR to the directory containing fullchain.pem and privkey.pem}
         target: /etc/nginx/certs
         read_only: true
         bind:
