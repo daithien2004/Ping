@@ -193,6 +193,9 @@ Có sẵn Dockerfile cho api và web, stack production mẫu (`docker-compose.pr
 Redis, migration chạy riêng), [cấu hình HTTP/HTTPS](ops/nginx/README.md) và CI
 ([ADR-0035](docs/adr/0035-nginx-reverse-proxy.md)).
 
+Đã thêm workflow chuẩn bị CI/CD một VPS qua GHCR, SSH restricted command, bootstrap env/backup và rollback theo SHA
+([runbook](docs/runbook/ci-cd-vps.md), [ADR-0083](docs/adr/0083-ghcr-and-github-actions-vps-deployment.md)). Bootstrap và cấp chứng chỉ IP đã chạy trên VPS; deploy app và gia hạn tự động chưa được xác minh end-to-end.
+
 **Chưa có bản chạy công khai.** `v0.1.0` nghiệm thu **local-only**: deploy/backup/restore diễn tập trên Docker
 local ([ADR-0036](docs/adr/0036-local-deployment.md)); `v0.2.0` hoãn hạ tầng trả phí
 ([ADR-0059](docs/adr/0059-defer-paid-infrastructure.md)) nên không có link staging. Mọi số hiệu năng là đo lab

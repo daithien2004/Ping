@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+# Forced SSH command for GitHub Actions. Only config, deploy, and status are accepted.
+set -euo pipefail
+
+APP_DIR=/opt/ping
+read -r -a args <<< "${SSH_ORIGINAL_COMMAND:-}"
+
+compose() {
+  cd "$APP_DIR"
+  docker compose -p pingprod \
+    -f docker-compose.prod.example.yml \
+    -f docker-compose.prod.tls.yml \
+    --env-file .env.prod --env-file images.env "$@"
+}
+
+case "${args[0]:-}" in
+  config)
+    temp_dir="$(mktemp -d)"
+    archive="$temp_dir/config.tar.gz"
+    trap 'rm -rf "$temp_dir"' EXIT
+    cat > "$archive"
+    while IFS= read -r path; do
+      case "$path" in
+        docker-compose.prod.example.yml|docker-compose.prod.tls.yml|\
+        ops/|ops/nginx/|ops/nginx/nginx.conf|ops/nginx/routes.conf|ops/nginx/http.conf.template|ops/nginx/tls.conf.template|\
+        deploy/|deploy/omni-ci|deploy/deploy.sh|deploy/backup.sh|deploy/certbot-pre.sh|deploy/certbot-post.sh|deploy/certbot-sync.sh) ;;
+        *) echo "rejected config path: $path" >&2; exit 2 ;;
+      esac
+    done < <(tar -tzf "$archive")
+    tar -xzf "$archive" --no-same-owner --no-same-permissions -C "$temp_dir"
+    for path in docker-compose.prod.example.yml docker-compose.prod.tls.yml \
+      ops/nginx/nginx.conf ops/nginx/routes.conf ops/nginx/http.conf.template ops/nginx/tls.conf.template \
+      deploy/omni-ci deploy/deploy.sh deploy/backup.sh deploy/certbot-pre.sh deploy/certbot-post.sh deploy/certbot-sync.sh; do
+      [ -f "$temp_dir/$path" ] && [ ! -L "$temp_dir/$path" ] || continue
+      mkdir -p "$APP_DIR/$(dirname "$path")"
+      install -m 644 "$temp_dir/$path" "$APP_DIR/$path"
+    done
+    chmod 755 "$APP_DIR/deploy/deploy.sh" "$APP_DIR/deploy/backup.sh"
+    echo 'deployment config updated'
+    ;;
+  deploy)
+    owner="${args[1]:-}"
+    tag="${args[2]:-}"
+    [[ "$owner" =~ ^[a-z0-9-]{1,39}$ ]] || { echo 'invalid registry owner' >&2; exit 2; }
+    [[ "$tag" =~ ^[a-f0-9]{40}$ ]] || { echo 'invalid image SHA tag' >&2; exit 2; }
+    export DOCKER_CONFIG
+    DOCKER_CONFIG="$(mktemp -d)"
+    trap 'docker logout ghcr.io >/dev/null 2>&1 || true; rm -rf "$DOCKER_CONFIG"' EXIT
+    docker login ghcr.io --username "$owner" --password-stdin
+    "$APP_DIR/deploy/deploy.sh" "$tag"
+    ;;
+  status)
+    compose ps -a
+    ;;
+  *)
+    echo 'allowed commands: config, deploy <owner> <sha>, status' >&2
+    exit 2
+    ;;
+esac

@@ -1,5 +1,7 @@
 # Runbook
 
+Hướng dẫn HTTPS trực tiếp trên IP VPS và chuyển sang domain sau này: [vps-ip-tls.md](vps-ip-tls.md).
+
 Tra cứu khi vận hành. Các runbook mới (tra lỗi, migration, sao lưu, rollback) nói rõ lệnh nào **đã được chạy thử** và lệnh nào chỉ theo tài liệu.
 
 | Tình huống                                    | Đọc                                              |
@@ -11,6 +13,7 @@ Tra cứu khi vận hành. Các runbook mới (tra lỗi, migration, sao lưu, r
 | Postgres hoặc Redis hỏng, tắt instance        | [failure-modes.md](failure-modes.md)             |
 | Có cảnh báo từ Prometheus                     | [alerts.md](alerts.md)                           |
 | Triển khai stack production chạy local        | [deploy.md](deploy.md)                           |
+| CI/CD từ GitHub Actions lên VPS               | [ci-cd-vps.md](ci-cd-vps.md)                     |
 
 Đã có [`deploy.md`](deploy.md) cho stack production chạy local bằng Docker ([ADR-0036](../adr/0036-local-deployment.md)).
 Runbook triển khai cho nơi chạy thật (chọn môi trường, tên miền, TLS tự động, lịch backup ngoài máy)

@@ -50,7 +50,7 @@ phải khớp env ban đầu: đổi `POSTGRES_PASSWORD` trong env không đổi
 if (-not (Test-Path -LiteralPath $envFile)) {
   if (Test-Path -LiteralPath '.env.prod') {
     $settings = @(Get-Content -LiteralPath '.env.prod' | Where-Object {
-      $_ -notmatch '^(PUBLIC_URL|BIND_ADDRESS|HTTP_PORT|HTTPS_PORT|TLS_CERT_DIR|PING_RELEASE|SENTRY_DSN|NEXT_PUBLIC_SENTRY_DSN)='
+      $_ -notmatch '^(PUBLIC_URL|GHCR_OWNER|IMAGE_TAG|TLS_CERT_DIR|TLS_CERT_ROOT|TLS_CERT_SUBDIR|TLS_CERT_DOMAIN|TLS_CERT_HOST|BIND_ADDRESS|HTTP_PORT|HTTPS_PORT|PING_RELEASE|SENTRY_DSN|NEXT_PUBLIC_SENTRY_DSN)='
     })
   } else {
     docker volume inspect pingprod_pgdata *> $null
@@ -61,6 +61,7 @@ if (-not (Test-Path -LiteralPath $envFile)) {
   $settings += @(
     'PUBLIC_URL=https://localhost:8443', 'BIND_ADDRESS=127.0.0.1',
     'HTTP_PORT=8080', 'HTTPS_PORT=8443',
+    'GHCR_OWNER=local', 'IMAGE_TAG=local',
     ('TLS_CERT_DIR=' + (Join-Path $tlsRoot 'server').Replace('\', '/')),
     'PING_RELEASE=practice-a', 'SENTRY_DSN=', 'NEXT_PUBLIC_SENTRY_DSN='
   )

@@ -1,6 +1,6 @@
 # Stack production mẫu (ADR-0035): nginx → web + api → postgres + redis, migration là service chạy MỘT LẦN.
-# Dùng:  cp .env.prod.example .env.prod  (điền giá trị thật)
-#        docker compose -f docker-compose.prod.example.yml --env-file .env.prod up -d --build
+# Local: docker compose -p pingprod -f docker-compose.prod.example.yml --env-file .env.prod up -d --build
+# VPS: GitHub Actions publish image lên GHCR rồi chạy compose không có --build.
 # Một domain duy nhất: Nginx đưa /api và /socket.io về api, còn lại về web. Cùng origin nên cookie refresh
 # và CSP (connect-src 'self') chạy đúng, không cần CORS hay tên miền phụ.
 services:
@@ -37,6 +37,7 @@ services:
 
   # Migration tách khỏi API: chạy xong (thành công) thì api mới khởi động. Không để mọi instance tự migrate.
   migrate:
+    image: ghcr.io/${GHCR_OWNER}/ping-migrate:${IMAGE_TAG}
     build: { context: ., dockerfile: apps/api/Dockerfile, target: migrate }
     environment:
       DATABASE_URL: postgresql://ping:${POSTGRES_PASSWORD}@postgres:5432/ping
@@ -45,6 +46,7 @@ services:
     restart: 'no'
 
   api:
+    image: ghcr.io/${GHCR_OWNER}/ping-api:${IMAGE_TAG}
     build: { context: ., dockerfile: apps/api/Dockerfile, target: runner }
     environment: &api-environment
       NODE_ENV: production
@@ -71,6 +73,7 @@ services:
     restart: unless-stopped
 
   worker:
+    image: ghcr.io/${GHCR_OWNER}/ping-api:${IMAGE_TAG}
     build: { context: ., dockerfile: apps/api/Dockerfile, target: runner }
     command: ['node', 'dist/worker.js']
     environment:
@@ -99,6 +102,7 @@ services:
     restart: unless-stopped
 
   web:
+    image: ghcr.io/${GHCR_OWNER}/ping-web:${IMAGE_TAG}
     build:
       context: .
       dockerfile: apps/web/Dockerfile

@@ -6,21 +6,22 @@ v0.2.0: [điểm vào công việc](v0.2.0/plan.md), [trạng thái](v0.2.0/stat
 
 ## Đọc theo nhu cầu
 
-| Bạn muốn                             | Bắt đầu ở đâu                                                                               |
-| ------------------------------------ | ------------------------------------------------------------------------------------------- |
-| Chạy dự án local                     | [README gốc](../README.md), [hướng dẫn đóng góp](../CONTRIBUTING.md)                        |
-| Hiểu các thành phần và luồng dữ liệu | [Kiến trúc](architecture.md)                                                                |
-| Hiểu lý do chọn một thiết kế         | [ADR](adr/), các nhóm bên dưới                                                              |
-| Xem hệ thống UI và hướng làm đẹp     | [Hệ thống UI frontend](design/ui-system.md)                                                 |
-| Thêm endpoint hoặc socket event      | [Quy ước API](api-conventions.md), schema/type trong `packages/shared`                      |
-| Kiểm tra bảo mật                     | [Threat model](security/threat-model.md), [hướng dẫn tự review](review/reading-guide.md)    |
-| Thử stack production qua Nginx       | [Hướng dẫn HTTP/HTTPS](../ops/nginx/README.md), [ADR-0035](adr/0035-nginx-reverse-proxy.md) |
-| Tra lỗi, migrate, backup, rollback   | [Mục lục runbook](runbook/README.md)                                                        |
-| Chạy hoặc đọc load test              | [Hiệu năng](perf/README.md)                                                                 |
-| Học cách Discord xử lý               | [Thực hành của Discord](discord-practices.md)                                               |
-| Xem sản phẩm chạy                    | [Kịch bản demo 5 phút](v0.2.0/demo.md) (`pnpm demo:prepare` dựng DB demo)                   |
-| Xem điều kiện phát hành còn thiếu    | [Nghiệm thu v0.2.0](v0.2.0/acceptance/v0.2.0.md), [v0.1.0](acceptance/v0.1.0.md) (lưu trữ)  |
-| Chọn việc cải thiện tiếp theo        | [Nợ kỹ thuật](tech-debt.md)                                                                 |
+| Bạn muốn                             | Bắt đầu ở đâu                                                                                     |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------- |
+| Chạy dự án local                     | [README gốc](../README.md), [hướng dẫn đóng góp](../CONTRIBUTING.md)                              |
+| Hiểu các thành phần và luồng dữ liệu | [Kiến trúc](architecture.md)                                                                      |
+| Hiểu lý do chọn một thiết kế         | [ADR](adr/), các nhóm bên dưới                                                                    |
+| Xem hệ thống UI và hướng làm đẹp     | [Hệ thống UI frontend](design/ui-system.md)                                                       |
+| Thêm endpoint hoặc socket event      | [Quy ước API](api-conventions.md), schema/type trong `packages/shared`                            |
+| Kiểm tra bảo mật                     | [Threat model](security/threat-model.md), [hướng dẫn tự review](review/reading-guide.md)          |
+| Thử stack production qua Nginx       | [Hướng dẫn HTTP/HTTPS](../ops/nginx/README.md), [ADR-0035](adr/0035-nginx-reverse-proxy.md)       |
+| Deploy tự động từ GitHub lên VPS     | [CI/CD VPS](runbook/ci-cd-vps.md), [ADR-0083](adr/0083-ghcr-and-github-actions-vps-deployment.md) |
+| Tra lỗi, migrate, backup, rollback   | [Mục lục runbook](runbook/README.md)                                                              |
+| Chạy hoặc đọc load test              | [Hiệu năng](perf/README.md)                                                                       |
+| Học cách Discord xử lý               | [Thực hành của Discord](discord-practices.md)                                                     |
+| Xem sản phẩm chạy                    | [Kịch bản demo 5 phút](v0.2.0/demo.md) (`pnpm demo:prepare` dựng DB demo)                         |
+| Xem điều kiện phát hành còn thiếu    | [Nghiệm thu v0.2.0](v0.2.0/acceptance/v0.2.0.md), [v0.1.0](acceptance/v0.1.0.md) (lưu trữ)        |
+| Chọn việc cải thiện tiếp theo        | [Nợ kỹ thuật](tech-debt.md)                                                                       |
 
 ## Bản đồ ADR
 
@@ -39,6 +40,7 @@ ADR ghi quyết định, lý do, phương án đã loại và hệ quả; số t
 | Hiệu năng tải trang                      | [0077 — unread gộp một request](adr/0077-unread-gop-mot-request.md), [0078 — hàng đợi request và Retry-After](adr/0078-hang-doi-request-va-retry-after.md), [0079 — tải tệp đính kèm lười](adr/0079-tai-tep-dinh-kem-luoi.md), [0080 — rate limit theo bucket và người dùng](adr/0080-rate-limit-theo-bucket-va-nguoi-dung.md)                                                |
 | Emoji và cảm xúc                         | [0081 — reaction của emoji đã xóa](adr/0081-reaction-cua-emoji-da-xoa.md)                                                                                                                                                                                                                                                                                                     |
 | Kiểm thử                                 | [0082 — CSDL riêng cho e2e web](adr/0082-csdl-rieng-cho-e2e-web.md)                                                                                                                                                                                                                                                                                                           |
+| Deploy VPS                               | [0083 — image GHCR, SSH giới hạn, env trên VPS, rollback và Certbot cho Nginx](adr/0083-ghcr-and-github-actions-vps-deployment.md)                                                                                                                                                                                                                                            |
 
 ## Cách đọc trạng thái và bằng chứng
 
