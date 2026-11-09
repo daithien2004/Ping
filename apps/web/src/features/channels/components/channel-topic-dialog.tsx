@@ -81,6 +81,7 @@ export function ChannelTopicDialog({
           </p>
         )}
         <PingButton
+          variant="primary"
           htmlType="submit"
           loading={mutation.isPending}
           disabled={mutation.isPending}

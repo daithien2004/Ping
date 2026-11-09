@@ -60,6 +60,7 @@ export function ResetPasswordForm() {
           {t('resetSuccess')}
         </p>
         <PingButton
+          variant="primary"
           size="lg"
           block
           data-testid="reset-go-login"
@@ -109,7 +110,7 @@ export function ResetPasswordForm() {
           {errorMessage(reset.error)}
         </p>
       )}
-      <PingButton htmlType="submit" size="lg" block loading={reset.isPending}>
+      <PingButton variant="primary" htmlType="submit" size="lg" block loading={reset.isPending}>
         {t('resetSubmit')}
       </PingButton>
       <p className="mt-2 text-sm">

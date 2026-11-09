@@ -88,14 +88,22 @@ export function DevUiGallery() {
 
       <Section title="Nút và hành động">
         <Row label="PingButton — variant, size, trạng thái">
-          <PingButton>Chính</PingButton>
+          <PingButton variant="primary">Chính</PingButton>
           <PingButton variant="secondary">Phụ</PingButton>
           <PingButton variant="ghost">Nhạt</PingButton>
           <PingButton variant="danger">Nguy hiểm</PingButton>
-          <PingButton size="sm">Nhỏ</PingButton>
-          <PingButton size="lg">Lớn</PingButton>
-          <PingButton loading>Đang lưu</PingButton>
-          <PingButton disabled>Vô hiệu</PingButton>
+          <PingButton variant="primary" size="sm">
+            Nhỏ
+          </PingButton>
+          <PingButton variant="primary" size="lg">
+            Lớn
+          </PingButton>
+          <PingButton variant="primary" loading>
+            Đang lưu
+          </PingButton>
+          <PingButton variant="primary" disabled>
+            Vô hiệu
+          </PingButton>
         </Row>
         <Row label="PingIconButton — luôn có aria-label">
           <PingIconButton icon={<Copy />} aria-label="Sao chép liên kết" />
@@ -179,7 +187,7 @@ export function DevUiGallery() {
             >
               <PingInput placeholder="vd: thông báo" />
             </PingFormItem>
-            <PingButton htmlType="submit" size="sm">
+            <PingButton variant="primary" htmlType="submit" size="sm">
               Gửi
             </PingButton>
           </PingForm>
@@ -210,7 +218,7 @@ export function DevUiGallery() {
           <PingAvatar presence="offline">D</PingAvatar>
         </Row>
         <Row label="PingSpinner / PingSkeleton">
-          <PingSpinner size="small" />
+          <PingSpinner size="sm" />
           <PingSpinner />
           <PingSkeleton active />
           <PingSkeleton block className="h-10 w-40" />

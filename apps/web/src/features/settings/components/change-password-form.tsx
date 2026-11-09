@@ -101,6 +101,7 @@ export function ChangePasswordForm() {
           </p>
         )}
         <PingButton
+          variant="primary"
           htmlType="submit"
           block
           loading={change.isPending}

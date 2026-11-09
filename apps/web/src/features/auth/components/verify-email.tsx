@@ -65,6 +65,7 @@ export function VerifyEmailPanel() {
           {t('verifySuccess')}
         </p>
         <PingButton
+          variant="primary"
           size="lg"
           block
           data-testid="verify-go-login"
@@ -148,7 +149,7 @@ function ResendSection({ open, onOpen }: { open: boolean; onOpen: () => void }) 
           {errorMessage(resend.error)}
         </p>
       )}
-      <PingButton htmlType="submit" block loading={resend.isPending}>
+      <PingButton variant="primary" htmlType="submit" block loading={resend.isPending}>
         {t('resendAction')}
       </PingButton>
     </PingForm>

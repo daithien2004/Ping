@@ -3,13 +3,7 @@
 import { Table } from 'antd';
 import type { ReactNode } from 'react';
 
-/**
- * API riêng của `PingTable` (ADR-0050): không rò prop antd ra ngoài. Cột được mô tả bằng
- * `header` + `render` (không phải `title`/`dataIndex` của antd) để đổi thư viện sau này
- * không phải sửa nơi dùng.
- */
 export interface PingTableColumn<T> {
-  /** Khoá cột — dùng làm `dataIndex` và định danh ô. */
   key: string;
   header: ReactNode;
   render?: (row: T) => ReactNode;
@@ -20,12 +14,11 @@ export interface PingTableColumn<T> {
 export interface PingTableProps<T> {
   columns: PingTableColumn<T>[];
   rows: T[];
-  /** Khoá duy nhất của mỗi dòng (id của bản ghi). */
   rowKey: (row: T) => string;
   loading?: boolean;
-  /** Nội dung khi bảng rỗng (dùng `PingEmpty` theo quy ước TF.9). */
+  /** Nội dung khi bảng rỗng. */
   empty?: ReactNode;
-  /** Tên truy cập của bảng (đọc bằng trình đọc màn hình). */
+  /** Tên truy cập của bảng. */
   label?: string;
 }
 
@@ -45,7 +38,6 @@ export function PingTable<T>({
       loading={loading}
       locale={{ emptyText: empty }}
       pagination={false}
-      // Bảng quản trị giữ nguyên cột; màn hẹp cuộn ngang thay vì bóp nội dung (T6.8).
       scroll={{ x: 'max-content' }}
       columns={columns.map((column) => ({
         key: column.key,

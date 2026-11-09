@@ -81,7 +81,13 @@ export function RegisterForm() {
             })}
           </p>
         )}
-        <PingButton htmlType="submit" size="lg" block loading={registerMutation.isPending}>
+        <PingButton
+          variant="primary"
+          htmlType="submit"
+          size="lg"
+          block
+          loading={registerMutation.isPending}
+        >
           {t('createAccount')}
         </PingButton>
         <p className="mt-2 text-sm">

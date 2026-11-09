@@ -38,7 +38,9 @@ function AbilityScope({ serverId, children }: { serverId: string; children: Reac
     return (
       <div role="alert" className="m-auto flex flex-col items-center gap-3">
         <p>{errorMessage(query.error)}</p>
-        <PingButton onClick={() => void query.refetch()}>{t('retry')}</PingButton>
+        <PingButton variant="primary" onClick={() => void query.refetch()}>
+          {t('retry')}
+        </PingButton>
       </div>
     );
   if (!query.data) return <Loading />;

@@ -11,7 +11,7 @@ import {
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'use-intl';
 import { PingModal } from '@/components/ui/ping-modal';
-import { PingInput } from '@/components/ui/ping-input';
+import { PingInput, type PingInputRef } from '@/components/ui/ping-input';
 import { PingEmpty, PING_EMPTY_IMAGE_SIMPLE } from '@/components/ui/ping-empty';
 
 /**
@@ -50,7 +50,7 @@ export function QuickSwitcher({ items, open, onOpenChange }: QuickSwitcherProps)
   // Callback ref (không phải ref object + useEffect): antd mount nội dung modal qua Portal ở
   // commit sau, nên ref object còn null khi effect của component này chạy; callback chỉ chạy
   // đúng lúc phần tử được gắn. Hàm ổn định (useCallback) để không nhận lại ref mỗi lần render.
-  const focusInput = useCallback((element: HTMLInputElement | null) => {
+  const focusInput = useCallback((element: PingInputRef | null) => {
     element?.focus();
   }, []);
 

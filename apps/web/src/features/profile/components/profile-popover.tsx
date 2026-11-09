@@ -107,6 +107,7 @@ export function SelfProfileCard() {
         />
       </label>
       <PingButton
+        variant="primary"
         size="sm"
         loading={save.isPending}
         disabled={displayName === null || displayName === meProfile?.displayName}
@@ -217,6 +218,7 @@ export function MemberProfileCard({
           </label>
           <div className="flex gap-2">
             <PingButton
+              variant="primary"
               size="sm"
               loading={nickname.isPending}
               disabled={value === null}
@@ -262,6 +264,7 @@ export function MemberProfileCard({
       {!self && (
         <div className="flex gap-2">
           <PingButton
+            variant="primary"
             size="sm"
             className="flex-1"
             loading={createDm.isPending}

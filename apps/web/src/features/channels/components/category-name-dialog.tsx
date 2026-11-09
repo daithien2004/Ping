@@ -96,6 +96,7 @@ export function CategoryNameDialog({
           </p>
         )}
         <PingButton
+          variant="primary"
           htmlType="submit"
           loading={mutation.isPending}
           disabled={mutation.isPending}

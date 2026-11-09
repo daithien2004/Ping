@@ -99,7 +99,7 @@ export function RoleEditor({ serverId, roles }: Props) {
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <p className="text-xs text-muted-foreground">{t('roleOrderHint')}</p>
-        <PingButton size="sm" onClick={() => setCreateOpen(true)}>
+        <PingButton variant="primary" size="sm" onClick={() => setCreateOpen(true)}>
           {t('roleCreate')}
         </PingButton>
       </div>
@@ -170,6 +170,7 @@ function RoleForm({ serverId, role }: { serverId: string; role: RoleDto }) {
 
       <div className="mt-4 flex items-center gap-2">
         <PingButton
+          variant="primary"
           onClick={() => form.submit()}
           loading={updateMutation.isPending}
           disabled={deleteMutation.isPending}

@@ -88,6 +88,7 @@ export function RoleCreateDialog({ serverId, roles, open, onClose }: Props) {
         <PermissionGroupEditor value={mask} onChange={setMask} disabled={mutation.isPending} />
 
         <PingButton
+          variant="primary"
           htmlType="submit"
           loading={mutation.isPending}
           disabled={mutation.isPending}

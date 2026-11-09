@@ -110,7 +110,7 @@ function DeviceOptions() {
           <p className="text-xs text-muted-foreground">{t('ignoreEveryoneHint')}</p>
         </div>
         <PingSwitch
-          size="small"
+          size="sm"
           checked={ignoreEveryone}
           aria-labelledby="settings-ignore-everyone-label"
           data-testid="settings-ignore-everyone"
@@ -128,7 +128,7 @@ function DeviceOptions() {
           <p className="text-xs text-muted-foreground">{t('soundHint')}</p>
         </div>
         <PingSwitch
-          size="small"
+          size="sm"
           checked={sound}
           aria-labelledby="settings-sound-label"
           data-testid="settings-sound"

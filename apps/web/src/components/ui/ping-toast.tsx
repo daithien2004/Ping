@@ -10,11 +10,7 @@ interface ToastApi {
   warning: (content: string) => void;
 }
 
-/**
- * `message` tĩnh của antd không thấy `ConfigProvider`/`<AntdApp>` nên toast lệch theme (và antd cảnh
- * báo trong console). Host này gắn một lần bên trong `<AntdApp>` (providers/theme-provider.tsx) để
- * `pingToast` dùng đúng instance có context.
- */
+/** `message` tĩnh của antd không thấy ConfigProvider nên lệch theme; lấy instance có context từ <App>. */
 let toastApi: ToastApi | null = null;
 
 export function PingToastHost() {
@@ -33,10 +29,6 @@ export function PingToastHost() {
   return null;
 }
 
-/**
- * Toast ngắn cho hành động ngầm/không quan trọng (đã sao chép, đã lưu cài đặt). Lỗi người dùng cần
- * xử lý (thiếu quyền, sai dữ liệu) phải hiện inline — xem quy ước ở `docs/design/states.md`.
- */
 export const pingToast = {
   success: (content: string) => toastApi?.success(content),
   error: (content: string) => toastApi?.error(content),

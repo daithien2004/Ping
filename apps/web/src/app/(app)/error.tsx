@@ -5,6 +5,7 @@ import { useQueryErrorResetBoundary } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { useTranslations } from 'use-intl';
 import { PingButton } from '@/components/ui/ping-button';
+import { PingLinkButton } from '@/components/ui/ping-link-button';
 import { errorReference } from '@/lib/error-reference';
 import { useErrorMessage } from '@/lib/error-message';
 import { reportError } from '@/lib/report-error';
@@ -50,7 +51,9 @@ export default function AppError({ error, retry }: { error: Error; retry: () => 
         >
           {t('common.retry')}
         </PingButton>
-        <PingButton href="/servers">{t('common.goHome')}</PingButton>
+        <PingLinkButton variant="primary" href="/servers">
+          {t('common.goHome')}
+        </PingLinkButton>
       </div>
     </div>
   );

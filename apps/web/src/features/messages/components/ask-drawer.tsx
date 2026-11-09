@@ -231,7 +231,7 @@ export function AskDrawer({
         {isAsking && (
           <div className="flex flex-col gap-2">
             <div role="status" className="flex items-center gap-2 text-sm text-muted-foreground">
-              <PingSpinner size="small" />
+              <PingSpinner size="sm" />
               {t('ask.asking')}
             </div>
             {/* Thẻ tóm tắt chờ: hình dạng giữ chỗ, không đọc nội dung giả cho trình đọc màn hình. */}

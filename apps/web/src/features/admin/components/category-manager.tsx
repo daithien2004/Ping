@@ -121,7 +121,7 @@ export function CategoryManager({ serverId }: { serverId: string }) {
           <h2 className="text-lg font-semibold">{t('categories')}</h2>
           <p className="text-xs text-muted-foreground">{t('categoriesHint')}</p>
         </div>
-        <PingButton size="sm" onClick={() => setCreateOpen(true)}>
+        <PingButton variant="primary" size="sm" onClick={() => setCreateOpen(true)}>
           {t('categoryCreate')}
         </PingButton>
       </div>

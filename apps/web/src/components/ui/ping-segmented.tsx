@@ -1,12 +1,14 @@
 'use client';
 
 import { Segmented, type SegmentedProps as AntdSegmentedProps } from 'antd';
-import { forwardRef } from 'react';
+import { toAntdSize, type PingSize } from './size';
 
-export type PingSegmentedProps = AntdSegmentedProps;
+export interface PingSegmentedProps extends Omit<AntdSegmentedProps, 'size'> {
+  size?: PingSize;
+}
 
-export const PingSegmented = forwardRef<HTMLDivElement, PingSegmentedProps>(
-  function PingSegmented(props, ref) {
-    return <Segmented ref={ref as never} data-testid="ping-segmented" {...props} />;
-  },
-);
+export function PingSegmented({ size, ...rest }: PingSegmentedProps) {
+  return (
+    <Segmented data-testid="ping-segmented" {...rest} size={size ? toAntdSize(size) : undefined} />
+  );
+}

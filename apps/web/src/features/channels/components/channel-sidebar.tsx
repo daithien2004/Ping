@@ -97,7 +97,7 @@ export function ChannelSidebar() {
         >
           <PingIconButton
             icon={<ChevronDown />}
-            size="small"
+            size="sm"
             aria-label={t('servers.menu')}
             aria-haspopup="menu"
           />

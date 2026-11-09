@@ -27,7 +27,9 @@ export function HomeRedirect() {
       <h1 className="text-xl font-semibold">{t('emptyTitle')}</h1>
       <p className="text-sm text-muted-foreground">{t('emptyHint')}</p>
       <div className="flex gap-2">
-        <PingButton onClick={() => setWizard('create')}>{t('create')}</PingButton>
+        <PingButton variant="primary" onClick={() => setWizard('create')}>
+          {t('create')}
+        </PingButton>
         <PingButton variant="secondary" onClick={() => setWizard('join')}>
           {t('enterInvite')}
         </PingButton>

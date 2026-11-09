@@ -47,7 +47,7 @@ export function FormError({ children }: { children: ReactNode }) {
 export function SubmitButton({ pending, children }: { pending: boolean; children: ReactNode }) {
   const t = useTranslations('common');
   return (
-    <PingButton htmlType="submit" size="lg" disabled={pending}>
+    <PingButton variant="primary" htmlType="submit" size="lg" disabled={pending}>
       {pending ? t('processing') : children}
     </PingButton>
   );

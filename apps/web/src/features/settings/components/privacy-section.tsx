@@ -33,7 +33,7 @@ function DmAllowSwitch() {
           <p className="text-xs text-muted-foreground">{t('dmAllowHint')}</p>
         </div>
         <PingSwitch
-          size="small"
+          size="sm"
           checked={dmAllow === 'server_members'}
           disabled={isPending || isError || updatePrivacy.isPending}
           aria-labelledby="settings-dm-allow-label"

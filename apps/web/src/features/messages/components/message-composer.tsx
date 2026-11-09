@@ -10,7 +10,7 @@ import { useEffect, useRef, useState, type KeyboardEvent, type RefObject } from 
 import { useTranslations } from 'use-intl';
 import dynamic from 'next/dynamic';
 import { Plus, Send, Smile, Sticker, X } from 'lucide-react';
-import { PingTextArea } from '@/components/ui/ping-textarea';
+import { PingTextArea, type PingTextAreaRef } from '@/components/ui/ping-textarea';
 import { useRealtime } from '@/features/realtime/context';
 import { useServerAbility } from '@/features/permissions/context';
 import { useEmojiSuggestions } from '@/features/emoji/hooks';
@@ -39,16 +39,9 @@ function extractFragment(draft: string): string | null {
   return match?.[1] ?? null;
 }
 
-/**
- * `PingTextArea` forward ref của antd `Input.TextArea` = `TextAreaRef` (bọc DOM trong
- * `resizableTextArea.textArea`), không phải HTMLTextAreaElement — cần lấy DOM thật để đọc
- * selection và `setSelectionRange` (TG.23 chỉ gọi `focus()` nên lỗi này ẩn).
- */
-function resolveTextArea(ref: HTMLTextAreaElement | null): HTMLTextAreaElement | null {
-  if (!ref) return null;
-  const inner = (ref as unknown as { resizableTextArea?: { textArea?: HTMLTextAreaElement } })
-    .resizableTextArea?.textArea;
-  return inner ?? ref;
+/** `TextAreaRef` của antd bọc DOM trong `resizableTextArea.textArea`; cần DOM thật để đọc selection. */
+function resolveTextArea(ref: PingTextAreaRef | null): HTMLTextAreaElement | null {
+  return ref?.resizableTextArea?.textArea ?? null;
 }
 
 /**
@@ -80,7 +73,7 @@ export function MessageComposer({
   /** TG.25: chọn GIF trong tab GIF là gửi ngay một tin `kind='gif'` (không content). */
   onSendGif: (gif: GifPayload, nonce: string, replyToId?: string) => void;
   /** Ô nhập để empty state bấm "Gửi tin đầu tiên" đưa con trỏ về đây (TF.9). */
-  textareaRef?: RefObject<HTMLTextAreaElement | null>;
+  textareaRef?: RefObject<PingTextAreaRef | null>;
   /** TG.9: chế độ DM — ẩn nút sticker (ADR-0070 mục 10: sticker là tài sản server, bị chặn trong DM). */
   dm?: boolean;
 }) {

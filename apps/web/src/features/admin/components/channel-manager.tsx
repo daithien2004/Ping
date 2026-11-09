@@ -84,7 +84,7 @@ export function ChannelManager({ serverId }: { serverId: string }) {
     <section aria-label={t('channels')} className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">{t('channels')}</h2>
-        <PingButton size="sm" onClick={() => setCreateOpen(true)}>
+        <PingButton variant="primary" size="sm" onClick={() => setCreateOpen(true)}>
           {tChannels('create')}
         </PingButton>
       </div>

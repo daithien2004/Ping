@@ -1,13 +1,10 @@
 'use client';
 
-import { Popover, type PopoverProps as AntdPopoverProps } from 'antd';
-import { forwardRef } from 'react';
+import { Popover } from 'antd';
+import type { ComponentProps } from 'react';
 
-export type PingPopoverProps = AntdPopoverProps;
+export type PingPopoverProps = ComponentProps<typeof Popover>;
 
-/** Bọc antd Popover cho bộ Ping* — feature chỉ dùng wrapper này, không lộ prop antd ra ngoài. */
-export const PingPopover = forwardRef<HTMLDivElement, PingPopoverProps>(
-  function PingPopover(props, ref) {
-    return <Popover ref={ref as never} data-testid="ping-popover" {...props} />;
-  },
-);
+export function PingPopover(props: PingPopoverProps) {
+  return <Popover data-testid="ping-popover" {...props} />;
+}

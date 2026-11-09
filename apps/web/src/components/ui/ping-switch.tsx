@@ -1,12 +1,13 @@
 'use client';
 
-import { Switch, type SwitchProps as AntdSwitchProps } from 'antd';
-import { forwardRef } from 'react';
+import { Switch } from 'antd';
+import type { ComponentProps } from 'react';
+import { toAntdSize, type PingCompactSize } from './size';
 
-export type PingSwitchProps = AntdSwitchProps;
+export interface PingSwitchProps extends Omit<ComponentProps<typeof Switch>, 'size'> {
+  size?: PingCompactSize;
+}
 
-export const PingSwitch = forwardRef<HTMLButtonElement, PingSwitchProps>(
-  function PingSwitch(props, ref) {
-    return <Switch ref={ref} data-testid="ping-switch" {...props} />;
-  },
-);
+export function PingSwitch({ size, ...rest }: PingSwitchProps) {
+  return <Switch data-testid="ping-switch" {...rest} size={size ? toAntdSize(size) : undefined} />;
+}

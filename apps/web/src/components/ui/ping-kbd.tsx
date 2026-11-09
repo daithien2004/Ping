@@ -1,16 +1,14 @@
 'use client';
 
-import { forwardRef, type ReactNode } from 'react';
+import type { ReactNode, Ref } from 'react';
 
 export interface PingKbdProps {
   children: ReactNode;
   className?: string;
+  ref?: Ref<HTMLElement>;
 }
 
-export const PingKbd = forwardRef<HTMLElement, PingKbdProps>(function PingKbd(
-  { children, className },
-  ref,
-) {
+export function PingKbd({ children, className, ref }: PingKbdProps) {
   return (
     <kbd
       ref={ref}
@@ -32,4 +30,4 @@ export const PingKbd = forwardRef<HTMLElement, PingKbdProps>(function PingKbd(
       {children}
     </kbd>
   );
-});
+}

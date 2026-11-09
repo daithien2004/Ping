@@ -1,28 +1,19 @@
 'use client';
 
 import { Select, type SelectProps as AntdSelectProps } from 'antd';
-import { forwardRef } from 'react';
+import type { ReactNode } from 'react';
+import { toAntdSize, type PingSize } from './size';
 
 export interface PingSelectOption {
   value: string | number;
-  label: React.ReactNode;
+  label: ReactNode;
 }
 
-export interface PingSelectProps extends Omit<AntdSelectProps, 'options'> {
+export interface PingSelectProps extends Omit<AntdSelectProps, 'options' | 'size'> {
   options?: PingSelectOption[];
+  size?: PingSize;
 }
 
-export const PingSelect = forwardRef<unknown, PingSelectProps>(function PingSelect(
-  { options, className, ...rest },
-  ref,
-) {
-  return (
-    <Select
-      ref={ref as never}
-      options={options}
-      className={className}
-      data-testid="ping-select"
-      {...rest}
-    />
-  );
-});
+export function PingSelect({ size, ...rest }: PingSelectProps) {
+  return <Select data-testid="ping-select" {...rest} size={size ? toAntdSize(size) : undefined} />;
+}

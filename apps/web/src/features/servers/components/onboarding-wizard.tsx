@@ -12,7 +12,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'use-intl';
 import { PingButton } from '@/components/ui/ping-button';
 import { PingForm, PingFormItem, usePingForm, zodFormRules } from '@/components/ui/ping-form';
-import { PingInput } from '@/components/ui/ping-input';
+import { PingInput, type PingInputRef } from '@/components/ui/ping-input';
 import { PingModal } from '@/components/ui/ping-modal';
 import { PingRadioGroup } from '@/components/ui/ping-radio-group';
 import { PingSteps } from '@/components/ui/ping-steps';
@@ -68,7 +68,7 @@ function OnboardingContent({
   const createRules = zodFormRules(createServerSchema, () => createForm.getFieldsValue());
   const joinRules = zodFormRules(joinServerSchema, () => joinForm.getFieldsValue());
   // Ô nhập đầu tiên của bước chi tiết (chỉ một trong hai nhánh được render).
-  const firstFieldRef = useRef<HTMLInputElement>(null);
+  const firstFieldRef = useRef<PingInputRef>(null);
 
   // Bước chi tiết mới sinh ra ô nhập nên phải tự đưa con trỏ vào (dialog đã mở ở bước 1).
   // Dùng focus() thay cho autoFocus để không vi phạm jsx-a11y/no-autofocus (ADR-0029).
@@ -87,7 +87,7 @@ function OnboardingContent({
   return (
     <>
       <PingSteps
-        size="small"
+        size="sm"
         current={step}
         className="mb-4"
         items={[{ title: t('wizard.chooseStep') }, { title: t('wizard.detailStep') }]}
@@ -104,7 +104,9 @@ function OnboardingContent({
             ]}
           />
           <div className="flex justify-end">
-            <PingButton onClick={() => setStep(1)}>{t('wizard.continue')}</PingButton>
+            <PingButton variant="primary" onClick={() => setStep(1)}>
+              {t('wizard.continue')}
+            </PingButton>
           </div>
         </div>
       )}
@@ -197,7 +199,7 @@ function WizardActions({
       <PingButton variant="ghost" onClick={onBack}>
         {t('wizard.back')}
       </PingButton>
-      <PingButton htmlType="submit" loading={pending}>
+      <PingButton variant="primary" htmlType="submit" loading={pending}>
         {submitLabel}
       </PingButton>
     </div>

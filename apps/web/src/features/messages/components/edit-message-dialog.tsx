@@ -109,6 +109,7 @@ export function EditMessageDialog({
             {common('cancel')}
           </PingButton>
           <PingButton
+            variant="primary"
             htmlType="submit"
             disabled={
               !ready ||

@@ -1,25 +1,16 @@
 'use client';
 
-import { Input, type InputProps as AntdInputProps } from 'antd';
-import { forwardRef } from 'react';
+import { Input, type InputProps as AntdInputProps, type InputRef } from 'antd';
+import type { Ref } from 'react';
+import { toAntdSize, type PingSize } from './size';
 
-export interface PingInputProps extends Omit<AntdInputProps, 'size'> {
-  size?: 'sm' | 'md' | 'lg';
+export type PingInputRef = InputRef;
+
+export interface PingInputProps extends Omit<AntdInputProps, 'size' | 'ref'> {
+  size?: PingSize;
+  ref?: Ref<PingInputRef>;
 }
 
-const sizeMap = { sm: 'small', md: 'middle', lg: 'large' } as const;
-
-export const PingInput = forwardRef<HTMLInputElement, PingInputProps>(function PingInput(
-  { size = 'md', className, ...rest },
-  ref,
-) {
-  return (
-    <Input
-      ref={ref as never}
-      size={sizeMap[size]}
-      className={className}
-      data-testid="ping-input"
-      {...rest}
-    />
-  );
-});
+export function PingInput({ size, ...rest }: PingInputProps) {
+  return <Input data-testid="ping-input" {...rest} size={size ? toAntdSize(size) : undefined} />;
+}

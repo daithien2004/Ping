@@ -1,5 +1,6 @@
 'use client';
 
+import type { PingTextAreaRef } from '@/components/ui/ping-textarea';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { MessageSquare } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -99,7 +100,7 @@ export function MessagePane({
   const errors = useTranslations('errors');
   const scrollRef = useRef<HTMLDivElement>(null);
   // Ô soạn: empty state bấm "Gửi tin đầu tiên" để đưa con trỏ về ô nhập (TF.9).
-  const composerRef = useRef<HTMLTextAreaElement>(null);
+  const composerRef = useRef<PingTextAreaRef>(null);
   const canSend = ability.can('create', 'Message');
   const didInitialScroll = useRef(false);
   // Chỉ tải tin cũ SAU khi đã xuống đáy lần đầu: ở lần render đầu danh sách còn đứng ở đầu,

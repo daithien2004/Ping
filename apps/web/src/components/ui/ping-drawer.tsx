@@ -3,16 +3,13 @@
 import { Drawer } from 'antd';
 import type { ReactNode } from 'react';
 
-/**
- * API riêng của `PingDrawer` (ADR-0050): ngăn kéo chi tiết, không rò prop antd ra ngoài.
- */
 export interface PingDrawerProps {
   open: boolean;
   onClose: () => void;
   title?: ReactNode;
   children: ReactNode;
   footer?: ReactNode;
-  /** Bề rộng ngăn kéo (antd v6 dùng `size` cho ngăn kéo). */
+  /** Bề rộng ngăn kéo (px hoặc CSS), không phải bậc cỡ Ping. */
   size?: number | string;
 }
 

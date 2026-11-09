@@ -111,7 +111,12 @@ export function ServerNameForm({ server }: { server: ServerDetail }) {
         <PingFormItem label={t('serverName')} name="name" rules={rules.name}>
           <PingInput maxLength={100} autoComplete="off" />
         </PingFormItem>
-        <PingButton htmlType="submit" loading={mutation.isPending} disabled={mutation.isPending}>
+        <PingButton
+          variant="primary"
+          htmlType="submit"
+          loading={mutation.isPending}
+          disabled={mutation.isPending}
+        >
           {tc('save')}
         </PingButton>
       </PingForm>

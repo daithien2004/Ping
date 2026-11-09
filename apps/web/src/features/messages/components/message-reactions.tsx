@@ -260,7 +260,7 @@ function ReactorListDialog({
         <ul className="flex max-h-64 flex-col gap-1 overflow-y-auto">
           {users.map((user) => (
             <li key={user.id} className="flex items-center gap-2 rounded px-1 py-1 text-sm">
-              <PingAvatar size="small" src={user.avatarUrl ?? undefined} />
+              <PingAvatar size="sm" src={user.avatarUrl ?? undefined} />
               <span className="font-medium">{user.displayName}</span>
               <span className="text-xs text-muted-foreground">@{user.username}</span>
             </li>

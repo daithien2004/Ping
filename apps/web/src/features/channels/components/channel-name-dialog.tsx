@@ -119,6 +119,7 @@ export function ChannelNameDialog({
           </p>
         )}
         <PingButton
+          variant="primary"
           htmlType="submit"
           loading={mutation.isPending}
           disabled={!ready || !canManage || mutation.isPending}

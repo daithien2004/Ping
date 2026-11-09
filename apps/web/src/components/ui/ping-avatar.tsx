@@ -1,8 +1,11 @@
 'use client';
 
 import { Avatar, type AvatarProps as AntdAvatarProps } from 'antd';
+import { toAntdSize, type PingSize } from './size';
 
-export interface PingAvatarProps extends AntdAvatarProps {
+export interface PingAvatarProps extends Omit<AntdAvatarProps, 'size'> {
+  /** Bậc cỡ, hoặc đường kính px. */
+  size?: PingSize | number;
   presence?: 'online' | 'idle' | 'dnd' | 'offline';
 }
 
@@ -13,10 +16,11 @@ const presenceColor: Record<NonNullable<PingAvatarProps['presence']>, string> = 
   offline: 'var(--offline)',
 };
 
-export function PingAvatar({ presence, ...rest }: PingAvatarProps) {
+export function PingAvatar({ presence, size, ...rest }: PingAvatarProps) {
+  const antdSize = typeof size === 'number' ? size : size ? toAntdSize(size) : undefined;
   return (
     <span style={{ position: 'relative', display: 'inline-block' }}>
-      <Avatar data-testid="ping-avatar" data-slot="avatar" {...rest} />
+      <Avatar data-testid="ping-avatar" data-slot="avatar" {...rest} size={antdSize} />
       {presence ? (
         <span
           role="img"

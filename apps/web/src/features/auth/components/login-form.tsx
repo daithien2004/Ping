@@ -70,7 +70,13 @@ export function LoginForm() {
             })}
           </p>
         )}
-        <PingButton htmlType="submit" size="lg" block loading={loginMutation.isPending}>
+        <PingButton
+          variant="primary"
+          htmlType="submit"
+          size="lg"
+          block
+          loading={loginMutation.isPending}
+        >
           {t('login')}
         </PingButton>
         <div className="mt-2 flex items-center justify-between text-sm">

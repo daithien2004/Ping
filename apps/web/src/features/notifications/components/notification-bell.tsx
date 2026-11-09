@@ -163,7 +163,7 @@ export function NotificationBell({
               {t('ignoreEveryone')}
             </span>
             <PingSwitch
-              size="small"
+              size="sm"
               checked={ignoreEveryone}
               aria-labelledby="notify-ignore-everyone-label"
               data-testid="notify-ignore-everyone"

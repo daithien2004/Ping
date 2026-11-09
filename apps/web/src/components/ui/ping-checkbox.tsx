@@ -1,12 +1,10 @@
 'use client';
 
-import { Checkbox, type CheckboxProps as AntdCheckboxProps } from 'antd';
-import { forwardRef } from 'react';
+import { Checkbox } from 'antd';
+import type { ComponentProps } from 'react';
 
-export type PingCheckboxProps = AntdCheckboxProps;
+export type PingCheckboxProps = ComponentProps<typeof Checkbox>;
 
-export const PingCheckbox = forwardRef<HTMLInputElement, PingCheckboxProps>(
-  function PingCheckbox(props, ref) {
-    return <Checkbox ref={ref as never} data-testid="ping-checkbox" {...props} />;
-  },
-);
+export function PingCheckbox(props: PingCheckboxProps) {
+  return <Checkbox data-testid="ping-checkbox" {...props} />;
+}

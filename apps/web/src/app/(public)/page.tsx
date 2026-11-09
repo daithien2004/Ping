@@ -84,7 +84,7 @@ export default function LandingPage() {
             </h1>
             <p className="max-w-md text-lg text-muted-foreground">{t('tagline')}</p>
             <div className="flex flex-wrap gap-3">
-              <PingButton size="lg" onClick={() => router.push('/register')}>
+              <PingButton variant="primary" size="lg" onClick={() => router.push('/register')}>
                 {t('ctaRegister')}
               </PingButton>
               <PingButton size="lg" variant="secondary" onClick={() => router.push('/login')}>
@@ -194,7 +194,7 @@ export default function LandingPage() {
             {t('stamp')}
           </span>
           <h2 className="text-2xl font-semibold">{t('finalTitle')}</h2>
-          <PingButton size="lg" onClick={() => router.push('/register')}>
+          <PingButton variant="primary" size="lg" onClick={() => router.push('/register')}>
             {t('ctaRegister')}
           </PingButton>
         </section>

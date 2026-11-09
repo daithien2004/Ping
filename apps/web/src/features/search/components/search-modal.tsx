@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'use-intl';
 import { PingButton } from '@/components/ui/ping-button';
 import { PingEmpty } from '@/components/ui/ping-empty';
-import { PingInput } from '@/components/ui/ping-input';
+import { PingInput, type PingInputRef } from '@/components/ui/ping-input';
 import { PingModal } from '@/components/ui/ping-modal';
 import { PingSelect } from '@/components/ui/ping-select';
 import { useChannels } from '@/features/channels/hooks';
@@ -27,7 +27,7 @@ export function SearchModal({ serverId, onClose }: { serverId: string; onClose: 
   // Dialog đã mở mới mount ô nhập: đưa con trỏ vào bằng focus() thay vì autoFocus (ADR-0029).
   // Callback ref vì antd mount nội dung modal qua Portal ở commit sau (ref object còn null
   // lúc effect chạy); hàm ổn định để không nhận lại ref mỗi lần render.
-  const focusInput = useCallback((element: HTMLInputElement | null) => {
+  const focusInput = useCallback((element: PingInputRef | null) => {
     element?.focus();
   }, []);
   const router = useRouter();

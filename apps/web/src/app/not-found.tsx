@@ -1,7 +1,7 @@
 'use client';
 
 import { useTranslations } from 'use-intl';
-import { PingButton } from '@/components/ui/ping-button';
+import { PingLinkButton } from '@/components/ui/ping-link-button';
 
 /** 404 của cả app, nằm trong root layout nên có đủ provider và ngôn ngữ. */
 export default function NotFound() {
@@ -14,7 +14,9 @@ export default function NotFound() {
       </p>
       <h1 className="text-xl font-semibold">{t('app.notFoundTitle')}</h1>
       <p className="text-sm text-muted-foreground">{t('app.notFoundHint')}</p>
-      <PingButton href="/servers">{t('common.goHome')}</PingButton>
+      <PingLinkButton variant="primary" href="/servers">
+        {t('common.goHome')}
+      </PingLinkButton>
     </main>
   );
 }

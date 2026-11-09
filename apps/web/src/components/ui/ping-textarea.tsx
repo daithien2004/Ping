@@ -1,22 +1,22 @@
 'use client';
 
 import { Input } from 'antd';
-import { forwardRef, type ComponentProps } from 'react';
+import type { TextAreaRef } from 'antd/es/input/TextArea';
+import type { ComponentProps } from 'react';
+import { toAntdSize, type PingSize } from './size';
 
-/** Truyền nguyên props của antd TextArea (id, aria-invalid, value, onChange…); chỉ thêm testid. */
-export type PingTextAreaProps = ComponentProps<typeof Input.TextArea> & {
-  'data-testid'?: string;
-};
+export type PingTextAreaRef = TextAreaRef;
 
-export const PingTextArea = forwardRef<HTMLTextAreaElement, PingTextAreaProps>(
-  function PingTextArea({ className, 'data-testid': testId, ...rest }, ref) {
-    return (
-      <Input.TextArea
-        ref={ref as never}
-        className={className}
-        data-testid={testId ?? 'ping-textarea'}
-        {...rest}
-      />
-    );
-  },
-);
+export interface PingTextAreaProps extends Omit<ComponentProps<typeof Input.TextArea>, 'size'> {
+  size?: PingSize;
+}
+
+export function PingTextArea({ size, ...rest }: PingTextAreaProps) {
+  return (
+    <Input.TextArea
+      data-testid="ping-textarea"
+      {...rest}
+      size={size ? toAntdSize(size) : undefined}
+    />
+  );
+}

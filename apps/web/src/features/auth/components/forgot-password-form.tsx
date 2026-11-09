@@ -62,7 +62,7 @@ export function ForgotPasswordForm() {
           {errorMessage(forgot.error)}
         </p>
       )}
-      <PingButton htmlType="submit" size="lg" block loading={forgot.isPending}>
+      <PingButton variant="primary" htmlType="submit" size="lg" block loading={forgot.isPending}>
         {t('forgotSend')}
       </PingButton>
       <p className="mt-2 text-sm">

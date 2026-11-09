@@ -176,6 +176,7 @@ export function MemberDetailsDrawer({ serverId, ownerId, member, onClose }: Prop
 
           {rolesQuery.data && canManageTarget && (
             <PingButton
+              variant="primary"
               onClick={save}
               loading={assignMutation.isPending}
               disabled={!dirty || assignMutation.isPending}

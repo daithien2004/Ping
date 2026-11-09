@@ -155,6 +155,7 @@ export function StickerManager({ serverId }: { serverId: string }) {
           )}
           <div className="flex gap-2">
             <PingButton
+              variant="primary"
               htmlType="submit"
               loading={createMutation.isPending}
               disabled={createMutation.isPending}
@@ -362,6 +363,7 @@ function EmojiManager({ serverId }: { serverId: string }) {
           )}
           <div className="flex gap-2">
             <PingButton
+              variant="primary"
               htmlType="submit"
               loading={createMutation.isPending}
               disabled={createMutation.isPending}
