@@ -41,6 +41,9 @@ export function QuickSwitcher({ items, open, onOpenChange }: QuickSwitcherProps)
     () => items.filter((item) => item.label.toLowerCase().includes(deferredQuery)),
     [items, deferredQuery],
   );
+  const hasResults = filtered.length > 0;
+  // `items` có thể co lại khi đang mở: kẹp chỉ số để không trỏ ra ngoài danh sách.
+  const current = Math.min(active, filtered.length - 1);
 
   // Callback ref, không phải ref object + effect: antd mount nội dung modal qua Portal ở commit sau
   // nên ref object còn null lúc effect chạy (focus() thay autoFocus, ADR-0029).
@@ -59,12 +62,15 @@ export function QuickSwitcher({ items, open, onOpenChange }: QuickSwitcherProps)
       event.preventDefault();
       if (filtered.length === 0) return;
       const step = event.key === 'ArrowDown' ? 1 : -1;
-      setActive((index) => (index + step + filtered.length) % filtered.length);
+      setActive(
+        (index) =>
+          (Math.min(index, filtered.length - 1) + step + filtered.length) % filtered.length,
+      );
       return;
     }
     if (event.key === 'Enter') {
       event.preventDefault();
-      const item = filtered[active];
+      const item = filtered[current];
       if (item) navigate(item.href);
     }
   }
@@ -88,55 +94,56 @@ export function QuickSwitcher({ items, open, onOpenChange }: QuickSwitcherProps)
         }}
         onKeyDown={onKeyDown}
         role="combobox"
-        aria-expanded
-        aria-controls={listId}
-        aria-activedescendant={filtered[active] ? `${listId}-${filtered[active].id}` : undefined}
+        aria-expanded={hasResults}
+        aria-controls={hasResults ? listId : undefined}
+        aria-activedescendant={filtered[current] ? `${listId}-${filtered[current].id}` : undefined}
         data-testid="quick-switcher-input"
       />
-      <ul
-        id={listId}
-        role="listbox"
-        aria-label={tq('title')}
-        className="mt-2 max-h-80 overflow-y-auto"
-      >
-        {filtered.map((item, index) => (
-          <li
-            key={item.id}
-            id={`${listId}-${item.id}`}
-            role="option"
-            aria-selected={index === active}
-            data-testid="quick-switcher-item"
-            className={`cursor-pointer rounded-md px-2 py-1.5 text-sm ${
-              index === active ? 'bg-accent text-accent-foreground' : ''
-            }`}
-            onMouseEnter={() => setActive(index)}
-            onClick={() => navigate(item.href)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault();
-                navigate(item.href);
-              }
-            }}
-          >
-            {item.group ? (
-              // Chữ phụ trên nền `accent` chỉ 4,20:1: dùng màu chữ của dòng chọn để giữ AA.
-              <span
-                className={`mr-1.5 text-xs ${
-                  index === active ? 'text-accent-foreground' : 'text-muted-foreground'
-                }`}
-              >
-                {item.group} /
-              </span>
-            ) : null}
-            {item.label}
-          </li>
-        ))}
-        {filtered.length === 0 ? (
-          <li>
-            <PingEmpty compact description={t('noResults')} />
-          </li>
-        ) : null}
-      </ul>
+      {hasResults ? (
+        <ul
+          id={listId}
+          role="listbox"
+          aria-label={tq('title')}
+          className="mt-2 max-h-80 overflow-y-auto"
+        >
+          {filtered.map((item, index) => (
+            <li
+              key={item.id}
+              id={`${listId}-${item.id}`}
+              role="option"
+              aria-selected={index === current}
+              data-testid="quick-switcher-item"
+              className={`cursor-pointer rounded-md px-2 py-1.5 text-sm ${
+                index === current ? 'bg-accent text-accent-foreground' : ''
+              }`}
+              onMouseEnter={() => setActive(index)}
+              onClick={() => navigate(item.href)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  navigate(item.href);
+                }
+              }}
+            >
+              {item.group ? (
+                // Chữ phụ trên nền `accent` chỉ 4,20:1: dùng màu chữ của dòng chọn để giữ AA.
+                <span
+                  className={`mr-1.5 text-xs ${
+                    index === current ? 'text-accent-foreground' : 'text-muted-foreground'
+                  }`}
+                >
+                  {item.group} /
+                </span>
+              ) : null}
+              {item.label}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <div role="status" className="mt-2">
+          <PingEmpty compact description={t('noResults')} />
+        </div>
+      )}
     </PingModal>
   );
 }

@@ -12,19 +12,21 @@ interface MessageDialogProps {
 
 /** Đóng thì gỡ nội dung khỏi DOM (`destroyOnHidden`), nên form bên trong luôn mở ra trống. */
 export function MessageDialog({ open, onClose, title, children }: MessageDialogProps) {
-  // Hàng tin chứa hộp thoại có thể bị gỡ khi ảo hóa: báo nơi gọi để xóa trạng thái "đang mở".
-  const closeOnHide = useEffectEvent(onClose);
+  // Hàng tin chứa hộp thoại có thể bị gỡ khi ảo hóa: nếu gỡ lúc còn mở thì báo nơi gọi để xóa
+  // trạng thái "đang mở". Chỉ chạy khi unmount (không phải mỗi lần đóng) nên không gọi onClose hai lần.
+  const closeIfOpen = useEffectEvent(() => {
+    if (open) onClose();
+  });
   useEffect(() => {
-    if (!open) return;
-    let visible = false;
+    let mounted = false;
     const frame = requestAnimationFrame(() => {
-      visible = true;
+      mounted = true;
     });
     return () => {
       cancelAnimationFrame(frame);
-      if (visible) closeOnHide();
+      if (mounted) closeIfOpen();
     };
-  }, [open]);
+  }, []);
   return (
     <PingModal open={open} onCancel={onClose} title={title} footer={null} destroyOnHidden>
       {children}
