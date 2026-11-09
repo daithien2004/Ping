@@ -86,7 +86,8 @@ export function PingButton({
 ```css
 /* Icon theo font-size của nút, không chặn chuột. Trong @layer để utility của người gọi thắng. */
 @layer components {
-  :is([data-slot='button'], [data-slot='icon-button']) > .anticon > svg {
+  [data-slot='button'] > svg,
+  :is([data-slot='button'], [data-slot='icon-button']) > .ant-btn-icon > svg {
     width: 1em;
     height: 1em;
     pointer-events: none;
@@ -94,7 +95,7 @@ export function PingButton({
 }
 ```
 
-Kiểm tra DOM thật của antd trước khi chốt selector (icon có thể là con trực tiếp hoặc nằm trong `.anticon`).
+Kiểm tra DOM thật của antd trước khi chốt selector (antd 6.6.7: `button > span.ant-btn-icon > svg`; icon loading là `.anticon > svg`).
 
 ## CSS skin
 
