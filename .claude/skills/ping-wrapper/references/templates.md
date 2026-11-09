@@ -55,8 +55,6 @@ export interface PingButtonProps extends Omit<
   /** Tùy chọn: bỏ trống thì antd lấy từ ConfigProvider / Space.Compact / Button.Group. */
   size?: PingSize;
   ref?: Ref<HTMLButtonElement>;
-  /** Mặc định chỉ để dự phòng; nơi cần nhắm trong test thì tự truyền testid riêng. */
-  'data-testid'?: string;
 }
 
 /**

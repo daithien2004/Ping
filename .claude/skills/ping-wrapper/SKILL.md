@@ -45,7 +45,11 @@ React 19 truyền `ref` qua props. Nếu antd component có nhiều kiểu ref (
 
 ### 6. `data-testid` cho ghi đè
 
-Mặc định cố định (`'ping-button'`) chỉ để tương thích; nhiều nút trên một trang thì test không nhắm được. Cho phép truyền testid riêng, ghi chú trong code rằng default chỉ là dự phòng.
+Mặc định cố định (`'ping-button'`) chỉ để tương thích; nhiều nút trên một trang thì test không nhắm được. Cho phép truyền testid riêng:
+
+- Wrapper spread props antd (`Omit<ComponentProps<...>>`): viết `data-testid="ping-x"` **trước** `{...props}`; props của chỗ gọi đè được. Không khai báo prop `'data-testid'` (xung đột với index `data-${string}` của antd).
+- Wrapper có `data-*` hợp đồng (button, icon-button, link-button): `{...rest}` phải đứng đầu nên destructure `'data-testid': testId = 'ping-x'` và đặt cạnh các `data-*` khác.
+- Wrapper có props đóng (không spread, vd table, drawer, popconfirm, password-input, kbd) thì testid cố định theo thiết kế; muốn nhắm riêng thì thêm prop `testId` có chủ đích.
 
 ### 7. `className` truyền thẳng khi wrapper không có class mặc định
 
