@@ -24,6 +24,7 @@ import { UserAvatar } from '@/features/profile/components/user-avatar';
 import { useRealtime } from '@/features/realtime/context';
 import { useUnread } from '@/features/unread/hooks';
 import { totals } from '@/features/unread/unread-cache';
+import { avatarTone } from '@/lib/avatar-tone';
 import { initials } from '@/lib/initials';
 import { useServers } from '../hooks';
 import { serverPath } from '../navigation';
@@ -77,10 +78,14 @@ export function ServerRail() {
     <nav
       aria-label={t('servers.navLabel')}
       data-mobile-nav
+      data-slot="rail"
       className="flex min-h-0 w-18 shrink-0 flex-col items-center bg-rail py-2 text-rail-foreground"
     >
       {/* Danh sách server cuộn riêng; cụm tài khoản ở đáy luôn cố định như Discord. */}
-      <div className="flex min-h-0 w-full flex-1 flex-col items-center gap-2 overflow-x-hidden overflow-y-auto">
+      <div
+        data-slot="rail-list"
+        className="flex min-h-0 w-full flex-1 flex-col items-center gap-2 overflow-x-hidden overflow-y-auto"
+      >
         {/* TG.9: mục "Tin nhắn trực tiếp" nằm trên cùng của rail (như trang chủ Discord) — ngoài
             ChannelSidebar per-server theo ADR-0070 mục 7. */}
         <DmRailItem active={pathname.startsWith('/dms')} />
@@ -102,6 +107,7 @@ export function ServerRail() {
             type="button"
             aria-label={t('servers.create')}
             onClick={() => setWizard('create')}
+            data-slot="rail-icon"
             className={`${railIcon} flex items-center justify-center`}
           >
             <Plus className="size-5" />
@@ -112,6 +118,7 @@ export function ServerRail() {
             type="button"
             aria-label={t('servers.join')}
             onClick={() => setWizard('join')}
+            data-slot="rail-icon"
             className={`${railIcon} flex items-center justify-center`}
           >
             <LogIn className="size-5" />
@@ -119,7 +126,7 @@ export function ServerRail() {
         </RailItem>
       </div>
 
-      <div className="mt-2 flex flex-col items-center gap-2">
+      <div data-slot="rail-footer" className="mt-2 flex flex-col items-center gap-2">
         {/* TG.12: xin quyền Notification sau thao tác người dùng — chỉ hiện khi còn 'default'. */}
         <EnableNotificationsButton />
         {/* TG.13: cài đặt CÁ NHÂN (/settings) — khác nút "Cài đặt" của server ở sidebar kênh. */}
@@ -130,12 +137,12 @@ export function ServerRail() {
             aria-current={pathname.startsWith('/settings') ? 'page' : undefined}
             data-testid="personal-settings-rail"
           >
-            <span className={`${railIcon} flex items-center justify-center`}>
+            <span data-slot="rail-icon" className={`${railIcon} flex items-center justify-center`}>
               <Settings className="size-5" />
             </span>
           </Link>
         </RailItem>
-        <LanguageSwitcher compact />
+        <LanguageSwitcher vertical />
         {/* TG.7: bấm vào avatar mở thẻ hồ sơ (PingModal — đặt vị trí của popover bị lệch trong
             layout rail); đổi ảnh đại diện/tên hiển thị không cần trang cài đặt. */}
         <button
@@ -206,7 +213,11 @@ function DmRailItem({ active }: { active: boolean }) {
           offset={[-4, 4]}
           aria-label={unreadTotal > 0 ? t('mentionCount', { count: unreadTotal }) : undefined}
         >
-          <span className={`${railIcon} flex items-center justify-center`}>
+          <span
+            data-slot="rail-icon"
+            data-tone={1}
+            className={`${railIcon} flex items-center justify-center`}
+          >
             <MessageCircle className="size-5" />
           </span>
         </PingBadge>
@@ -261,11 +272,14 @@ function DmRailItem({ active }: { active: boolean }) {
                 avatar bị kiểu dựng sẵn của antd đè; đặt màu/bo góc qua `style` (vẫn là token). */}
             <PingAvatar
               size={40}
+              data-slot="rail-icon"
+              data-tone={avatarTone(name)}
+              data-active={active ? 'true' : undefined}
               src={profileImageUrl(iconUrl)}
               alt={name}
               style={{
-                background: 'var(--secondary)',
-                color: 'var(--secondary-foreground)',
+                background: 'var(--ping-avatar-bg, var(--secondary))',
+                color: 'var(--ping-avatar-fg, var(--secondary-foreground))',
                 borderRadius: active ? 'var(--ping-radius-xl)' : 'var(--ping-radius-full)',
               }}
               className="transition-all"

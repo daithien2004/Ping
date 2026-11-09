@@ -18,3 +18,9 @@ Hook tự append một dòng cho mỗi lần chặn, chỉ timestamp UTC và rea
 | Thời điểm UTC            | Loại       | Lý do             |
 | ------------------------ | ---------- | ----------------- |
 | 2026-11-06T14:38:26.466Z | hook-block | outside-workspace |
+| 2026-11-08T18:46:25.447Z | hook-block | outside-workspace |
+| 2026-11-08T18:46:41.139Z | hook-block | outside-workspace |
+| 2026-11-09T00:57:37.836Z | hook-block | outside-workspace |
+| 2026-11-09T00:57:39.797Z | hook-block | outside-workspace |
+| 2026-11-09T00:58:18.237Z | hook-block | outside-workspace |
+| 2026-11-09T00:58:20.375Z | hook-block | outside-workspace |

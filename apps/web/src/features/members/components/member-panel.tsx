@@ -28,7 +28,7 @@ function MemberRow({
   const name = member.nickname ?? member.user.displayName;
   const [open, setOpen] = useState(false);
   return (
-    <li className="flex items-center rounded-md px-2 py-1.5">
+    <li data-slot="member-row" className="flex items-center rounded-md px-2 py-1.5">
       {/* TG.7: bấm thành viên mở thẻ hồ sơ (modal — avatar/role/ngày tham gia; riêng mình có đổi biệt danh). */}
       <button
         type="button"
@@ -117,6 +117,7 @@ export function MemberPanel({ serverId }: { serverId: string }) {
   return (
     <aside
       aria-label={t('panel')}
+      data-slot="members"
       className="flex w-60 shrink-0 flex-col overflow-y-auto bg-sidebar p-2 max-lg:absolute max-lg:top-header max-lg:right-0 max-lg:bottom-0 max-lg:z-20 max-lg:shadow-overlay"
     >
       {query.isPending && (

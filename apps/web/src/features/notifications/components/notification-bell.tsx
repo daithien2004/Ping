@@ -94,6 +94,7 @@ export function NotificationBell({
       content={
         <div
           data-testid="notify-popover"
+          data-slot="notify-popover"
           role="group"
           aria-label={t('title')}
           className="flex w-64 flex-col gap-2"

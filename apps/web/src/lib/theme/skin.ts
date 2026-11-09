@@ -19,7 +19,7 @@ const SKIN_MAX_AGE = 60 * 60 * 24 * 365;
 export const PIXEL_SKIN_ENABLED = env.NEXT_PUBLIC_ENABLE_PIXEL_SKIN;
 
 export function parseSkin(value: string | undefined): Skin {
-  return value === 'pixel' ? 'pixel' : 'default';
+  return value === 'pixel' || value === 'pop' ? value : 'default';
 }
 
 export function readSkinCookie(): Skin {

@@ -56,6 +56,7 @@ export function ChannelSidebar() {
   return (
     <aside
       data-mobile-nav
+      data-slot="sidebar"
       className={`flex min-h-0 w-sidebar shrink-0 flex-col bg-sidebar text-sidebar-foreground max-md:absolute max-md:inset-y-0 max-md:left-18 max-md:z-30 max-md:shadow-overlay max-md:transition-transform max-md:duration-200 ${
         mobileNavOpen
           ? 'max-md:visible max-md:translate-x-0'
@@ -63,7 +64,10 @@ export function ChannelSidebar() {
       }`}
     >
       {/* Discord: header 49 px một dòng, tên server mở menu (mã mời + rời server). */}
-      <header className="flex h-header shrink-0 items-center gap-1 border-b border-sidebar-border pl-4 pr-2">
+      <header
+        data-slot="sidebar-header"
+        className="flex h-header shrink-0 items-center gap-1 border-b border-sidebar-border pl-4 pr-2"
+      >
         <h2 className="min-w-0 flex-1 truncate text-base font-semibold">{server.name}</h2>
         <PingDropdown
           trigger={['click']}
@@ -116,7 +120,7 @@ export function ChannelSidebar() {
             </FormError>
           </div>
         )}
-        <div className="flex h-13 items-center gap-2 px-2">
+        <div data-slot="user-card" className="flex h-13 items-center gap-2 px-2">
           <UserAvatar name={me?.displayName ?? ''} avatarUrl={me?.avatarUrl} size={32} />
           <div className="min-w-0 flex-1 leading-tight">
             <p className="truncate text-sm font-medium">{me?.displayName}</p>

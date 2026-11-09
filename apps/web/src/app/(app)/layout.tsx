@@ -11,7 +11,7 @@ import { AppShell } from '@/features/shell/components/app-shell';
  */
 export default function AppLayout({ children }: { children: ReactNode }) {
   return (
-    <Suspense fallback={<Loading />}>
+    <Suspense fallback={<Loading fullScreen />}>
       <AuthGate>
         <RealtimeProvider>
           {/* TG.13: nạp cài đặt người dùng từ server để áp dụng toàn app — đặt sau AuthGate nên

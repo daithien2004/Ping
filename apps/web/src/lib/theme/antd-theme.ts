@@ -1,6 +1,6 @@
 import { theme as antdTheme } from 'antd';
 import type { ThemeConfig } from 'antd';
-import { semanticColors, spacing, radius, skins, typography, motion } from './tokens';
+import { palette, semanticColors, spacing, radius, skins, typography, motion } from './tokens';
 import type { Skin, ThemeMode } from './tokens';
 
 /**
@@ -8,11 +8,13 @@ import type { Skin, ThemeMode } from './tokens';
  * nguyên cấu hình cũ nên mọi màn không bật skin không đổi một pixel.
  */
 export function buildAntdTheme(mode: ThemeMode, skin: Skin = 'default'): ThemeConfig {
-  const c = semanticColors(mode);
+  const c = semanticColors(mode, skin);
   const isDark = mode === 'dark';
   const pixel = skin === 'pixel';
-  // Skin Pixel làm phẳng mọi bo góc về 0; không lấy `radius` gốc để tránh lẫn hai thang.
-  const corner = (step: keyof typeof radius) => (pixel ? skins.pixel.radius : radius[step]);
+  const pop = skin === 'pop';
+  // Pixel làm phẳng mọi bo góc về 0, Pop dùng thang bo riêng; không lẫn với `radius` gốc.
+  const corner = (step: keyof typeof radius) =>
+    pixel ? skins.pixel.radius : pop ? skins.pop.radius[step] : radius[step];
   return {
     token: {
       colorPrimary: c.primary,
@@ -48,18 +50,64 @@ export function buildAntdTheme(mode: ThemeMode, skin: Skin = 'default'): ThemeCo
             boxShadowTertiary: skins.pixel.shadow.panel[mode],
           }
         : {}),
+      ...(pop
+        ? {
+            lineWidth: skins.pop.borderWidth,
+            // antd suy placeholder/disabled từ chữ pha alpha (~1,7:1 trên nền trắng); axe bắt ở kho /dev/ui.
+            colorTextPlaceholder: c.mutedForeground,
+            colorTextDisabled: c.mutedForeground,
+            boxShadow: skins.pop.shadow.overlay[mode],
+            boxShadowSecondary: skins.pop.shadow.panel[mode],
+            boxShadowTertiary: skins.pop.shadow.panel[mode],
+          }
+        : {}),
     },
     components: {
       // Nút "danger" kiểu viền lấy chữ từ colorError; antd suy palette[6] từ seed nên nền tối
       // thành #cf6b5d, chỉ ~4.4:1 trên card. Ghim về đúng destructive của palette (5.8:1 tối,
       // 4.7:1 sáng) — axe color-contrast (serious) ở mục Thu hồi phiên (T6.9).
-      Button: { borderRadius: corner('md'), controlHeight: 36, colorError: c.destructive },
+      Button: {
+        borderRadius: corner('md'),
+        controlHeight: 36,
+        colorError: c.destructive,
+        // Nút chính mặc định chữ trắng (colorTextLightSolid); trên cam của Pop chỉ ~3,5:1 nên lấy
+        // chữ mực từ palette (axe color-contrast bắt ở nút "Đăng nhập", e2e skin-pop).
+        // darkAlgorithm suy lại colorPrimary từ seed nên nền tối làm cam xỉn đi, chữ mực tụt dưới
+        // AA; ghim đúng cam của palette cho cả ba trạng thái (hover sang vàng, đúng chất pop).
+        ...(pop
+          ? {
+              primaryColor: c.primaryForeground,
+              // Viền 3px + bóng làm nút nhỏ (24px) lùn và chật chữ.
+              controlHeightSM: 30,
+              paddingInlineSM: 12,
+              colorPrimary: c.primary,
+              colorPrimaryHover: palette.pop.yellow,
+              colorPrimaryActive: c.primary,
+            }
+          : {}),
+      },
       Input: { borderRadius: corner('md'), controlHeight: 36 },
       Modal: { borderRadiusLG: corner('xl') },
       Card: { borderRadiusLG: corner('lg') },
       // Mặc định antd dùng colorTextLabel (text pha alpha) cho mục chưa chọn — trên nền
       // ink-50/ink-950 của palette này tụt dưới 4.5:1 (axe bắt ở trang cài đặt TG.13).
       Segmented: { itemColor: c.foreground, itemHoverColor: c.foreground },
+      // Pop: antd tô chữ mục đang chọn bằng colorPrimary (cam, ~3,3:1 trên trắng) — dùng chữ thường
+      // và để thanh/nền làm điểm nhấn (axe bắt ở kho /dev/ui).
+      ...(pop
+        ? {
+            Tabs: {
+              itemSelectedColor: c.foreground,
+              itemHoverColor: c.foreground,
+              inkBarColor: c.primary,
+            },
+            Switch: { colorPrimary: palette.pop.mint, colorPrimaryHover: palette.pop.mint },
+            Menu: {
+              itemSelectedColor: palette.pop.ink,
+              itemSelectedBg: palette.pop.yellow,
+            },
+          }
+        : {}),
       // Tag preset 'default' của antd cũng dùng chữ pha alpha trên nền xám nhẹ — axe bắt
       // color-contrast (serious) ở tag "Chưa xác minh"/"Phiên này" của TG.8. Text đậm màu
       // foreground, nền giữ neutralFill (vẫn phân biệt được với nền card).

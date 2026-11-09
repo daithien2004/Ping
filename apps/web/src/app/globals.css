@@ -1,5 +1,6 @@
 @import 'tailwindcss';
 @import '../styles/tokens.generated.css';
+@import '../styles/skin-pop.css';
 
 /*
  * TOKEN — nguồn duy nhất là `src/lib/theme/tokens.ts` (ADR-0075). Màu, palette và thang radius
@@ -148,26 +149,26 @@ body:has([data-app-shell]) {
 /* Skin Pixel (ADR-0076): khung Tailwind dày 2 px thay vì 1 px cứng của `border-*`. Đặt ngoài
    layer để thắng utility; không dùng !important — chọn từng cạnh để không phá phần tử chỉ có
    `border-t`/`border-l`. Bo góc đã do token `--ping-radius-*` lo. */
-html[data-skin='pixel'] .border {
+html:is([data-skin='pixel'], [data-skin='pop']) .border {
   border-width: var(--ping-border-width);
 }
-html[data-skin='pixel'] .border-t {
+html:is([data-skin='pixel'], [data-skin='pop']) .border-t {
   border-top-width: var(--ping-border-width);
 }
-html[data-skin='pixel'] .border-r {
+html:is([data-skin='pixel'], [data-skin='pop']) .border-r {
   border-right-width: var(--ping-border-width);
 }
-html[data-skin='pixel'] .border-b {
+html:is([data-skin='pixel'], [data-skin='pop']) .border-b {
   border-bottom-width: var(--ping-border-width);
 }
-html[data-skin='pixel'] .border-l {
+html:is([data-skin='pixel'], [data-skin='pop']) .border-l {
   border-left-width: var(--ping-border-width);
 }
-html[data-skin='pixel'] .border-x {
+html:is([data-skin='pixel'], [data-skin='pop']) .border-x {
   border-left-width: var(--ping-border-width);
   border-right-width: var(--ping-border-width);
 }
-html[data-skin='pixel'] .border-y {
+html:is([data-skin='pixel'], [data-skin='pop']) .border-y {
   border-top-width: var(--ping-border-width);
   border-bottom-width: var(--ping-border-width);
 }

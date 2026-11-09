@@ -32,6 +32,8 @@ interface Props {
   grouped?: boolean;
   /** D3: tin đầu ngày — chèn vạch ngày phía trên. */
   showDate?: boolean;
+  /** Tin của chính người đang xem: chỉ để skin (ADR-0084) đổi bố cục, không đổi hành vi. */
+  mine?: boolean;
 }
 
 export const MessageItem = memo(function MessageItem({
@@ -46,6 +48,7 @@ export const MessageItem = memo(function MessageItem({
   highlighted,
   grouped = false,
   showDate = false,
+  mine = false,
 }: Props) {
   const { ability, ready } = useServerAbility();
   const t = useTranslations();
@@ -78,6 +81,7 @@ export const MessageItem = memo(function MessageItem({
         id={`message-${message.id}`}
         data-message-id={message.id}
         data-highlighted={highlighted ? 'true' : undefined}
+        data-mine={mine ? 'true' : undefined}
         // TG.13: mật độ khối tin nhắn điều khiển qua biến CSS trên <html> (data-density).
         // D3: tin trong cùng khối chỉ giữ padding dưới, tin mở khối nhận thêm khoảng cách nhóm.
         className={`group relative px-4 pb-(--ping-message-py) leading-(--ping-message-leading) transition-colors hover:bg-accent/50 ${grouped ? 'pt-0.5' : 'pt-(--ping-message-gap)'} ${message.status === 'sending' ? 'opacity-60' : ''} ${highlighted ? 'bg-accent ring-1 ring-ring/40' : ''}`}
@@ -95,7 +99,7 @@ export const MessageItem = memo(function MessageItem({
               />
             )}
           </div>
-          <div className="min-w-0 flex-1">
+          <div data-slot="message-body" className="min-w-0 flex-1">
             {grouped ? (
               <>
                 {/* Ẩn tên khỏi mắt nhưng không giấu khỏi trình đọc màn hình: mỗi tin vẫn đủ ngữ cảnh. */}
@@ -119,7 +123,9 @@ export const MessageItem = memo(function MessageItem({
               </>
             ) : (
               <header className="flex items-baseline gap-2">
-                <span className="font-medium">{message.author.displayName}</span>
+                <span data-slot="author" className="font-medium">
+                  {message.author.displayName}
+                </span>
                 <time
                   dateTime={message.createdAt}
                   className="text-xs font-medium text-muted-foreground"
@@ -170,12 +176,12 @@ export const MessageItem = memo(function MessageItem({
             ) : message.kind === 'gif' ? (
               <GifMessage gif={message.gif ?? null} />
             ) : (
-              <>
+              <div data-slot="message-text">
                 <MarkdownText content={message.content} serverId={serverId} />
                 {message.attachments?.length ? (
                   <AttachmentList attachments={message.attachments} />
                 ) : null}
-              </>
+              </div>
             )}
             <MessageReactions message={message} channelId={channelId} />
             {grouped && (message.editedAt || message.pinnedAt) && (

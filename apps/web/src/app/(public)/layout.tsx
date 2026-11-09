@@ -1,12 +1,6 @@
 import type { ReactNode } from 'react';
-import { LanguageSwitcher } from '@/components/language-switcher';
 
-/** Khung trang công khai (landing): nền app + nút đổi ngôn ngữ, không có rail của app. */
+/** Khung trang công khai (landing): nền app, không có rail của app. Nút đổi ngôn ngữ nằm ở thanh trên của trang. */
 export default function PublicLayout({ children }: { children: ReactNode }) {
-  return (
-    <div className="relative flex min-h-dvh flex-col">
-      <LanguageSwitcher className="absolute top-4 right-4" />
-      {children}
-    </div>
-  );
+  return <div className="relative flex min-h-dvh flex-col">{children}</div>;
 }

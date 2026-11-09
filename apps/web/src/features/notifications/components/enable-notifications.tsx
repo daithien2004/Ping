@@ -62,6 +62,7 @@ export function EnableNotificationsButton() {
           role="img"
           aria-label={t('browserBlocked')}
           data-testid="notify-browser-blocked"
+          data-slot="notify-blocked"
           className="flex size-8 items-center justify-center text-rail-foreground/85"
         >
           <BellOff className="size-5" />

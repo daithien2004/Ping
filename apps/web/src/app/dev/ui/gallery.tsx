@@ -110,9 +110,9 @@ export function DevUiGallery() {
             <PingLabel htmlFor="gallery-input">Tên hiển thị</PingLabel>
             <PingInput id="gallery-input" placeholder="Nhập tên" />
           </div>
-          <PingInput size="sm" placeholder="Nhỏ" />
-          <PingInput size="lg" placeholder="Lớn" />
-          <PingInput disabled placeholder="Vô hiệu" />
+          <PingInput size="sm" placeholder="Nhỏ" aria-label="Ô nhập nhỏ" />
+          <PingInput size="lg" placeholder="Lớn" aria-label="Ô nhập lớn" />
+          <PingInput disabled placeholder="Vô hiệu" aria-label="Ô nhập vô hiệu" />
         </Row>
         <Row label="PingPasswordInput">
           <PingPasswordInput
@@ -151,12 +151,19 @@ export function DevUiGallery() {
           <PingSelect
             className="w-48"
             placeholder="Chọn kênh"
+            aria-label="Chọn kênh"
             options={[
               { value: 'general', label: '# chung' },
               { value: 'random', label: '# ngẫu nhiên' },
             ]}
           />
-          <PingSelect className="w-48" disabled placeholder="Vô hiệu" options={[]} />
+          <PingSelect
+            className="w-48"
+            disabled
+            placeholder="Vô hiệu"
+            aria-label="Chọn kênh (vô hiệu)"
+            options={[]}
+          />
         </Row>
         <Row label="PingForm (zod → antd form)">
           <PingForm

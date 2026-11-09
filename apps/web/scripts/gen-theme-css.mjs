@@ -80,6 +80,15 @@ const skinShadowDeclarations = (mode, indent = 2) =>
     .map(([key, value]) => `${' '.repeat(indent)}--ping-shadow-${key}: ${value[mode]};`)
     .join('\n');
 
+const popRadiusDeclarations = Object.entries(skins.pop.radius)
+  .map(([key, value]) => `  --ping-radius-${key}: ${value}px;`)
+  .join('\n');
+
+const popShadowDeclarations = (mode, indent = 2) =>
+  Object.entries(skins.pop.shadow)
+    .map(([key, value]) => `${' '.repeat(indent)}--ping-shadow-${key}: ${value[mode]};`)
+    .join('\n');
+
 const css = `/* AUTO-GENERATED từ src/lib/theme/tokens.ts — KHÔNG sửa tay.
  * Sinh lại: pnpm --filter web gen:theme
  * CI chạy --check và đỏ nếu file này lệch token.
@@ -138,6 +147,28 @@ ${skinShadowDeclarations('dark', 4)}
 
 html[data-skin='pixel'][data-theme='dark'] {
 ${skinShadowDeclarations('dark')}
+}
+
+/* Skin Pop (ADR-0084): ngoài hình thức còn ghi đè một phần màu theo mode. Khối dark có độ đặc hiệu
+ * cao hơn khối light nên thắng khi nền tối; thứ tự như Pixel. */
+html[data-skin='pop'] {
+${popRadiusDeclarations}
+  --radius: ${skins.pop.radius.lg}px;
+  --ping-border-width: ${skins.pop.borderWidth}px;
+${declarations(skins.pop.colors.light, 2)}
+${popShadowDeclarations('light')}
+}
+
+@media (prefers-color-scheme: dark) {
+  html[data-skin='pop']:not([data-theme='light']) {
+${declarations(skins.pop.colors.dark, 4)}
+${popShadowDeclarations('dark', 4)}
+  }
+}
+
+html[data-skin='pop'][data-theme='dark'] {
+${declarations(skins.pop.colors.dark, 2)}
+${popShadowDeclarations('dark')}
 }
 `;
 

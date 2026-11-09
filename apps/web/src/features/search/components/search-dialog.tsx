@@ -27,6 +27,7 @@ export function SearchDialog({ serverId }: { serverId: string }) {
         type="button"
         aria-label={t('open')}
         aria-expanded={open}
+        data-slot="search"
         onClick={() => setOpen(true)}
         className="flex h-8 w-8 shrink-0 items-center justify-center gap-1.5 rounded-md bg-field px-0 text-sm text-muted-foreground transition-colors hover:text-foreground focus-ring lg:max-w-61 lg:min-w-24 lg:flex-1 lg:shrink lg:justify-start lg:px-2"
       >

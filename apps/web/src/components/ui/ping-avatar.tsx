@@ -16,9 +16,10 @@ const presenceColor: Record<NonNullable<PingAvatarProps['presence']>, string> = 
 export function PingAvatar({ presence, ...rest }: PingAvatarProps) {
   return (
     <span style={{ position: 'relative', display: 'inline-block' }}>
-      <Avatar data-testid="ping-avatar" {...rest} />
+      <Avatar data-testid="ping-avatar" data-slot="avatar" {...rest} />
       {presence ? (
         <span
+          role="img"
           aria-label={presence}
           style={{
             position: 'absolute',

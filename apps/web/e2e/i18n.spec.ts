@@ -10,7 +10,8 @@ test('đổi ngôn ngữ: lưu vào cookie, đổi tại chỗ không tải lạ
   // Biến JS mất khi reload — còn sau khi đổi ngôn ngữ nghĩa là trang không tải lại.
   await page.evaluate(() => Reflect.set(window, '__pingNoReload', true));
 
-  await page.getByRole('combobox', { name: 'Ngôn ngữ' }).selectOption('en');
+  // Công tắc VI | EN là nhóm radio gốc ẩn về mặt thị giác: bấm vào nhãn (force) rồi kiểm trạng thái.
+  await page.getByRole('radio', { name: 'English' }).check({ force: true });
   await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
   await expect(page.getByLabel('Password').filter({ visible: true })).toBeVisible();
@@ -19,7 +20,7 @@ test('đổi ngôn ngữ: lưu vào cookie, đổi tại chỗ không tải lạ
   await page.getByRole('button', { name: 'Sign in' }).click();
   await expect(page.getByText(/Invalid/i).first()).toBeVisible();
 
-  await page.getByRole('combobox', { name: 'Language' }).selectOption('vi');
+  await page.getByRole('radio', { name: 'Tiếng Việt' }).check({ force: true });
   await expect(page.getByRole('heading', { name: 'Đăng nhập' })).toBeVisible();
   expect(await page.evaluate(() => Reflect.get(window, '__pingNoReload') === true)).toBe(true);
 });

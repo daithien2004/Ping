@@ -8,7 +8,7 @@ import { PingSegmented } from '@/components/ui/ping-segmented';
 import { pingToast } from '@/components/ui/ping-toast';
 import { useErrorMessage } from '@/lib/error-message';
 import { palette } from '@/lib/theme';
-import { PIXEL_SKIN_ENABLED } from '@/lib/theme/skin';
+import { parseSkin, PIXEL_SKIN_ENABLED } from '@/lib/theme/skin';
 import { usePatchSettings, useUserSettings } from '../hooks';
 import { useAppliedSettings } from '../store';
 import { SettingsSection } from './settings-section';
@@ -125,8 +125,12 @@ export function AppearanceSection() {
                   value: 'pixel',
                   label: <span data-testid="settings-skin-pixel">{t('skinPixel')}</span>,
                 },
+                {
+                  value: 'pop',
+                  label: <span data-testid="settings-skin-pop">{t('skinPop')}</span>,
+                },
               ]}
-              onChange={(value) => applySettings({ skin: value === 'pixel' ? 'pixel' : 'default' })}
+              onChange={(value) => applySettings({ skin: parseSkin(String(value)) })}
             />
             <p className="text-xs text-muted-foreground">{t('skinHint')}</p>
           </div>

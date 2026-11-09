@@ -168,6 +168,29 @@ export const palette = {
   amber: { 500: '#d6a32a' },
   red: { 400: '#ff847c', 600: '#c20000' },
   white: '#ffffff',
+  /** Bảng màu skin Pop (ADR-0084): cam/vàng/cobalt lấy từ ảnh chụp uimaven.art, phần còn lại là nền giấy/đêm ấm. */
+  pop: {
+    orange: '#e8650f',
+    yellow: '#f5c518',
+    cobalt: '#1f4fd8',
+    cobaltSoft: '#8fb0ff',
+    pink: '#ff5fa2',
+    red: '#e4161b',
+    mint: '#2bb673',
+    mintDeep: '#0a6b3d',
+    ink: '#111111',
+    inkSoft: '#4a4a4a',
+    paper: '#f4f1ea',
+    paperLight: '#fbf8f1',
+    paperDeep: '#efe6d2',
+    paperDim: '#b9b2a3',
+    paperLine: '#f4f1ea99',
+    night: '#1b1712',
+    nightSide: '#211c15',
+    nightCard: '#26211a',
+    nightRaised: '#2e271e',
+    nightAccent: '#3a3022',
+  },
 } as const;
 
 export type ThemeMode = 'light' | 'dark';
@@ -177,7 +200,7 @@ export type ThemeMode = 'light' | 'dark';
  * bóng, đường cong), KHÔNG đổi màu/nhịp, nên bật skin không làm đổi ảnh baseline mặc định.
  * Không dùng font pixel: Pixelify Sans không có subset tiếng Việt, dấu sẽ rơi về font hệ điều hành.
  */
-export const skinNames = ['default', 'pixel'] as const;
+export const skinNames = ['default', 'pixel', 'pop'] as const;
 export type Skin = (typeof skinNames)[number];
 
 export const skins = {
@@ -195,6 +218,108 @@ export const skins = {
       },
     },
     easing: 'steps(2, end)',
+  },
+  /**
+   * Skin "Pop" (ADR-0084): pop-art — cam/đỏ/vàng/cobalt trên nền giấy kem, viền mực 2 px, bóng cứng
+   * không mờ, bo góc kiểu sticker. Khác Pixel, Pop ĐỔI MÀU (ghi đè một phần SemanticColors theo
+   * mode) nhưng giữ nhịp chuyển động và font Geist. Cam chỉ làm màu nhấn (rail, nút chính); vùng
+   * đọc tin nhắn giữ nền giấy để đọc lâu không mỏi mắt.
+   */
+  pop: {
+    radius: { sm: 6, md: 10, lg: 10, xl: 12, '2xl': 10, '3xl': 12, full: 9999 },
+    borderWidth: 2,
+    shadow: {
+      panel: {
+        light: `3px 3px 0 ${palette.pop.ink}`,
+        // Thẻ đăng nhập (shadow-panel) nằm trên nền cam: bóng cam sẽ chìm mất, nên nền tối dùng mực.
+        dark: `3px 3px 0 ${palette.pop.ink}`,
+      },
+      overlay: {
+        light: `5px 5px 0 ${palette.pop.ink}`,
+        dark: `5px 5px 0 ${palette.pop.orange}`,
+      },
+      // Bóng cứng cho khối trang trí (bong bóng, sticker); nền tối dùng cam vì mực chìm vào nền.
+      hard: {
+        light: `3px 3px 0 ${palette.pop.ink}`,
+        dark: `3px 3px 0 ${palette.pop.orange}`,
+      },
+    },
+    colors: {
+      light: {
+        background: palette.pop.paper,
+        foreground: palette.pop.ink,
+        card: palette.white,
+        cardForeground: palette.pop.ink,
+        popover: palette.white,
+        popoverForeground: palette.pop.ink,
+        // Chữ mực trên cam = 5,7:1 (AA); chữ trắng trên cam chỉ ~3,5:1 nên không dùng.
+        primary: palette.pop.orange,
+        primaryForeground: palette.pop.ink,
+        secondary: palette.pop.paperDeep,
+        secondaryForeground: palette.pop.ink,
+        muted: palette.pop.paperDeep,
+        mutedForeground: palette.pop.inkSoft,
+        accent: palette.pop.yellow,
+        accentForeground: palette.pop.ink,
+        // Thành công: nền mint + chữ mực (8,3:1); chữ xanh đậm khi đứng trên nền giấy (6,7:1).
+        success: palette.pop.mintDeep,
+        successBackground: palette.pop.mint,
+        successForeground: palette.pop.ink,
+        border: palette.pop.ink,
+        borderStrong: palette.pop.ink,
+        input: palette.pop.ink,
+        ring: palette.pop.cobalt,
+        link: palette.pop.cobalt,
+        rail: palette.pop.orange,
+        railForeground: palette.pop.ink,
+        sidebar: palette.pop.paperLight,
+        sidebarForeground: palette.pop.ink,
+        sidebarPrimary: palette.pop.orange,
+        sidebarPrimaryForeground: palette.pop.ink,
+        sidebarAccent: palette.pop.yellow,
+        sidebarAccentForeground: palette.pop.ink,
+        sidebarBorder: palette.pop.ink,
+        sidebarRing: palette.pop.cobalt,
+        field: '#1111110f',
+      },
+      dark: {
+        background: palette.pop.night,
+        foreground: palette.pop.paper,
+        card: palette.pop.nightCard,
+        cardForeground: palette.pop.paper,
+        popover: palette.pop.nightRaised,
+        popoverForeground: palette.pop.paper,
+        primary: palette.pop.orange,
+        primaryForeground: palette.pop.ink,
+        secondary: palette.pop.nightRaised,
+        secondaryForeground: palette.pop.paper,
+        muted: palette.pop.nightCard,
+        mutedForeground: palette.pop.paperDim,
+        // Nền tối: antd tô <a> bằng rule ngoài layer nên bg-accent trên Link không hiện, chữ lúc đó
+        // nằm trên nền sidebar → dùng accent trầm + chữ giấy thay vì vàng + mực (axe bắt, e2e skin-pop).
+        accent: palette.pop.nightAccent,
+        accentForeground: palette.pop.paper,
+        success: palette.pop.mint,
+        successBackground: palette.pop.mint,
+        successForeground: palette.pop.ink,
+        border: palette.pop.paperLine,
+        borderStrong: palette.pop.paper,
+        input: palette.pop.paper,
+        ring: palette.pop.yellow,
+        link: palette.pop.cobaltSoft,
+        rail: palette.pop.orange,
+        railForeground: palette.pop.ink,
+        sidebar: palette.pop.nightSide,
+        sidebarForeground: palette.pop.paper,
+        sidebarPrimary: palette.pop.orange,
+        sidebarPrimaryForeground: palette.pop.ink,
+        sidebarAccent: palette.pop.nightAccent,
+        sidebarAccentForeground: palette.pop.paper,
+        sidebarBorder: palette.pop.paperLine,
+        sidebarRing: palette.pop.yellow,
+        field: '#ffffff14',
+      },
+    },
   },
 } as const;
 
@@ -331,6 +456,8 @@ export const darkColors: SemanticColors = {
   field: '#0000001f',
 };
 
-export function semanticColors(mode: ThemeMode): SemanticColors {
-  return mode === 'dark' ? darkColors : lightColors;
+export function semanticColors(mode: ThemeMode, skin: Skin = 'default'): SemanticColors {
+  const base = mode === 'dark' ? darkColors : lightColors;
+  // Chỉ Pop ghi đè màu (ADR-0084); default/pixel giữ nguyên bảng gốc.
+  return skin === 'pop' ? { ...base, ...skins.pop.colors[mode] } : base;
 }

@@ -25,9 +25,6 @@ export const PingButton = forwardRef<HTMLButtonElement, PingButtonProps>(functio
   { variant = 'primary', size = 'md', className, children, ...rest },
   ref,
 ) {
-  // Hành động nguy hiểm dùng kiểu viền (default + danger) thay vì nền đỏ đặc: chữ trắng trên
-  // red-400 ở nền tối chỉ đạt ~2.7:1, axe bắt color-contrast (serious). Chữ đỏ trên nền card
-  // đạt ~5.8:1 (tối) và ~4.7:1 (sáng).
   const antdType: AntdButtonProps['type'] = variant === 'primary' ? 'primary' : 'default';
   const danger = variant === 'danger';
   return (

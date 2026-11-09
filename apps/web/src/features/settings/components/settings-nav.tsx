@@ -25,6 +25,7 @@ export function SettingsNav() {
   return (
     <nav
       aria-label={t('navLabel')}
+      data-slot="settings-nav"
       className="flex w-full shrink-0 gap-1 overflow-x-auto border-b border-border bg-sidebar p-2 md:w-settings-nav md:flex-col md:overflow-visible md:border-0 md:p-2.5"
     >
       {ITEMS.map(({ href, key, icon: Icon }) => {

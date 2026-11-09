@@ -120,12 +120,17 @@ export function MessageReactions({
   const errorMessage = useErrorMessage();
 
   return (
-    <div className="mt-1 flex flex-wrap items-center gap-1" data-testid="message-reactions">
+    <div
+      className="mt-1 flex flex-wrap items-center gap-1"
+      data-slot="reactions"
+      data-testid="message-reactions"
+    >
       {reactions.map((reaction) => (
         <span
           key={reaction.emoji}
           data-testid={`reaction-${reaction.emoji}`}
           data-me={reaction.me ? 'true' : undefined}
+          data-slot="reaction"
           className={`inline-flex items-center overflow-hidden rounded-full border text-xs ${
             reaction.me
               ? 'border-primary/60 bg-primary/15 text-foreground'

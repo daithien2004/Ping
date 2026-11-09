@@ -34,13 +34,17 @@ export function DmSidebar() {
   return (
     <aside
       data-mobile-nav
+      data-slot="sidebar"
       className={`flex min-h-0 w-sidebar shrink-0 flex-col bg-sidebar text-sidebar-foreground max-md:absolute max-md:inset-y-0 max-md:left-18 max-md:z-30 max-md:shadow-overlay max-md:transition-transform max-md:duration-200 ${
         mobileNavOpen
           ? 'max-md:visible max-md:translate-x-0'
           : 'max-md:invisible max-md:-translate-x-full'
       }`}
     >
-      <header className="flex h-header shrink-0 items-center gap-2 border-b border-sidebar-border px-4">
+      <header
+        data-slot="sidebar-header"
+        className="flex h-header shrink-0 items-center gap-2 border-b border-sidebar-border px-4"
+      >
         <MessageCircle className="size-4 text-muted-foreground" aria-hidden />
         <h2 className="font-semibold">{t('title')}</h2>
       </header>

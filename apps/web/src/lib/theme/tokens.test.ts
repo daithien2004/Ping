@@ -97,10 +97,39 @@ describe('skin Pixel (ADR-0076)', () => {
     expect(pixel.token?.colorPrimary).toBe(normal.token?.colorPrimary);
   });
 
-  it('cookie skin chỉ nhận hai giá trị', () => {
+  it('cookie skin chỉ nhận các giá trị đã biết', () => {
     expect(parseSkin('pixel')).toBe('pixel');
+    expect(parseSkin('pop')).toBe('pop');
     expect(parseSkin('default')).toBe('default');
     expect(parseSkin('PIXEL')).toBe('default');
     expect(parseSkin(undefined)).toBe('default');
+  });
+});
+
+describe('skin Pop (ADR-0084)', () => {
+  it('sinh khối data-skin cho cả sáng và tối, có ghi đè màu', () => {
+    expect(generated).toContain("html[data-skin='pop'] {");
+    expect(generated).toContain("html[data-skin='pop'][data-theme='dark']");
+    expect(generated).toContain(`--primary: ${skins.pop.colors.light.primary};`);
+    expect(generated).toContain(`--ping-border-width: ${skins.pop.borderWidth}px;`);
+    expect(generated).toContain(`--ping-shadow-panel: ${skins.pop.shadow.panel.dark};`);
+  });
+
+  it('chỉ Pop đổi màu; default giữ nguyên bảng gốc', () => {
+    for (const mode of ['light', 'dark'] as const) {
+      expect(semanticColors(mode, 'pixel')).toEqual(semanticColors(mode));
+      expect(semanticColors(mode, 'pop').primary).toBe(skins.pop.colors[mode].primary);
+      expect(semanticColors(mode, 'pop').destructive).toBe(semanticColors(mode).destructive);
+    }
+  });
+
+  it('antd nhận skin Pop: bo sticker, viền 2 px, bóng cứng, màu Pop', () => {
+    const pop = buildAntdTheme('light', 'pop');
+    expect(pop.token?.borderRadius).toBe(skins.pop.radius.md);
+    expect(pop.token?.lineWidth).toBe(skins.pop.borderWidth);
+    expect(pop.token?.boxShadow).toBe(skins.pop.shadow.overlay.light);
+    expect(pop.token?.colorPrimary).toBe(skins.pop.colors.light.primary);
+    expect(pop.components?.Button?.primaryColor).toBe(skins.pop.colors.light.primaryForeground);
+    expect(buildAntdTheme('light').components?.Button?.primaryColor).toBeUndefined();
   });
 });

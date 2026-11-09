@@ -389,7 +389,10 @@ export function MessageComposer({
           {/* D6: khung composer có biên rõ — vùng nhập là một khối nổi trên nền chat (Discord:
               nền sáng hơn chat, bo 8, viền trắng 12%), focus-within đổi viền + ring. */}
           {/* `p-2.5`: đo Discord 1280 → hộp cao 57,6 px (36 nội dung + 2×10 đệm + 1,6 viền). */}
-          <div className="flex items-end gap-1 rounded-md border border-border bg-card p-2.5 transition-colors focus-within:border-primary focus-within:ring-2 focus-within:ring-ring">
+          <div
+            data-slot="composer"
+            className="flex items-end gap-1 rounded-md border border-border bg-card p-2.5 transition-colors focus-within:border-primary focus-within:ring-2 focus-within:ring-ring"
+          >
             <button
               type="button"
               onClick={() => inputRef.current?.click()}
@@ -462,6 +465,7 @@ export function MessageComposer({
                 disabled={!ready || uploads.busy}
                 aria-label={t('send')}
                 data-testid="send-button"
+                data-slot="send"
                 className="shrink-0 rounded-md bg-primary p-2 text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
               >
                 <Send className="size-5" />

@@ -424,6 +424,7 @@ export function MessagePane({
       <div
         ref={scrollRef}
         data-testid="message-scroll"
+        data-slot="message-pane"
         className="min-h-0 flex-1 overflow-y-auto"
         aria-label={
           isDm ? t('dmListLabel', { name: channelName }) : t('listLabel', { channel: channelName })
@@ -501,6 +502,7 @@ export function MessagePane({
                   highlighted={message.id === focusId || message.id === jumpTarget}
                   grouped={row.grouped}
                   showDate={row.showDate}
+                  mine={message.author.id === me?.id}
                 />
               </div>
             );

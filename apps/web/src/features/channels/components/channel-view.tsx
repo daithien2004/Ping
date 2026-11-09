@@ -85,7 +85,10 @@ export function ChannelView({
         {/* Discord: header 49 px, nền trùng nền chat (không viền), tên kênh + chủ đề trên CÙNG
             một dòng. Hàng icon theo thứ tự Discord (ghim, chuông, thành viên), ô tìm kiếm 244 px
             nằm cuối; nút "Hỏi Ping" chỉ là icon để không phá nhịp header. */}
-        <header className="flex h-header shrink-0 items-center gap-2 px-4">
+        <header
+          data-slot="channel-header"
+          className="flex h-header shrink-0 items-center gap-2 px-4"
+        >
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <span aria-hidden className="shrink-0 text-2xl leading-none text-muted-foreground">
               #
@@ -93,7 +96,7 @@ export function ChannelView({
             <h2 className="truncate text-base font-semibold">{channel.name}</h2>
             {/* TG.10: chủ đề hiển thị ngay sau tên kênh (header), quản lý kênh sửa qua nút bút. */}
             {channel.topic && (
-              <>
+              <div data-slot="topic-inline" className="contents">
                 <span aria-hidden className="h-4 w-px shrink-0 bg-border" />
                 <p
                   className="min-w-0 truncate text-sm font-normal text-muted-foreground"
@@ -101,12 +104,12 @@ export function ChannelView({
                 >
                   {channel.topic}
                 </p>
-              </>
+              </div>
             )}
           </div>
           {/* `min-w-0`: cửa sổ hẹp thì ô tìm kiếm co lại (đến 96 px) thay vì đẩy header tràn
               ra ngoài — trước đây 244 px cố định cộng 5 icon là nguồn tràn ngang của cả trang. */}
-          <div className="flex min-w-0 items-center gap-1">
+          <div data-slot="channel-actions" className="flex min-w-0 items-center gap-1">
             {canManage && (
               <PingIconButton
                 icon={<Pencil />}
@@ -140,6 +143,12 @@ export function ChannelView({
             <SearchDialog serverId={serverId} />
           </div>
         </header>
+        {/* Dải chủ đề chạy chữ của skin Pop: ẩn mặc định, aria-hidden vì chủ đề đã đọc ở header. */}
+        {channel.topic && (
+          <p aria-hidden data-slot="topic-strip" className="hidden">
+            <span>{channel.topic}</span>
+          </p>
+        )}
         <Suspense fallback={<MessageListSkeleton />}>
           {/* key: mỗi channel một trạng thái riêng (nháp, vị trí cuộn lần đầu). Tin đích của
               permalink cũng là một "phiên xem" riêng: mở link khác thì nạp lại cửa sổ mới. */}

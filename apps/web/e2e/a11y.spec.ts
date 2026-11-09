@@ -1,7 +1,7 @@
-import AxeBuilder from '@axe-core/playwright';
 import { randomUUID } from 'node:crypto';
 import { expect, type Page, test } from '@playwright/test';
 import type { AuthResponse, ServerDetail } from '@ping/shared';
+import { scan } from './axe';
 import { paceLogin } from './login-pace';
 
 const API = 'http://localhost:4000/api/v1';
@@ -10,59 +10,6 @@ const API = 'http://localhost:4000/api/v1';
 // màn hình chính, ở cả nền sáng lẫn nền tối. Violation nào cũng làm test đỏ: sửa app (hoặc token màu
 // trong globals.css), đừng nới bộ luật. Đăng nhập bị giới hạn 5 lần/phút/IP nên mỗi file chỉ đăng nhập
 // một lần và đổi nền sáng/tối bằng emulateMedia.
-const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];
-
-// `only`: vùng cần quét. Menu modal của Radix đặt aria-hidden lên phần còn lại của trang nhưng phần
-// đó vẫn focusable trên DOM (focus bị bẫy bên trong menu) → axe báo aria-hidden-focus; chỉ quét menu.
-// axe đọc màu tính toán tại thời điểm quét: ngay sau khi đổi nền sáng/tối hoặc mở menu/hộp thoại, các chuyển động CSS
-// (transition màu, animate-in) còn chạy dở nên màu ở giữa chừng làm contrast "đỏ" lúc có lúc không (đã gặp trên CI
-// và ở màn Tài khoản: đo được #625d60 trên #2a2a2e ≈ 2,2:1 trong lúc chuyển tiếp, màu cuối vẫn đạt).
-// Đợi hết chuyển động hữu hạn rồi mới quét.
-async function settleAnimations(page: Page) {
-  await page.waitForFunction(
-    () =>
-      document
-        .getAnimations()
-        .every((animation) => animation.effect?.getComputedTiming().iterations === Infinity),
-    undefined,
-    { timeout: 5000 },
-  );
-}
-
-/**
- * SSR luôn dựng bảng màu sáng (server không biết `prefers-color-scheme`); `<html data-theme>`
- * chỉ xuất hiện sau khi ThemeProvider chạy effect ở client. Quét trước mốc đó, axe đo chữ antd
- * màu sáng trên bề mặt đã tối (đỏ #c20000 trên #222327 ≈ 2,6:1) và báo color-contrast giả.
- */
-async function settleTheme(page: Page) {
-  await page.waitForFunction(() => document.documentElement.hasAttribute('data-theme'));
-}
-
-async function scan(page: Page, what: string, only?: string) {
-  await settleTheme(page);
-  // Tắt transition màu đúng lúc quét (transition đang chạy có thể khởi động lại do click/hover
-  // ngay trước axe đọc màu). Gỡ ngay sau khi quét: để nguyên sẽ chặn animation vào của menu mở
-  // sau đó (antd chờ animationend nên mục menu kẹt ở trạng thái ẩn).
-  const freeze = await page.addStyleTag({
-    content: '*,*::before,*::after{transition:none!important}',
-  });
-  let summary: string[] = [];
-  try {
-    await settleAnimations(page);
-    const builder = new AxeBuilder({ page }).withTags(TAGS);
-    const { violations } = await (only ? builder.include(only) : builder).analyze();
-    summary = violations.map(
-      (v) =>
-        `${v.id} (${v.impact}): ${v.help} → ${v.nodes
-          .slice(0, 3)
-          .map((n) => n.target.join(' '))
-          .join(' | ')}`,
-    );
-  } finally {
-    await freeze.evaluate((node) => (node as Element).remove());
-  }
-  expect(summary, what).toEqual([]);
-}
 
 async function signIn(page: Page) {
   await paceLogin();

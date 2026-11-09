@@ -45,6 +45,26 @@
   --palette-red-400: #ff847c;
   --palette-red-600: #c20000;
   --palette-white: #ffffff;
+  --palette-pop-orange: #e8650f;
+  --palette-pop-yellow: #f5c518;
+  --palette-pop-cobalt: #1f4fd8;
+  --palette-pop-cobaltSoft: #8fb0ff;
+  --palette-pop-pink: #ff5fa2;
+  --palette-pop-red: #e4161b;
+  --palette-pop-mint: #2bb673;
+  --palette-pop-mintDeep: #0a6b3d;
+  --palette-pop-ink: #111111;
+  --palette-pop-inkSoft: #4a4a4a;
+  --palette-pop-paper: #f4f1ea;
+  --palette-pop-paperLight: #fbf8f1;
+  --palette-pop-paperDeep: #efe6d2;
+  --palette-pop-paperDim: #b9b2a3;
+  --palette-pop-paperLine: #f4f1ea99;
+  --palette-pop-night: #1b1712;
+  --palette-pop-nightSide: #211c15;
+  --palette-pop-nightCard: #26211a;
+  --palette-pop-nightRaised: #2e271e;
+  --palette-pop-nightAccent: #3a3022;
 
   /* Bo góc: Tailwind rounded-* đọc các biến này qua @theme trong globals.css. */
   --ping-radius-sm: 6px;
@@ -231,4 +251,134 @@ html[data-skin='pixel'] {
 html[data-skin='pixel'][data-theme='dark'] {
   --ping-shadow-panel: 3px 3px 0 rgb(0 0 0 / 70%);
   --ping-shadow-overlay: 5px 5px 0 rgb(0 0 0 / 70%);
+}
+
+/* Skin Pop (ADR-0084): ngoài hình thức còn ghi đè một phần màu theo mode. Khối dark có độ đặc hiệu
+ * cao hơn khối light nên thắng khi nền tối; thứ tự như Pixel. */
+html[data-skin='pop'] {
+  --ping-radius-sm: 6px;
+  --ping-radius-md: 10px;
+  --ping-radius-lg: 10px;
+  --ping-radius-xl: 12px;
+  --ping-radius-2xl: 10px;
+  --ping-radius-3xl: 12px;
+  --ping-radius-full: 9999px;
+  --radius: 10px;
+  --ping-border-width: 2px;
+  --background: #f4f1ea;
+  --foreground: #111111;
+  --card: #ffffff;
+  --card-foreground: #111111;
+  --popover: #ffffff;
+  --popover-foreground: #111111;
+  --primary: #e8650f;
+  --primary-foreground: #111111;
+  --secondary: #efe6d2;
+  --secondary-foreground: #111111;
+  --muted: #efe6d2;
+  --muted-foreground: #4a4a4a;
+  --accent: #f5c518;
+  --accent-foreground: #111111;
+  --success: #0a6b3d;
+  --success-background: #2bb673;
+  --success-foreground: #111111;
+  --border: #111111;
+  --border-strong: #111111;
+  --input: #111111;
+  --ring: #1f4fd8;
+  --link: #1f4fd8;
+  --rail: #e8650f;
+  --rail-foreground: #111111;
+  --sidebar: #fbf8f1;
+  --sidebar-foreground: #111111;
+  --sidebar-primary: #e8650f;
+  --sidebar-primary-foreground: #111111;
+  --sidebar-accent: #f5c518;
+  --sidebar-accent-foreground: #111111;
+  --sidebar-border: #111111;
+  --sidebar-ring: #1f4fd8;
+  --field: #1111110f;
+  --ping-shadow-panel: 3px 3px 0 #111111;
+  --ping-shadow-overlay: 5px 5px 0 #111111;
+  --ping-shadow-hard: 3px 3px 0 #111111;
+}
+
+@media (prefers-color-scheme: dark) {
+  html[data-skin='pop']:not([data-theme='light']) {
+    --background: #1b1712;
+    --foreground: #f4f1ea;
+    --card: #26211a;
+    --card-foreground: #f4f1ea;
+    --popover: #2e271e;
+    --popover-foreground: #f4f1ea;
+    --primary: #e8650f;
+    --primary-foreground: #111111;
+    --secondary: #2e271e;
+    --secondary-foreground: #f4f1ea;
+    --muted: #26211a;
+    --muted-foreground: #b9b2a3;
+    --accent: #3a3022;
+    --accent-foreground: #f4f1ea;
+    --success: #2bb673;
+    --success-background: #2bb673;
+    --success-foreground: #111111;
+    --border: #f4f1ea99;
+    --border-strong: #f4f1ea;
+    --input: #f4f1ea;
+    --ring: #f5c518;
+    --link: #8fb0ff;
+    --rail: #e8650f;
+    --rail-foreground: #111111;
+    --sidebar: #211c15;
+    --sidebar-foreground: #f4f1ea;
+    --sidebar-primary: #e8650f;
+    --sidebar-primary-foreground: #111111;
+    --sidebar-accent: #3a3022;
+    --sidebar-accent-foreground: #f4f1ea;
+    --sidebar-border: #f4f1ea99;
+    --sidebar-ring: #f5c518;
+    --field: #ffffff14;
+    --ping-shadow-panel: 3px 3px 0 #111111;
+    --ping-shadow-overlay: 5px 5px 0 #e8650f;
+    --ping-shadow-hard: 3px 3px 0 #e8650f;
+  }
+}
+
+html[data-skin='pop'][data-theme='dark'] {
+  --background: #1b1712;
+  --foreground: #f4f1ea;
+  --card: #26211a;
+  --card-foreground: #f4f1ea;
+  --popover: #2e271e;
+  --popover-foreground: #f4f1ea;
+  --primary: #e8650f;
+  --primary-foreground: #111111;
+  --secondary: #2e271e;
+  --secondary-foreground: #f4f1ea;
+  --muted: #26211a;
+  --muted-foreground: #b9b2a3;
+  --accent: #3a3022;
+  --accent-foreground: #f4f1ea;
+  --success: #2bb673;
+  --success-background: #2bb673;
+  --success-foreground: #111111;
+  --border: #f4f1ea99;
+  --border-strong: #f4f1ea;
+  --input: #f4f1ea;
+  --ring: #f5c518;
+  --link: #8fb0ff;
+  --rail: #e8650f;
+  --rail-foreground: #111111;
+  --sidebar: #211c15;
+  --sidebar-foreground: #f4f1ea;
+  --sidebar-primary: #e8650f;
+  --sidebar-primary-foreground: #111111;
+  --sidebar-accent: #3a3022;
+  --sidebar-accent-foreground: #f4f1ea;
+  --sidebar-border: #f4f1ea99;
+  --sidebar-ring: #f5c518;
+  --field: #ffffff14;
+  --ping-shadow-panel: 3px 3px 0 #111111;
+  --ping-shadow-overlay: 5px 5px 0 #e8650f;
+  --ping-shadow-hard: 3px 3px 0 #e8650f;
 }
