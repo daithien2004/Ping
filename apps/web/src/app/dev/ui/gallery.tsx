@@ -90,6 +90,8 @@ export function DevUiGallery() {
         <Row label="PingButton — variant, size, trạng thái">
           <PingButton variant="primary">Chính</PingButton>
           <PingButton variant="secondary">Phụ</PingButton>
+          <PingButton variant="success">Xác nhận</PingButton>
+          <PingButton variant="info">Thông tin</PingButton>
           <PingButton variant="ghost">Nhạt</PingButton>
           <PingButton variant="danger">Nguy hiểm</PingButton>
           <PingButton variant="primary" size="sm">

@@ -1,5 +1,5 @@
 /* Skin Pop (ADR-0084): chỉ hình khối, bám `data-slot` (có test hợp đồng), không hex.
- * Slot: rail, rail-list, rail-icon, rail-footer, language-switcher, loading, loading-label,
+ * Slot: button, rail, rail-list, rail-icon, rail-footer, language-switcher, loading, loading-label,
  *       not-found-code, landing-nav, landing-logo, landing-hero, landing-mark, landing-window-wrap,
  *       landing-window, landing-bubble, landing-marquee, landing-features, landing-feature,
  *       landing-icon, landing-steps, landing-step, landing-step-number, landing-cta, landing-stamp,
@@ -555,12 +555,23 @@ html[data-skin='pop'] .ant-btn:not(.ant-btn-text, .ant-btn-link):active:not(:dis
 html[data-skin='pop'] .ant-btn:disabled {
   box-shadow: none;
 }
-html[data-skin='pop'] .ant-btn-dangerous:not(:disabled) {
+/* `.ant-btn-dangerous` giữ cho nút antd nội bộ (modal, popconfirm) không có data-slot. */
+html[data-skin='pop']
+  :is([data-slot='button'][data-variant='danger'], .ant-btn-dangerous):not(:disabled) {
   background: var(--palette-pop-red);
   color: var(--palette-white);
 }
-html[data-skin='pop'] .ant-btn-dashed {
+html[data-skin='pop'] [data-slot='button'][data-variant='success'] {
+  background: var(--palette-pop-mint);
+  color: var(--palette-pop-ink);
+}
+html[data-skin='pop'] [data-slot='button'][data-variant='info'] {
+  background: var(--palette-pop-cobalt);
+  color: var(--palette-white);
+}
+html[data-skin='pop'] [data-slot='button'][data-variant='ghost'] {
   border-style: dashed;
+  background: transparent;
   box-shadow: none;
 }
 

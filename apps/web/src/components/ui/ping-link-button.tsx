@@ -3,8 +3,7 @@
 import { Button } from 'antd';
 import { useRouter } from 'next/navigation';
 import type { MouseEvent, Ref } from 'react';
-import { cn } from '@/lib/utils';
-import { BUTTON_ICON_CLASS, VARIANTS, type PingButtonProps } from './ping-button';
+import { VARIANTS, type PingButtonProps } from './ping-button';
 import { toAntdSize } from './size';
 
 export interface PingLinkButtonProps extends Omit<PingButtonProps, 'htmlType' | 'loading' | 'ref'> {
@@ -21,7 +20,6 @@ export function PingLinkButton({
   variant,
   size,
   href,
-  className,
   onClick,
   'data-testid': testId = 'ping-link-button',
   ...rest
@@ -33,7 +31,6 @@ export function PingLinkButton({
       {...VARIANTS[variant]}
       href={href}
       size={size ? toAntdSize(size) : undefined}
-      className={cn(BUTTON_ICON_CLASS, className)}
       data-slot="button"
       data-variant={variant}
       data-size={size}

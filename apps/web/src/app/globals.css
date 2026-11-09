@@ -193,3 +193,12 @@ html:is([data-skin='pixel'], [data-skin='pop']) .border-y {
     scroll-behavior: auto !important;
   }
 }
+
+@layer components {
+  [data-slot='button'] > svg,
+  :is([data-slot='button'], [data-slot='icon-button']) > .ant-btn-icon > svg {
+    width: 1em;
+    height: 1em;
+    pointer-events: none;
+  }
+}
