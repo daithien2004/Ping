@@ -25,6 +25,24 @@ Mẫu code đầy đủ ở `references/templates.md`. Cách viết test ở `re
 
 `Omit` khỏi props antd mọi prop quyết định hình thức (`type`, `size`, `danger`, `ghost`, `shape`, `color`, `variant`...) để consumer chỉ còn `variant` và `size` của Ping. Nếu không, người ta sẽ truyền thẳng prop antd và hợp đồng bị thủng. Kết quả typecheck vỡ ở chỗ cũ là chủ ý, phải đếm số chỗ và codemod trong cùng commit.
 
+**API mở hay đóng.** Chọn một trong hai, theo tiêu chí:
+
+- **Mở** (`Omit` prop hình thức + spread): antd component chủ yếu là prop hành vi, ít xung đột ngữ nghĩa với Ping (Alert, Modal, Tabs).
+- **Đóng** (`Pick` + spread): có prop trùng tên nhưng khác nghĩa (`size` của Drawer là bề rộng, không phải `PingSize`), hoặc nhiều prop hình thức dễ lọt (Drawer, Popconfirm). Không liệt kê rồi chuyển tiếp từng prop; chỉ cần
+  ```tsx
+  export type PingDrawerProps = Pick<DrawerProps, 'open' | 'onClose' | ...> & { size?: number | string };
+  export function PingDrawer(props: PingDrawerProps) { return <Drawer data-testid="ping-drawer" {...props} />; }
+  ```
+  Thêm prop mới chỉ sửa danh sách `Pick`.
+- Wrapper đóng đặt trong `Form.Item` (ô nhập, chọn...) phải giữ trong `Pick` các prop mà form đưa vào: `value`, `onChange`, `id`, `aria-invalid`, `aria-describedby`. Thiếu thì ô mất liên kết với form mà typecheck chưa chắc báo.
+- Wrapper cùng họ (`PingInput`, `PingPasswordInput`, `PingTextArea`...) phải có cùng bộ prop hình thức, đặc biệt `size?: PingSize`; thiếu thì hai ô cạnh nhau không đồng cỡ được.
+- Không dùng `as unknown as ...` để vượt lỗi kiểu khi spread props: nó tắt kiểm tra mọi prop. Tìm prop gây lỗi (vd `children` dạng hàm render của `Form`) rồi `Omit` và khai báo lại hẹp.
+- `type PingXProps = AntdXProps` (alias trần) mở cả prop `size` kiểu antd mà `size.test.ts` không bắt được (nó chỉ quét chuỗi `size?: 'small'...`). Wrapper alias antd phải `Omit` `size`; khóa bằng ca trong `closed-api.test.ts`.
+- Wrapper giữ singleton bên ngoài React (vd `pingToast`): chỉ cleanup khi instance vẫn là của mình (`if (api === instance)`), và gọi khi chưa có host phải cảnh báo ở dev, không nuốt im lặng. Đọc cờ môi trường qua `@/lib/env` (lint chặn `process.env`).
+- Wrapper có dữ liệu dạng cột/field (`PingTable`): bắt `key` bằng kiểu, không dùng `string` trần. Cột không có `render` thì `key: Extract<keyof T, string>`, có `render` thì `key: string`. Chỗ gọi phải gõ rõ `PingTableColumn<Row>[]` (nếu để `Record<string, unknown>` hoặc `any` thì kiểm tra mất tác dụng mà không báo). Field lồng (`'user.name'`) không biểu diễn được: chuyển sang `render`.
+- "Đóng" chỉ ở mức kiểu: spread một object kiểu rộng vẫn đẩy prop thừa xuống antd lúc chạy. Khóa bằng `closed-api.test.ts` (`// @ts-expect-error` khi truyền `placement`/`styles`); chỉ có tác dụng vì test nằm trong phạm vi `tsc`. Wrapper đóng mới thì thêm một ca vào file đó.
+- Wrapper generic (`PingTable<T>`) xem riêng: `ComponentProps<typeof Table>` làm mất generic, `Pick<TableProps<T>, ...>` đòi hàm cũng generic. Đừng áp mẫu máy móc.
+
 ### 3. Thứ tự spread: `rest` đứng đầu, hợp đồng đứng sau
 
 ```tsx
@@ -45,13 +63,21 @@ Mẫu code đầy đủ ở `references/templates.md`. Cách viết test ở `re
 
 React 19 truyền `ref` qua props. Nếu antd component có nhiều kiểu ref (vd Button vừa là `<button>` vừa là `<a>` khi có `href`), `Omit` các prop gây phân nhánh (`href`, `target`) và `ref`, rồi khai báo lại `ref` kiểu hẹp. Nút điều hướng là wrapper riêng (`PingLinkButton`); chỉ nhắc tên wrapper trong comment khi nó thật sự tồn tại.
 
+**Wrapper điều hướng (`PingLinkButton`).** Tách riêng vì `<a>` và `<button>` khác thẻ, kiểu `ref` và hành vi; props dẫn xuất từ `PingButtonProps` (`Omit` thêm `htmlType`, `loading`, `ref`; `href` bắt buộc).
+
+- Antd render `<a href>`, ta chỉ bắt click bấm trái thuần để gọi `router.push`; phím phụ và chuột giữa để trình duyệt xử lý. Hàm bắt click là hàm thuần, export và có unit test (`ping-link-button.test.ts`: `button`, `meta/ctrl/shift/alt`).
+- Không bọc `<Link><PingButton/></Link>` (`<a><button>` là HTML sai); antd `Button` không có `as`/`component` để đổi thẻ.
+- Giới hạn đã biết: **không prefetch**. Chấp nhận cho 404 và trang lỗi; dùng cho điều hướng thường xuyên thì xét lại (`<Link>` kèm class nút hoặc `router.prefetch`). Mọi giới hạn kiểu này phải ghi trong comment đầu wrapper kèm điều kiện xét lại.
+- Nút `disabled` có `href`: antd 6.6.7 tự `preventDefault` và không chạy `onClick`; kiểm lại khi nâng antd.
+
 ### 6. `data-testid` cho ghi đè
 
 Mặc định cố định (`'ping-button'`) chỉ để tương thích; nhiều nút trên một trang thì test không nhắm được. Cho phép truyền testid riêng:
 
 - Wrapper spread props antd (`Omit<ComponentProps<...>>`): viết `data-testid="ping-x"` **trước** `{...props}`; props của chỗ gọi đè được. Không khai báo prop `'data-testid'` (xung đột với index `data-${string}` của antd).
-- Wrapper có `data-*` hợp đồng (button, icon-button, link-button): `{...rest}` phải đứng đầu nên destructure `'data-testid': testId = 'ping-x'` và đặt cạnh các `data-*` khác.
-- Wrapper có props đóng (không spread, vd table, drawer, popconfirm, password-input, kbd) thì testid cố định theo thiết kế; muốn nhắm riêng thì thêm prop `testId` có chủ đích.
+- Wrapper có `data-*` hợp đồng (button, link-button): `{...rest}` phải đứng đầu nên destructure `'data-testid': testId = 'ping-x'` và đặt cạnh các `data-*` khác.
+- Wrapper đóng bằng `Pick` + `{...props}` (drawer, popconfirm): `data-testid` viết trước `{...props}`, ghi đè được ở runtime; JSX viết trực tiếp `data-*` không bị TypeScript kiểm.
+- Wrapper không bọc antd hoặc có logic riêng (kbd, table, password-input): testid cố định; muốn nhắm riêng thì thêm prop `testId` có chủ đích.
 
 ### 7. `className` truyền thẳng khi wrapper không có class mặc định
 
@@ -84,9 +110,40 @@ html[data-skin='pop'] .ant-btn-dangerous { ... }
 - Wrapper không dùng i18n. Chữ cho trình đọc màn hình (`aria-label`) phải do chỗ gọi truyền vào bằng prop **bắt buộc theo kiểu** (union: `{ presence?: undefined } | { presence: P; presenceLabel: string }`), không gắn chuỗi tiếng Anh cố định.
 - Bọc ngoài cần định vị dùng `inline-flex`, không `inline-block` (tránh khoảng trống baseline dưới phần tử).
 
-### 11. `danger` + `ghost` không kết hợp
+### 11. Không re-export hằng số hay kiểu của antd
+
+Chỗ gọi cần một lựa chọn hình thức của antd (vd ảnh `Empty.PRESENTED_IMAGE_SIMPLE`) thì biểu diễn bằng **prop có tên của Ping** (`compact?: boolean`), wrapper tự ánh xạ sang giá trị antd. Đừng `export const PING_X = Antd.X` để chỗ gọi tự truyền: nó lộ chi tiết antd, mở lại prop đã định `Omit` (`image`), và đổi ảnh phải sửa mọi chỗ gọi. Prop hình thức bị thay bằng prop tên thì `Omit` prop gốc (`Omit<EmptyProps, 'image'>`). Giá trị mặc định khi không truyền phải là hình hiện tại của antd để chỗ gọi cũ không đổi hình.
+
+### 12. Wrapper dựa trên wrapper
+
+Wrapper chỉ cố định một biến thể và siết nội dung (vd `PingIconButton` = `PingButton variant="text"` + `icon` + `aria-label` bắt buộc + không `children`) thì **gọi wrapper gốc**, không gọi lại antd:
+
+```tsx
+export type PingIconButtonProps = Omit<PingButtonProps, 'variant' | 'children'> & {
+  icon: ReactNode;
+  'aria-label': string;
+};
+export function PingIconButton(props: PingIconButtonProps) {
+  return <PingButton data-testid="ping-icon-button" {...props} variant="text" />;
+}
+```
+
+- Props dẫn xuất bằng `Omit<PingXProps, ...>` (như `PingLinkButton`), không chép lại danh sách `Omit` của antd: hai danh sách sẽ lệch khi wrapper gốc loại thêm prop.
+- `data-testid` riêng viết trước `{...props}`; biến thể cố định viết **sau** để chỗ gọi không đè.
+- Wrapper con không đặt `data-slot` riêng; skin bám slot và biến thể của wrapper gốc. Cần kiểu riêng cho wrapper con thì thêm biến thể vào `VARIANTS` (vd `text`), không mở slot mới khi chưa có luật skin nào dùng.
+- Vẫn giữ wrapper con nếu nó thêm bảo đảm ở mức kiểu mà wrapper gốc không có (vd `aria-label` bắt buộc); khóa bằng ca trong `closed-api.test.ts`. Chỉ xóa khi nó không còn thêm gì.
+- Biến thể "kiểu antd gốc" (`text`) không cần luật skin: ghi vào danh sách `NATIVE_LOOK_IN_SKINS` của `ping-button.test.ts`.
+
+### 13. `danger` + `ghost` không kết hợp
 
 Một biến thể = một vẻ. Nếu cần tổ hợp, thêm biến thể mới vào `VARIANTS` chứ không mở prop antd ra lại. Ghi chú điều này trong comment đầu `VARIANTS`.
+
+## Hợp đồng `data-*` và skin (tóm tắt)
+
+- `data-slot` = loại thành phần, `data-variant` = biến thể từ `VARIANTS`, `data-size` = chỉ có khi truyền `size` (skin không được bám). Skin bám các nhãn này thay cho `.ant-*` nên không ăn nhầm nút của modal/popconfirm và không vỡ khi antd đổi class.
+- Ba thuộc tính đứng **sau** `rest` (quy tắc 3); `data-testid` theo quy tắc 6.
+- Slot là chuỗi literal. Ba kiểm tra của `skin-pop-slots.test.ts`: mọi `[data-slot='x']` trong CSS có trong một component; có trong bảng đầu `skin-pop.css`; CSS không có hex thô. Thêm: không có `data-slot={...}` động. Chiều ngược lại (biến thể trong `VARIANTS` có luật skin hoặc nằm trong danh sách cố ý rơi về secondary) do test của từng wrapper, vd `ping-button.test.ts`.
+- Ngoại lệ portal: xem quy tắc 8.
 
 ## Kỷ luật commit (quan trọng)
 
@@ -113,6 +170,9 @@ Tách thay đổi **không đổi hình** khỏi thay đổi **đổi diện m�
 - [ ] Kiểu biến thể suy ra từ `VARIANTS`, không có union song song.
 - [ ] Props hình thức của antd đã `Omit`; `ref` khai báo lại nếu cần.
 - [ ] `{...rest}` đứng trước `data-slot`/`data-variant`/`data-size` (mọi wrapper, không riêng nút); `data-testid` đứng theo quy tắc 6.
+- [ ] Wrapper chỉ cố định biến thể gọi wrapper gốc, props dẫn xuất bằng `Omit<PingXProps, ...>`.
+- [ ] Không có `export const ... = Antd.X`; lựa chọn hình thức của antd đi qua prop tên của Ping.
+- [ ] API mở (`Omit`) hay đóng (`Pick`) đúng tiêu chí; wrapper đóng có ca trong `closed-api.test.ts`.
 - [ ] Slot là chuỗi literal, có trong bảng đầu `skin-pop.css`.
 - [ ] Màu qua class token, không inline `var()`, không biến lạ; phụ kiện co giãn theo tỉ lệ; chữ cho trình đọc do chỗ gọi truyền.
 - [ ] `size` không bị ép default; `toAntdSize` chỉ gọi khi có giá trị.

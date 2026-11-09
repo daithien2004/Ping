@@ -87,7 +87,7 @@ export function PingButton({
 /* Icon theo font-size của nút, không chặn chuột. Trong @layer để utility của người gọi thắng. */
 @layer components {
   [data-slot='button'] > svg,
-  :is([data-slot='button'], [data-slot='icon-button']) > .ant-btn-icon > svg {
+  [data-slot='button'] > .ant-btn-icon > svg {
     width: 1em;
     height: 1em;
     pointer-events: none;
