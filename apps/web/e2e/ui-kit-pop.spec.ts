@@ -5,6 +5,9 @@ import { scan } from './axe';
 // trang ở cả hai nền để duyệt hình thức. Ảnh ghi vào test-results/skin-pop, KHÔNG phải baseline.
 const SCHEMES = ['light', 'dark'] as const;
 
+// `/dev/ui` chỉ có ở `next dev`: bản production (CI, E2E_PRODUCTION=1) trả 404 nên bỏ qua ở đó.
+test.skip(process.env.E2E_PRODUCTION === '1', '/dev/ui không có ở bản production');
+
 test('UI kit skin Pop: kho /dev/ui qua axe, sáng và tối', async ({ page, context, baseURL }) => {
   await context.addCookies([{ name: 'ping-skin', value: 'pop', url: baseURL! }]);
   for (const colorScheme of SCHEMES) {
