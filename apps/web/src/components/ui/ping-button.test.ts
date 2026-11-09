@@ -4,15 +4,17 @@ import { createElement as h, type ReactElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { PingButton, VARIANTS } from './ping-button';
+import { PingIconButton } from './ping-icon-button';
 
 const SAME_AS_SECONDARY_IN_DEFAULT = ['info', 'success'];
+const NATIVE_LOOK_IN_SKINS = ['text'];
 const pop = readFileSync(new URL('../../styles/skin-pop.css', import.meta.url), 'utf8');
 
 const inLarge = (element: ReactElement) =>
   renderToStaticMarkup(h(ConfigProvider, { componentSize: 'large' }, element));
 
 describe('PingButton', () => {
-  it('chốt đúng sáu biến thể và ánh xạ sang antd', () => {
+  it('chốt đúng bảy biến thể và ánh xạ sang antd', () => {
     expect(Object.keys(VARIANTS).sort()).toEqual([
       'danger',
       'ghost',
@@ -20,6 +22,7 @@ describe('PingButton', () => {
       'primary',
       'secondary',
       'success',
+      'text',
     ]);
     expect(VARIANTS).toEqual({
       primary: { type: 'primary' },
@@ -28,11 +31,13 @@ describe('PingButton', () => {
       info: { type: 'default' },
       danger: { type: 'default', danger: true },
       ghost: { type: 'dashed' },
+      text: { type: 'text' },
     });
   });
 
-  it('mỗi biến thể ngoài primary/secondary đều có luật ở skin Pop', () => {
-    for (const name of Object.keys(VARIANTS).filter((v) => !['primary', 'secondary'].includes(v))) {
+  it('mỗi biến thể ngoài primary/secondary/text đều có luật ở skin Pop', () => {
+    const exempt = ['primary', 'secondary', ...NATIVE_LOOK_IN_SKINS];
+    for (const name of Object.keys(VARIANTS).filter((v) => !exempt.includes(v))) {
       expect(pop, name).toContain(`[data-variant='${name}']`);
     }
   });
@@ -53,6 +58,21 @@ describe('PingButton', () => {
     const small = inLarge(h(PingButton, { variant: 'primary', size: 'sm' }, 'x'));
     expect(small).toContain('ant-btn-sm');
     expect(small).not.toContain('ant-btn-lg');
+  });
+
+  it('PingIconButton đi qua PingButton: biến thể text, testid riêng, size theo context', () => {
+    const html = renderToStaticMarkup(
+      h(PingIconButton, { icon: null, 'aria-label': 'Đóng', size: 'sm' }),
+    );
+    expect(html).toContain('data-variant="text"');
+    expect(html).toContain('data-slot="button"');
+    expect(html).toContain('data-testid="ping-icon-button"');
+    expect(html).toContain('ant-btn-sm');
+    expect(
+      renderToStaticMarkup(
+        h(PingIconButton, { icon: null, 'aria-label': 'x', 'data-testid': 'mine' }),
+      ),
+    ).toContain('data-testid="mine"');
   });
 
   it('phát data-slot và data-variant', () => {

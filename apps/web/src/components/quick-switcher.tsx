@@ -12,13 +12,9 @@ import { useRouter } from 'next/navigation';
 import { useTranslations } from 'use-intl';
 import { PingModal } from '@/components/ui/ping-modal';
 import { PingInput, type PingInputRef } from '@/components/ui/ping-input';
-import { PingEmpty, PING_EMPTY_IMAGE_SIMPLE } from '@/components/ui/ping-empty';
+import { PingEmpty } from '@/components/ui/ping-empty';
 
-/**
- * Quick switcher (TF.5): Ctrl/Cmd+K để tìm server, hội thoại DM hoặc kênh của server đang mở.
- * Component chỉ trình bày — trạng thái mở và dữ liệu do `QuickSwitcherHost` (features/shell)
- * cấp; modal được tải lười ở lần mở đầu tiên (T6.10).
- */
+// Chỉ trình bày: trạng thái mở và dữ liệu do `QuickSwitcherHost` (features/shell) cấp.
 export interface QuickSwitcherItem {
   id: string;
   label: string;
@@ -46,10 +42,8 @@ export function QuickSwitcher({ items, open, onOpenChange }: QuickSwitcherProps)
     [items, deferredQuery],
   );
 
-  // Modal đã mở mới mount: đưa con trỏ vào ô nhập bằng focus() thay vì autoFocus (ADR-0029).
-  // Callback ref (không phải ref object + useEffect): antd mount nội dung modal qua Portal ở
-  // commit sau, nên ref object còn null khi effect của component này chạy; callback chỉ chạy
-  // đúng lúc phần tử được gắn. Hàm ổn định (useCallback) để không nhận lại ref mỗi lần render.
+  // Callback ref, không phải ref object + effect: antd mount nội dung modal qua Portal ở commit sau
+  // nên ref object còn null lúc effect chạy (focus() thay autoFocus, ADR-0029).
   const focusInput = useCallback((element: PingInputRef | null) => {
     element?.focus();
   }, []);
@@ -59,7 +53,7 @@ export function QuickSwitcher({ items, open, onOpenChange }: QuickSwitcherProps)
     router.push(href);
   }
 
-  // Giữ focus ở ô nhập (combobox) và di chuyển lựa chọn bằng phím — đúng mẫu ARIA cho danh sách gợi ý.
+  // Giữ focus ở ô nhập và đổi lựa chọn bằng phím (mẫu ARIA combobox).
   function onKeyDown(event: ReactKeyboardEvent<HTMLInputElement>) {
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       event.preventDefault();
@@ -125,8 +119,7 @@ export function QuickSwitcher({ items, open, onOpenChange }: QuickSwitcherProps)
             }}
           >
             {item.group ? (
-              // Dòng đang chọn nền `accent`: chữ phụ trên nền đó chỉ 4,20:1, nên dùng luôn màu
-              // chữ của dòng chọn để giữ AA.
+              // Chữ phụ trên nền `accent` chỉ 4,20:1: dùng màu chữ của dòng chọn để giữ AA.
               <span
                 className={`mr-1.5 text-xs ${
                   index === active ? 'text-accent-foreground' : 'text-muted-foreground'
@@ -140,7 +133,7 @@ export function QuickSwitcher({ items, open, onOpenChange }: QuickSwitcherProps)
         ))}
         {filtered.length === 0 ? (
           <li>
-            <PingEmpty description={t('noResults')} image={PING_EMPTY_IMAGE_SIMPLE} />
+            <PingEmpty compact description={t('noResults')} />
           </li>
         ) : null}
       </ul>

@@ -6,11 +6,8 @@ import { toAntdSize, type PingSize } from './size';
 
 type AntdButtonProps = ComponentProps<typeof Button>;
 
-/**
- * Biến thể Ping → props antd. `danger` và `ghost` không kết hợp được (một biến thể = một vẻ).
- * Skin không có luật cho `success`/`info` sẽ hiển thị như `secondary`;
- * `ping-button.test.ts` nhắc skin khi thiếu luật.
- */
+// Một biến thể = một vẻ (`danger` và `ghost` không kết hợp). Biến thể không có luật skin hiển thị
+// như `secondary`; `text` (cho PingIconButton) cố ý giữ kiểu gốc. `ping-button.test.ts` nhắc skin.
 export const VARIANTS = {
   primary: { type: 'primary' },
   secondary: { type: 'default' },
@@ -18,6 +15,7 @@ export const VARIANTS = {
   info: { type: 'default' },
   danger: { type: 'default', danger: true },
   ghost: { type: 'dashed' },
+  text: { type: 'text' },
 } as const satisfies Record<string, Pick<AntdButtonProps, 'type' | 'danger'>>;
 
 export type PingButtonVariant = keyof typeof VARIANTS;
@@ -31,10 +29,7 @@ export interface PingButtonProps extends Omit<
   ref?: Ref<HTMLButtonElement>;
 }
 
-/**
- * `data-size` chỉ có khi truyền `size`: CSS skin không được bám vào nó. `data-testid` mặc định chỉ
- * để dự phòng. Wrapper không có class mặc định; nếu thêm thì phải quay lại dùng `cn` cho `className`.
- */
+// `data-size` chỉ có khi truyền `size`: CSS skin không được bám vào nó.
 export function PingButton({
   variant,
   size,

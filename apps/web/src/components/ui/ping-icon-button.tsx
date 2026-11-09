@@ -1,47 +1,14 @@
 'use client';
 
-import { Button } from 'antd';
-import type { ComponentProps, ReactNode, Ref } from 'react';
-import { toAntdSize, type PingSize } from './size';
+import type { ReactNode } from 'react';
+import { PingButton, type PingButtonProps } from './ping-button';
 
-type AntdButtonProps = ComponentProps<typeof Button>;
-
-export interface PingIconButtonProps extends Omit<
-  AntdButtonProps,
-  | 'type'
-  | 'size'
-  | 'icon'
-  | 'children'
-  | 'danger'
-  | 'ghost'
-  | 'shape'
-  | 'color'
-  | 'variant'
-  | 'href'
-  | 'target'
-  | 'ref'
-> {
+/** `aria-label` bắt buộc và không có `children`: nút chỉ có icon phải có tên truy cập. */
+export type PingIconButtonProps = Omit<PingButtonProps, 'variant' | 'children'> & {
   icon: ReactNode;
   'aria-label': string;
-  size?: PingSize;
-  ref?: Ref<HTMLButtonElement>;
-}
+};
 
-export function PingIconButton({
-  icon,
-  size,
-  'data-testid': testId = 'ping-icon-button',
-  ...rest
-}: PingIconButtonProps) {
-  return (
-    <Button
-      {...rest}
-      type="text"
-      icon={icon}
-      size={size ? toAntdSize(size) : undefined}
-      data-slot="icon-button"
-      data-size={size}
-      data-testid={testId}
-    />
-  );
+export function PingIconButton(props: PingIconButtonProps) {
+  return <PingButton data-testid="ping-icon-button" {...props} variant="text" />;
 }

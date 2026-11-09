@@ -252,6 +252,7 @@ export function DevUiGallery() {
         </Row>
         <Row label="PingEmpty">
           <PingEmpty description="Chưa có tin nhắn" />
+          <PingEmpty compact description="Không có kết quả" />
         </Row>
         <Row label="PingSteps">
           <PingSteps

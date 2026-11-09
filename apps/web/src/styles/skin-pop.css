@@ -1,5 +1,5 @@
 /* Skin Pop (ADR-0084): chỉ hình khối, bám `data-slot` (có test hợp đồng), không hex.
- * Slot: button, rail, rail-list, rail-icon, rail-footer, language-switcher, loading, loading-label,
+ * Slot: button, kbd, rail, rail-list, rail-icon, rail-footer, language-switcher, loading, loading-label,
  *       not-found-code, landing-nav, landing-logo, landing-hero, landing-mark, landing-window-wrap,
  *       landing-window, landing-bubble, landing-marquee, landing-features, landing-feature,
  *       landing-icon, landing-steps, landing-step, landing-step-number, landing-cta, landing-stamp,
@@ -304,6 +304,15 @@ html[data-skin='pop'] [data-slot='rail-footer'] [data-testid='self-avatar'] {
   box-shadow:
     0 0 0 3px var(--background),
     3px 3px 0 3px var(--border-strong);
+}
+
+/* ---------- Phím tắt: nắp phím nổi khối ---------- */
+html[data-skin='pop'] [data-slot='kbd'] {
+  border: var(--pop-stroke-thin) solid var(--border-strong);
+  background: var(--card);
+  color: var(--foreground);
+  font-weight: 700;
+  box-shadow: 0 3px 0 var(--border-strong);
 }
 
 /* ---------- Popup antd (portal): tooltip thẻ mực, hộp thoại áp phích, dropdown, toast vé ---------- */
