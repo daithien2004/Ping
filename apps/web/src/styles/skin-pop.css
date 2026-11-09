@@ -7,8 +7,9 @@
  *       channel-header, channel-actions, topic-inline, topic-strip, search, message-pane, message-body, message-text, author,
  *       avatar, reactions, reaction, notify-popover, notify-blocked, composer, send, members, member-row (+ data-mine, data-tone, data-active,
  *       data-me).
- * Ngoại lệ: popup antd (modal, tooltip, dropdown, toast) render qua portal nên không gắn được slot,
- * bám class `.ant-*` của chính antd; sai class thì chỉ mất trang trí, không vỡ chức năng. */
+ * Ngoại lệ: phần tử antd tự dựng trong portal (khung modal, tooltip, dropdown, toast, nút OK/Cancel
+ * mặc định) không đi qua wrapper nên không có slot, bám class `.ant-*`; sai class thì chỉ mất trang
+ * trí. Nội dung Ping tự đặt vào portal (vd `PingButton` trong footer modal) vẫn mang slot. */
 html[data-skin='pop'] {
   --pop-stroke: 3px;
   --pop-stroke-thin: 2px;

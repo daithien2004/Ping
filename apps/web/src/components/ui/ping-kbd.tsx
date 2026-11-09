@@ -12,20 +12,8 @@ export function PingKbd({ children, className, ref }: PingKbdProps) {
   return (
     <kbd
       ref={ref}
-      className={className}
+      className={`inline-flex items-center rounded-md border border-border bg-muted px-1.5 font-mono text-xs leading-relaxed text-foreground ${className ?? ''}`}
       data-testid="ping-kbd"
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        padding: '0 6px',
-        borderRadius: 6,
-        border: '1px solid var(--ping-color-border)',
-        background: 'var(--ping-color-muted)',
-        color: 'var(--ping-color-fg)',
-        fontFamily: 'var(--ping-font-mono)',
-        fontSize: 12,
-        lineHeight: 1.6,
-      }}
     >
       {children}
     </kbd>

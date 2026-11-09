@@ -210,14 +210,38 @@ export function DevUiGallery() {
             <PingButton variant="secondary">Hộp thư</PingButton>
           </PingBadge>
           <PingBadge dot>
-            <PingAvatar presence="online">P</PingAvatar>
+            <PingAvatar presence="online" presenceLabel="Trực tuyến">
+              P
+            </PingAvatar>
           </PingBadge>
         </Row>
         <Row label="PingAvatar — presence">
-          <PingAvatar presence="online">P</PingAvatar>
-          <PingAvatar presence="idle">B</PingAvatar>
-          <PingAvatar presence="dnd">C</PingAvatar>
-          <PingAvatar presence="offline">D</PingAvatar>
+          <PingAvatar presence="online" presenceLabel="Trực tuyến">
+            P
+          </PingAvatar>
+          <PingAvatar presence="idle" presenceLabel="Vắng mặt">
+            B
+          </PingAvatar>
+          <PingAvatar presence="dnd" presenceLabel="Đừng làm phiền">
+            C
+          </PingAvatar>
+          <PingAvatar presence="offline" presenceLabel="Ngoại tuyến">
+            D
+          </PingAvatar>
+        </Row>
+        <Row label="PingAvatar — presence theo cỡ">
+          <PingAvatar size="sm" presence="online" presenceLabel="Trực tuyến">
+            S
+          </PingAvatar>
+          <PingAvatar size="md" presence="online" presenceLabel="Trực tuyến">
+            M
+          </PingAvatar>
+          <PingAvatar size="lg" presence="online" presenceLabel="Trực tuyến">
+            L
+          </PingAvatar>
+          <PingAvatar size={80} presence="online" presenceLabel="Trực tuyến">
+            80
+          </PingAvatar>
         </Row>
         <Row label="PingSpinner / PingSkeleton">
           <PingSpinner size="sm" />

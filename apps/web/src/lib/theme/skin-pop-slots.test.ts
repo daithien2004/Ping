@@ -30,6 +30,10 @@ describe('skin Pop — hợp đồng data-slot', () => {
     expect(components).toContain(`data-slot="${slot}"`);
   });
 
+  it('không slot nào dựng động (chỉ chuỗi literal mới được test bắt)', () => {
+    expect(components).not.toMatch(/data-slot=\{/);
+  });
+
   it('bảng slot trong ghi chú đầu file khớp với slot đang dùng', () => {
     const header = css.slice(0, css.indexOf('*/'));
     for (const slot of used) expect(header, slot).toContain(slot);
