@@ -1,6 +1,6 @@
 'use client';
 import { useTranslations } from 'use-intl';
-import { Dialog } from '@/components/dialog';
+import { MessageDialog } from './message-dialog';
 import { FormError } from '@/components/form-parts';
 import { PingButton } from '@/components/ui/ping-button';
 import { useServerAbility } from '@/features/permissions/context';
@@ -23,7 +23,7 @@ export function DeleteMessageDialog({
   const common = useTranslations('common');
   const errorMessage = useErrorMessage();
   return (
-    <Dialog open onClose={onClose} title={t('deleteTitle')}>
+    <MessageDialog open onClose={onClose} title={t('deleteTitle')}>
       <p className="text-sm text-muted-foreground">{t('deleteConfirm')}</p>
       <p className="max-h-48 overflow-y-auto rounded-md bg-muted p-3 text-sm break-words whitespace-pre-wrap">
         {message.content}
@@ -43,6 +43,6 @@ export function DeleteMessageDialog({
           {mutation.isPending ? common('processing') : t('delete')}
         </PingButton>
       </div>
-    </Dialog>
+    </MessageDialog>
   );
 }

@@ -2,7 +2,7 @@
 import { updateMessageSchema } from '@ping/shared';
 import { useEffect, useEffectEvent, useId, useState, type FormEvent } from 'react';
 import { useTranslations } from 'use-intl';
-import { Dialog } from '@/components/dialog';
+import { MessageDialog } from './message-dialog';
 import { FormError } from '@/components/form-parts';
 import { PingButton } from '@/components/ui/ping-button';
 import { PingLabel } from '@/components/ui/ping-label';
@@ -59,7 +59,7 @@ export function EditMessageDialog({
   }
 
   return (
-    <Dialog open onClose={onClose} title={t('editTitle')}>
+    <MessageDialog open onClose={onClose} title={t('editTitle')}>
       <form onSubmit={submit} className="flex flex-col gap-3">
         <PingLabel htmlFor={id}>{t('editContent')}</PingLabel>
         <PingTextArea
@@ -123,6 +123,6 @@ export function EditMessageDialog({
           </PingButton>
         </div>
       </form>
-    </Dialog>
+    </MessageDialog>
   );
 }

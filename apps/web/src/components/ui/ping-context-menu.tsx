@@ -1,12 +1,9 @@
 'use client';
 
-import { Dropdown } from 'antd';
-import type { DropdownProps } from 'antd';
+import { Dropdown, type DropdownProps } from 'antd';
 
-export interface PingContextMenuProps extends Omit<DropdownProps, 'trigger'> {
-  trigger?: 'contextMenu';
-}
+export type PingContextMenuProps = Omit<DropdownProps, 'trigger'>;
 
-export function PingContextMenu({ trigger: _trigger, ...rest }: PingContextMenuProps) {
-  return <Dropdown trigger={['contextMenu']} data-testid="ping-context-menu" {...rest} />;
+export function PingContextMenu(props: PingContextMenuProps) {
+  return <Dropdown trigger={['contextMenu']} data-testid="ping-context-menu" {...props} />;
 }

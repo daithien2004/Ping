@@ -7,15 +7,15 @@ import {
   type FormProps as AntdFormProps,
   type FormRule,
 } from 'antd';
-import { useEffect, useRef, type RefObject } from 'react';
+import { useEffect, useRef, type ReactNode, type RefObject } from 'react';
 import type { z } from 'zod';
 import { zodFormRules as buildZodRules } from '@/lib/form-adapter';
 
-export type PingFormProps = AntdFormProps;
+export type PingFormProps = Omit<AntdFormProps, 'children' | 'size'> & { children?: ReactNode };
 export type PingFormItemProps = AntdFormItemProps;
 
 export function PingForm(props: PingFormProps) {
-  return <Form {...(props as unknown as Record<string, unknown>)} />;
+  return <Form {...props} />;
 }
 
 export function PingFormItem(props: PingFormItemProps) {
@@ -27,10 +27,10 @@ export function usePingForm<Values = Record<string, unknown>>() {
 }
 
 /**
- * Xoá dữ liệu form khi trang bị ẩn (`<Activity>` giữ trang đã rời trong DOM nên mật khẩu còn đó).
- * Xoá cả store antd (đặt `''` theo `fieldNames`, vì `resetFields()` đặt `undefined` khiến Input giữ
- * giá trị nội bộ) lẫn `value` trong DOM. Trả về `ref` gắn vào phần tử bọc form; `fieldNames` phải là
- * hằng ngoài component, mảng mới mỗi lần render sẽ chạy lại effect và xoá form đang gõ.
+ * Xoá dữ liệu form khi trang bị ẩn (`<Activity>` giữ DOM nên mật khẩu còn đó). Đặt `''` theo
+ * `fieldNames` vì `resetFields()` đặt `undefined` khiến Input giữ giá trị nội bộ. Trả về `ref` gắn
+ * vào phần tử bọc form; `fieldNames` phải là hằng ngoài component, nếu không effect chạy lại và xoá
+ * form đang gõ.
  */
 export function useResetOnHide(
   form: FormInstance,

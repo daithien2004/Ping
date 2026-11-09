@@ -1,29 +1,13 @@
 'use client';
 
-import { Drawer } from 'antd';
-import type { ReactNode } from 'react';
+import { Drawer, type DrawerProps } from 'antd';
 
-export interface PingDrawerProps {
-  open: boolean;
-  onClose: () => void;
-  title?: ReactNode;
-  children: ReactNode;
-  footer?: ReactNode;
-  /** Bề rộng ngăn kéo (px hoặc CSS), không phải bậc cỡ Ping. */
-  size?: number | string;
-}
+/** API đóng: `size` ở đây là bề rộng (px hoặc CSS), không phải bậc `PingSize`. */
+export type PingDrawerProps = Pick<
+  DrawerProps,
+  'open' | 'onClose' | 'title' | 'children' | 'footer'
+> & { size?: number | string };
 
-export function PingDrawer({ open, onClose, title, children, footer, size }: PingDrawerProps) {
-  return (
-    <Drawer
-      data-testid="ping-drawer"
-      open={open}
-      onClose={onClose}
-      title={title}
-      footer={footer}
-      size={size}
-    >
-      {children}
-    </Drawer>
-  );
+export function PingDrawer(props: PingDrawerProps) {
+  return <Drawer data-testid="ping-drawer" {...props} />;
 }

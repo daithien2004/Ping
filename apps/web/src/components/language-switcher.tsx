@@ -2,15 +2,12 @@
 
 import { useLocale, useTranslations } from 'use-intl';
 import { locales, switchLocale } from '@/i18n/config';
+import { cn } from '@/lib/utils';
 
-/**
- * Công tắc ngôn ngữ VI | EN. Là nhóm radio gốc (`<input type="radio">` ẩn về mặt thị giác): có sẵn
- * bàn phím (mũi tên), tên truy cập và trạng thái cho trình đọc màn hình mà không cần thư viện.
- * Nhãn hiện mã VI/EN cho gọn; tên truy cập của từng nút vẫn là tên đầy đủ ("Tiếng Việt").
- * `vertical`: xếp dọc, dùng ở rail hẹp.
- */
+// Nhóm radio gốc (ẩn về mặt thị giác): có sẵn bàn phím và trạng thái cho trình đọc màn hình.
+// Nhãn hiện VI/EN cho gọn; tên truy cập vẫn là tên đầy đủ.
 export function LanguageSwitcher({
-  className = '',
+  className,
   vertical = false,
 }: {
   className?: string;
@@ -23,7 +20,11 @@ export function LanguageSwitcher({
       role="radiogroup"
       aria-label={t('language')}
       data-slot="language-switcher"
-      className={`inline-flex gap-0.5 rounded-md border border-border-strong bg-background p-0.5 text-xs ${vertical ? 'flex-col' : ''} ${className}`}
+      className={cn(
+        'inline-flex gap-0.5 rounded-md border border-border-strong bg-background p-0.5 text-xs',
+        vertical && 'flex-col',
+        className,
+      )}
     >
       {locales.map((option) => (
         <label key={option} className="cursor-pointer">

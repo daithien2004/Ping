@@ -1,10 +1,7 @@
 import { messagesByLocale, type AppLocale } from '@/i18n/config';
 
-/**
- * Giao diện của global-error.tsx. Component này thay THẾ cả root layout khi nó lỗi, nên chạy mà
- * không có Providers, không có IntlProvider, không có Tailwind token nào được đảm bảo: chữ lấy thẳng
- * từ messages/*.json (vẫn một nguồn dịch, test đồng bộ key áp dụng) và style tối giản viết inline.
- */
+// Thay THẾ cả root layout khi nó lỗi: không có Providers, IntlProvider hay token Tailwind, nên chữ
+// lấy thẳng từ messages/*.json và style viết inline.
 export function GlobalErrorView({
   locale,
   reference,
@@ -17,9 +14,8 @@ export function GlobalErrorView({
   const messages = messagesByLocale[locale];
   return (
     <html lang={locale}>
-      {/* eslint-disable-next-line @next/next/no-head-element -- quy tắc dành cho Pages Router; global-error thay root layout nên không có next/head hay metadata */}
+      {/* eslint-disable-next-line @next/next/no-head-element -- global-error thay root layout nên không có next/head hay metadata */}
       <head>
-        {/* Thay cả root layout nên không có metadata của Next: tự khai báo tiêu đề và viewport (a11y, Lighthouse). */}
         <title>{messages.app.fatalTitle}</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </head>
@@ -37,7 +33,6 @@ export function GlobalErrorView({
         }}
       >
         <main style={{ maxWidth: 460, textAlign: 'center' }}>
-          {/* role=alert không hợp lệ trên <main>: đặt trên khối bên trong để vẫn được đọc ngay. */}
           <div role="alert">
             <h1 style={{ fontSize: 22, margin: '0 0 12px' }}>{messages.app.fatalTitle}</h1>
             <p style={{ margin: '0 0 12px', color: '#b4b4c0' }}>{messages.app.fatalHint}</p>
@@ -53,7 +48,7 @@ export function GlobalErrorView({
                 padding: '8px 16px',
                 borderRadius: 8,
                 border: 0,
-                background: '#6a5be2', // trắng trên nền này ≥ 4,5:1 (#7b6cf0 cũ chỉ 4,0:1)
+                background: '#6a5be2', // trắng trên nền này ≥ 4,5:1
                 color: '#fff',
                 fontSize: 15,
                 cursor: 'pointer',

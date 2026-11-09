@@ -1,11 +1,10 @@
 'use client';
 
 import { Input } from 'antd';
-import type { TextAreaRef } from 'antd/es/input/TextArea';
-import type { ComponentProps } from 'react';
+import type { ComponentProps, ComponentRef } from 'react';
 import { toAntdSize, type PingSize } from './size';
 
-export type PingTextAreaRef = TextAreaRef;
+export type PingTextAreaRef = ComponentRef<typeof Input.TextArea>;
 
 export interface PingTextAreaProps extends Omit<ComponentProps<typeof Input.TextArea>, 'size'> {
   size?: PingSize;

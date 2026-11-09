@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Pencil, Pin, Users } from 'lucide-react';
 import { useTranslations } from 'use-intl';
 import { PingIconButton } from '@/components/ui/ping-icon-button';
-import { MessageListSkeleton } from '@/components/skeletons';
+import { MessageListSkeleton } from '@/features/messages/components/message-list-skeleton';
 import { MemberPanel } from '@/features/members/components/member-panel';
 import { useMemberPanel } from '@/features/members/store';
 import { NotificationBell } from '@/features/notifications/components/notification-bell';

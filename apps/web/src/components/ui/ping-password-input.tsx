@@ -1,23 +1,37 @@
 'use client';
 
-import { Input, type InputRef } from 'antd';
-import type { ChangeEvent, Ref } from 'react';
+import { Input } from 'antd';
+import type { ComponentProps, Ref } from 'react';
+import type { PingInputRef } from './ping-input';
+import { toAntdSize, type PingSize } from './size';
 
-export interface PingPasswordInputProps {
-  value?: string;
-  onChange?: (e: ChangeEvent<HTMLInputElement>) => void;
-  placeholder?: string;
-  disabled?: boolean;
-  className?: string;
-  id?: string;
-  name?: string;
-  autoComplete?: string;
-  'aria-label'?: string;
-  'aria-invalid'?: boolean;
-  'aria-describedby'?: string;
-  ref?: Ref<InputRef>;
-}
+type AntdPasswordProps = ComponentProps<typeof Input.Password>;
 
-export function PingPasswordInput(props: PingPasswordInputProps) {
-  return <Input.Password {...props} data-testid="ping-password-input" />;
+/** API đóng: chỉ các prop `Form.Item` và form đăng nhập cần. */
+export type PingPasswordInputProps = Pick<
+  AntdPasswordProps,
+  | 'value'
+  | 'onChange'
+  | 'placeholder'
+  | 'disabled'
+  | 'className'
+  | 'id'
+  | 'name'
+  | 'autoComplete'
+  | 'aria-label'
+  | 'aria-invalid'
+  | 'aria-describedby'
+> & {
+  size?: PingSize;
+  ref?: Ref<PingInputRef>;
+};
+
+export function PingPasswordInput({ size, ...rest }: PingPasswordInputProps) {
+  return (
+    <Input.Password
+      data-testid="ping-password-input"
+      {...rest}
+      size={size ? toAntdSize(size) : undefined}
+    />
+  );
 }

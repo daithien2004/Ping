@@ -7,15 +7,20 @@ import { VARIANTS, type PingButtonProps } from './ping-button';
 import { toAntdSize } from './size';
 
 export interface PingLinkButtonProps extends Omit<PingButtonProps, 'htmlType' | 'loading' | 'ref'> {
-  /** Chỉ đường dẫn nội bộ; liên kết ngoài dùng thẻ <a> thường. */
   href: string;
   ref?: Ref<HTMLAnchorElement>;
 }
 
-const isPlainLeftClick = (event: MouseEvent<HTMLElement>) =>
-  event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
+export const isPlainLeftClick = (
+  event: Pick<MouseEvent<HTMLElement>, 'button' | 'metaKey' | 'ctrlKey' | 'shiftKey' | 'altKey'>,
+) => event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
 
-/** Giữ <a> thật (mở tab mới, chuột giữa) nhưng điều hướng phía client khi bấm thường. */
+/**
+ * Antd render `<a href>`; bấm trái thuần thì `router.push`, phím phụ và chuột giữa để trình duyệt
+ * xử lý. Không dùng `<Link>` vì `<a><button>` là HTML sai và antd `Button` không đổi được thẻ gốc.
+ * Giới hạn: không prefetch; nếu dùng cho điều hướng thường xuyên thì xét `<Link>` kèm class nút
+ * hoặc `router.prefetch(href)`. Chỉ đường dẫn nội bộ.
+ */
 export function PingLinkButton({
   variant,
   size,

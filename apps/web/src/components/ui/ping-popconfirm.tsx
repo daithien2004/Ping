@@ -1,39 +1,13 @@
 'use client';
 
-import { Popconfirm } from 'antd';
-import type { ReactNode } from 'react';
+import { Popconfirm, type PopconfirmProps } from 'antd';
 
-export interface PingPopconfirmProps {
-  title: ReactNode;
-  description?: ReactNode;
-  /** Nút mở hộp xác nhận. */
-  children: ReactNode;
-  onConfirm: () => void;
-  okText?: string;
-  cancelText?: string;
-  disabled?: boolean;
-}
+/** API đóng; `children` là nút mở hộp xác nhận. */
+export type PingPopconfirmProps = Pick<
+  PopconfirmProps,
+  'title' | 'description' | 'children' | 'onConfirm' | 'okText' | 'cancelText' | 'disabled'
+>;
 
-export function PingPopconfirm({
-  title,
-  description,
-  children,
-  onConfirm,
-  okText,
-  cancelText,
-  disabled = false,
-}: PingPopconfirmProps) {
-  return (
-    <Popconfirm
-      data-testid="ping-popconfirm"
-      title={title}
-      description={description}
-      onConfirm={onConfirm}
-      okText={okText}
-      cancelText={cancelText}
-      disabled={disabled}
-    >
-      {children}
-    </Popconfirm>
-  );
+export function PingPopconfirm(props: PingPopconfirmProps) {
+  return <Popconfirm data-testid="ping-popconfirm" {...props} />;
 }

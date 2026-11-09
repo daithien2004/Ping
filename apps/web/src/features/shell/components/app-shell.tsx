@@ -6,7 +6,7 @@ import { Suspense, useEffect, type ReactNode } from 'react';
 import { useTranslations } from 'use-intl';
 import { cn } from 'cn';
 import { Loading } from '@/components/loading';
-import { RailSkeleton } from '@/components/skeletons';
+import { RailSkeleton } from '@/features/servers/components/rail-skeleton';
 import { PingIconButton } from '@/components/ui/ping-icon-button';
 import { ConnectionBanner } from '@/features/realtime/components/connection-banner';
 import { VerifyEmailBanner } from '@/features/auth/components/verify-email-banner';

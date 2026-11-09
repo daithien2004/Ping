@@ -3,13 +3,14 @@
 import { Table } from 'antd';
 import type { ReactNode } from 'react';
 
-export interface PingTableColumn<T> {
-  key: string;
+type FieldKey<T> = Extract<keyof T, string>;
+
+/** Cột không có `render` đọc field `key` của dòng nên `key` phải là field thật; có `render` thì `key` tự do. */
+export type PingTableColumn<T> = {
   header: ReactNode;
-  render?: (row: T) => ReactNode;
   width?: number | string;
   align?: 'left' | 'center' | 'right';
-}
+} & ({ key: FieldKey<T>; render?: undefined } | { key: string; render: (row: T) => ReactNode });
 
 export interface PingTableProps<T> {
   columns: PingTableColumn<T>[];

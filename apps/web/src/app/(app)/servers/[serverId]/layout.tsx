@@ -1,6 +1,6 @@
 import { Suspense, type ReactNode } from 'react';
 import { Loading } from '@/components/loading';
-import { SidebarSkeleton } from '@/components/skeletons';
+import { SidebarSkeleton } from '@/features/channels/components/sidebar-skeleton';
 import { ChannelSidebar } from '@/features/channels/components/channel-sidebar';
 import {
   ServerAbilityProvider,

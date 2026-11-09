@@ -17,10 +17,24 @@ const noUiKit = {
   group: ['radix-ui', 'radix-ui/*', '@radix-ui/*', 'shadcn', 'class-variance-authority'],
   message: 'Chỉ một bộ component: bọc antd thành Ping* (ADR-0075), không dùng lại shadcn/Radix.',
 };
+const noAntd = {
+  group: ['antd', 'antd/*'],
+  message: 'Antd chi duoc import trong components/ui (bo Ping*). (ADR-0050)',
+};
 const noFeatures = {
   group: ['@/features/*', '**/features/*'],
   message: 'components/ và lib/ không phụ thuộc features/ (phụ thuộc một chiều).',
 };
+
+// Nằm trong layout, phải đi theo URL hiện tại → được dùng useParams(). TG.9: cột DM của /dms;
+// T6.10: quick switcher cần server của URL hiện tại cho nhóm kênh.
+const useParamsFiles = [
+  'src/features/servers/components/server-rail.tsx',
+  'src/features/channels/components/channel-sidebar.tsx',
+  'src/features/channels/components/channel-redirect.tsx',
+  'src/features/dms/components/dm-sidebar.tsx',
+  'src/features/shell/components/quick-switcher-host.tsx',
+];
 
 const palette =
   'slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose|white|black';
@@ -61,16 +75,8 @@ export default defineConfig([
   },
   {
     // Nằm trong layout, phải đi theo URL hiện tại → được dùng useParams().
-    files: [
-      'src/features/servers/components/server-rail.tsx',
-      'src/features/channels/components/channel-sidebar.tsx',
-      'src/features/channels/components/channel-redirect.tsx',
-      // TG.9: cột hội thoại DM là component layout của /dms (như ChannelSidebar của server).
-      'src/features/dms/components/dm-sidebar.tsx',
-      // T6.10: quick switcher gắn trong AppShell, cần server của URL hiện tại cho nhóm kênh.
-      'src/features/shell/components/quick-switcher-host.tsx',
-    ],
-    rules: { 'no-restricted-imports': ['error', { patterns: [noApp, noUiKit] }] },
+    files: useParamsFiles,
+    rules: { 'no-restricted-imports': ['error', { patterns: [noApp, noUiKit, noAntd] }] },
   },
   {
     // Màu chỉ đi qua token (tokens.ts → globals.css, ADR-0075): cấm class màu thô của Tailwind,
@@ -116,31 +122,13 @@ export default defineConfig([
   {
     // ADR-0050: antd chi duoc import trong components/ui (bo Ping*).
     files: ['src/**/*.{ts,tsx}'],
-    ignores: [
-      'src/components/ui/**',
-      'src/lib/theme/**',
-      'src/providers/**',
-      'src/features/servers/components/server-rail.tsx',
-      'src/features/channels/components/channel-sidebar.tsx',
-      'src/features/channels/components/channel-redirect.tsx',
-      // TG.9: cột hội thoại DM là component layout của /dms (như ChannelSidebar của server).
-      'src/features/dms/components/dm-sidebar.tsx',
-      // T6.10: quick switcher gắn trong AppShell, cần server của URL hiện tại cho nhóm kênh.
-      'src/features/shell/components/quick-switcher-host.tsx',
-    ],
+    ignores: ['src/components/ui/**', 'src/lib/theme/**', 'src/providers/**', ...useParamsFiles],
     rules: {
       'no-restricted-imports': [
         'error',
         {
           paths: [noUseParams],
-          patterns: [
-            noApp,
-            noUiKit,
-            {
-              group: ['antd', 'antd/*'],
-              message: 'Antd chi duoc import trong components/ui (bo Ping*). (ADR-0050)',
-            },
-          ],
+          patterns: [noApp, noUiKit, noAntd],
         },
       ],
     },
