@@ -10,11 +10,11 @@ import { useMemberPresence } from '@/features/members/hooks';
 import { useMessageEvents } from '@/features/messages/hooks';
 import { useNotificationEvents } from '@/features/notifications/events';
 import { useProfileEvents } from '@/features/profile/hooks';
+import { RealtimeContext } from '@/features/realtime/context';
+import { RealtimeSession } from '@/features/realtime/session';
+import { createSocket } from '@/features/realtime/socket';
 import { useServerEvents } from '@/features/servers/hooks';
 import { useUnreadEvents } from '@/features/unread/hooks';
-import { RealtimeContext } from '../context';
-import { RealtimeSession } from '../session';
-import { createSocket } from '../socket';
 
 export function RealtimeProvider({ children }: { children: ReactNode }) {
   const { data: me } = useMe();

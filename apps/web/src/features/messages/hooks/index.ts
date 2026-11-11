@@ -10,5 +10,6 @@ export {
 export { usePins, useSetPinned } from './use-pins';
 export { useMessageEvents } from './use-message-events';
 export { useChannelSync } from './use-channel-sync';
+export { useChannelRealtime } from './use-channel-realtime';
 export { useSendMessage, type SendMessageVariables } from './use-send-message';
 export { useLoadNewer, useResetWindow, useSeedAround } from './use-permalink-actions';

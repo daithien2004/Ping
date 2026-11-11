@@ -3,11 +3,10 @@
 import type { PingTextAreaRef } from '@/components/ui/ping-textarea';
 import { useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'use-intl';
-import { useChannelRealtime } from '@/features/realtime/hooks';
 import { TypingIndicator } from '@/features/realtime/components/typing-indicator';
 import { useMe } from '@/features/auth/hooks';
 import { serverIdOf, type ChannelScope } from '../../channel-scope';
-import { useMessages } from '../../hooks';
+import { useChannelRealtime, useMessages } from '../../hooks';
 import { type ClientMessage, oldestFirst, replyPreviewOf } from '../../message-cache';
 import { groupMessages } from '../../grouping';
 import { MessageComposer } from '../message-composer';
