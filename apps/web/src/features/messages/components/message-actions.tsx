@@ -21,12 +21,9 @@ export function MessageActions({
   onReply,
 }: {
   message: ClientMessage;
-  /** TG.3: kênh chứa tin — cache tin và danh sách ghim đều khoá theo kênh. */
   channelId: string;
-  /** TG.5: đường dẫn tương đối của tin — "Sao chép liên kết" ghép với origin hiện tại. */
   permalink: string;
   onAction: (selection: MessageSelection) => void;
-  /** TG.1: chọn tin để trả lời (không mở dialog, chỉ đặt thanh reply trong composer). */
   onReply: (message: ClientMessage) => void;
 }) {
   const { ability, ready } = useServerAbility();
@@ -36,16 +33,13 @@ export function MessageActions({
   const canEdit = ability.can('update', target);
   const canDelete = ability.can('delete', target);
   const canReply = ability.can('create', 'Message');
-  // TG.3: ghim là quyền quản lý tin (MANAGE_MESSAGES + VIEW_CHANNEL), không phải quyền tác giả.
   const canPin = ability.can('create', 'Pin');
-  // Tin optimistic chưa có id thật → chưa có permalink.
   if (message.status) return null;
   async function copyLink() {
     try {
       await navigator.clipboard.writeText(new URL(permalink, window.location.origin).toString());
       pingToast.success(t('linkCopied'));
     } catch {
-      // Clipboard bị chặn (http, thiếu quyền): không im lặng, để người dùng tự copy từ URL.
       pingToast.error(t('linkCopyFailed'));
     }
   }

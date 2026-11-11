@@ -1,12 +1,13 @@
 import { z } from 'zod';
 import type { MessageAuthor } from '../events';
+import { Limits } from '../limits';
 import { AttachmentLimits, type AttachmentDto } from './attachment';
 import { gifPayloadSchema, type MessageGifPreview } from './gif';
 import type { MessageStickerPreview } from './sticker';
 
 export const createMessageSchema = z
   .object({
-    content: z.string().trim().max(4000),
+    content: z.string().trim().max(Limits.MESSAGE_CONTENT_MAX),
     // The client reuses this nonce when retrying the same message.
     nonce: z.uuid(),
     // TG.1: reply — tin gốc CÙNG channel (service kiểm); bỏ qua = tin thường.
@@ -49,7 +50,9 @@ export interface MessageReplyPreview {
   deleted: boolean;
 }
 
-export const updateMessageSchema = z.object({ content: z.string().trim().min(1).max(4000) });
+export const updateMessageSchema = z.object({
+  content: z.string().trim().min(1).max(Limits.MESSAGE_CONTENT_MAX),
+});
 export type UpdateMessageInput = z.infer<typeof updateMessageSchema>;
 
 /** Một loại cảm xúc trên tin (TG.2, ADR-0064): tổng số + người xem đã thả chưa. */

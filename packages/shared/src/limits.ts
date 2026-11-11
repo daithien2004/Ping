@@ -8,6 +8,8 @@ export const Limits = {
   MAX_CATEGORIES_PER_SERVER: 50,
   MAX_ROLES_PER_SERVER: 100,
   MAX_SERVERS_PER_USER: 100,
+  /** Độ dài nội dung tối đa của một tin: client chặn ở ô nhập, API kiểm bằng schema. */
+  MESSAGE_CONTENT_MAX: 4000,
   /** Số mention khác nhau tối đa mỗi tin (T4.1, ADR-0043): vượt phần sau bị bỏ qua. */
   MENTIONS_PER_MESSAGE: 20,
   /** Trần độ dài truy vấn tìm kiếm (T4.6, ADR-0045). */

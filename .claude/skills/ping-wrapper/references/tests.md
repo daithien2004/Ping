@@ -28,7 +28,7 @@ Chạy thật trong repo: `'use client'` và alias import có thể cần cấu 
 - Chốt từng dòng ánh xạ.
 - Chốt **cả số lượng**: `Object.keys(VARIANTS)` bằng đúng danh sách mong đợi, để việc thêm/bớt biến thể buộc phải hiện trong diff.
 
-## Test phủ skin (đặt cùng commit với luật skin)
+## Test phủ skin (chỉ thêm khi luật skin đã tồn tại)
 
 Đọc file CSS của từng skin dưới dạng text; với mỗi biến thể trong `VARIANTS`, kiểm tra có `[data-variant='<tên>']`. Biến thể cố ý rơi về secondary ở skin mặc định thì ghi vào một danh sách tường minh (vd `SAME_AS_SECONDARY_IN_DEFAULT`) để ai đổi ánh xạ phải sửa test có chủ đích.
 
@@ -38,5 +38,5 @@ Duyệt các wrapper (hoặc grep nguồn) để chắc `'small' | 'middle' | 'l
 
 ## Lưu ý
 
-- Cây phải xanh ở từng commit: đừng thêm test phủ skin trước khi luật skin tồn tại.
+- Đừng thêm test phủ skin trước khi luật skin tồn tại, test sẽ đỏ.
 - Chưa chạy thì nói rõ là chưa chạy.

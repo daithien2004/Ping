@@ -19,13 +19,13 @@ const SKIN_MAX_AGE = 60 * 60 * 24 * 365;
 export const PIXEL_SKIN_ENABLED = env.NEXT_PUBLIC_ENABLE_PIXEL_SKIN;
 
 export function parseSkin(value: string | undefined): Skin {
-  return value === 'pixel' || value === 'pop' ? value : 'default';
+  return value === 'pixel' || value === 'pop' || value === 'default' ? value : 'default';
 }
 
 export function readSkinCookie(): Skin {
   if (typeof document === 'undefined') return 'default';
   const entry = document.cookie.split('; ').find((item) => item.startsWith(`${SKIN_COOKIE}=`));
-  return parseSkin(entry?.split('=')[1]);
+  return entry ? parseSkin(entry.split('=')[1]) : 'pop';
 }
 
 export function writeSkinCookie(skin: Skin): void {

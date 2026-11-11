@@ -4,7 +4,6 @@ import { useTranslations } from 'use-intl';
 import { BusyRegion } from '@/components/busy-region';
 import { PingSkeleton } from '@/components/ui/ping-skeleton';
 
-// Hình dạng giống tin thật để lúc dữ liệu về không nhảy chiều cao.
 const BLOCKS = [
   { header: 'w-32', lines: ['w-3/4', 'w-1/2'] },
   { header: 'w-24', lines: ['w-full'] },

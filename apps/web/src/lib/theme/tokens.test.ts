@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { buildAntdTheme } from './antd-theme';
-import { parseSkin } from './skin';
+import { parseSkin, readSkinCookie } from './skin';
 import { borderWidth, radius, semanticColors, skins, typography, type ThemeMode } from './tokens';
 
 const read = (path: string) => readFileSync(fileURLToPath(new URL(path, import.meta.url)), 'utf8');
@@ -103,6 +103,12 @@ describe('skin Pixel (ADR-0076)', () => {
     expect(parseSkin('default')).toBe('default');
     expect(parseSkin('PIXEL')).toBe('default');
     expect(parseSkin(undefined)).toBe('default');
+  });
+
+  it('skin mặc định là Pop khi trình duyệt chưa có cookie lựa chọn', () => {
+    vi.stubGlobal('document', { cookie: '' });
+    expect(readSkinCookie()).toBe('pop');
+    vi.unstubAllGlobals();
   });
 });
 

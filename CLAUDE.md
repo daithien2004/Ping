@@ -75,6 +75,8 @@
 - TypeScript strict (packages/tsconfig), không dùng `any` (đã bật rule lint no-explicit-any).
 - Test: Vitest. File tên kebab-case. Commit theo Conventional Commits (feat:, fix:, chore:).
 - Prettier quyết định định dạng (singleQuote, printWidth 100) — ESLint không cãi Prettier.
+- Comment: chỉ viết khi thật sự cần, tức là lý do không đọc ra được từ code (ràng buộc ẩn, workaround,
+  hành vi dễ nhầm như IME). Không comment lại điều code đã nói; khi di chuyển/tách code thì bỏ comment thừa, đừng chép theo.
 - Pre-commit chạy lint-staged (ESLint + Prettier) và `pnpm typecheck`; KHÔNG chạy test/e2e —
   tự chạy `pnpm test` (và e2e khi đổi UI) trước khi commit.
 
