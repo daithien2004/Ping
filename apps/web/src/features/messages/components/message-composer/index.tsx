@@ -13,7 +13,7 @@ import { ComposerIconButton } from './composer-icon-button';
 import { isImeKey, isSubmitKey } from './composer-keys';
 import { EmojiPanel } from './emoji-panel';
 import { EmojiSuggestionList } from './emoji-suggestion-list';
-import { textMessage, type OutgoingMessage } from './outgoing-message';
+import { gifMessage, stickerMessage, textMessage, type OutgoingMessage } from './outgoing-message';
 import { ReplyBar, type ReplyTarget } from './reply-bar';
 import { StickerPanel } from './sticker-panel';
 import { useAttachmentInput } from './use-attachment-input';
@@ -61,7 +61,7 @@ export function MessageComposer({
     : t('composerLabel', { channel: channelName });
   const nearLimit = draft.length >= NEAR_LIMIT;
 
-  const replyToId = replyTo?.id ?? null;
+  const replyToId = replyTo?.id;
   useEffect(() => {
     if (replyToId) textareaRef?.current?.focus();
   }, [replyToId, textareaRef]);
@@ -71,7 +71,7 @@ export function MessageComposer({
 
   function submit() {
     if (!interactive || uploads.busy) return;
-    const message = textMessage(draft, uploads.ids, replyTo?.id);
+    const message = textMessage(draft, uploads.ids, replyToId);
     if (!message) return;
     onSend(message);
     uploads.sent();
@@ -120,11 +120,11 @@ export function MessageComposer({
               serverId={serverId ?? ''}
               onSticker={(sticker) => {
                 setPicker(null);
-                onSend({ kind: 'sticker', sticker, replyToId: replyTo?.id });
+                onSend(stickerMessage(sticker, replyToId));
               }}
               onGif={(gif) => {
                 setPicker(null);
-                onSend({ kind: 'gif', gif, replyToId: replyTo?.id });
+                onSend(gifMessage(gif, replyToId));
               }}
             />
           )}

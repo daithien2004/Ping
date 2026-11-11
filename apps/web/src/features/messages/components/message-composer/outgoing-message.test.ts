@@ -1,6 +1,6 @@
 import type { GifPayload, StickerDto } from '@ping/shared';
 import { describe, expect, it } from 'vitest';
-import { textMessage, toSendVariables } from './outgoing-message';
+import { gifMessage, stickerMessage, textMessage, toSendVariables } from './outgoing-message';
 
 const nonce = '01900000-0000-7000-8000-000000000001';
 const file = '01900000-0000-7000-8000-000000000002';
@@ -18,6 +18,24 @@ describe('textMessage', () => {
   });
   it('mang theo reply khi có', () => {
     expect(textMessage('hi', [], reply)).toEqual({ kind: 'text', content: 'hi', replyToId: reply });
+  });
+});
+
+describe('stickerMessage và gifMessage', () => {
+  const sticker = { id: file } as StickerDto;
+  const gif = { id: 'g1', url: 'https://x/y.gif', width: 3, height: 4 } as GifPayload;
+
+  it('không có reply thì không có khoá replyToId', () => {
+    expect(stickerMessage(sticker)).toStrictEqual({ kind: 'sticker', sticker });
+    expect(gifMessage(gif)).toStrictEqual({ kind: 'gif', gif });
+  });
+  it('mang theo reply khi có', () => {
+    expect(stickerMessage(sticker, reply)).toStrictEqual({
+      kind: 'sticker',
+      sticker,
+      replyToId: reply,
+    });
+    expect(gifMessage(gif, reply)).toStrictEqual({ kind: 'gif', gif, replyToId: reply });
   });
 });
 

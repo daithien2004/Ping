@@ -8,6 +8,8 @@ export type OutgoingMessage = { replyToId?: string } & (
   | { kind: 'gif'; gif: GifPayload }
 );
 
+const withReply = (replyToId?: string) => (replyToId ? { replyToId } : {});
+
 export function textMessage(
   draft: string,
   attachmentIds: string[],
@@ -19,12 +21,24 @@ export function textMessage(
     kind: 'text',
     content,
     ...(attachmentIds.length ? { attachmentIds } : {}),
-    ...(replyToId ? { replyToId } : {}),
+    ...withReply(replyToId),
   };
 }
 
+export const stickerMessage = (sticker: StickerDto, replyToId?: string): OutgoingMessage => ({
+  kind: 'sticker',
+  sticker,
+  ...withReply(replyToId),
+});
+
+export const gifMessage = (gif: GifPayload, replyToId?: string): OutgoingMessage => ({
+  kind: 'gif',
+  gif,
+  ...withReply(replyToId),
+});
+
 export function toSendVariables(message: OutgoingMessage, nonce: string): SendMessageVariables {
-  const reply = message.replyToId ? { replyToId: message.replyToId } : {};
+  const reply = withReply(message.replyToId);
   switch (message.kind) {
     case 'text':
       return {
