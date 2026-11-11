@@ -21,6 +21,7 @@ import {
   updateMessage,
   type MessagesCache,
 } from '../message-cache';
+import { isTransientError } from '../transient-error';
 import { refetchMessages, writeMessages, type CacheChange } from './cache-ops';
 
 export interface EditMessageVariables extends UpdateMessageInput {
@@ -34,9 +35,6 @@ export interface ReactVariables {
   active: boolean;
 }
 
-const isTransient = (error: unknown) =>
-  error instanceof ApiError && (error.status === 0 || error.status >= 500);
-
 export function createMessageActions(
   queryClient: QueryClient,
   serverId: string,
@@ -49,7 +47,7 @@ export function createMessageActions(
   const failed = (error: unknown) => {
     if (error instanceof ApiError && error.status === 403)
       void queryClient.invalidateQueries({ queryKey: qk.permissions(serverId), exact: true });
-    if (isTransient(error)) refetch();
+    if (isTransientError(error)) refetch();
   };
 
   return {
@@ -69,7 +67,7 @@ export function createMessageActions(
         const confirmed = oldestFirst(read()).find(
           (row) => row.id === id && row.content === content && row.editedAt !== beforeEditedAt,
         );
-        if (isTransient(error) && confirmed) return confirmed;
+        if (isTransientError(error) && confirmed) return confirmed;
         if (error instanceof ApiError && error.status === 404)
           await write((old) => deleteMessage(old, id));
         failed(error);
@@ -83,7 +81,8 @@ export function createMessageActions(
       } catch (error) {
         const confirmed = read()?.deletedIds?.includes(id);
         const alreadyGone =
-          error instanceof ApiError && (error.status === 404 || (isTransient(error) && confirmed));
+          error instanceof ApiError &&
+          (error.status === 404 || (isTransientError(error) && confirmed));
         if (!alreadyGone) {
           failed(error);
           throw error;
@@ -122,7 +121,7 @@ export function createMessageActions(
         if (changed) refetch();
         return summary;
       } catch (error) {
-        if (isTransient(error)) refetch();
+        if (isTransientError(error)) refetch();
         else await rollback();
         failed(error);
         throw error;

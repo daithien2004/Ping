@@ -9,10 +9,10 @@ import { PingButton } from '@/components/ui/ping-button';
 import { PingLabel } from '@/components/ui/ping-label';
 import { PingTextArea } from '@/components/ui/ping-textarea';
 import { useServerAbility } from '@/features/permissions/context';
-import { ApiError } from '@/lib/api-client';
 import { useErrorMessage } from '@/lib/error-message';
 import { useEditMessage } from '../../hooks';
 import type { ClientMessage } from '../../message-cache';
+import { isTransientError } from '../../transient-error';
 
 export function EditMessageDialog({
   message,
@@ -41,8 +41,7 @@ export function EditMessageDialog({
     content !== message.content;
   const savedDespiteError =
     mutation.isError &&
-    mutation.error instanceof ApiError &&
-    (mutation.error.status === 0 || mutation.error.status >= 500) &&
+    isTransientError(mutation.error) &&
     changedElsewhere &&
     message.content === form.draft.trim();
   const close = useEffectEvent(onClose);
