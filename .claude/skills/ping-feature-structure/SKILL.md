@@ -1,6 +1,6 @@
 ---
-name: ping-component-structure
-description: Quy ước cấu trúc component feature và quy ước UI của dự án Ping (React/Next, antd bọc thành Ping*, token, i18n, vitest node) để dễ bảo trì. Dùng skill này khi viết hoặc review màn hình, component, theme, i18n, trải nghiệm chat (chọn Ping* hay phần tử thô, token, ARIA, vi/en), hoặc khi người dùng hỏi về file component quá dài, "khó bảo trì", "tách component/hook", refactor một component có nhiều state hoặc nhiều trách nhiệm (composer, form, bảng, panel, drawer), khi review PR thêm tính năng vào component đã lớn, hoặc khi tạo component feature mới và cần quyết định chia file thế nào. Dùng cả khi họ chỉ dán một file dài và hỏi "có ổn không". Không dùng cho wrapper bọc antd trong components/ui (đó là skill ping-wrapper).
+name: ping-feature-structure
+description: Quy ước cấu trúc feature, component và ranh giới giữa các feature của dự án Ping (React/Next, antd bọc thành Ping*, token, i18n, vitest node) để dễ bảo trì. Dùng skill này khi viết hoặc review màn hình, component, theme, i18n, trải nghiệm chat (chọn Ping* hay phần tử thô, token, ARIA, vi/en); khi người dùng hỏi về file component quá dài, "khó bảo trì", "tách component/hook", refactor một component có nhiều state hoặc nhiều trách nhiệm (composer, form, bảng, panel, drawer); khi tạo feature mới, quyết định chia file/thư mục thế nào, hoặc feature này có nên import feature kia không; hoặc khi review PR thêm tính năng vào component/feature đã lớn. Dùng cả khi họ chỉ dán một file dài và hỏi "có ổn không". Không dùng cho wrapper bọc antd trong components/ui (đó là skill ping-wrapper).
 ---
 
 # Cấu trúc component feature để bảo trì được
@@ -120,7 +120,7 @@ feature-component/
 
 Giữ nguyên đường import công khai (qua `index.tsx`) để nơi gọi không phải sửa.
 
-## Mẫu cấu trúc feature (chốt từ `features/messages`)
+## Mẫu cấu trúc feature (chốt từ `features/messages`, kiểm lại bằng `features/dms`)
 
 Áp dụng cho cả feature, không chỉ một component. Feature nhỏ giữ phẳng (xem `features/unread`: `api.ts`, `hooks.ts`, `*-cache.ts`). Khi một file có từ ba lý do thay đổi trở lên, hoặc vượt khoảng 300 dòng, đổi nó thành thư mục **cùng tên**, có `index.ts` re-export: đường import cũ (`../hooks`, `../message-cache`) không đổi.
 
@@ -145,14 +145,25 @@ Quy tắc đã chốt:
 
 - **Chiều phụ thuộc trong feature:** `components → hooks → <tên>-cache` và `api`. Cache không biết hooks; hooks không biết components. Nếu hook cần một hàm nằm ở components thì chuyển hàm đó xuống cache.
 - **Test được mà không cần React:** logic ghi cache của hook viết thành `createX(queryClient, ...)` hoặc hàm module nhận `queryClient` (ví dụ `createMessageActions`, `patchFromTail`) rồi hook chỉ gọi nó. Môi trường test là node, không có jsdom.
-- **Không lặp:** bước `pages.map(page => ({...page, messages: ...}))` thành một hàm (`mapPages`, `patchMessage`); điều kiện lặp thành hàm có tên (`isTransient`); công thức chỉ có một nơi (`toggledCount`); hằng số dùng chung đặt ở nơi sở hữu (`@ping/shared`).
+- **Không lặp:** bước `pages.map(page => ({...page, messages: ...}))` thành một hàm (`mapPages`, `patchMessage`); điều kiện lặp thành hàm có tên, đặt cạnh chủ đề nó thuộc về chứ không phải trong hook đầu tiên dùng nó (`isTransientError` nằm ở `transient-error.ts`, không phải trong `message-actions.ts`); công thức chỉ có một nơi (`toggledCount`); hằng số dùng chung đặt ở nơi sở hữu (`@ping/shared`).
 - **Tách dữ liệu gửi API khỏi metadata chỉ dùng phía client:** biến của mutation là `{ input, preview }`, không trộn preview vào object gửi lên server rồi bóc ra bằng destructure thừa.
 - **Handler sống lâu cần giá trị mới nhất** (ví dụ id người dùng): đọc qua `ref` cập nhật trong effect, đừng đưa vào deps làm gỡ và gắn lại listener.
 - **Nhánh logic của hook** (dựng dữ liệu gửi lại, chọn ca xử lý) rút thành hàm thuần có test (ví dụ `retryVariables`); hook chỉ nối kết quả vào mutation.
-- **Đăng ký event socket** bằng helper có kiểu (`listen(socket, event, handler)` trả hàm gỡ), không viết tay từng cặp `on`/`off`.
+- **Đăng ký event socket** bằng helper có kiểu trả hàm gỡ (`onServerEvent(socket, event, handler)` trong `realtime/socket.ts`), không viết tay từng cặp `on`/`off`. Đặt helper này ở feature sở hữu socket, không phải ở feature đầu tiên cần dùng nó.
 - **File con ngắn:** mục tiêu mỗi file dưới khoảng 220 dòng; file thuần giữ trọn một chủ đề (ví dụ parser) thì được dài hơn.
 - **Test đặt cạnh file nó kiểm**, tách theo module. Fixture dùng chung nằm trong `test-helpers.ts`.
+- **Thang trạng thái if-else trong component thành một union có hàm chọn** (`dmViewState`): `loading | error | notFound | ready` thay vì bốn điều kiện lồng nhau trong JSX. Hàm chọn là thuần, test đủ mọi nhánh; component chỉ `switch`/so khớp `kind`.
+- **`null` cho "không thuộc về", không phải chuỗi/giá trị rỗng giả.** Context hay prop dùng chung giữa nhiều chế độ (`serverId` của quyền: có server hoặc là DM) khai kiểu `string | null`, không phải sentinel `''`. Nơi chỉ sống trong một chế độ đọc qua accessor hẹp khẳng định bất biến một chỗ (`useCurrentServerId()` ném lỗi nếu gọi ở DM) thay vì `serverId ?? ''` rải ở từng nơi gọi. Phân biệt với giá trị rỗng **hợp lệ**: nếu chỗ dùng đã có `enabled: id !== undefined` hoặc tương đương chặn request, chuỗi rỗng ở đó chỉ là kiểu giữ chỗ, không phải sentinel cần sửa.
 - Cụm cấu trúc này dùng lại cho feature lớn khác (`channels`, `admin`): đừng phát minh khuôn mới.
+
+### Ranh giới giữa các feature (không chỉ trong một feature)
+
+Lý do và ví dụ đầy đủ ở ADR-0085.
+
+- **Quyết định "đây là chế độ nào" (server hay DM, v.v.) đúng MỘT lần ở nơi dựng**, qua một kiểu union mang theo mọi thứ chế độ đó cần (route, callback khác nhau theo chế độ). Bên trong chỉ đọc `scope.kind`, không tự suy từ việc thiếu một trường (`serverId === null`).
+- **Feature ở tầng thấp (ví dụ `realtime`) không import feature khác.** Hook chỉ một feature dùng thì chuyển vào feature đó; thứ nối nhiều feature lại (ví dụ gắn mọi event socket) là gốc ghép, đặt cạnh `AppShell` trong `features/shell/components`, không đặt trong feature tầng thấp.
+- **Luật ESLint `no-restricted-imports` cho ranh giới giữa feature nhắm vào gốc ghép (`features/x/components`), không chặn cả cây `features/x`.** Một store Zustand không phụ thuộc gì (`features/shell/store.ts`) là lá, nhiều feature dùng chung hợp lệ; chặn cả `@/features/shell` sẽ cấm nhầm việc đó. Chỉ thêm một luật sau khi đã thấy một vi phạm thật (một import sai chiều, một kiểu phải ép) — không vẽ sẵn sơ đồ phụ thuộc cho mọi feature rồi ép lint, luật sẽ sai và mất uy tín.
+- **Đo một feature đã áp khuôn tốt chưa, bằng lệnh, không chỉ bằng mắt:** tỉ lệ dòng test trên dòng nguồn (`find <feature> -name '*.test.*' | xargs cat | wc -l` so với tổng), số `as unknown as`/`any`/`?? ''` ngoài test, số file `.ts` có nhánh logic nhưng không có `*.test.ts` cạnh nó, số import tới feature bị cấm. So với một feature khác làm chuẩn, vì điểm một mình không nói lên gì.
 
 ## Checklist review PR đụng vào component lớn
 
