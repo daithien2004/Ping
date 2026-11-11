@@ -1,23 +1,20 @@
 'use client';
 
 import { ErrorCodes, type DmSummary } from '@ping/shared';
-import { Ban, Pin, ShieldX } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { use, useCallback, useMemo, useState, type ReactNode } from 'react';
+import { use, useCallback, useMemo, useState } from 'react';
 import { useTranslations } from 'use-intl';
 import { Loading } from '@/components/loading';
 import { PingButton } from '@/components/ui/ping-button';
-import { PingIconButton } from '@/components/ui/ping-icon-button';
-import { PingPopconfirm } from '@/components/ui/ping-popconfirm';
 import { pingToast } from '@/components/ui/ping-toast';
 import type { ChannelScope } from '@/features/messages/channel-scope';
 import { PinnedPanel } from '@/features/messages/components/pinned-panel';
 import { MessagePane } from '@/features/messages/components/message-pane';
-import { NotificationBell } from '@/features/notifications/components/notification-bell';
-import { UserAvatar } from '@/features/profile/components/user-avatar';
 import { ApiError } from '@/lib/api-client';
 import { useErrorMessage } from '@/lib/error-message';
 import { DmAbilityProvider } from './dm-ability-provider';
+import { DmBlockedBanner, DmHeader } from './dm-header';
+import { dmViewState } from '../dm-view-state';
 import { useDms, useToggleBlock } from '../hooks';
 import { dmMessagePath } from '../navigation';
 import { selectDmBlocked, useDmBlockStore } from '../store';
@@ -46,48 +43,55 @@ export function DmView({
   const { channelId } = use(params);
   const query = use(searchParams ?? EMPTY_QUERY);
   const focusId = focusIdProp ?? (typeof query.m === 'string' ? query.m : null);
-  const { data: dms, isPending, isSuccess, isError, error, refetch, isFetching } = useDms();
   // Dữ liệu DM lấy từ GET /dms (một nguồn duy nhất — header, rail và badge cùng cache).
-  const dm = dms?.find((row) => row.channelId === channelId);
-  const t = useTranslations('dms');
-  const tc = useTranslations('common');
+  const { data: dms, isPending, isError, error, refetch, isFetching } = useDms();
   const errorMessage = useErrorMessage();
-
-  let content: ReactNode;
-  if (isPending) {
-    content = <Loading />;
-  } else if (isError) {
-    content = (
-      <div
-        role="alert"
-        className="m-auto flex flex-col items-center gap-3 px-4 text-center text-sm"
-      >
-        <p className="text-destructive">{errorMessage(error)}</p>
-        <PingButton
-          variant="secondary"
-          size="sm"
-          disabled={isFetching}
-          onClick={() => void refetch()}
-          data-testid="dm-retry"
-        >
-          {tc('retry')}
-        </PingButton>
-      </div>
-    );
-  } else if (isSuccess && !dm) {
-    // IDOR an toàn: DM của người khác chỉ "không tìm thấy" (API trả 404, không lộ tồn tại).
-    content = <p className="m-auto text-sm text-muted-foreground">{t('notFound')}</p>;
-  } else if (dm) {
-    content = <DmConversation dm={dm} focusId={focusId} />;
-  } else {
-    content = <Loading />;
-  }
+  const state = dmViewState({ isPending, isError, dms, channelId });
 
   return (
     <div className="flex min-h-0 flex-1">
-      <section className="flex min-h-0 min-w-0 flex-1 flex-col">{content}</section>
+      <section className="flex min-h-0 min-w-0 flex-1 flex-col">
+        {state.kind === 'loading' && <Loading />}
+        {state.kind === 'error' && (
+          <DmLoadError message={errorMessage(error)} onRetry={refetch} busy={isFetching} />
+        )}
+        {state.kind === 'notFound' && <DmNotFound />}
+        {state.kind === 'ready' && <DmConversation dm={state.dm} focusId={focusId} />}
+      </section>
     </div>
   );
+}
+
+function DmLoadError({
+  message,
+  onRetry,
+  busy,
+}: {
+  message: string;
+  onRetry: () => unknown;
+  busy: boolean;
+}) {
+  const tc = useTranslations('common');
+  return (
+    <div role="alert" className="m-auto flex flex-col items-center gap-3 px-4 text-center text-sm">
+      <p className="text-destructive">{message}</p>
+      <PingButton
+        variant="secondary"
+        size="sm"
+        disabled={busy}
+        onClick={() => void onRetry()}
+        data-testid="dm-retry"
+      >
+        {tc('retry')}
+      </PingButton>
+    </div>
+  );
+}
+
+/** IDOR an toàn: DM của người khác chỉ "không tìm thấy" (API trả 404, không lộ tồn tại). */
+function DmNotFound() {
+  const t = useTranslations('dms');
+  return <p className="m-auto text-sm text-muted-foreground">{t('notFound')}</p>;
 }
 
 /**
@@ -95,8 +99,6 @@ export function DmView({
  * nhận scope `dm` để chạy đúng chế độ DM (cursor đọc từ DmSummary, permalink `/dms/…`).
  */
 function DmConversation({ dm, focusId }: { dm: DmSummary; focusId: string | null }) {
-  const t = useTranslations('dms');
-  const tm = useTranslations('messages');
   const errorMessage = useErrorMessage();
   const router = useRouter();
   const [pinsOpen, setPinsOpen] = useState(false);
@@ -136,63 +138,16 @@ function DmConversation({ dm, focusId }: { dm: DmSummary; focusId: string | null
     [dm.lastReadMessageId, pathToMessage, onSendError],
   );
 
-  function goToMessage(messageId: string) {
-    router.push(pathToMessage(messageId));
-  }
-
   return (
     <DmAbilityProvider partnerId={dm.partner.id}>
-      <header data-testid="dm-header" className="flex h-header shrink-0 items-center gap-2 px-4">
-        <UserAvatar name={dm.partner.displayName} avatarUrl={dm.partner.avatarUrl} size="sm" />
-        <p className="truncate font-semibold">{dm.partner.displayName}</p>
-        <span className="truncate text-xs text-muted-foreground">@{dm.partner.username}</span>
-        <div className="ml-auto flex items-center gap-1">
-          {/* TG.12: DM không có dòng server — chuông đặt mức/mute riêng cho hội thoại này. */}
-          <NotificationBell serverId={null} channelId={dm.channelId} dm />
-          <PingIconButton
-            icon={<Pin />}
-            aria-pressed={pinsOpen}
-            aria-label={tm(pinsOpen ? 'pinnedHide' : 'pinnedShow')}
-            data-testid="pins-toggle"
-            onClick={() => setPinsOpen((open) => !open)}
-          />
-          {blocked ? (
-            // Bỏ chặn: xác nhận nhẹ — không phải hành động nguy hiểm như chặn.
-            <PingPopconfirm
-              title={t('unblockConfirm', { name: dm.partner.displayName })}
-              onConfirm={() => toggle(false)}
-              okText={t('unblock')}
-              cancelText={t('cancel')}
-            >
-              <PingButton variant="secondary" size="sm" data-testid="dm-unblock">
-                <Ban /> {t('unblock')}
-              </PingButton>
-            </PingPopconfirm>
-          ) : (
-            // Chặn: hành động ảnh hưởng hai chiều — luôn hỏi lại (quy ước PingPopconfirm).
-            <PingPopconfirm
-              title={t('blockConfirm', { name: dm.partner.displayName })}
-              description={t('blockHint')}
-              onConfirm={() => toggle(true)}
-              okText={t('block')}
-              cancelText={t('cancel')}
-            >
-              <PingButton variant="secondary" size="sm" data-testid="dm-block">
-                <ShieldX /> {t('block')}
-              </PingButton>
-            </PingPopconfirm>
-          )}
-        </div>
-      </header>
-      {blocked && (
-        <p
-          role="status"
-          data-testid="dm-blocked-banner"
-          className="border-b bg-muted px-4 py-2 text-sm text-muted-foreground"
-        >
-          {t('blockedBanner')}
-        </p>
-      )}
+      <DmHeader
+        dm={dm}
+        pinsOpen={pinsOpen}
+        onTogglePins={() => setPinsOpen((open) => !open)}
+        blocked={blocked}
+        onToggleBlock={toggle}
+      />
+      {blocked && <DmBlockedBanner />}
       {/* key: mỗi tin đích permalink là một phiên xem riêng, như ChannelView. */}
       <MessagePane
         key={`${dm.channelId}:${focusId ?? ''}`}
@@ -202,7 +157,12 @@ function DmConversation({ dm, focusId }: { dm: DmSummary; focusId: string | null
         focusId={focusId}
       />
       {/* Panel ghim là sibling của pane (không nằm trong danh sách ảo hóa), như ChannelView. */}
-      {pinsOpen && <PinnedPanel channelId={dm.channelId} onOpen={goToMessage} />}
+      {pinsOpen && (
+        <PinnedPanel
+          channelId={dm.channelId}
+          onOpen={(messageId) => router.push(pathToMessage(messageId))}
+        />
+      )}
     </DmAbilityProvider>
   );
 }
