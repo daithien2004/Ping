@@ -35,9 +35,10 @@ export interface ReactVariables {
   active: boolean;
 }
 
+/** `serverId` là `null` trong DM: không có quyền theo server để làm tươi lại khi gặp 403. */
 export function createMessageActions(
   queryClient: QueryClient,
-  serverId: string,
+  serverId: string | null,
   channelId: string,
 ) {
   const key = qk.messages(channelId);
@@ -45,7 +46,7 @@ export function createMessageActions(
   const write = (change: CacheChange) => writeMessages(queryClient, channelId, change);
   const refetch = () => void refetchMessages(queryClient, channelId);
   const failed = (error: unknown) => {
-    if (error instanceof ApiError && error.status === 403)
+    if (error instanceof ApiError && error.status === 403 && serverId !== null)
       void queryClient.invalidateQueries({ queryKey: qk.permissions(serverId), exact: true });
     if (isTransientError(error)) refetch();
   };

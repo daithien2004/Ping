@@ -32,7 +32,9 @@ export function MessageReactions({
 }) {
   const t = useTranslations('messages');
   const errorMessage = useErrorMessage();
-  const { ability, ready, serverId } = useServerAbility();
+  const { ability, ready, serverId: scopeServerId } = useServerAbility();
+  // DM không thuộc server nào: emoji tùy chỉnh của server không áp dụng, query tự tắt.
+  const serverId = scopeServerId ?? undefined;
   const toggle = useToggleReaction(channelId);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [reactorEmoji, setReactorEmoji] = useState<string | null>(null);

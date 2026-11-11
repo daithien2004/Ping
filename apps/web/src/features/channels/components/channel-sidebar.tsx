@@ -11,7 +11,7 @@ import { pingToast } from '@/components/ui/ping-toast';
 import { useMe } from '@/features/auth/hooks';
 import { UserAvatar } from '@/features/profile/components/user-avatar';
 import { useLeaveServer, useServer } from '@/features/servers/hooks';
-import { useServerAbility } from '@/features/permissions/context';
+import { useCurrentServerId, useServerAbility } from '@/features/permissions/context';
 import { useMobileNav } from '@/features/shell/store';
 import { useErrorMessage } from '@/lib/error-message';
 import { ChannelNavigation } from './channel-navigation';
@@ -24,7 +24,8 @@ export function ChannelSidebar() {
   // → GET /servers/undefined 400 (ADR-0020). channelId chỉ để tô sáng nên đọc từ URL là đủ.
   const { channelId } = useParams<{ channelId?: string }>();
   const router = useRouter();
-  const { ability, serverId } = useServerAbility();
+  const { ability } = useServerAbility();
+  const serverId = useCurrentServerId();
   const { data: server } = useServer(serverId);
   const { data: me } = useMe();
   const leaveMutation = useLeaveServer();

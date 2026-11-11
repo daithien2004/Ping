@@ -3,13 +3,13 @@
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { useTranslations } from 'use-intl';
-import { useServerAbility } from '@/features/permissions/context';
+import { useCurrentServerId } from '@/features/permissions/context';
 import { channelPath } from '@/features/servers/navigation';
 import { useChannels } from '../hooks';
 
 /** /servers/:id → channel đầu tiên của server. serverId từ provider, không từ useParams() (ADR-0020). */
 export function ChannelRedirect() {
-  const { serverId } = useServerAbility();
+  const serverId = useCurrentServerId();
   const router = useRouter();
   const { data: channels } = useChannels(serverId);
   const first = channels[0];
