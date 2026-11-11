@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, use, useEffect, useState } from 'react';
+import { Suspense, use, useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Pencil, Pin, Users } from 'lucide-react';
 import { useTranslations } from 'use-intl';
@@ -11,6 +11,7 @@ import { useMemberPanel } from '@/features/members/store';
 import { NotificationBell } from '@/features/notifications/components/notification-bell';
 import { AskDialog } from '@/features/messages/components/ask-dialog';
 import { SearchDialog } from '@/features/search/components/search-dialog';
+import type { ChannelScope } from '@/features/messages/channel-scope';
 import { MessagePane } from '@/features/messages/components/message-pane';
 import { PinnedPanel } from '@/features/messages/components/pinned-panel';
 import { useServerAbility } from '@/features/permissions/context';
@@ -57,6 +58,14 @@ export function ChannelView({
   const [askOpen, setAskOpen] = useState(false);
   const [pinsOpen, setPinsOpen] = useState(false);
   const [topicOpen, setTopicOpen] = useState(false);
+  const pathToMessage = useCallback(
+    (messageId: string) => messagePath(serverId, channelId, messageId),
+    [serverId, channelId],
+  );
+  const scope = useMemo<ChannelScope>(
+    () => ({ kind: 'server', serverId, messagePath: pathToMessage }),
+    [serverId, pathToMessage],
+  );
 
   // Dưới `lg` panel thành viên là overlay (T6.8) nên không được mặc định mở đè lên tin nhắn:
   // đóng khi vào màn hẹp hoặc khi cửa sổ thu nhỏ qua mốc lg.
@@ -76,7 +85,7 @@ export function ChannelView({
 
   function goToMessage(messageId: string) {
     setAskOpen(false);
-    router.push(messagePath(serverId, channelId, messageId));
+    router.push(pathToMessage(messageId));
   }
 
   return (
@@ -154,7 +163,7 @@ export function ChannelView({
               permalink cũng là một "phiên xem" riêng: mở link khác thì nạp lại cửa sổ mới. */}
           <MessagePane
             key={`${channel.id}:${focusId ?? ''}`}
-            serverId={serverId}
+            scope={scope}
             channelId={channel.id}
             channelName={channel.name}
             focusId={focusId}

@@ -7,6 +7,7 @@ import { Plus } from 'lucide-react';
 import { PingTextArea, type PingTextAreaRef } from '@/components/ui/ping-textarea';
 import { useRealtime } from '@/features/realtime/context';
 import { useServerAbility } from '@/features/permissions/context';
+import { serverIdOf, type ChannelScope } from '../../channel-scope';
 import { AttachmentTray } from './attachment-tray';
 import { ComposerActions, type Picker } from './composer-actions';
 import { ComposerIconButton } from './composer-icon-button';
@@ -24,7 +25,7 @@ const MAX_LENGTH = Limits.MESSAGE_CONTENT_MAX;
 const NEAR_LIMIT = Math.floor(MAX_LENGTH * 0.9);
 
 export function MessageComposer({
-  serverId,
+  scope,
   channelId,
   channelName,
   replyTo,
@@ -32,7 +33,7 @@ export function MessageComposer({
   onSend,
   textareaRef,
 }: {
-  serverId: string | null;
+  scope: ChannelScope;
   channelId: string;
   channelName: string;
   replyTo: ReplyTarget | null;
@@ -49,13 +50,14 @@ export function MessageComposer({
   const [picker, setPicker] = useState<Picker>(null);
   const togglePicker = (next: Exclude<Picker, null>) =>
     setPicker((current) => (current === next ? null : next));
-  const autocomplete = useEmojiAutocomplete(draft, setDraft, serverId ?? undefined);
+  const serverId = serverIdOf(scope) ?? undefined;
+  const autocomplete = useEmojiAutocomplete(draft, setDraft, serverId);
   const attachments = useAttachmentInput(channelId, interactive);
   const { uploads } = attachments;
 
   const ta = useTranslations('attachments');
   const t = useTranslations('messages');
-  const isDm = serverId === null;
+  const isDm = scope.kind === 'dm';
   const label = isDm
     ? t('dmComposerLabel', { name: channelName })
     : t('composerLabel', { channel: channelName });
@@ -108,16 +110,16 @@ export function MessageComposer({
           {replyTo && <ReplyBar replyTo={replyTo} onCancel={onCancelReply} />}
           {picker === 'emoji' && (
             <EmojiPanel
-              serverId={serverId ?? undefined}
+              serverId={serverId}
               onInsert={(text) => {
                 insertAtCursor(text);
                 setPicker(null);
               }}
             />
           )}
-          {!isDm && picker === 'sticker' && (
+          {scope.kind === 'server' && picker === 'sticker' && (
             <StickerPanel
-              serverId={serverId ?? ''}
+              serverId={scope.serverId}
               onSticker={(sticker) => {
                 setPicker(null);
                 onSend(stickerMessage(sticker, replyToId));

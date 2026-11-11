@@ -6,6 +6,7 @@ import { useTranslations } from 'use-intl';
 import { useChannelRealtime } from '@/features/realtime/hooks';
 import { TypingIndicator } from '@/features/realtime/components/typing-indicator';
 import { useMe } from '@/features/auth/hooks';
+import { serverIdOf, type ChannelScope } from '../../channel-scope';
 import { useMessages } from '../../hooks';
 import { type ClientMessage, oldestFirst, replyPreviewOf } from '../../message-cache';
 import { groupMessages } from '../../grouping';
@@ -30,19 +31,18 @@ import { usePermalinkWindow } from './use-permalink-window';
 import { useUnreadDivider } from './use-unread-divider';
 
 export function MessagePane({
-  serverId,
+  scope,
   channelId,
   channelName,
   focusId,
-  dm,
 }: {
-  serverId: string | null;
+  scope: ChannelScope;
   channelId: string;
   channelName: string;
   focusId: string | null;
-  dm?: { lastReadMessageId: string | null; onSendError?: (error: unknown) => void };
 }) {
-  const isDm = serverId === null;
+  const isDm = scope.kind === 'dm';
+  const serverId = serverIdOf(scope);
   const roomDenied = useChannelRealtime(serverId, channelId);
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useMessages(channelId);
@@ -62,7 +62,7 @@ export function MessagePane({
 
   const { sendOwn, retry, scrollOnAppend } = useMessageSending({
     channelId,
-    onSendError: dm?.onSendError,
+    onSendError: scope.kind === 'dm' ? scope.onSendError : undefined,
     onSubmit: () => setReplyTo(null),
   });
 
@@ -77,13 +77,12 @@ export function MessagePane({
   });
 
   useMarkReadTail({ channelId, tailId: messages.at(-1)?.id ?? null, hasNewer });
-  const dividerId = useUnreadDivider({ serverId, channelId, messages, dm });
+  const dividerId = useUnreadDivider({ scope, channelId, messages });
 
-  const { permalinkOf, jumpTo, jumpTarget } = useJumpToMessage({
+  const { jumpTo, jumpTarget } = useJumpToMessage({
     messages,
     virtualizer,
-    serverId,
-    channelId,
+    messagePath: scope.messagePath,
   });
   // Gom callback dùng bởi từng tin thành một object; memo hóa để giữ object ổn định giữa các lần render.
   const itemHandlers = useMemo(
@@ -133,8 +132,8 @@ export function MessagePane({
                 <MessageItem
                   message={message}
                   channelId={channelId}
-                  serverId={isDm ? undefined : serverId}
-                  permalink={permalinkOf(message.id)}
+                  serverId={serverId ?? undefined}
+                  permalink={scope.messagePath(message.id)}
                   handlers={itemHandlers}
                   highlighted={message.id === focusId || message.id === jumpTarget}
                   grouped={row.grouped}
@@ -162,7 +161,7 @@ export function MessagePane({
       </div>
       {/* Ô soạn tin cho channel này: nhận reply hiện tại, gửi qua sendOwn và cho phép focus textarea. */}
       <MessageComposer
-        serverId={serverId}
+        scope={scope}
         channelId={channelId}
         channelName={channelName}
         replyTo={replyTo ? replyPreviewOf(replyTo) : null}

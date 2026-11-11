@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useUnread } from '@/features/unread/hooks';
+import { serverIdOf, type ChannelScope } from '../../channel-scope';
 import type { ClientMessage } from '../../message-cache';
+import { unreadCursorOf } from './unread-cursor';
 
 /**
  * Nhận channel và danh sách tin nhắn cùng mốc đã đọc của server/DM.
@@ -10,25 +12,20 @@ import type { ClientMessage } from '../../message-cache';
  * Ví dụ: đã đọc tới m5, danh sách có m5, m6, m7 → trả `'m6'` để đặt vạch trước m6.
  */
 export function useUnreadDivider({
-  serverId,
+  scope,
   channelId,
   messages,
-  dm,
 }: {
-  serverId: string | null;
+  scope: ChannelScope;
   channelId: string;
   messages: ClientMessage[];
-  dm?: { lastReadMessageId: string | null };
 }): string | null {
-  const { data: unread } = useUnread(serverId);
+  const { data: unread } = useUnread(serverIdOf(scope));
   const [captured, setCaptured] = useState<{ channelId: string; cursor: string | null } | null>(
     null,
   );
 
-  const available =
-    serverId === null
-      ? dm?.lastReadMessageId
-      : unread && (unread.find((row) => row.channelId === channelId)?.lastReadMessageId ?? null);
+  const available = unreadCursorOf(scope, unread, channelId);
   if (available !== undefined && captured?.channelId !== channelId) {
     setCaptured({ channelId, cursor: available });
   }

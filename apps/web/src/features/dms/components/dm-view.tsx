@@ -3,13 +3,14 @@
 import { ErrorCodes, type DmSummary } from '@ping/shared';
 import { Ban, Pin, ShieldX } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { use, useState, type ReactNode } from 'react';
+import { use, useCallback, useMemo, useState, type ReactNode } from 'react';
 import { useTranslations } from 'use-intl';
 import { Loading } from '@/components/loading';
 import { PingButton } from '@/components/ui/ping-button';
 import { PingIconButton } from '@/components/ui/ping-icon-button';
 import { PingPopconfirm } from '@/components/ui/ping-popconfirm';
 import { pingToast } from '@/components/ui/ping-toast';
+import type { ChannelScope } from '@/features/messages/channel-scope';
 import { PinnedPanel } from '@/features/messages/components/pinned-panel';
 import { MessagePane } from '@/features/messages/components/message-pane';
 import { NotificationBell } from '@/features/notifications/components/notification-bell';
@@ -91,7 +92,7 @@ export function DmView({
 
 /**
  * Hội thoại đã có dữ liệu đối tác. Ghim, chặn/bỏ chặn và banner nằm ở đây; pane tin nhắn
- * nhận `serverId: null` để chạy đúng chế độ DM (cursor đọc từ DmSummary, permalink `/dms/…`).
+ * nhận scope `dm` để chạy đúng chế độ DM (cursor đọc từ DmSummary, permalink `/dms/…`).
  */
 function DmConversation({ dm, focusId }: { dm: DmSummary; focusId: string | null }) {
   const t = useTranslations('dms');
@@ -112,14 +113,31 @@ function DmConversation({ dm, focusId }: { dm: DmSummary; focusId: string | null
 
   // 403 DM_BLOCKED khi gửi tin: API dùng chung một mã cho cả hai chiều (chống dò nguyên nhân)
   // nên client cũng hiển thị trung lập — banner + tắt composer cho tới khi có thay đổi.
-  function onSendError(error: unknown) {
-    if (error instanceof ApiError && error.code === ErrorCodes.DM_BLOCKED) {
-      setBlocked(dm.partner.id, true);
-    }
-  }
+  const partnerId = dm.partner.id;
+  const onSendError = useCallback(
+    (error: unknown) => {
+      if (error instanceof ApiError && error.code === ErrorCodes.DM_BLOCKED) {
+        setBlocked(partnerId, true);
+      }
+    },
+    [setBlocked, partnerId],
+  );
+  const pathToMessage = useCallback(
+    (messageId: string) => dmMessagePath(dm.channelId, messageId),
+    [dm.channelId],
+  );
+  const scope = useMemo<ChannelScope>(
+    () => ({
+      kind: 'dm',
+      lastReadMessageId: dm.lastReadMessageId,
+      messagePath: pathToMessage,
+      onSendError,
+    }),
+    [dm.lastReadMessageId, pathToMessage, onSendError],
+  );
 
   function goToMessage(messageId: string) {
-    router.push(dmMessagePath(dm.channelId, messageId));
+    router.push(pathToMessage(messageId));
   }
 
   return (
@@ -178,11 +196,10 @@ function DmConversation({ dm, focusId }: { dm: DmSummary; focusId: string | null
       {/* key: mỗi tin đích permalink là một phiên xem riêng, như ChannelView. */}
       <MessagePane
         key={`${dm.channelId}:${focusId ?? ''}`}
-        serverId={null}
+        scope={scope}
         channelId={dm.channelId}
         channelName={dm.partner.displayName}
         focusId={focusId}
-        dm={{ lastReadMessageId: dm.lastReadMessageId, onSendError }}
       />
       {/* Panel ghim là sibling của pane (không nằm trong danh sách ảo hóa), như ChannelView. */}
       {pinsOpen && <PinnedPanel channelId={dm.channelId} onOpen={goToMessage} />}
