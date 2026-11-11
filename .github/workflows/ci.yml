@@ -182,7 +182,8 @@ jobs:
 
   web-e2e:
     name: web-e2e
-    runs-on: ubuntu-latest
+    # Giữ cùng hệ điều hành với bộ browser/visual cho đến khi đổi runner có chủ đích.
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     # Chỉ web/shared/deps đổi mới chạy 3 shard Playwright (đắt nhất bộ CI).
     needs: changes
@@ -284,7 +285,7 @@ jobs:
   # có bộ `linux/`, job tự sinh rồi upload artifact để commit; các lần sau mới so sánh thật.
   visual:
     name: visual
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     needs: changes
     if: needs.changes.outputs.web == 'true'
