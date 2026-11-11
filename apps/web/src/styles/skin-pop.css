@@ -145,17 +145,7 @@ html[data-skin='pop'] [data-slot='message-text'] {
   box-shadow: var(--ping-shadow-hard);
   font-size: 1.0625rem;
 }
-html[data-skin='pop'] article[data-mine='true'] > div {
-  flex-direction: row-reverse;
-}
-html[data-skin='pop'] article[data-mine='true'] [data-slot='message-body'] {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-}
-html[data-skin='pop'] article[data-mine='true'] [data-slot='message-body'] header {
-  justify-content: flex-end;
-}
+/* Xếp tin về bên phải dùng chung cho mọi skin (globals.css); ở đây chỉ còn phần riêng của Pop. */
 html[data-skin='pop'] article[data-mine='true'] [data-slot='message-text'] {
   margin: 2px 0 4px 6px;
   border-color: var(--palette-pop-ink);
