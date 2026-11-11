@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef } from 'react';
+import { useCallback } from 'react';
 import { useServerAbility } from '@/features/permissions/context';
 import { useSendMessage, type SendMessageVariables } from '../../hooks';
 import type { ClientMessage } from '../../message-cache';
@@ -9,22 +9,23 @@ import { retryVariables } from './retry-variables';
 
 /**
  * Gom thao tác gửi tin mới và thử gửi lại tin lỗi trong channel.
- * Ví dụ: gọi `sendOwn(message)` để gửi tin; hook kiểm tra quyền, cập nhật cờ cuộn xuống,
- * rồi gọi `onSubmit`. Gọi `retry(message)` để thử gửi lại tin đã thất bại.
- * Trả về `{ sendOwn, retry, scrollOnAppend }` cho giao diện gọi và điều khiển cuộn.
+ * Ví dụ: gọi `sendOwn(message)` để gửi tin; hook kiểm tra quyền, báo `onWillAppend` (để danh sách
+ * cuộn xuống khi tin tạm xuất hiện), rồi gọi `onSubmit`. Gọi `retry(message)` để thử gửi lại tin lỗi.
+ * Trả về `{ sendOwn, retry }` cho giao diện gọi.
  */
 export function useMessageSending({
   channelId,
   onSendError,
   onSubmit,
+  onWillAppend,
 }: {
   channelId: string;
   onSendError?: (error: unknown) => void;
   onSubmit: () => void;
+  onWillAppend: () => void;
 }) {
   const { ability, ready } = useServerAbility();
   const sendMutate = useSendMessage(channelId).mutate;
-  const scrollOnAppend = useRef(false);
 
   const canSend = ready && ability.can('create', 'Message');
 
@@ -40,7 +41,7 @@ export function useMessageSending({
   function sendOwn(message: OutgoingMessage) {
     const variables = toSendVariables(message, crypto.randomUUID());
     if (!submit(variables)) return;
-    scrollOnAppend.current = true;
+    onWillAppend();
     onSubmit();
   }
 
@@ -48,11 +49,11 @@ export function useMessageSending({
     (message: ClientMessage) => {
       const plan = retryVariables(message);
       if (!plan) return;
-      if (plan.kind !== 'text') scrollOnAppend.current = true;
+      if (plan.kind !== 'text') onWillAppend();
       submit(plan.variables);
     },
-    [submit],
+    [submit, onWillAppend],
   );
 
-  return { sendOwn, retry, scrollOnAppend };
+  return { sendOwn, retry };
 }

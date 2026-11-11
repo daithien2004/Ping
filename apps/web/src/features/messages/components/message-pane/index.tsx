@@ -60,20 +60,20 @@ export function MessagePane({
   const { focusIndex, focusMissing, focusPending, hasNewer, loadingNewer, loadMoreNewer } =
     usePermalinkWindow({ channelId, focusId, messages, window: data?.window });
 
-  const { sendOwn, retry, scrollOnAppend } = useMessageSending({
-    channelId,
-    onSendError: scope.kind === 'dm' ? scope.onSendError : undefined,
-    onSubmit: () => setReplyTo(null),
-  });
-
-  const { scrollRef, virtualizer } = useMessageScroll({
+  const { scrollRef, virtualizer, scrollToEndOnNextAppend } = useMessageScroll({
     messages,
     focusId,
     focusIndex,
     hasNextPage,
     isFetchingNextPage,
     fetchNextPage,
-    scrollOnAppend,
+  });
+
+  const { sendOwn, retry } = useMessageSending({
+    channelId,
+    onSendError: scope.kind === 'dm' ? scope.onSendError : undefined,
+    onSubmit: () => setReplyTo(null),
+    onWillAppend: scrollToEndOnNextAppend,
   });
 
   useMarkReadTail({ channelId, tailId: messages.at(-1)?.id ?? null, hasNewer });
