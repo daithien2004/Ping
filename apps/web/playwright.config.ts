@@ -35,7 +35,11 @@ export default defineConfig({
   timeout: 60_000,
   expect: { timeout: 10_000 },
   // Trên CI thêm reporter `github`: test hỏng hiện thành annotation đọc được ngay trên trang chạy.
-  reporter: process.env.CI ? [['list'], ['github']] : 'list',
+  // `json` ghi thời gian từng test ra file nhỏ, luôn upload (pass lẫn fail) — dữ liệu thật để cân
+  // lại shard theo spec nặng/nhẹ (xem ghi chú ở ci.yml), không đoán theo cảm giác.
+  reporter: process.env.CI
+    ? [['list'], ['github'], ['json', { outputFile: 'test-results/results.json' }]]
+    : 'list',
   use: {
     baseURL: `http://localhost:${webPort}`,
     trace: 'retain-on-failure',
