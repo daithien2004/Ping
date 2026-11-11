@@ -144,7 +144,6 @@ describe('parseMarkdown — bộ test XSS (OWASP, scheme, lồng, Unicode)', () 
       for (const link of links) {
         expect(link.href.toLowerCase()).toMatch(/^https?:\/\//);
       }
-      // Không node nào ngoài tập cho phép.
       const allowed = new Set([
         'text',
         'bold',

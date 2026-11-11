@@ -7,13 +7,6 @@ import { bigEmojiCount, parseMarkdown } from '../markdown';
 import { useEmojiMap } from '@/features/emojis/hooks';
 import { profileImageUrl } from '@/features/profile/hooks';
 
-/**
- * Hiển thị nội dung tin nhắn qua markdown tập con (TG.4, ADR-0054): parse thành AST rồi dựng
- * React element TRỰC TIẾP cho từng node — không có đường sinh HTML thô. Văn bản trong AST tự
- * escape bởi React nên payload XSS chỉ thể hiện như chữ thường. Memo theo content: danh sách
- * tin ảo hóa chỉ parse lại khi nội dung tin đổi. `serverId` (TG.24) để resolve emoji tùy chỉnh
- * `:ten:<id>` qua cache của server — thiếu/đã xóa → chip placeholder.
- */
 export function MarkdownText({ content, serverId }: { content: string; serverId?: string }) {
   const blocks = useMemo(() => parseMarkdown(content), [content]);
   const bigEmoji = useMemo(() => bigEmojiCount(content), [content]);
@@ -134,11 +127,6 @@ function InlineNodeView({ node, serverId }: { node: InlineNode; serverId?: strin
   }
 }
 
-/**
- * Emoji tùy chỉnh (TG.24): resolve `id` qua cache server — thấy → ảnh 20px (previewUrl tĩnh
- * cho nhẹ, kích thước nhỏ nên không cần xử lý reduced-motion); thiếu/đã xóa → chip mờ `:ten:`.
- * KHÔNG áp dụng big-emoji: custom emoji luôn giữ kích thước inline.
- */
 function CustomEmojiNode({ id, name, serverId }: { id: string; name: string; serverId?: string }) {
   const byId = useEmojiMap(serverId);
   const emoji = byId.get(id);
@@ -164,7 +152,6 @@ function CustomEmojiNode({ id, name, serverId }: { id: string; name: string; ser
   );
 }
 
-/** Spoiler: nội dung bị che; bấm (hoặc Enter khi focus) để lộ. */
 function Spoiler({ children, serverId }: { children: InlineNode[]; serverId?: string }) {
   const t = useTranslations('messages');
   const [revealed, setRevealed] = useState(false);

@@ -11,17 +11,11 @@ import { errorReference } from '@/lib/error-reference';
 import { useErrorMessage } from '@/lib/error-message';
 import { usePins, useSetPinned } from '../hooks';
 
-/**
- * Danh sách tin đã ghim của channel (TG.3, ADR-0066): bấm một dòng để nhảy tới tin (permalink
- * TG.5), nút bỏ ghim chỉ hiện với người có `MANAGE_MESSAGES`. API trả tối đa
- * `Limits.PINS_PER_CHANNEL` nên không phân trang; panel chỉ tải khi mở.
- */
 export function PinnedPanel({
   channelId,
   onOpen,
 }: {
   channelId: string;
-  /** Nhảy tới tin qua permalink — panel không tự điều hướng để giữ một chỗ xử lý. */
   onOpen: (messageId: string) => void;
 }) {
   const t = useTranslations('messages');
@@ -34,6 +28,7 @@ export function PinnedPanel({
   const setPinned = useSetPinned(channelId);
   const canUnpin = ability.can('delete', 'Pin');
   const pins = query.data ?? [];
+  const reference = query.isError ? errorReference(query.error) : null;
 
   return (
     <aside
@@ -60,11 +55,9 @@ export function PinnedPanel({
       {query.isError && (
         <div role="alert" className="flex flex-col items-start gap-2 p-2 text-sm text-destructive">
           <p>{errorMessage(query.error)}</p>
-          {errorReference(query.error) && (
+          {reference && (
             <p className="text-xs text-muted-foreground">
-              <code className="select-all">
-                {ta('errorId', { id: errorReference(query.error) ?? '' })}
-              </code>
+              <code className="select-all">{ta('errorId', { id: reference })}</code>
             </p>
           )}
           <PingButton

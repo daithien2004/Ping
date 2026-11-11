@@ -4,6 +4,12 @@ import { useStore } from 'zustand';
 import { useChannelSync } from '@/features/messages/hooks';
 import { useRealtime } from './context';
 
+/**
+ * Theo dõi channel khi component dùng hook được hiển thị, đồng bộ tin nhắn khi server phản hồi,
+ * rồi trả về true nếu server từ chối cho vào channel.
+ *
+ * Ví dụ kết quả: false = chưa ghi nhận bị từ chối; true = bị từ chối.
+ */
 export function useChannelRealtime(serverId: string | null, channelId: string) {
   const session = useRealtime();
   const sync = useChannelSync(channelId);

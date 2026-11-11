@@ -23,7 +23,7 @@ Mẫu code đầy đủ ở `references/templates.md`. Cách viết test ở `re
 
 ### 2. Props hình thức thuộc về wrapper
 
-`Omit` khỏi props antd mọi prop quyết định hình thức (`type`, `size`, `danger`, `ghost`, `shape`, `color`, `variant`...) để consumer chỉ còn `variant` và `size` của Ping. Nếu không, người ta sẽ truyền thẳng prop antd và hợp đồng bị thủng. Kết quả typecheck vỡ ở chỗ cũ là chủ ý, phải đếm số chỗ và codemod trong cùng commit.
+`Omit` khỏi props antd mọi prop quyết định hình thức (`type`, `size`, `danger`, `ghost`, `shape`, `color`, `variant`...) để consumer chỉ còn `variant` và `size` của Ping. Nếu không, người ta sẽ truyền thẳng prop antd và hợp đồng bị thủng. Kết quả typecheck vỡ ở chỗ cũ là chủ ý, phải đếm số chỗ và codemod ngay trong lượt thay đổi đó.
 
 **API mở hay đóng.** Chọn một trong hai, theo tiêu chí:
 
@@ -145,15 +145,6 @@ Một biến thể = một vẻ. Nếu cần tổ hợp, thêm biến thể mớ
 - Slot là chuỗi literal. Ba kiểm tra của `skin-pop-slots.test.ts`: mọi `[data-slot='x']` trong CSS có trong một component; có trong bảng đầu `skin-pop.css`; CSS không có hex thô. Thêm: không có `data-slot={...}` động. Chiều ngược lại (biến thể trong `VARIANTS` có luật skin hoặc nằm trong danh sách cố ý rơi về secondary) do test của từng wrapper, vd `ping-button.test.ts`.
 - Ngoại lệ portal: xem quy tắc 8.
 
-## Kỷ luật commit (quan trọng)
-
-Tách thay đổi **không đổi hình** khỏi thay đổi **đổi diện mạo**:
-
-- **Commit không đổi hình, cây luôn xanh:** tạo wrapper, `size.ts`, bỏ `forwardRef`, đổi default, codemod giữ giá trị cũ, test ánh xạ hiện trạng. Biến thể mới chưa có luật skin thì **chưa thêm**, vì `data-variant` đã phát ra từ lúc tồn tại; thêm luật CSS sớm sẽ đổi hình ngay.
-- **Commit đổi diện mạo:** thêm biến thể mới, đổi ánh xạ (vd ghost `default` → `dashed`), thêm luật skin, CSS icon `1em`, kèm ảnh trước/sau cho các chỗ bị ảnh hưởng.
-- Comment luôn đúng với trạng thái code ở **từng** commit. Đừng viết "test sẽ nhắc skin" khi test chưa tồn tại; viết "cần có test nhắc skin" rồi đổi khi test được thêm.
-- Test phủ skin chỉ đặt cùng commit với luật skin, nếu không commit trước sẽ đỏ.
-
 ## Quy trình thêm một wrapper mới
 
 1. Liệt kê các prop antd quyết định hình thức → sẽ bị `Omit`.
@@ -163,7 +154,6 @@ Tách thay đổi **không đổi hình** khỏi thay đổi **đổi diện m�
 5. Viết test theo `references/tests.md`.
 6. Cập nhật skin theo `data-slot`/`data-variant`; kiểm tra mọi skin.
 7. Chạy typecheck, đếm chỗ gọi vỡ, codemod nếu cần.
-8. Chia commit theo kỷ luật ở trên.
 
 ## Checklist review (dùng khi xem PR)
 
@@ -180,5 +170,5 @@ Tách thay đổi **không đổi hình** khỏi thay đổi **đổi diện m�
 - [ ] Mọi biến thể (trừ những cái cố ý rơi về secondary, có test ghi nhận) có luật ở từng skin.
 - [ ] CSS dùng chung trong `@layer components`, selector hẹp.
 - [ ] Comment khớp trạng thái code; không nhắc component chưa tồn tại.
-- [ ] Commit đổi hình tách riêng, có ảnh trước/sau.
+- [ ] Thay đổi đổi hình có ảnh trước/sau.
 - [ ] Đã nói rõ phần nào chưa chạy/chưa xác minh.

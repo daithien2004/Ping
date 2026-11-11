@@ -1,0 +1,115 @@
+'use client';
+import { Limits, updateMessageSchema } from '@ping/shared';
+import { useEffect, useEffectEvent, useId, useState, type FormEvent } from 'react';
+import { useTranslations } from 'use-intl';
+import { isImeKey } from '../message-composer/composer-keys';
+import { MessageDialog } from './message-dialog';
+import { FormError } from '@/components/form-parts';
+import { PingButton } from '@/components/ui/ping-button';
+import { PingLabel } from '@/components/ui/ping-label';
+import { PingTextArea } from '@/components/ui/ping-textarea';
+import { useServerAbility } from '@/features/permissions/context';
+import { ApiError } from '@/lib/api-client';
+import { useErrorMessage } from '@/lib/error-message';
+import { useEditMessage } from '../../hooks';
+import type { ClientMessage } from '../../message-cache';
+
+export function EditMessageDialog({
+  message,
+  channelId,
+  onClose,
+}: {
+  message: ClientMessage;
+  channelId: string;
+  onClose: () => void;
+}) {
+  const [form, setForm] = useState({ draft: message.content, editedAt: message.editedAt });
+  const mutation = useEditMessage(channelId);
+  const { ready } = useServerAbility();
+  const t = useTranslations('messages');
+  const common = useTranslations('common');
+  const errorMessage = useErrorMessage();
+  const id = useId();
+  const parsed = updateMessageSchema.safeParse({ content: form.draft });
+  const content = parsed.success ? parsed.data.content : null;
+  const changedElsewhere = message.editedAt !== form.editedAt;
+  const canSave =
+    ready &&
+    !mutation.isPending &&
+    content !== null &&
+    !changedElsewhere &&
+    content !== message.content;
+  const savedDespiteError =
+    mutation.isError &&
+    mutation.error instanceof ApiError &&
+    (mutation.error.status === 0 || mutation.error.status >= 500) &&
+    changedElsewhere &&
+    message.content === form.draft.trim();
+  const close = useEffectEvent(onClose);
+  useEffect(() => {
+    if (savedDespiteError) close();
+  }, [savedDespiteError]);
+
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!canSave || content === null) return;
+    mutation.mutate(
+      { id: message.id, content, beforeEditedAt: form.editedAt },
+      { onSuccess: onClose },
+    );
+  }
+
+  return (
+    <MessageDialog open onClose={onClose} title={t('editTitle')}>
+      <form onSubmit={submit} className="flex flex-col gap-3">
+        <PingLabel htmlFor={id}>{t('editContent')}</PingLabel>
+        <PingTextArea
+          id={id}
+          value={form.draft}
+          onChange={(event) => setForm({ ...form, draft: event.target.value })}
+          onKeyDown={(event) => {
+            if (
+              event.key === 'Enter' &&
+              (event.ctrlKey || event.metaKey) &&
+              !isImeKey(event.nativeEvent)
+            ) {
+              event.preventDefault();
+              event.currentTarget.form?.requestSubmit();
+            }
+          }}
+          maxLength={Limits.MESSAGE_CONTENT_MAX}
+          rows={4}
+          className="max-h-64 min-h-24 overflow-y-auto"
+          disabled={mutation.isPending}
+          aria-invalid={!parsed.success}
+        />
+        {!parsed.success && <FormError>{t('invalidContent')}</FormError>}
+        {changedElsewhere && !savedDespiteError && (
+          <div role="alert" className="flex flex-col gap-2 text-sm text-muted-foreground">
+            <p>{t('changedElsewhere')}</p>
+            <PingButton
+              variant="secondary"
+              onClick={() => {
+                setForm({ draft: message.content, editedAt: message.editedAt });
+                mutation.reset();
+              }}
+            >
+              {t('loadLatest')}
+            </PingButton>
+          </div>
+        )}
+        {mutation.isError && !savedDespiteError && (
+          <FormError>{errorMessage(mutation.error)}</FormError>
+        )}
+        <div className="flex justify-end gap-2">
+          <PingButton variant="secondary" onClick={onClose}>
+            {common('cancel')}
+          </PingButton>
+          <PingButton variant="primary" htmlType="submit" disabled={!canSave}>
+            {mutation.isPending ? common('processing') : common('save')}
+          </PingButton>
+        </div>
+      </form>
+    </MessageDialog>
+  );
+}
