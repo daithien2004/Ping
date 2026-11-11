@@ -52,10 +52,8 @@ export function useCreateServer() {
   return useMutation({
     mutationFn: createServer,
     onSuccess: (server) => {
-      // Response đã đủ cho trang server: ghi thẳng vào cache, khỏi gọi GET lần nữa.
       queryClient.setQueryData(qk.server(server.id), server);
       queryClient.setQueryData(qk.channels(server.id), server.channels);
-      // ADR-0077: server mới cần xuất hiện trong unread gộp (dù mọi channel đang 0).
       void queryClient.invalidateQueries({ queryKey: qk.unreadAll });
       return queryClient.invalidateQueries({ queryKey: qk.servers, exact: true });
     },
