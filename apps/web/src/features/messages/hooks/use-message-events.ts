@@ -8,13 +8,12 @@ import {
   type MessageUnpinnedPayload,
   type MessageUpdatedPayload,
   type ReactionChangedPayload,
-  type ServerToClientEvents,
 } from '@ping/shared';
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
 import { useMe } from '@/features/auth/hooks';
 import type { RealtimeSession } from '@/features/realtime/session';
-import type { RealtimeSocket } from '@/features/realtime/socket';
+import { onServerEvent } from '@/features/realtime/socket';
 import { qk } from '@/lib/query-keys';
 import {
   applyPin,
@@ -24,21 +23,6 @@ import {
   upsertMessage,
 } from '../message-cache';
 import { writeMessages, type CacheChange } from './cache-ops';
-
-type LooseSocket = {
-  on: (event: string, handler: unknown) => void;
-  off: (event: string, handler: unknown) => void;
-};
-
-function listen<E extends keyof ServerToClientEvents>(
-  socket: RealtimeSocket,
-  event: E,
-  handler: ServerToClientEvents[E],
-): () => void {
-  const loose = socket as unknown as LooseSocket;
-  loose.on(event, handler);
-  return () => loose.off(event, handler);
-}
 
 export function createMessageEventHandlers({
   queryClient,
@@ -109,13 +93,13 @@ export function useMessageEvents(session: RealtimeSession) {
       isActive: () => session.active,
     });
     const off = [
-      listen(session.socket, ServerEvents.MessageCreated, handlers.created),
-      listen(session.socket, ServerEvents.MessageUpdated, handlers.updated),
-      listen(session.socket, ServerEvents.MessageDeleted, handlers.deleted),
-      listen(session.socket, ServerEvents.ReactionAdded, handlers.reactionAdded),
-      listen(session.socket, ServerEvents.ReactionRemoved, handlers.reactionRemoved),
-      listen(session.socket, ServerEvents.MessagePinned, handlers.pinned),
-      listen(session.socket, ServerEvents.MessageUnpinned, handlers.unpinned),
+      onServerEvent(session.socket, ServerEvents.MessageCreated, handlers.created),
+      onServerEvent(session.socket, ServerEvents.MessageUpdated, handlers.updated),
+      onServerEvent(session.socket, ServerEvents.MessageDeleted, handlers.deleted),
+      onServerEvent(session.socket, ServerEvents.ReactionAdded, handlers.reactionAdded),
+      onServerEvent(session.socket, ServerEvents.ReactionRemoved, handlers.reactionRemoved),
+      onServerEvent(session.socket, ServerEvents.MessagePinned, handlers.pinned),
+      onServerEvent(session.socket, ServerEvents.MessageUnpinned, handlers.unpinned),
     ];
     return () => off.forEach((stop) => stop());
   }, [session, queryClient]);
