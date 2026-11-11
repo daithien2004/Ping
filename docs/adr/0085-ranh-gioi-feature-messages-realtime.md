@@ -48,8 +48,10 @@ các ranh giới trên chỉ giữ được bằng thói quen.
 
 ## Consequences
 
-- Thêm một loại kênh mới (ngoài server và DM) là thêm một nhánh union; TypeScript chỉ ra mọi chỗ
-  `switch` chưa xử lý.
+- Thêm một loại kênh mới (ngoài server và DM) là thêm một nhánh union. `serverIdOf` và `isDmScope` dùng
+  `switch` đầy đủ nên chúng không biên dịch được cho tới khi loại mới được quyết định ở đó. Các chỗ khác
+  đọc `scope.kind` trực tiếp để thu hẹp kiểu (ví dụ chỉ kênh server có bảng sticker) và không tự báo khi
+  có loại mới.
 - `messages` đọc và test được tách khỏi route; `realtime` không còn kéo theo cả app.
 - Chỉ hai ranh giới trên được ép bằng lint. Các feature khác vẫn import nhau tự do (ví dụ `channels`
   và `dms` import `messages`, đúng hướng); muốn khoá thêm thì thêm khối tương tự.

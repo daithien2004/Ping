@@ -12,5 +12,25 @@ export type ChannelScope =
       onSendError?: (error: unknown) => void;
     };
 
-export const serverIdOf = (scope: ChannelScope): string | null =>
-  scope.kind === 'server' ? scope.serverId : null;
+/**
+ * Hai hàm dưới đây dùng `switch` đầy đủ có chủ ý: thêm một loại kênh vào `ChannelScope` sẽ làm chúng
+ * không biên dịch được cho tới khi quyết định loại đó thuộc nhánh nào.
+ */
+export function serverIdOf(scope: ChannelScope): string | null {
+  switch (scope.kind) {
+    case 'server':
+      return scope.serverId;
+    case 'dm':
+      return null;
+  }
+}
+
+/** Dùng cho chữ hiển thị khác nhau giữa DM và kênh server (nhãn, lời mở đầu). */
+export function isDmScope(scope: ChannelScope): boolean {
+  switch (scope.kind) {
+    case 'dm':
+      return true;
+    case 'server':
+      return false;
+  }
+}

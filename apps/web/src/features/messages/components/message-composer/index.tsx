@@ -7,7 +7,7 @@ import { Plus } from 'lucide-react';
 import { PingTextArea, type PingTextAreaRef } from '@/components/ui/ping-textarea';
 import { useRealtime } from '@/features/realtime/context';
 import { useServerAbility } from '@/features/permissions/context';
-import { serverIdOf, type ChannelScope } from '../../channel-scope';
+import { isDmScope, serverIdOf, type ChannelScope } from '../../channel-scope';
 import { AttachmentTray } from './attachment-tray';
 import { ComposerActions, type Picker } from './composer-actions';
 import { ComposerIconButton } from './composer-icon-button';
@@ -57,7 +57,7 @@ export function MessageComposer({
 
   const ta = useTranslations('attachments');
   const t = useTranslations('messages');
-  const isDm = scope.kind === 'dm';
+  const isDm = isDmScope(scope);
   const label = isDm
     ? t('dmComposerLabel', { name: channelName })
     : t('composerLabel', { channel: channelName });

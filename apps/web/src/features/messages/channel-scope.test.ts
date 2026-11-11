@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { serverIdOf, type ChannelScope } from './channel-scope';
+import { isDmScope, serverIdOf, type ChannelScope } from './channel-scope';
 
 const messagePath = (id: string) => `/x/${id}`;
 
@@ -11,5 +11,12 @@ describe('serverIdOf', () => {
   it('DM: không thuộc server nào nên trả null', () => {
     const scope: ChannelScope = { kind: 'dm', lastReadMessageId: null, messagePath };
     expect(serverIdOf(scope)).toBeNull();
+  });
+});
+
+describe('isDmScope', () => {
+  it('chỉ DM mới là DM', () => {
+    expect(isDmScope({ kind: 'dm', lastReadMessageId: null, messagePath })).toBe(true);
+    expect(isDmScope({ kind: 'server', serverId: 's1', messagePath })).toBe(false);
   });
 });

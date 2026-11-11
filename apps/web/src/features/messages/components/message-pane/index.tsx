@@ -5,7 +5,7 @@ import { useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'use-intl';
 import { TypingIndicator } from '@/features/realtime/components/typing-indicator';
 import { useMe } from '@/features/auth/hooks';
-import { serverIdOf, type ChannelScope } from '../../channel-scope';
+import { isDmScope, serverIdOf, type ChannelScope } from '../../channel-scope';
 import { useChannelRealtime, useMessages } from '../../hooks';
 import { type ClientMessage, oldestFirst, replyPreviewOf } from '../../message-cache';
 import { groupMessages } from '../../grouping';
@@ -40,7 +40,7 @@ export function MessagePane({
   channelName: string;
   focusId: string | null;
 }) {
-  const isDm = scope.kind === 'dm';
+  const isDm = isDmScope(scope);
   const serverId = serverIdOf(scope);
   const roomDenied = useChannelRealtime(serverId, channelId);
 
