@@ -37,6 +37,10 @@ test('tg13 settings: theme sync hai tab, riêng tư/chặn, thông báo kênh, g
   test.setTimeout(420_000);
   const aliceContext = await browser.newContext();
   const bobContext = await browser.newContext();
+  // Skin thuộc thiết bị và mặc định là Pop; test này kiểm tra chuyển đổi từ skin mặc định cũ.
+  await aliceContext.addCookies([
+    { name: 'ping-skin', value: 'default', url: 'http://localhost:3000' },
+  ]);
   // Lưu lại để finally phủi tay được cả khi test đỏ giữa chừng.
   let aliceForCleanup: AuthResponse | undefined;
   let bobForCleanup: AuthResponse | undefined;
