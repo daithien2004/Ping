@@ -1,4 +1,5 @@
 export type { ClientMessage, ClientMessagePage, MessagesCache, MessagesWindow } from './types';
+export { applyAuthorUpdated } from './author';
 export {
   applyPin,
   deleteMessage,

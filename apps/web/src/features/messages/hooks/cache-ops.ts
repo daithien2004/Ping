@@ -4,6 +4,10 @@ import type { MessagesCache } from '../message-cache';
 
 export type CacheChange = (old: MessagesCache | undefined) => MessagesCache | undefined;
 
+/** Khoá của `qk.messages(channelId)`. Query khác của kênh (ví dụ ghim) cũng bắt đầu bằng 'channels'. */
+export const isMessagesKey = (key: readonly unknown[]) =>
+  key[0] === 'channels' && key[2] === 'messages';
+
 /** Đánh dấu query tin nhắn của channel là stale để TanStack Query tải lại khi phù hợp. */
 export function refetchMessages(queryClient: QueryClient, channelId: string): Promise<void> {
   return queryClient.invalidateQueries({ queryKey: qk.messages(channelId), exact: true });

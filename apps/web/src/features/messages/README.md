@@ -25,8 +25,8 @@ tin từ socket đi qua cùng `upsertMessage` nên không lặp.
 
 - Kênh là server hay DM chỉ được quyết định ở nơi dựng `MessagePane`, qua `ChannelScope`. Bên trong chỉ
   đọc `scope.kind`; không suy ra từ `serverId === null`.
-- `messages` không import `dms`, `servers`, `channels`, `shell`; `realtime` không import `messages`.
-  ESLint chặn cả hai.
+- `messages` không import `dms`, `servers`, `channels`, `shell`; `realtime` và `profile` không import
+  `messages`. ESLint chặn cả ba. Hồ sơ đổi thì `messages` tự vá tên tác giả trong cache tin.
 - Nơi dựng `ChannelScope` phải giữ nó ổn định (`useMemo`) và tạo `messagePath` bằng `useCallback`.
 
 ## Kiểm thử

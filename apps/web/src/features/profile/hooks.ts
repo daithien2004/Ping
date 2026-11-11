@@ -14,18 +14,12 @@ import {
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import type { MembersCache } from '@/features/members/member-cache';
-import type { MessagesCache } from '@/features/messages/message-cache';
 import type { RealtimeSession } from '@/features/realtime/session';
 import { api, ApiError } from '@/lib/api-client';
 import { env } from '@/lib/env';
 import { qk } from '@/lib/query-keys';
 import { updateMyNickname, updateProfile, type ProfileUpdated } from './api';
-import {
-  applyMemberUpdated,
-  applyServerUpdated,
-  applyUserUpdatedToMembers,
-  applyUserUpdatedToMessages,
-} from './profile-cache';
+import { applyMemberUpdated, applyServerUpdated, applyUserUpdatedToMembers } from './profile-cache';
 
 /** PATCH /users/me — ghi thẳng vào cache `me` để rail/popover đổi ngay không cần reload. */
 export function useUpdateProfile() {
@@ -144,7 +138,7 @@ export function useProfileUpload(
 
 /**
  * user.updated / member.updated / server.updated (TG.7): hồ sơ và server đổi ở tab khác hoặc
- * do thành viên khác đổi — cập nhật cache me/members/messages/servers ngay không reload.
+ * do thành viên khác đổi — cập nhật cache me/members/servers ngay không reload.
  */
 export function useProfileEvents(session: RealtimeSession) {
   const queryClient = useQueryClient();
@@ -154,13 +148,6 @@ export function useProfileEvents(session: RealtimeSession) {
         ? { ...old, displayName: event.displayName, avatarUrl: event.avatarUrl }
         : old,
     );
-    for (const query of queryClient
-      .getQueryCache()
-      .findAll({ type: 'active', predicate: (q) => q.queryKey[0] === 'channels' })) {
-      queryClient.setQueryData<MessagesCache | undefined>(query.queryKey, (cache) =>
-        applyUserUpdatedToMessages(cache, event),
-      );
-    }
     for (const query of queryClient
       .getQueryCache()
       .findAll({ predicate: (q) => q.queryKey[0] === 'servers' && q.queryKey[2] === 'members' })) {

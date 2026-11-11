@@ -8,6 +8,7 @@ import {
   type MessageUnpinnedPayload,
   type MessageUpdatedPayload,
   type ReactionChangedPayload,
+  type UserUpdatedPayload,
 } from '@ping/shared';
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
@@ -16,13 +17,15 @@ import type { RealtimeSession } from '@/features/realtime/session';
 import { onServerEvent } from '@/features/realtime/socket';
 import { qk } from '@/lib/query-keys';
 import {
+  applyAuthorUpdated,
   applyPin,
   applyReaction,
   deleteMessage,
   updateMessage,
   upsertMessage,
+  type MessagesCache,
 } from '../message-cache';
-import { writeMessages, type CacheChange } from './cache-ops';
+import { isMessagesKey, writeMessages, type CacheChange } from './cache-ops';
 
 export function createMessageEventHandlers({
   queryClient,
@@ -75,6 +78,15 @@ export function createMessageEventHandlers({
       refreshPins(event.channelId);
       return done;
     },
+    userUpdated: (event: UserUpdatedPayload) => {
+      for (const query of queryClient
+        .getQueryCache()
+        .findAll({ type: 'active', predicate: (q) => isMessagesKey(q.queryKey) })) {
+        queryClient.setQueryData<MessagesCache | undefined>(query.queryKey, (old) =>
+          applyAuthorUpdated(old, event),
+        );
+      }
+    },
   };
 }
 
@@ -100,6 +112,7 @@ export function useMessageEvents(session: RealtimeSession) {
       onServerEvent(session.socket, ServerEvents.ReactionRemoved, handlers.reactionRemoved),
       onServerEvent(session.socket, ServerEvents.MessagePinned, handlers.pinned),
       onServerEvent(session.socket, ServerEvents.MessageUnpinned, handlers.unpinned),
+      onServerEvent(session.socket, ServerEvents.UserUpdated, handlers.userUpdated),
     ];
     return () => off.forEach((stop) => stop());
   }, [session, queryClient]);

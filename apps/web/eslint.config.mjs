@@ -30,6 +30,11 @@ const realtimeIsLowLevel = {
   message:
     'features/realtime là tầng truyền tải, không import feature khác. Gắn sự kiện của feature ở gốc ghép (features/shell/components/realtime-provider.tsx) (ADR-0085).',
 };
+const profileDoesNotKnowMessages = {
+  group: ['@/features/messages', '@/features/messages/*'],
+  message:
+    'features/profile không import messages (messages dùng profile, không ngược lại). Cập nhật cache tin khi hồ sơ đổi do messages tự làm (ADR-0085).',
+};
 const messagesDoesNotKnowRoutes = {
   group: [
     '@/features/dms',
@@ -159,6 +164,15 @@ export default defineConfig([
       'no-restricted-imports': [
         'error',
         { paths: [noUseParams], patterns: [noApp, noUiKit, noAntd, realtimeIsLowLevel] },
+      ],
+    },
+  },
+  {
+    files: ['src/features/profile/**'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        { paths: [noUseParams], patterns: [noApp, noUiKit, noAntd, profileDoesNotKnowMessages] },
       ],
     },
   },

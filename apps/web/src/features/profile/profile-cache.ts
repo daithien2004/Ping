@@ -1,43 +1,12 @@
 import type { MemberUpdatedPayload, ServerUpdatedPayload, UserUpdatedPayload } from '@ping/shared';
 import type { InfiniteData } from '@tanstack/react-query';
 import type { MemberDto, MemberPage, ServerDetail, ServerSummary } from '@ping/shared';
-import type { MessagesCache } from '@/features/messages/message-cache';
 import type { MembersCache } from '@/features/members/member-cache';
 
 /**
  * Biến đổi cache thuần cho TG.7 (đi kèm test): profile-cache là hàm thuần, component không
  * gọi queryClient trực tiếp — hooks gọi qua đây.
  */
-
-/** user.updated: cập nhật tác giả trong mọi trang tin nhắn (tên + avatar đổi ngay). */
-export function applyUserUpdatedToMessages(
-  cache: MessagesCache | undefined,
-  user: UserUpdatedPayload,
-): MessagesCache | undefined {
-  if (!cache) return cache;
-  let changed = false;
-  const pages = cache.pages.map((page) => {
-    if (!page.messages.some((m) => m.author.id === user.id)) return page;
-    changed = true;
-    return {
-      ...page,
-      messages: page.messages.map((m) =>
-        m.author.id === user.id
-          ? {
-              ...m,
-              author: {
-                ...m.author,
-                username: user.username,
-                displayName: user.displayName,
-                avatarUrl: user.avatarUrl,
-              },
-            }
-          : m,
-      ),
-    };
-  });
-  return changed ? { ...cache, pages } : cache;
-}
 
 /** user.updated: cập nhật user lồng trong từng member (panel thành viên, drawer quản trị). */
 export function applyUserUpdatedToMembers(

@@ -3,7 +3,7 @@ import type {
   MessagePinnedPayload,
   ReactionChangedPayload,
 } from '@ping/shared';
-import { QueryClient } from '@tanstack/react-query';
+import { QueryClient, QueryObserver } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { qk } from '@/lib/query-keys';
 import type { MessagesCache } from '../message-cache';
@@ -91,6 +91,24 @@ describe('createMessageEventHandlers', () => {
     } as MessagePinnedPayload);
     await handlers.unpinned({ channelId: 'c1', messageId: 'm1' });
     expect(rows().find((row) => row.id === 'm1')?.pinnedAt).toBeNull();
+  });
+
+  it('user.updated: đổi tên tác giả trong cache tin, không đụng cache ghim (là mảng)', () => {
+    const pins = [{ id: 'p1' }];
+    client.setQueryData(qk.pins('c1'), pins);
+    const watch = (queryKey: readonly unknown[]) =>
+      new QueryObserver(client, {
+        queryKey,
+        queryFn: () => Promise.resolve(null),
+        staleTime: Infinity,
+      }).subscribe(() => {});
+    const stops = [watch(key), watch(qk.pins('c1'))];
+
+    handlers.userUpdated({ id: author.id, username: 'a', displayName: 'Mới', avatarUrl: null });
+
+    expect(rows().every((row) => row.author.displayName === 'Mới')).toBe(true);
+    expect(client.getQueryData(qk.pins('c1'))).toBe(pins);
+    stops.forEach((stop) => stop());
   });
 
   it('phiên realtime đã dừng thì bỏ qua event', async () => {

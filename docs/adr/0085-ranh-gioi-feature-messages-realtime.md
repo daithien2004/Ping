@@ -34,7 +34,12 @@ các ranh giới trên chỉ giữ được bằng thói quen.
    không suy được kiểu listener khi tên sự kiện là tham số generic.
 5. Hook cuộn sở hữu cờ cuộn xuống: `useMessageScroll` trả `scrollToEndOnNextAppend`, hook gửi tin nhận
    nó như callback `onWillAppend`.
-6. Hai luật ESLint (`apps/web/eslint.config.mjs`) giữ các mục 2 và 3.
+6. **`profile` không import `messages`.** Khi hồ sơ đổi (`user.updated`), việc vá tên và avatar của tác
+   giả trong cache tin do `messages` tự làm: `applyAuthorUpdated` nằm trong `message-cache/` và được
+   `createMessageEventHandlers` (`userUpdated`) gọi, chỉ với các query khoá `messages`. Trước đây
+   `profile` đi qua mọi query bắt đầu bằng `'channels'`, nên cũng chạm cả cache ghim (một mảng) và làm
+   hàm vá ném `TypeError` khi có `user.updated` lúc panel ghim đang mở.
+7. Ba luật ESLint (`apps/web/eslint.config.mjs`) giữ các mục 2, 3 và 6.
 
 ## Alternatives
 

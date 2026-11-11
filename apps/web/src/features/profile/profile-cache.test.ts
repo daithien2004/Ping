@@ -1,13 +1,7 @@
 import type { MemberUpdatedPayload, UserUpdatedPayload } from '@ping/shared';
 import { describe, expect, it } from 'vitest';
-import type { MessagesCache } from '@/features/messages/message-cache';
 import type { MembersCache } from '@/features/members/member-cache';
-import {
-  applyMemberUpdated,
-  applyServerUpdated,
-  applyUserUpdatedToMembers,
-  applyUserUpdatedToMessages,
-} from './profile-cache';
+import { applyMemberUpdated, applyServerUpdated, applyUserUpdatedToMembers } from './profile-cache';
 
 const author = {
   id: 'u1',
@@ -16,45 +10,6 @@ const author = {
   avatarUrl: null as string | null,
 };
 const other = { id: 'u2', username: 'bob', displayName: 'Bob', avatarUrl: null as string | null };
-
-function messagesCache(): MessagesCache {
-  return {
-    pages: [
-      {
-        messages: [
-          {
-            id: 'm1',
-            authorId: 'u1',
-            author,
-            content: 'hello',
-            createdAt: '2026-01-01T00:00:00Z',
-            editedAt: null,
-            nonce: null,
-            replyTo: null,
-            reactions: [],
-            pinnedAt: null,
-            pinnedById: null,
-          },
-          {
-            id: 'm2',
-            authorId: 'u2',
-            author: other,
-            content: 'hi',
-            createdAt: '2026-01-01T00:01:00Z',
-            editedAt: null,
-            nonce: null,
-            replyTo: null,
-            reactions: [],
-            pinnedAt: null,
-            pinnedById: null,
-          },
-        ],
-        hasMore: false,
-      },
-    ],
-    pageParams: [undefined],
-  };
-}
 
 function membersCache(): MembersCache {
   return {
@@ -97,18 +52,6 @@ const updated: UserUpdatedPayload = {
 };
 
 describe('profile cache (TG.7)', () => {
-  it('updates the author of their messages and leaves others untouched', () => {
-    const next = applyUserUpdatedToMessages(messagesCache(), updated);
-    expect(next?.pages[0]?.messages[0]?.author.displayName).toBe('Alice Đẹp');
-    expect(next?.pages[0]?.messages[0]?.author.avatarUrl).toContain('/attachments/a1/');
-    expect(next?.pages[0]?.messages[1]?.author.displayName).toBe('Bob');
-  });
-
-  it('returns the same messages cache when the user has no messages', () => {
-    const cache = messagesCache();
-    expect(applyUserUpdatedToMessages(cache, { ...updated, id: 'ghost' })).toBe(cache);
-  });
-
   it('updates the nested user of their member rows', () => {
     const next = applyUserUpdatedToMembers(membersCache(), updated);
     expect(next?.pages[0]?.members[0]?.user.displayName).toBe('Alice Đẹp');
