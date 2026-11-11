@@ -4,6 +4,7 @@ import type {
   MessageReplyPreview,
   MessageUpdatedPayload,
 } from '@ping/shared';
+import { tempIdOf } from './temp-id';
 import type { ClientMessage, ClientMessagePage, MessagesCache } from './types';
 
 const REPLY_PREVIEW_LENGTH = 120;
@@ -65,7 +66,7 @@ export function optimisticMessage(
   replyTo: MessageDto['replyTo'] = null,
 ): ClientMessage {
   return {
-    id: `temp-${input.nonce}`,
+    id: tempIdOf(input.nonce),
     ...(input.attachmentIds?.length ? { pendingAttachmentIds: input.attachmentIds } : {}),
     ...(input.stickerId ? { kind: 'sticker' as const, sticker: input.sticker ?? null } : {}),
     ...(input.gif

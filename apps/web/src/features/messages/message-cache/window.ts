@@ -1,4 +1,5 @@
 import { mapPages, nonceKey, oldestFirst, upsertMessage } from './core';
+import { isTempId } from './temp-id';
 import type { ClientMessage, MessagesCache } from './types';
 
 export function patchGap(
@@ -19,7 +20,7 @@ export function patchGap(
     rows.filter(
       (message) =>
         message.status !== undefined ||
-        message.id.startsWith('temp-') ||
+        isTempId(message.id) ||
         !(message.id > afterId && message.id <= upper && !fetchedIds.has(message.id)),
     ),
   );

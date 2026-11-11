@@ -4,6 +4,7 @@ import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { qk } from '@/lib/query-keys';
 import { listMessages, listMessagesAfter, listMessagesAround } from '../api';
 import {
+  isTempId,
   patchGap,
   replaceWithWindow,
   type ClientMessage,
@@ -41,7 +42,7 @@ export async function patchFromTail(
   tail: string | undefined,
 ) {
   const key = qk.messages(channelId);
-  if (!tail || tail.startsWith('temp-')) {
+  if (!tail || isTempId(tail)) {
     await refetchMessages(queryClient, channelId);
     return;
   }

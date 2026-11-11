@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useMarkRead } from '@/features/unread/hooks';
+import { isTempId } from '../../message-cache';
 
 /**
  * Nhận channel, ID tin cuối đang hiển thị và cờ còn tin mới hơn hay không.
@@ -22,7 +23,7 @@ export function useMarkReadTail({
   const retriedMarked = useRef<string | null>(null);
   const [readRetry, setReadRetry] = useState(0);
   useEffect(() => {
-    if (hasNewer || !tailId || tailId.startsWith('temp-')) return;
+    if (hasNewer || !tailId || isTempId(tailId)) return;
     const marked = `${channelId}:${tailId}`;
     if (lastMarked.current === marked) return;
     lastMarked.current = marked;

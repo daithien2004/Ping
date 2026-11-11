@@ -17,4 +17,5 @@ export {
   toggledCount,
   toggleReaction,
 } from './reactions';
+export { isTempId, tempIdOf } from './temp-id';
 export { aroundWindow, patchGap, prependNewer, replaceWithWindow } from './window';
