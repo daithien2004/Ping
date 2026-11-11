@@ -25,6 +25,25 @@ const noFeatures = {
   group: ['@/features/*', '**/features/*'],
   message: 'components/ và lib/ không phụ thuộc features/ (phụ thuộc một chiều).',
 };
+const realtimeIsLowLevel = {
+  group: ['@/features/*', '!@/features/realtime', '!@/features/realtime/**'],
+  message:
+    'features/realtime là tầng truyền tải, không import feature khác. Gắn sự kiện của feature ở gốc ghép (features/shell/components/realtime-provider.tsx) (ADR-0085).',
+};
+const messagesDoesNotKnowRoutes = {
+  group: [
+    '@/features/dms',
+    '@/features/dms/*',
+    '@/features/servers',
+    '@/features/servers/*',
+    '@/features/channels',
+    '@/features/channels/*',
+    '@/features/shell',
+    '@/features/shell/*',
+  ],
+  message:
+    'features/messages không import dms, servers, channels, shell. Route và DM-hay-server đi vào qua ChannelScope do nơi dựng MessagePane cấp (ADR-0085).',
+};
 
 // Nằm trong layout, phải đi theo URL hiện tại → được dùng useParams(). TG.9: cột DM của /dms;
 // T6.10: quick switcher cần server của URL hiện tại cho nhóm kênh.
@@ -130,6 +149,25 @@ export default defineConfig([
           paths: [noUseParams],
           patterns: [noApp, noUiKit, noAntd],
         },
+      ],
+    },
+  },
+  {
+    // ADR-0085: ranh giới giữa các feature. Đặt sau khối antd vì khối sau ghi đè cùng rule.
+    files: ['src/features/realtime/**'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        { paths: [noUseParams], patterns: [noApp, noUiKit, noAntd, realtimeIsLowLevel] },
+      ],
+    },
+  },
+  {
+    files: ['src/features/messages/**'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        { paths: [noUseParams], patterns: [noApp, noUiKit, noAntd, messagesDoesNotKnowRoutes] },
       ],
     },
   },
