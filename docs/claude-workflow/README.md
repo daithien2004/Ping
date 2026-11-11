@@ -1,37 +1,29 @@
 # Workflow Claude Code của Ping
 
-T0.3 chuẩn bị cấu hình project cho Claude Code, theo ADR-0038. Các file này không tự trở thành
-hooks/subagents của Codex. Đọc [CLAUDE.md gốc](../../CLAUDE.md) và
-[CONTRIBUTING](../../CONTRIBUTING.md); hướng dẫn package nằm trong
-[API](../../apps/api/CLAUDE.md) và [web](../../apps/web/CLAUDE.md).
+T0.3 (2026-10-22, ADR-0038) từng dàn thêm 4 command, 6 subagent và 8 skill cho một quy trình
+`/plan-feature` → duyệt → `/ship-task` (test-first → code → review subagent → evidence). Toàn bộ
+phần đó chưa từng được smoke bằng Claude Code thật (chưa có tài khoản lúc dựng), và 20 ngày sau
+vẫn không có dấu vết nào được dùng — xem [evidence T0.3](../v0.2.0/evidence/T0.3/README.md) và
+[case 7](../v0.2.0/case-studies/cs-07-claude-workflow.md) cho quyết định gốc. Ngày 2026-11-11 đã
+xoá phần chưa dùng đó (commit gỡ bỏ workflow chưa smoke); chỉ giữ lại phần có bằng chứng chạy
+thật. Đọc [CLAUDE.md gốc](../../CLAUDE.md) và [CONTRIBUTING](../../CONTRIBUTING.md); hướng dẫn
+package nằm trong [API](../../apps/api/CLAUDE.md) và [web](../../apps/web/CLAUDE.md).
 
-## Cấu hình và cách dùng
+## Cấu hình hiện còn
 
-| Thành phần                | Nơi lưu                     | Cách kiểm                                                         |
-| ------------------------- | --------------------------- | ----------------------------------------------------------------- |
-| Permissions/hooks project | `.claude/settings.json`     | `/permissions`, `/hooks` trong Claude Code                        |
-| Skills                    | `.claude/skills/*/SKILL.md` | 9 skill theo các loại task của plan                               |
-| Subagents                 | `.claude/agents/*.md`       | 6 vai trò; không pin model, dùng model của phiên                  |
-| Commands                  | `.claude/commands/`         | `/plan-feature`, `/ship-task`, `/drill`, `/case-study`, `/review` |
-| Hook scripts/tests        | `.claude/hooks/`            | `pnpm test:workflow`, cũng nằm trong `pnpm test`                  |
-| MCP                       | `.mcp.json`                 | Hiện rỗng; chưa kết nối dịch vụ hay có secret                     |
-| Metrics                   | [metrics.md](metrics.md)    | Chỉ ghi sau task/pha và khi hook chặn                             |
+| Thành phần                | Nơi lưu                      | Cách kiểm                                                                              |
+| ------------------------- | ---------------------------- | -------------------------------------------------------------------------------------- |
+| Permissions/hooks project | `.claude/settings.json`      | `/permissions`, `/hooks` trong Claude Code                                             |
+| Skills                    | `.claude/skills/*/SKILL.md`  | `ping-feature-structure`, `ping-wrapper` — cả hai đang được dùng và sửa theo việc thật |
+| Command                   | `.claude/commands/review.md` | `/review`                                                                              |
+| Hook scripts/tests        | `.claude/hooks/`             | `pnpm test:workflow`, cũng nằm trong `pnpm test`                                       |
+| MCP                       | `.mcp.json`                  | Hiện rỗng; chưa kết nối dịch vụ hay có secret                                          |
+| Metrics                   | [metrics.md](metrics.md)     | Chỉ ghi khi hook thật sự chặn                                                          |
 
 Yêu cầu máy: Node/pnpm theo repo, Git và Claude Code đã cài/đăng nhập. Hook command dùng shell
 mặc định tương thích cú pháp `$CLAUDE_PROJECT_DIR`; Windows cần Git Bash trong cấu hình Claude.
 Không đổi `.claude/launch.json` hay settings cá nhân. Cấu hình chung được commit, settings.local
 và tài liệu đầu vào kế hoạch/overview giữ local theo yêu cầu OWNER.
-
-Khởi động Claude Code tại gốc repo, kiểm cấu hình đã load bằng `/hooks`, `/permissions` và
-`/agents`, sau đó chạy `/plan-feature DEMO-WORKFLOW`. Command thử chỉ đọc và lập kế hoạch,
-không sửa code. Log cần có version CLI, ngày, nội dung kế hoạch và xác nhận không đổi worktree.
-Không gọi headless/model hoặc cài dịch vụ trả phí khi chưa có tài khoản/quyền được phép.
-
-Ví dụ prompt và tiêu chí smoke: [examples.md](examples.md).
-Theo dõi phần đã kiểm và phần còn chờ trong [evidence T0.3](../v0.2.0/evidence/T0.3/README.md).
-OWNER đã điều chỉnh phạm vi ngày 2026-10-22: hiện chỉ triển khai và kiểm thử local, hoãn smoke
-Claude thật vì chưa có tài khoản/gói sử dụng. T0.3 được đóng cho phần triển khai theo điều chỉnh
-này; smoke vẫn chưa chạy và phải thực hiện trước khi tuyên bố tương thích runtime Claude.
 
 ## Hook và giới hạn
 
@@ -39,8 +31,6 @@ này; smoke vẫn chưa chạy và phải thực hiện trước khi tuyên bố
   `.env*`, khóa thường gặp, `.git` và mọi file trong thư mục migration đã commit trên main.
   Không đọc được main thì chặn migration mới, không chặn source thông thường.
 - Hook không trả auto-allow cho file hợp lệ: hệ thống permissions của Claude vẫn quyết định.
-  Các agent test-first/doc-sync có hook thêm để giới hạn thư mục ghi. Agent review không có
-  tool ghi/shell; ui-reviewer đọc ảnh do orchestrator chụp, không tự cập nhật baseline.
 - PostToolUse format file vừa sửa bằng Prettier local, giữ file bị ignore và không tự stage.
   Stop chạy typecheck các package có thay đổi worktree/untracked; shared/config chung chọn cả
   shared/api/web. Tác vụ chỉ đổi docs gốc không cần typecheck package. Hook nhắc cập nhật
@@ -72,14 +62,13 @@ Không gắn nhãn, gọi API hoặc đăng review chỉ vì file cấu hình đ
 
 ## Tài liệu chính thức đã đối chiếu
 
-Ngày kiểm: 2026-10-22. Phiên bản CLI thực tế vẫn cần ghi khi có máy chạy smoke.
+Ngày kiểm: 2026-10-22.
 
 - Cấu hình settings project và schema: [Settings](https://code.claude.com/docs/en/settings),
   [Permissions](https://code.claude.com/docs/en/permissions).
 - Input stdin, deny JSON, timeout và Stop recursion:
   [Hooks reference](https://code.claude.com/docs/en/hooks).
 - Frontmatter và command: [Skills](https://code.claude.com/docs/en/skills).
-- Tool allowlist và hook theo agent: [Subagents](https://code.claude.com/docs/en/sub-agents).
 - Project scope và phê duyệt kết nối: [MCP](https://code.claude.com/docs/en/mcp).
 - Review tự động khi có quyền/tài khoản:
   [GitHub Actions](https://code.claude.com/docs/en/github-actions).

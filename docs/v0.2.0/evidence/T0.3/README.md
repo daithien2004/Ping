@@ -37,7 +37,8 @@ review bằng subagent Claude; [bản nháp PR](pr.md) ghi phần còn chờ và
 ## Điều chỉnh của OWNER và kiểm chứng hoãn
 
 Chưa tìm thấy `claude` trên PATH của phiên. Cần CLI/runtime hợp lệ để kiểm settings/subagents,
-chạy `/plan-feature DEMO-WORKFLOW` và lưu log thật theo [checklist](../../../claude-workflow/examples.md).
+chạy `/plan-feature DEMO-WORKFLOW` và lưu log thật theo checklist (`examples.md` lúc đó, đã xoá
+cùng `/plan-feature` ngày 2026-11-11 — xem cập nhật cuối file này).
 Không tự cài dịch vụ, dùng key cá nhân hay gọi model trả phí. Chưa kết nối MCP/GitHub AI review,
 không mô tả cấu hình rỗng như kết nối đã chạy.
 
@@ -47,3 +48,6 @@ smoke bằng Claude thật được hoãn, không ghi đã đạt tiêu chí run
 khi có runtime/tài khoản hợp lệ. Không gọi model trả phí hoặc mua dịch vụ trong task này.
 
 UI lint tương lai được triển khai ở TF.1–TF.3 cùng ADR UI; không đổi shadcn/token hiện tại ở T0.3.
+
+**Cập nhật 2026-11-11:** smoke ở trên chưa từng chạy trong 20 ngày. Đã xoá 4 command, 6 agent và
+8 skill liệt kê ở dòng "Đầu ra" phía trên; xem [docs/claude-workflow](../../../claude-workflow/README.md).

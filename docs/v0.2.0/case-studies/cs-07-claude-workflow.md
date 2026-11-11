@@ -53,3 +53,8 @@ ngay từ pha đầu; chỉ thêm review CI gắn nhãn `ai-review` khi có ngâ
 chắn này là lint theo tầng: cấm import `antd` ngoài `components/ui/`, cấm hex/khoảng cách tùy ý,
 `features/*` chỉ dùng `Ping*`; kết quả kiểm được là **0 import `antd` ngoài `components/ui/`** (xem
 [case 8](cs-08-frontend-design-system.md)).
+
+**Cập nhật 2026-11-11:** smoke vẫn chưa chạy sau 20 ngày — đúng rủi ro đã ghi ở trên ("tin vào
+cấu hình đã viết mà chưa smoke"). Đã xoá 4 command, 6 agent, 8 skill chưa dùng lần nào; chỉ giữ
+hook (có bằng chứng `hook-block` thật) và phần skill đang được sửa theo việc thật. Xem
+[docs/claude-workflow](../../claude-workflow/README.md).

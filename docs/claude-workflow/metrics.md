@@ -10,6 +10,12 @@ Claude Code thật. Không ghi hoạt động fixture/temp trong test thành s�
 - Smoke `/plan-feature`: chưa chạy bằng Claude Code, OWNER cho hoãn ngày 2026-10-22 vì hiện chỉ
   yêu cầu triển khai, chưa có tài khoản/gói sử dụng. Không ghi thành một lần smoke đã đạt.
 
+**2026-11-11:** 20 ngày sau, smoke trên vẫn chưa từng chạy (0 dòng mới ở bảng dưới ngoài
+hook-block, không evidence nào khác). Đã xoá 4 command, 6 agent, 8 skill chưa dùng; giữ hook
+(có bằng chứng chạy thật bên dưới) và 2 skill đang được sửa theo việc thật
+(`ping-feature-structure`, `ping-wrapper`). Các bullet phía trên giữ nguyên làm bản ghi lịch sử,
+không còn đúng với cấu hình hiện tại.
+
 ## Hook block thực tế
 
 Hook tự append một dòng cho mỗi lần chặn, chỉ timestamp UTC và reason; tổng số là số dòng
