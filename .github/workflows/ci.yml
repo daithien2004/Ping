@@ -237,7 +237,18 @@ jobs:
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ steps.pw-version.outputs.version }}
-      - run: pnpm --filter web exec playwright install --with-deps chromium
+      # Mirror apt nội bộ của runner (azure.archive.ubuntu.com) thỉnh thoảng không phân giải được
+      # DNS trong vài phút — lỗi hạ tầng của GitHub, không phải do ảnh OS hay package của ta (đã
+      # thấy đúng lỗi này trên cả ubuntu-latest lẫn ubuntu-24.04). Thử lại thay vì đổi runner.
+      - name: Playwright install (thử lại khi apt mirror DNS lỗi tạm thời)
+        run: |
+          for attempt in 1 2 3; do
+            pnpm --filter web exec playwright install --with-deps chromium && exit 0
+            echo "::warning::playwright install lần $attempt lỗi (thường do DNS mirror apt của runner), thử lại sau 20s"
+            sleep 20
+          done
+          echo "::error::playwright install vẫn lỗi sau 3 lần, không phải lỗi tạm thời"
+          exit 1
       # E2E chạy bản production (E2E_PRODUCTION=1): build web + API trong từng shard.
       # Build đo được rất rẻ (~30s tổng) nên KHÔNG dùng job build riêng + artifact
       # (.next/dist nặng hơn thời gian build; thêm chi phần upload/download/lỗi).
@@ -330,7 +341,16 @@ jobs:
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ steps.pw-version.outputs.version }}
-      - run: pnpm --filter web exec playwright install --with-deps chromium
+      # Xem ghi chú ở job web-e2e: mirror apt nội bộ của runner thỉnh thoảng lỗi DNS tạm thời.
+      - name: Playwright install (thử lại khi apt mirror DNS lỗi tạm thời)
+        run: |
+          for attempt in 1 2 3; do
+            pnpm --filter web exec playwright install --with-deps chromium && exit 0
+            echo "::warning::playwright install lần $attempt lỗi (thường do DNS mirror apt của runner), thử lại sau 20s"
+            sleep 20
+          done
+          echo "::error::playwright install vẫn lỗi sau 3 lần, không phải lỗi tạm thời"
+          exit 1
       - run: pnpm --filter api build
       - run: pnpm --filter web build
         env:
