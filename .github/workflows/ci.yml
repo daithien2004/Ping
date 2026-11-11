@@ -8,6 +8,9 @@ on:
   # Nhánh làm việc cũng chạy khi được đẩy lên (không cần mở PR mới thấy kết quả); main luôn chạy.
   push:
     branches: [main, 'feat/**', 'fix/**', 'chore/**', 'docs/**', 'ci/**']
+  # Chạy tay toàn bộ job bất kể vùng đổi: kiểm một sửa chỉ chạm .github/** (như retry apt ở
+  # web-e2e/visual) mà không phải chờ lần đổi code web/api kế tiếp mới biết có qua không.
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -35,16 +38,20 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
-      code: ${{ steps.filter.outputs.code }}
-      api: ${{ steps.filter.outputs.api }}
-      web: ${{ steps.filter.outputs.web }}
-      db: ${{ steps.filter.outputs.db }}
-      infra: ${{ steps.filter.outputs.infra }}
-      deps: ${{ steps.filter.outputs.deps }}
-      docs: ${{ steps.filter.outputs.docs }}
+      # Chạy tay (workflow_dispatch) ép mọi vùng = true, bỏ qua kết quả path-filter bên dưới.
+      code: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.code == 'true' }}
+      api: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.api == 'true' }}
+      web: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.web == 'true' }}
+      db: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.db == 'true' }}
+      infra: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.infra == 'true' }}
+      deps: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.deps == 'true' }}
+      docs: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.docs == 'true' }}
     steps:
       - uses: actions/checkout@v4
+      # workflow_dispatch không có diff tự nhiên để so (không phải push/PR) — bỏ qua bước này,
+      # outputs ở trên đã ép true cho sự kiện này nên không cần kết quả của nó.
       - uses: dorny/paths-filter@v3
+        if: github.event_name != 'workflow_dispatch'
         id: filter
         with:
           filters: |
