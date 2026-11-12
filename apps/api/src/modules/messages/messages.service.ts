@@ -18,6 +18,7 @@ import {
   type MessagePinResult,
   type MessageReactionDto,
   type MessageReactionSummary,
+  type MessageReplyPreview,
   type MessageStickerPreview,
   type ReactionUsersPage,
   type ReactionUsersQuery,
@@ -66,12 +67,15 @@ const messageWithAuthor = {
   gifHeight: true,
   gifProvider: true,
   // TG.1: xem trước tin gốc cho khối trích dẫn (kể cả tin đã soft-delete — cờ `deleted`).
+  // `kind`/`_count` cho ngữ cảnh sticker/GIF/tệp khi nội dung rỗng (ADR-0086).
   replyTo: {
     select: {
       id: true,
       content: true,
+      kind: true,
       deletedAt: true,
       author: { select: { displayName: true } },
+      _count: { select: { attachments: { where: { status: 'ready' as const } } } },
     },
   },
 } as const;
@@ -81,16 +85,22 @@ function replyPreview(
   replyTo: {
     id: string;
     content: string;
+    kind: string;
     deletedAt: Date | null;
     author: { displayName: string };
+    _count: { attachments: number };
   } | null,
-): { id: string; authorName: string; content: string; deleted: boolean } | null {
+): MessageReplyPreview | null {
   if (!replyTo) return null;
+  const deleted = replyTo.deletedAt !== null;
+  const attachmentCount = deleted ? 0 : replyTo._count.attachments;
   return {
     id: replyTo.id,
     authorName: replyTo.author.displayName,
-    content: replyTo.deletedAt ? '' : replyTo.content.slice(0, 120),
-    deleted: replyTo.deletedAt !== null,
+    content: deleted ? '' : replyTo.content.slice(0, 120),
+    deleted,
+    kind: messageKind(replyTo.kind),
+    ...(attachmentCount > 0 ? { attachmentCount } : {}),
   };
 }
 
@@ -132,6 +142,25 @@ function stickerPreview(
     width: sticker.attachment.width,
     height: sticker.attachment.height,
   };
+}
+
+/**
+ * Member cần ping khi reply (ADR-0086) — client Discord luôn ping tác giả tin gốc, không có
+ * công tắc. Không ping khi người gửi tự reply chính mình, khi tin gốc đã soft-delete (nội dung
+ * bị ẩn, trích dẫn vô nghĩa), hoặc ở DM (không có MessageMention — ADR-0070).
+ */
+async function replyPingMember(
+  db: Prisma.TransactionClient,
+  serverId: string,
+  authorId: string,
+  target: { authorId: string; deletedAt: Date | null },
+): Promise<string | undefined> {
+  if (target.deletedAt !== null || target.authorId === authorId) return undefined;
+  const member = await db.member.findUnique({
+    where: { serverId_userId: { serverId, userId: target.authorId } },
+    select: { id: true },
+  });
+  return member?.id;
 }
 
 /** `Message.kind` là cột String — chuẩn hóa về ba giá trị DTO biết trước khi phát payload. */
@@ -476,15 +505,19 @@ export class MessagesService {
         }
         // TG.1: tin gốc phải nằm trong CÙNG channel (chốt IDOR); soft-delete vẫn cho reply.
         let replyToId: string | undefined;
+        let replyPingMemberId: string | undefined;
         if (input.replyToId !== undefined) {
           const original = await tx.message.findUnique({
             where: { id: input.replyToId },
-            select: { id: true, channelId: true },
+            select: { id: true, channelId: true, authorId: true, deletedAt: true },
           });
           if (!original || original.channelId !== channelId) {
             throw new BadRequestException('Reply target must be in the same channel');
           }
           replyToId = original.id;
+          if (actor !== null) {
+            replyPingMemberId = await replyPingMember(tx, channel.serverId!, authorId, original);
+          }
         }
         const created = await tx.message.create({
           // Prisma 7: field có giá trị `undefined` trong data là lỗi — spread có điều kiện.
@@ -526,6 +559,16 @@ export class MessagesService {
                 actor,
                 extractMentionTokens(input.content),
               );
+        // Reply ping dùng chung bảng MessageMention để unread đếm như mention thường
+        // (Discord cũng tính reply ping vào mention); trùng @tác giả trong nội dung thì bỏ.
+        if (
+          replyPingMemberId &&
+          !mentions.some(
+            (mention) => mention.kind === 'user' && mention.mentionedMemberId === replyPingMemberId,
+          )
+        ) {
+          mentions.push({ kind: 'user', mentionedMemberId: replyPingMemberId });
+        }
         if (mentions.length > 0) {
           await tx.messageMention.createMany({
             data: mentions.map((mention) => ({ messageId: created.id, ...mention })),
@@ -655,6 +698,29 @@ export class MessagesService {
         data: { content, editedAt: new Date() },
         select: messageWithAuthor,
       });
+      // Reply ping đã ghi lúc gửi nằm trong MessageMention; sửa nội dung xoá rồi ghi lại
+      // toàn bộ nên phải dựng lại — chỉ khi tin này từng ping tác giả tin gốc. Sửa tin không
+      // phát lại `mention.created`, nên không tự thêm ping cho tin cũ chưa từng có hàng.
+      const replyTarget =
+        actor === null || message.replyToId === null
+          ? null
+          : await tx.message.findUnique({
+              where: { id: message.replyToId },
+              select: { authorId: true, deletedAt: true },
+            });
+      const replyPingMemberId = replyTarget
+        ? await replyPingMember(tx, channel.serverId!, message.authorId, replyTarget)
+        : undefined;
+      const keepReplyPing =
+        replyPingMemberId !== undefined &&
+        (await tx.messageMention.findFirst({
+          where: {
+            messageId: message.id,
+            kind: 'user',
+            mentionedMemberId: replyPingMemberId,
+          },
+          select: { id: true },
+        })) !== null;
       await tx.messageMention.deleteMany({ where: { messageId: message.id } });
       // DM: nội dung mới không sinh mention mới (ADR-0070 mục 7).
       const mentions =
@@ -666,6 +732,15 @@ export class MessagesService {
               actor,
               extractMentionTokens(content),
             );
+      if (
+        keepReplyPing &&
+        replyPingMemberId &&
+        !mentions.some(
+          (mention) => mention.kind === 'user' && mention.mentionedMemberId === replyPingMemberId,
+        )
+      ) {
+        mentions.push({ kind: 'user', mentionedMemberId: replyPingMemberId });
+      }
       if (mentions.length > 0) {
         await tx.messageMention.createMany({
           data: mentions.map((mention) => ({ messageId: message.id, ...mention })),

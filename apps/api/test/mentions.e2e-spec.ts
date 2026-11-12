@@ -217,4 +217,42 @@ describe('Mentions (e2e)', () => {
     expect(message.deletedAt).not.toBeNull();
     expect(await mentionsOf(messageId)).toHaveLength(1);
   });
+
+  it('reply luôn ping tác giả tin gốc; tự trả lời thì không; sửa tin vẫn giữ', async () => {
+    // Channel riêng: rate limit 10 tin/10s/(user, channel), test này gửi nhiều lượt.
+    const channel = await api('post', `/api/v1/servers/${serverId}/channels`, owner.token)
+      .send({ name: 'reply-ping' })
+      .expect(201);
+    const sendIn = async (token: string, body: Record<string, unknown>) => {
+      const res = await api('post', `/api/v1/channels/${channel.body.id}/messages`, token)
+        .send({ nonce: randomUUID(), ...body })
+        .expect(201);
+      return res.body.id as string;
+    };
+    const mentionedUserId = async (messageId: string) => {
+      const row = await prisma.messageMention.findFirstOrThrow({
+        where: { messageId, kind: 'user' },
+        select: { mentionedMember: { select: { userId: true } } },
+      });
+      return row.mentionedMember?.userId;
+    };
+
+    const originalId = await sendIn(owner.token, { content: 'tin gốc' });
+    expect(await mentionsOf(originalId)).toHaveLength(0);
+
+    // Client Discord không có công tắc: mọi reply đều ping chủ tin gốc.
+    const replyId = await sendIn(plain.token, { content: 'trả lời', replyToId: originalId });
+    expect(await mentionsOf(replyId)).toHaveLength(1);
+    expect(await mentionedUserId(replyId)).toBe(owner.id);
+
+    // Tự trả lời chính mình → không ping.
+    const selfId = await sendIn(plain.token, { content: 'tự trả lời', replyToId: replyId });
+    expect(await mentionsOf(selfId)).toHaveLength(0);
+
+    // Sửa nội dung khiến mention bị parse lại: reply ping không được rơi mất.
+    await api('patch', `/api/v1/messages/${replyId}`, plain.token)
+      .send({ content: 'trả lời (đã sửa)' })
+      .expect(200);
+    expect(await mentionedUserId(replyId)).toBe(owner.id);
+  });
 });

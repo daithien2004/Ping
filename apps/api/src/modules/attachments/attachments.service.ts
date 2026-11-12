@@ -370,10 +370,22 @@ export class AttachmentsService {
       .update(`attachment-profile-v1:${id}:${expires}:${thumbnail ? 'thumb' : 'ready'}`)
       .digest('hex');
   }
+
+  /**
+   * Mốc hạn của URL hồ sơ tính theo ô MỘT GIỜ: mọi lần đọc trong cùng ô trả URL y hệt nhau,
+   * nên echo/refetch không đổi `src` của <img> (không tải lại ảnh, không nháy). Làm tròn XUỐNG
+   * nên hạn vẫn ≤ hiện tại + 30 ngày — qua được kiểm tra `expires > now + PROFILE_URL_SECONDS`
+   * ở `file()`; 30 ngày chia hết cho 1 giờ nên `expires` cũng tròn giờ.
+   */
+  private profileExpires(): number {
+    const bucket = 60 * 60;
+    return Math.floor(Date.now() / 1000 / bucket) * bucket + AttachmentLimits.PROFILE_URL_SECONDS;
+  }
+
   async profileLink(id: string, thumbnail: boolean) {
     const row = await this.prisma.attachment.findUnique({ where: { id } });
     if (!row || row.scope === 'message' || row.status !== 'ready') throw new NotFoundException();
-    const expires = Math.floor(Date.now() / 1000) + AttachmentLimits.PROFILE_URL_SECONDS;
+    const expires = this.profileExpires();
     const signature = this.profileSign(id, expires, thumbnail);
     return {
       url: `/api/v1/attachments/${id}/file?expires=${expires}&signature=${signature}${thumbnail ? '&thumbnail=1' : ''}`,
@@ -389,7 +401,7 @@ export class AttachmentsService {
   async stickerUrls(id: string): Promise<{ url: string; previewUrl: string }> {
     const row = await this.prisma.attachment.findUnique({ where: { id } });
     if (!row || row.scope !== 'sticker' || row.status !== 'ready') throw new NotFoundException();
-    const expires = Math.floor(Date.now() / 1000) + AttachmentLimits.PROFILE_URL_SECONDS;
+    const expires = this.profileExpires();
     return {
       url: `/api/v1/attachments/${id}/file?expires=${expires}&signature=${this.profileSign(id, expires, false)}`,
       previewUrl: `/api/v1/attachments/${id}/file?expires=${expires}&signature=${this.profileSign(id, expires, true)}&thumbnail=1`,
@@ -412,7 +424,7 @@ export class AttachmentsService {
     const row = await this.prisma.attachment.findUnique({ where: { id } });
     if (!row || row.scope !== 'customEmoji' || row.status !== 'ready')
       throw new NotFoundException();
-    const expires = Math.floor(Date.now() / 1000) + AttachmentLimits.PROFILE_URL_SECONDS;
+    const expires = this.profileExpires();
     return {
       url: `/api/v1/attachments/${id}/file?expires=${expires}&signature=${this.profileSign(id, expires, false)}`,
       previewUrl: `/api/v1/attachments/${id}/file?expires=${expires}&signature=${this.profileSign(id, expires, true)}&thumbnail=1`,
@@ -435,7 +447,7 @@ export class AttachmentsService {
       where: { id: { in: ids }, scope, status: 'ready' },
       select: { id: true },
     });
-    const expires = Math.floor(Date.now() / 1000) + AttachmentLimits.PROFILE_URL_SECONDS;
+    const expires = this.profileExpires();
     for (const { id } of rows) {
       map.set(id, {
         url: `/api/v1/attachments/${id}/file?expires=${expires}&signature=${this.profileSign(id, expires, false)}`,

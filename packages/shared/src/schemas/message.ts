@@ -48,6 +48,13 @@ export interface MessageReplyPreview {
   authorName: string;
   content: string;
   deleted: boolean;
+  /**
+   * Loại tin gốc để khối trích dẫn có ngữ cảnh khi `content` rỗng (sticker/GIF).
+   * Thiếu (client/dữ liệu cũ) được coi là tin văn bản.
+   */
+  kind?: 'text' | 'sticker' | 'gif';
+  /** Số tệp đính kèm còn hiệu lực của tin gốc; chỉ có mặt khi lớn hơn 0. */
+  attachmentCount?: number;
 }
 
 export const updateMessageSchema = z.object({

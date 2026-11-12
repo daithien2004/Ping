@@ -340,6 +340,7 @@ describe('Messages (e2e)', () => {
       authorName: 'E2E',
       content: 'tin gốc để reply',
       deleted: false,
+      kind: 'text',
     });
 
     // Retry cùng nonce (mạng chập chờn): trả đúng tin cũ, replyTo không mất.
