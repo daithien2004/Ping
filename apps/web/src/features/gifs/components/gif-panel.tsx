@@ -147,7 +147,7 @@ export function GifPanel({
       <div ref={bodyRef} className="flex min-h-0 flex-col gap-1.5">
         {hasRecents && (
           <section aria-label={t('recent')} data-testid="gif-recent">
-            <h3 className="pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <h3 className="pb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               {t('recent')}
             </h3>
             <GifGrid
@@ -188,7 +188,7 @@ export function GifPanel({
           </p>
         ) : (
           <section aria-label={searching ? t('searchResults') : t('trending')}>
-            <h3 className="pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <h3 className="pb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               {searching ? t('searchResults') : t('trending')}
             </h3>
             <GifGrid
