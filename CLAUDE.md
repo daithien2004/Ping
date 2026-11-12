@@ -93,8 +93,9 @@
 - Phụ thuộc một chiều: `app → features → components → lib` (ESLint chặn). `app/` chỉ định tuyến.
 - Page đọc params từ prop `params` của page, KHÔNG `useParams()`: `<Activity>` giữ trang cũ ẩn
   và `useParams()` trong đó trả params của URL hiện tại (ADR-0020). Dưới `servers/[serverId]` lấy
-  `serverId` từ `useServerAbility()` (layout ẩn khi rời sang /dms sẽ thấy `undefined` → request
-  `/servers/undefined` 400); chỉ server rail (serverId tùy chọn) còn dùng `useParams()`.
+  `serverId` từ `useServerAbility()`. Mã cấp layout (rail, sidebar, realtime, quick switcher) đọc
+  id từ pathname công khai qua `lib/channel-url.ts` — `/channels/{serverId|@me}/{channelId}`
+  (ADR-0088), không đọc `useParams()`.
 - `<Activity>` giấu chứ không gỡ trang đã rời: state, DOM, giá trị input còn nguyên. Form chứa dữ
   liệu nhạy cảm phải xóa khi ẩn (`useClearOnHide`).
 - Dữ liệu server chỉ ghi vào cache trong `features/<domain>/hooks.ts`; logic biến đổi cache là hàm

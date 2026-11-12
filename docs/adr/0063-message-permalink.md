@@ -23,6 +23,10 @@ trên UI qua i18n, không thêm state toàn cục, bundle ban đầu không tăn
 1. **URL**: `/servers/:serverId/channels/:channelId/messages/:messageId`. Đổi server/channel
    trong URL → 404 của trang (không lộ tin của channel khác). `?m=` giữ nguyên làm **alias**
    cho liên kết đã phát hành; UI chỉ sinh URL mới (`messagePath()`).
+   > Cập nhật 2026-11-12: dạng canonical đổi sang ngữ pháp Discord
+   > `/channels/:serverId/:channelId/:messageId` (DM: `/channels/@me/...`) theo
+   > [ADR-0088](0088-url-kieu-discord.md); route nội bộ và các quyết định còn lại của ADR này
+   > không đổi. URL cũ chuyển hướng 308 nên liên kết đã phát hành vẫn mở đúng.
 2. **API**: `GET /channels/:channelId/messages?around=<id>&limit=N` — `around` **loại trừ lẫn
    nhau** với `before`/`after` (`400` "Provide at most one of before, after, around"),
    `limit` mặc định 50, trần 100 như các chế độ khác.

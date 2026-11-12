@@ -48,9 +48,10 @@ Khác Pixel (chỉ đổi hình thức, giữ màu), Pop phải **đổi cả m�
     slot dùng trong CSS phải có ở component, bảng slot ở đầu file CSS phải khớp, CSS không chứa hex
     thô. Bóng cứng và màu skin sống ở `tokens.ts` (`--ping-shadow-hard`), CSS không tự khai màu.
     Popup antd (modal, tooltip, dropdown, popover, toast) qua portal nên bám class `.ant-*`.
-11. **Bố cục riêng của Pop**: tin của mình căn phải nền vàng, bảng thành viên là bảng tin (ghi chú có
-    ghim), tiêu đề kênh có nút vuông, composer là dock. Dải chủ đề chạy chữ **chưa làm** (chủ đề đã hiện
-    ở tiêu đề kênh; thêm dải là thêm chuyển động liên tục, cần OWNER chốt).
+11. **Bố cục riêng của Pop**: tin của mình nền vàng nhưng cùng hướng trái như mọi tin (theo cách
+    Discord; bỏ canh phải), bảng thành viên là bảng tin (ghi chú có ghim), tiêu đề kênh có nút vuông,
+    composer là dock. Dải chủ đề chạy chữ **chưa làm** (chủ đề đã hiện ở tiêu đề kênh; thêm dải là
+    thêm chuyển động liên tục, cần OWNER chốt).
 12. **Điều chỉnh sau khi chạy axe** (e2e `skin-pop`): nút chính ghim cam và chữ mực cho cả ba trạng
     thái (darkAlgorithm làm cam xỉn); nền tối dùng accent trầm + chữ giấy thay vì vàng + mực; bóng
     `panel` ở nền tối là mực (thẻ đăng nhập nằm trên nền cam), `overlay` giữ cam.

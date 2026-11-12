@@ -26,8 +26,9 @@ Date: 2026-10-20
 - Domain hooks own all TanStack Query writes. Created events reuse nonce/id reconciliation;
   updates keep the newest edit. Deleted ids remain as tombstones in the channel query until its
   cache is removed, preventing late HTTP/create events from resurrecting deleted messages.
-  REST refetch retains only unconfirmed local sends and tombstones. Events cancel overlapping
-  fetches before updating cache, then restart an interrupted reconciliation.
+  REST refetch retains only unconfirmed local sends, tombstones and pending reaction intents
+  (ADR-0064). Events cancel overlapping fetches before updating cache, then restart an
+  interrupted reconciliation.
 - Reconnect invalidates server metadata as well as messages. REST membership checks detect kicks
   missed while offline. `permissions.changed` invalidates and rejoins; `member.removed` cancels
   requests and removes both server-prefixed queries and the separate channel-message keys.

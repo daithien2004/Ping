@@ -13,11 +13,24 @@ Date: 2026-10-20
 - `getSession()` restores the session after a reload: no access token in memory → one
   `/auth/refresh` with the httpOnly cookie → `/users/me`; failure means "signed out" (`null`), not
   an error. `me` has `staleTime: Infinity`; login, register, logout and expired sessions update it.
-- The api-client's unauthenticated handler (registered by `AuthGate`) sets `me` to `null` when a
-  refresh fails mid-session.
-- Logout sets `me` to `null` first, then removes every other query. `queryClient.clear()` is not
-  used: it removes the `me` query itself, so `AuthGate`'s observer never learns about the logout
-  (found while testing in the browser).
+- The api-client's unauthenticated handler (registered by `AuthGate`) only sets `me` to `null` when
+  a refresh fails mid-session.
+- Logout sets `me` to `null` first, then `AuthGate` removes every other query once it has stopped
+  rendering the signed-in tree (`clearSessionQueries`). The removal must not happen while
+  `AppShell` is still mounted: `removeQueries` on an active query makes its observers create it
+  again and refetch, and `logout()` has already dropped the access token, so the request returns
+  401, the refresh fails too (cookie revoked), and the error stays cached until the next session
+  throws it through Suspense. Login and register clear the same queries before setting `me` so a
+  new session never inherits the previous one's data or errors. `queryClient.clear()` is not used:
+  it removes the `me` query itself, so `AuthGate`'s observer never learns about the logout (found
+  while testing in the browser).
+- **Amendment 2026-11-12:** `/auth/refresh` and `/auth/logout` are sent with `keepalive: true`.
+  The server rotates the refresh token while answering, and a document navigation (F5, opening
+  another URL) can abort the request after the rotation but before `Set-Cookie` reaches the cookie
+  jar; the next document then presents the old token and is signed out. A refresh that loses an
+  overlapping rotation (401, ADR-0007) is retried once after 200 ms so the winner's cookie can land,
+  and a request that failed with an access token that another request had already replaced is
+  resent with the newer in-memory token instead of rotating the refresh token again.
 - `?next=` is only honored for same-origin paths (`/...`, not `//...` or `/\...`) to prevent open
   redirects. Forms validate with the shared zod schemas before calling the API; zod messages use
   its Vietnamese locale (`z.config(z.locales.vi())` in the root providers). Form errors are chosen

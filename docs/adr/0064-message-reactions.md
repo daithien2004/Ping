@@ -63,10 +63,17 @@ isDefault` để server cũ không bị khóa tính năng.
 8. **Web**:
    - Cache: `applyReaction` (ghi đè count chuẩn, `count <= 0` thì bỏ nhóm), `toggleReaction`
      (optimistic ±1 cho đúng emoji), `setReactions` (response API thay toàn bộ nhóm).
-   - `createMessageActions.react` cập nhật optimistic trước, rồi thay bằng response chuẩn; lỗi
-     4xx hoàn tác đúng emoji đó nếu cache chưa bị writer khác sửa, lỗi mạng/5xx thì invalidate
-     (server có thể đã ghi). Nếu cache đổi trong lúc chờ HTTP, giữ cache mới và đối soát lại
-     qua REST thay vì ghi đè snapshot cũ hoặc bỏ qua một rollback không còn an toàn.
+   - **Ý định đang chờ (reaction intents)**: `startReactionIntent` ghi `(messageId, emoji, me)`
+     kèm token; mọi snapshot đi vào cache (fetch, refetch, bù khoảng, structural sharing) đều bị
+     `applyReactionIntents` phủ lại ý định. Overlay chỉ cộng/trừ khi cờ `me` của snapshot chưa
+     khớp — snapshot cũ không xoá pill đang chờ, còn echo của chính mình không bị đếm đôi.
+     Token bảo đảm phản hồi cũ không ghi đè ý định mới hơn.
+   - `createMessageActions.react` chỉ `setQueryData` (không `cancelQueries`/refetch cả trang).
+     Thành công: nếu trong lúc chờ **không** có event realtime đúng emoji (`sawEvent`), chỉ thay
+     **đúng hàng emoji vừa thao tác** bằng `summary.reactions` — count mới hơn của emoji khác
+     được giữ; nếu đã có event thì event là bản chuẩn và không ghi đè. Lỗi 4xx: gỡ ý định rồi
+     nghịch đảo đúng emoji đó. Lỗi mạng/5xx, hoặc đã có event cùng emoji: gỡ ý định và refetch
+     để đối soát thay vì đoán số đếm.
    - UI: mỗi nhóm là **viên thuốc tách đôi** — phần emoji thả/gỡ, phần số mở danh sách người
      thả (phân trang bằng `nextCursor`). Nút "+" mở hộp chọn dùng lại `features/emoji` qua
      `next/dynamic` (dataset chỉ tải khi mở). Emoji đang chờ response bị disable để đếm không
@@ -77,13 +84,15 @@ isDefault` để server cũ không bị khóa tính năng.
 Luồng thả một cảm xúc:
 
 ```text
-browser  click 👍  → toggleReaction (optimistic: count+1, me=true)
-   │
+browser  click 👍  → startReactionIntent + applyReactionIntents (count+1, me=true)
+   │                 (mọi snapshot về sau đều bị overlay phủ lại ── không thấy pill biến mất)
    ├─ PUT /messages/:m/reactions/👍
    │     ├─ allowlist + tin còn sống + rate limit + trần 20 loại
    │     ├─ createMany skipDuplicates (idempotent)
    │     └─ emit reaction.added {count chuẩn}  ──► mọi tab/kênh
-   └─ response {messageId, reactions[]} → setReactions (chuẩn hoá cả trang)
+   └─ response {messageId, reactions[]}
+         ├─ chưa từng nhận event cùng emoji → thay đúng hàng 👍 bằng summary
+         └─ đã nhận event cùng emoji → giữ event (bản chuẩn), không refetch
 ```
 
 ## Alternatives

@@ -273,7 +273,7 @@ Ping đã có đủ cơ chế gửi tin an toàn mà Discord dùng (nonce chốn
 
 1. Giữ nguyên cơ chế nonce và giới hạn gửi tin; Ping thậm chí chặt hơn Discord ở chỗ không có cửa sổ thời gian.
 2. Dùng lại mẫu đếm theo (user, channel) cho các route đọc nặng, thay vì IP. Đây là cách sửa phần đếm theo IP trong mục Rate limit.
-3. Nếu sau này cần “trả lời mà không ping”, đọc đặc tả `allowed_mentions` của Discord trước khi thiết kế.
+3. “Trả lời mà không ping”: API Discord có `allowed_mentions.replied_user`, nhưng client hiện tại không có công tắc nào trên thanh reply — chỉ có `X` huỷ reply. Ping làm theo client: mọi reply đều ping tác giả tin gốc, lưu bằng hàng `MessageMention` — [ADR-0086](adr/0086-reply-ping-va-ngu-canh-preview.md).
 
 ## Tìm kiếm tin nhắn
 
@@ -357,6 +357,18 @@ Ping đã bảo vệ kết nối socket theo đúng tinh thần của Discord (g
 2. Cân nhắc hạ `maxHttpBufferSize` xuống sát kích thước thật của sự kiện client gửi (join, leave, typing, chỉ vài trăm byte); Discord giới hạn 4 KB. Đừng hạ nếu còn sự kiện nào mang nội dung dài.
 3. Đọc docs Socket.IO đúng version đang cài về tùy chọn nối lại (backoff và ngẫu nhiên hóa thời gian chờ) để đảm bảo khi API khởi động lại, mọi client không đồng loạt nối lại cùng một giây, đây là mục đích của jitter trong heartbeat Discord. Mình chưa kiểm chứng giá trị mặc định của bản đang dùng.
 4. Dùng bài kiểm thử reconnect storm (skill `load-test-report`) để đo khi kết hợp với việc gộp unread.
+
+## URL kênh
+
+Discord dùng **một ngữ pháp duy nhất cho mọi thứ chứa tin**: `/channels/{guildId|@me}/{channelId}[/{messageId}]`.
+Kênh chữ, thread, forum và voice đều là channel dưới guild id; DM không thuộc guild nào nên ô đầu là
+`@me` — sentinel “người đang gọi”, không phải id người dùng. Ngữ pháp này giải thích vì sao link
+chia sẻ được giữa mọi loại kênh và không phụ thuộc cấu trúc route của app.
+
+Ping đã chuyển URL công khai sang dạng này (chuyển hướng 308 từ URL cũ) trong
+[ADR-0088](adr/0088-url-kieu-discord.md); route nội bộ `/servers/...` và `/dms/...` giữ nguyên,
+nối bằng rewrite của Next. Nguồn: [discord.js `channelLink`](https://github.com/discordjs/discord.js/blob/main/packages/formatters/src/formatters.ts)
+dựng `guildId ?? '@me'`; trang Channels/Message của tài liệu Discord cho ngữ pháp link.
 
 ## Lộ trình sửa cho Ping
 

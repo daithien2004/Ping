@@ -40,6 +40,16 @@ Date: 2026-10-20
   from `ServerPermissionContext` (`useServerAbility()`), which is frozen from the layout's `params`
   prop. Only the server rail, which also renders outside a server, still uses `useParams()`
   (with `serverId` optional), plus the optional `channelId` highlight in `ChannelSidebar`.
+- **Amendment 2026-11-12: scroll anchors and cancelled page loads.** `useMessageScroll` remembers,
+  per channel, the first visible message and whether the user was at the bottom, and restores that
+  anchor when the channel is reopened (a permalink's target message wins). `useChannelSync` cancels
+  the messages query before patching missed messages on room join; with TanStack Query's default
+  `revert: true`, a `fetchNextPage()` cancelled in flight **resolves** with the restored data
+  instead of rejecting. Since `isFetchingNextPage` can flip inside one render, every dependency of
+  the load-older effect may stay unchanged and the list would stay stuck at the top. The effect
+  therefore also compares the page count before/after a resolved fetch and retries when no page was
+  added; a rejecting `CancelledError` retries the same way. Covered by `e2e/messages.spec.ts` and
+  reproduced by forcing the cancel in a microtask.
 - `apps/api/prisma/seed-messages.ts` is a dev-only tool that writes N messages directly to the DB
   (the API's rate limit blocks bulk sends).
 

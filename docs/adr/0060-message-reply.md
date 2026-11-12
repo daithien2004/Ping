@@ -53,3 +53,5 @@ sửa tin gốc phải thấy nội dung mới (không lưu bản sao nội dung
 - Xóa mềm tin gốc không phát event riêng cho người đang giữ preview; danh sách tải lại sẽ thấy
   "đã bị xóa" (ghi ở phần giới hạn evidence TG.1).
 - TG.5 dùng lại `replyTo.id` để mở permalink `?m=`; không cần đổi payload.
+- Reply ping tác giả tin gốc và ngữ cảnh preview cho sticker/GIF/tệp bổ sung ở
+  [ADR-0086](0086-reply-ping-va-ngu-canh-preview.md).
