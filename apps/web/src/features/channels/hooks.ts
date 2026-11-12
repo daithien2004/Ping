@@ -18,6 +18,8 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useEffectEvent } from 'react';
 import type { RealtimeSession } from '@/features/realtime/session';
 import { useServer } from '@/features/servers/hooks';
+import { serverPath } from '@/features/servers/navigation';
+import { channelIdFromPath, serverIdFromPath } from '@/lib/channel-url';
 import { qk } from '@/lib/query-keys';
 import { createChannel, deleteChannel, listChannels, updateChannel } from './api';
 import {
@@ -259,8 +261,8 @@ export function useChannelEvents(session: RealtimeSession) {
     );
     queryClient.removeQueries({ queryKey: qk.messages(event.id), exact: true });
     // Đang xem đúng channel bị xóa: về trang server để chuyển sang channel còn lại.
-    if (pathname === `/servers/${event.serverId}/channels/${event.id}`) {
-      router.replace(`/servers/${event.serverId}`);
+    if (serverIdFromPath(pathname) === event.serverId && channelIdFromPath(pathname) === event.id) {
+      router.replace(serverPath(event.serverId));
     }
   });
 

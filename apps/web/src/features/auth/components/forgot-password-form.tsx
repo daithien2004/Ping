@@ -42,6 +42,7 @@ export function ForgotPasswordForm() {
   return (
     <PingForm
       form={form}
+      name="forgotPassword"
       layout="vertical"
       noValidate
       className="flex w-full max-w-sm flex-col"

@@ -1,8 +1,10 @@
 'use client';
 
+import { useQueryClient } from '@tanstack/react-query';
 import { usePathname, useRouter } from 'next/navigation';
 import { use, useEffect, type ReactNode } from 'react';
 import { browser } from 'react-dom';
+import { clearSessionQueries } from '@/lib/query-client';
 import { useMe, useSessionExpiry } from '../hooks';
 import { loginRedirectPath } from '../session';
 
@@ -17,14 +19,17 @@ export function AuthGate({ children }: { children: ReactNode }) {
   use(browser('Phiên đăng nhập chỉ tồn tại trong trình duyệt.'));
   const { data: me } = useMe();
   useSessionExpiry();
+  const queryClient = useQueryClient();
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
-    if (!me) {
-      router.replace(loginRedirectPath(pathname));
-    }
-  }, [me, router, pathname]);
+    if (me) return;
+    // Effect chạy SAU commit đã gỡ `children` khỏi cây: AppShell và các observer của nó đã
+    // unmount, nên removeQueries không kích hoạt refetch (xem clearSessionQueries).
+    clearSessionQueries(queryClient);
+    router.replace(loginRedirectPath(pathname));
+  }, [me, queryClient, router, pathname]);
 
   return me ? children : null;
 }

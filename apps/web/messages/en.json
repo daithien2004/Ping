@@ -393,12 +393,16 @@
     "replyingTo": "Replying to {author}",
     "cancelReply": "Cancel reply",
     "replyDeleted": "Message deleted",
+    "replySticker": "Sticker",
+    "replyGif": "GIF",
+    "replyAttachments": "{count} attachments",
     "jumpToOriginal": "Jump to {author}'s message",
     "copyLink": "Copy link",
     "linkCopied": "Message link copied",
     "linkCopyFailed": "Could not copy the link. Copy it from the address bar instead.",
     "loadNewer": "Load newer messages",
     "loadingNewer": "Loading newer messages…",
+    "jumpToPresent": "New messages",
     "focusLoading": "Finding the linked message…",
     "focusMissing": "The linked message was not found (it may be deleted or you no longer have access).",
     "addReaction": "Add reaction",
@@ -460,7 +464,8 @@
     "tabServerEmoji": "Server",
     "noServerEmojis": "No custom emojis in this server yet.",
     "serverEmojisLoadFailed": "Could not load this server's emojis.",
-    "pickCustomEmoji": "Insert emoji {name}"
+    "pickCustomEmoji": "Insert emoji {name}",
+    "searchResults": "Search results"
   },
   "landing": {
     "eyebrow": "Realtime chat for small teams",
@@ -564,7 +569,8 @@
     "loading": "Loading stickers…",
     "noResults": "No stickers found.",
     "pickSticker": "Send sticker {name}",
-    "deleted": "Sticker was deleted"
+    "deleted": "Sticker was deleted",
+    "searchResults": "Search results"
   },
   "gifs": {
     "tab": "GIF",
@@ -610,12 +616,16 @@
     "bellDm": "Conversation notifications",
     "levelLabel": "Notification level",
     "levelAll": "All",
+    "levelAllHint": "Every message",
     "levelMentions": "Mentions only",
+    "levelMentionsHint": "Only when you're mentioned",
     "levelNone": "Off",
+    "levelNoneHint": "No notifications",
     "prefsLoadFailed": "Could not load notification settings.",
     "serverDefaultHint": "Following the server default",
     "globalDefaultHint": "Following the global default",
     "muteLabel": "Mute for a while",
+    "muteAction": "Mute",
     "mute15m": "15 minutes",
     "mute1h": "1 hour",
     "mute3h": "3 hours",
@@ -624,6 +634,7 @@
     "unmute": "Unmute",
     "mutedUntil": "Muted ({count} minutes left)",
     "ignoreEveryone": "Ignore @everyone",
+    "ignoreEveryoneScope": "Applies to all channels",
     "enableBrowser": "Enable browser notifications",
     "browserBlocked": "Blocked in browser",
     "browserBlockedHint": "Notifications are blocked in your browser settings.",
@@ -635,6 +646,7 @@
   },
   "settings": {
     "navLabel": "User settings",
+    "modalTitle": "Settings",
     "railOpen": "User settings",
     "sections": {
       "account": "Account",

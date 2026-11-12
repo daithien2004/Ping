@@ -2,17 +2,16 @@
 
 import { ErrorCodes } from '@ping/shared';
 import { ChevronDown, Copy, LogOut, Settings } from 'lucide-react';
-import { useParams, useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useTranslations } from 'use-intl';
 import { FormError } from '@/components/form-parts';
 import { PingDropdown } from '@/components/ui/ping-dropdown';
 import { PingIconButton } from '@/components/ui/ping-icon-button';
 import { pingToast } from '@/components/ui/ping-toast';
-import { useMe } from '@/features/auth/hooks';
-import { UserAvatar } from '@/features/profile/components/user-avatar';
 import { useLeaveServer, useServer } from '@/features/servers/hooks';
 import { useCurrentServerId, useServerAbility } from '@/features/permissions/context';
 import { useMobileNav } from '@/features/shell/store';
+import { channelIdFromPath } from '@/lib/channel-url';
 import { useErrorMessage } from '@/lib/error-message';
 import { ChannelNavigation } from './channel-navigation';
 
@@ -20,14 +19,13 @@ import { ChannelNavigation } from './channel-navigation';
  *  nằm trong menu của header. */
 export function ChannelSidebar() {
   // serverId lấy từ provider của layout (đóng băng theo params prop), KHÔNG từ useParams():
-  // rời server sang /dms thì <Activity> giữ layout này ẩn và useParams() trả serverId = undefined
-  // → GET /servers/undefined 400 (ADR-0020). channelId chỉ để tô sáng nên đọc từ URL là đủ.
-  const { channelId } = useParams<{ channelId?: string }>();
+  // rời server sang DM thì <Activity> giữ layout này ẩn và useParams() trả params của URL hiện tại
+  // → GET /servers/undefined 400 (ADR-0020). channelId chỉ để tô sáng nên đọc từ URL công khai.
+  const channelId = channelIdFromPath(usePathname()) ?? undefined;
   const router = useRouter();
   const { ability } = useServerAbility();
   const serverId = useCurrentServerId();
   const { data: server } = useServer(serverId);
-  const { data: me } = useMe();
   const leaveMutation = useLeaveServer();
   const mobileNavOpen = useMobileNav((state) => state.open);
   const t = useTranslations();
@@ -81,6 +79,17 @@ export function ChannelSidebar() {
                 disabled: true,
                 label: <code className="select-all text-xs">{server.inviteCode}</code>,
               },
+              // Cài đặt server thuộc về server (menu tên server), không nằm ở panel người dùng.
+              ...(canOpenSettings
+                ? [
+                    {
+                      key: 'settings',
+                      icon: <Settings />,
+                      label: t('admin.title'),
+                      onClick: () => router.push(`/servers/${serverId}/settings`),
+                    },
+                  ]
+                : []),
               { type: 'divider' },
               {
                 key: 'leave',
@@ -105,39 +114,20 @@ export function ChannelSidebar() {
         </PingDropdown>
       </header>
 
+      {leaveMutation.isError && (
+        <div className="px-2 pt-2">
+          <FormError>
+            {errorMessage(leaveMutation.error, {
+              // 400 duy nhất của endpoint rời server: chủ server phải xóa server hoặc chuyển quyền.
+              [ErrorCodes.BAD_REQUEST]: t('servers.ownerCannotLeave'),
+            })}
+          </FormError>
+        </div>
+      )}
+
       {ability.can('view', 'Channel') && (
         <ChannelNavigation serverId={serverId} activeId={channelId} />
       )}
-
-      {/* Discord: thẻ người dùng 52 px ở đáy cột kênh — danh tính + lối vào cài đặt server. */}
-      <div className="mt-auto shrink-0 border-t border-sidebar-border">
-        {leaveMutation.isError && (
-          <div className="px-2 pt-2">
-            <FormError>
-              {errorMessage(leaveMutation.error, {
-                // 400 duy nhất của endpoint rời server: chủ server phải xóa server hoặc chuyển quyền.
-                [ErrorCodes.BAD_REQUEST]: t('servers.ownerCannotLeave'),
-              })}
-            </FormError>
-          </div>
-        )}
-        <div data-slot="user-card" className="flex h-13 items-center gap-2 px-2">
-          <UserAvatar name={me?.displayName ?? ''} avatarUrl={me?.avatarUrl} size={32} />
-          <div className="min-w-0 flex-1 leading-tight">
-            <p className="truncate text-sm font-medium">{me?.displayName}</p>
-            {me?.username && (
-              <p className="truncate text-xs text-muted-foreground">@{me.username}</p>
-            )}
-          </div>
-          {canOpenSettings && (
-            <PingIconButton
-              icon={<Settings />}
-              aria-label={t('admin.open')}
-              onClick={() => router.push(`/servers/${serverId}/settings`)}
-            />
-          )}
-        </div>
-      </div>
     </aside>
   );
 }

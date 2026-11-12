@@ -12,10 +12,28 @@ import { useAttachmentLink } from '../hooks';
  * tải; tệp không phải ảnh tải link khi vào vùng nhìn (tên tệp là link tải duy nhất). Không
  * còn `refetchInterval` — link ký sống 24 giờ, ảnh lỗi do hết hạn thì refetch một lần.
  */
+
+/** Khung ảnh tối đa 366×240 — trừ p-2 + viền của khung `max-w-sm` ngoài cùng. */
+const IMAGE_MAX_WIDTH = 366;
+const IMAGE_MAX_HEIGHT = 240;
+const IMAGE_FALLBACK = { width: 240, height: 160 };
+
+/**
+ * Kích thước hiển thị tính từ width/height API đã ghi lúc xử lý tệp — đặt trước đúng ô này
+ * thì thumbnail về muộn cũng không đẩy tin nhắn bên dưới nhảy (Discord cũng dùng width/height
+ * của attachment để chừa chỗ trước khi ảnh tải xong).
+ */
+function imageBox(width: number | null, height: number | null) {
+  if (!width || !height) return IMAGE_FALLBACK;
+  const scale = Math.min(1, IMAGE_MAX_WIDTH / width, IMAGE_MAX_HEIGHT / height);
+  return { width: Math.round(width * scale), height: Math.round(height * scale) };
+}
+
 function Attachment({ attachment }: { attachment: AttachmentDto }) {
   const t = useTranslations('attachments');
   const errorMessage = useErrorMessage();
   const image = attachment.mime.startsWith('image/');
+  const box = imageBox(attachment.width, attachment.height);
   const { ref, inView } = useInView<HTMLDivElement>();
   const [open, setOpen] = useState(false);
   // Ảnh: bấm tên tệp khi link chưa có thì đợi link xong rồi tải xuống (effect bên dưới).
@@ -50,28 +68,44 @@ function Attachment({ attachment }: { attachment: AttachmentDto }) {
 
   return (
     <div ref={ref} className="max-w-sm rounded-lg border bg-muted p-2" data-testid="attachment">
-      {image && thumb.data && (
+      {image && (
         <button
           type="button"
           onClick={() => setOpen(true)}
           aria-label={t('preview', { name: attachment.filename })}
+          className="block"
+          style={{
+            width: box.width,
+            aspectRatio: `${box.width} / ${box.height}`,
+            maxWidth: '100%',
+          }}
         >
-          {/* Ảnh lỗi tải (link hết hạn) không phải thao tác của người dùng nên bỏ qua luật
-              "phần tử không tương tác"; ảnh ký từ API nên không dùng next/image. */}
-          {/* eslint-disable-next-line @next/next/no-img-element, jsx-a11y/no-noninteractive-element-interactions */}
-          <img
-            src={thumb.data.url}
-            alt={attachment.filename}
-            loading="lazy"
-            referrerPolicy="no-referrer"
-            className="max-h-60 max-w-full rounded"
-            onError={() => {
-              // Link thumbnail hết hạn/bị thu hồi: xin link mới đúng một lần cho mỗi lần mount.
-              if (retriedThumb.current) return;
-              retriedThumb.current = true;
-              void thumb.refetch();
-            }}
-          />
+          {thumb.data ? (
+            /* Ảnh lỗi tải (link hết hạn) không phải thao tác của người dùng nên bỏ qua luật
+               "phần tử không tương tác"; ảnh ký từ API nên không dùng next/image. */
+            /* eslint-disable-next-line @next/next/no-img-element, jsx-a11y/no-noninteractive-element-interactions */
+            <img
+              src={thumb.data.url}
+              alt={attachment.filename}
+              width={attachment.width ?? undefined}
+              height={attachment.height ?? undefined}
+              loading="lazy"
+              referrerPolicy="no-referrer"
+              className="size-full rounded object-contain"
+              onError={() => {
+                // Link thumbnail hết hạn/bị thu hồi: xin link mới đúng một lần cho mỗi lần mount.
+                if (retriedThumb.current) return;
+                retriedThumb.current = true;
+                void thumb.refetch();
+              }}
+            />
+          ) : (
+            <span
+              aria-hidden
+              data-testid="attachment-placeholder"
+              className="block size-full animate-pulse rounded bg-muted-foreground/10"
+            />
+          )}
         </button>
       )}
       {link.data ? (

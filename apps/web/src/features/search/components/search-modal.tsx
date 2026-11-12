@@ -17,9 +17,9 @@ import { useSearch } from '../hooks';
 
 /**
  * Hộp thoại tìm kiếm tin nhắn trong server (T4.6, ADR-0045): FTS + trigram phía API; UI lọc
- * channel/người gửi/thời gian; bấm kết quả điều hướng permalink `/…/messages/:id` — khung chat
- * nạp cửa sổ quanh tin đó và highlight (TG.5, ADR-0063). Tách khỏi trigger để chunk tải lười
- * ở lần mở đầu tiên (T6.10).
+ * channel/người gửi/thời gian; bấm kết quả điều hướng permalink
+ * `/channels/:serverId/:channelId/:messageId` — khung chat nạp cửa sổ quanh tin đó và highlight
+ * (TG.5, ADR-0063, URL ADR-0088). Tách khỏi trigger để chunk tải lười ở lần mở đầu tiên (T6.10).
  */
 export function SearchModal({ serverId, onClose }: { serverId: string; onClose: () => void }) {
   const t = useTranslations('search');

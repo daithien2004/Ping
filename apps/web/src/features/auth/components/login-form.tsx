@@ -47,6 +47,7 @@ export function LoginForm() {
     <div ref={containerRef} className="flex w-full max-w-sm flex-col">
       <PingForm
         form={form}
+        name="login"
         layout="vertical"
         noValidate
         className="flex flex-col"

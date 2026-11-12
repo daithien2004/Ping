@@ -1,8 +1,11 @@
 'use client';
 import type { MessageStickerPreview, StickerDto, StickerListResponse } from '@ping/shared';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { qk } from '@/lib/query-keys';
 import { createSticker, deleteSticker, listStickers } from './api';
+
+/** Gói biểu cảm đổi hiếm; 5 phút đủ cho picker mở/đóng liên tục. */
+const STICKER_STALE_TIME = 5 * 60 * 1000;
 
 /**
  * Gói sticker của một server (TG.22): gói hệ thống + gói server, sticker đã xóa không trả.
@@ -12,8 +15,16 @@ export function useStickers(serverId: string) {
   return useQuery<StickerListResponse>({
     queryKey: qk.stickers(serverId),
     queryFn: () => listStickers(serverId),
-    // Gói biểu cảm đổi hiếm; staleTime 5 phút đủ cho picker mở/đóng liên tục.
-    staleTime: 5 * 60 * 1000,
+    staleTime: STICKER_STALE_TIME,
+  });
+}
+
+/** Tải trước danh sách sticker khi ô soạn tin rảnh — mở picker không phải chờ mạng. */
+export function prefetchStickers(queryClient: QueryClient, serverId: string): Promise<void> {
+  return queryClient.prefetchQuery({
+    queryKey: qk.stickers(serverId),
+    queryFn: () => listStickers(serverId),
+    staleTime: STICKER_STALE_TIME,
   });
 }
 

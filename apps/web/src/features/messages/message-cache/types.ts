@@ -3,7 +3,6 @@ import type { InfiniteData } from '@tanstack/react-query';
 
 export type ClientMessage = MessageDto & {
   status?: 'sending' | 'failed';
-  pendingAttachmentIds?: string[];
   gifId?: string;
 };
 

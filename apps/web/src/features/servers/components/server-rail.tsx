@@ -1,30 +1,27 @@
 'use client';
 
 import { ServerEvents, type MentionCreatedPayload } from '@ping/shared';
-import { LogIn, LogOut, MessageCircle, Plus, Settings } from 'lucide-react';
+import { LogIn, LogOut, MessageCircle, Plus } from 'lucide-react';
 import Link from 'next/link';
-import { useParams, usePathname } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslations } from 'use-intl';
-import { LanguageSwitcher } from '@/components/language-switcher';
 import { PingAvatar } from '@/components/ui/ping-avatar';
 import { PingBadge } from '@/components/ui/ping-badge';
 import { PingIconButton } from '@/components/ui/ping-icon-button';
-import { PingModal } from '@/components/ui/ping-modal';
 import { PingTooltip } from '@/components/ui/ping-tooltip';
 import { dmUnreadTotal } from '@/features/dms/dm-cache';
 import { useDms } from '@/features/dms/hooks';
 import { dmsPath } from '@/features/dms/navigation';
-import { useLogout, useMe } from '@/features/auth/hooks';
+import { useLogout } from '@/features/auth/hooks';
 import { EnableNotificationsButton } from '@/features/notifications/components/enable-notifications';
 import { useNotifyBadge } from '@/features/notifications/badge';
-import { SelfProfileCard } from '@/features/profile/components/profile-popover';
 import { profileImageUrl } from '@/features/profile/hooks';
-import { UserAvatar } from '@/features/profile/components/user-avatar';
 import { useRealtime } from '@/features/realtime/context';
 import { useUnread } from '@/features/unread/hooks';
 import { totals } from '@/features/unread/unread-cache';
 import { avatarTone } from '@/lib/avatar-tone';
+import { isDmPath, serverIdFromPath } from '@/lib/channel-url';
 import { initials } from '@/lib/initials';
 import { useServers } from '../hooks';
 import { serverPath } from '../navigation';
@@ -62,13 +59,12 @@ const railIcon =
 
 /** Cột trái: mục DM, các server của tôi, tạo/tham gia server, tài khoản. */
 export function ServerRail() {
-  const { serverId } = useParams<{ serverId?: string }>();
+  // URL công khai `/channels/{serverId|@me}/...` (ADR-0088): đọc theo pathname, không dùng useParams.
   const pathname = usePathname();
+  const serverId = serverIdFromPath(pathname);
   const { data: servers } = useServers();
-  const { data: me } = useMe();
   const logoutMutation = useLogout();
   const [wizard, setWizard] = useState<OnboardingMode | null>(null);
-  const [profileOpen, setProfileOpen] = useState(false);
   const t = useTranslations();
   // TG.12: tab title + favicon theo tổng unread mọi server + DM (trước đây chỉ tổng mention).
   // ADR-0077: badge đọc cache gộp `qk.unreadAll` — không cần danh sách id server.
@@ -84,11 +80,11 @@ export function ServerRail() {
       {/* Danh sách server cuộn riêng; cụm tài khoản ở đáy luôn cố định như Discord. */}
       <div
         data-slot="rail-list"
-        className="flex min-h-0 w-full flex-1 flex-col items-center gap-2 overflow-x-hidden overflow-y-auto"
+        className="no-scrollbar flex min-h-0 w-full flex-1 flex-col items-center gap-2 overflow-x-hidden overflow-y-auto"
       >
         {/* TG.9: mục "Tin nhắn trực tiếp" nằm trên cùng của rail (như trang chủ Discord) — ngoài
             ChannelSidebar per-server theo ADR-0070 mục 7. */}
-        <DmRailItem active={pathname.startsWith('/dms')} />
+        <DmRailItem active={isDmPath(pathname)} />
 
         {servers.map((server) => (
           <ServerRailItem
@@ -126,35 +122,9 @@ export function ServerRail() {
         </RailItem>
       </div>
 
-      <div data-slot="rail-footer" className="mt-2 flex flex-col items-center gap-2">
+      <div data-slot="rail-footer" className="mt-2 flex w-full flex-col items-center gap-2">
         {/* TG.12: xin quyền Notification sau thao tác người dùng — chỉ hiện khi còn 'default'. */}
         <EnableNotificationsButton />
-        {/* TG.13: cài đặt CÁ NHÂN (/settings) — khác nút "Cài đặt" của server ở sidebar kênh. */}
-        <RailItem label={t('settings.railOpen')}>
-          <Link
-            href="/settings"
-            aria-label={t('settings.railOpen')}
-            aria-current={pathname.startsWith('/settings') ? 'page' : undefined}
-            data-testid="personal-settings-rail"
-          >
-            <span data-slot="rail-icon" className={`${railIcon} flex items-center justify-center`}>
-              <Settings className="size-5" />
-            </span>
-          </Link>
-        </RailItem>
-        <LanguageSwitcher vertical />
-        {/* TG.7: bấm vào avatar mở thẻ hồ sơ (PingModal — đặt vị trí của popover bị lệch trong
-            layout rail); đổi ảnh đại diện/tên hiển thị không cần trang cài đặt. */}
-        <button
-          type="button"
-          aria-label={me ? t('profile.openSelfProfile') : undefined}
-          aria-haspopup="dialog"
-          data-testid="self-avatar"
-          className="rounded-full focus-ring"
-          onClick={() => setProfileOpen(true)}
-        >
-          <UserAvatar name={me?.displayName ?? ''} avatarUrl={me?.avatarUrl} size={36} />
-        </button>
         <RailItem label={t('auth.signOut')}>
           <PingIconButton
             icon={<LogOut />}
@@ -170,17 +140,6 @@ export function ServerRail() {
         initialMode={wizard ?? undefined}
         onClose={() => setWizard(null)}
       />
-
-      {/* TG.7: thẻ hồ sơ của chính mình trong modal — luôn nằm trong viewport. */}
-      <PingModal
-        title={me ? t('profile.selfTitle', { name: me.displayName }) : undefined}
-        open={profileOpen}
-        onCancel={() => setProfileOpen(false)}
-        footer={null}
-        destroyOnHidden
-      >
-        <SelfProfileCard />
-      </PingModal>
 
       {/* T4.3: mình được nhắc ở kênh không đang xem — trình đọc màn hình đọc lên một lần. */}
       <MentionAnnouncer />
@@ -229,7 +188,8 @@ function DmRailItem({ active }: { active: boolean }) {
 /**
  * Một server trên rail kèm badge unread (T4.3): mention > 0 → badge đỏ số mention; còn lại
  * unread > 0 → chấm xám. Nhãn aria gộp số để trình đọc màn hình đọc đủ thông tin.
- */ function ServerRailItem({
+ */
+function ServerRailItem({
   serverId,
   name,
   iconUrl,
@@ -249,6 +209,10 @@ function DmRailItem({ active }: { active: boolean }) {
       : unreadTotal > 0
         ? t('railLabelUnread', { name, count: unreadTotal })
         : name;
+  const showMention = mentionTotal > 0;
+  // Chấm thay vì số: unread thường không phải mention, con số đỏ thứ hai cạnh số mention làm
+  // rail ồn và hai trạng thái trông giống nhau.
+  const showUnread = unreadTotal > 0 && !showMention;
 
   return (
     <RailItem label={label} active={active}>
@@ -258,13 +222,14 @@ function DmRailItem({ active }: { active: boolean }) {
         aria-current={active ? 'page' : undefined}
       >
         <PingBadge
-          count={mentionTotal > 0 ? mentionTotal : 0}
+          count={showMention ? mentionTotal : 0}
           color="red"
           offset={[-4, 4]}
-          aria-label={mentionTotal > 0 ? t('mentionCount', { count: mentionTotal }) : undefined}
+          aria-label={showMention ? t('mentionCount', { count: mentionTotal }) : undefined}
         >
           <PingBadge
-            count={unreadTotal > 0 && mentionTotal === 0 ? unreadTotal : 0}
+            dot={showUnread}
+            color={showUnread ? 'var(--muted-foreground)' : undefined}
             offset={[-4, 4]}
           >
             {/* TG.7: icon server (nếu có) đè lên fallback chữ cái; ảnh reencode WebP qua pipeline TG.6. */}
@@ -280,7 +245,7 @@ function DmRailItem({ active }: { active: boolean }) {
               style={{
                 background: 'var(--ping-avatar-bg, var(--secondary))',
                 color: 'var(--ping-avatar-fg, var(--secondary-foreground))',
-                borderRadius: active ? 'var(--ping-radius-xl)' : 'var(--ping-radius-full)',
+                borderRadius: 'var(--rail-icon-radius, var(--ping-radius-full))',
               }}
               className="transition-all"
             >

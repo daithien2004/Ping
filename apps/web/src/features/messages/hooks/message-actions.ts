@@ -12,11 +12,12 @@ import {
   removeReactionRequest,
 } from '../api';
 import {
+  applyReaction,
+  applyReactionIntents,
   deleteMessage,
   oldestFirst,
-  reactionsOf,
-  setReactions,
-  toggledCount,
+  settleReactionIntent,
+  startReactionIntent,
   toggleReaction,
   updateMessage,
   type MessagesCache,
@@ -93,37 +94,36 @@ export function createMessageActions(
     },
 
     async react({ messageId, emoji, active }: ReactVariables) {
-      const before = reactionsOf(read(), messageId).find((row) => row.emoji === emoji);
-      const optimisticCount = toggledCount(before, active);
-      await write((old) => toggleReaction(old, messageId, emoji, active));
-      const optimistic = reactionsOf(read(), messageId);
-
-      const rollback = async () => {
-        let changed = false;
-        await write((old) => {
-          const current = reactionsOf(old, messageId).find((row) => row.emoji === emoji);
-          const untouched =
-            (current?.me ?? false) === active && (current?.count ?? 0) === optimisticCount;
-          changed = !untouched;
-          return untouched ? toggleReaction(old, messageId, emoji, !active) : old;
-        });
-        if (changed) refetch();
-      };
+      // Không dùng `write`: nó huỷ request đang chạy rồi refetch cả trang, đúng đường khiến
+      // pill biến mất rồi hiện lại. Lớp ý định giữ pill qua mọi snapshot cho đến khi có phản hồi.
+      const token = startReactionIntent(messageId, emoji, active);
+      queryClient.setQueryData<MessagesCache>(key, (old) => applyReactionIntents(old));
 
       try {
         const summary = active
           ? await addReactionRequest(messageId, emoji)
           : await removeReactionRequest(messageId, emoji);
-        let changed = false;
-        await write((old) => {
-          changed = reactionsOf(old, messageId) !== optimistic;
-          return changed ? old : setReactions(old, messageId, summary.reactions);
-        });
-        if (changed) refetch();
+        const settled = settleReactionIntent(messageId, emoji, token);
+        // Event realtime cùng emoji đã là bản chuẩn (count sau thao tác); summary có thể cũ hơn.
+        if (settled && !settled.sawEvent) {
+          const row = summary.reactions.find((reaction) => reaction.emoji === emoji);
+          await write((old) =>
+            applyReaction(old, messageId, {
+              emoji,
+              count: row?.count ?? 0,
+              me: row?.me ?? false,
+            }),
+          );
+        }
         return summary;
       } catch (error) {
-        if (isTransientError(error)) refetch();
-        else await rollback();
+        const settled = settleReactionIntent(messageId, emoji, token);
+        if (settled) {
+          // Event đã đụng đúng emoji này (hoặc lỗi mạng: server có thể đã ghi) → không nghịch đảo
+          // dựa trên số đếm không còn chắc; tải lại để đối soát.
+          if (settled.sawEvent || isTransientError(error)) refetch();
+          else await write((old) => toggleReaction(old, messageId, emoji, !active));
+        }
         failed(error);
         throw error;
       }

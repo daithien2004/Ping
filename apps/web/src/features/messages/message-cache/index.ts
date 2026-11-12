@@ -18,5 +18,12 @@ export {
   toggledCount,
   toggleReaction,
 } from './reactions';
+export {
+  applyReactionIntents,
+  clearReactionIntents,
+  noteReactionEvent,
+  settleReactionIntent,
+  startReactionIntent,
+} from './reaction-intents';
 export { isTempId, tempIdOf } from './temp-id';
 export { aroundWindow, patchGap, prependNewer, replaceWithWindow } from './window';

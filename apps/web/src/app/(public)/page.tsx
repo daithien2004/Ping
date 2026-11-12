@@ -108,7 +108,7 @@ export default function LandingPage() {
                     {t('demoMessage1')}
                   </p>
                 </div>
-                <div className="flex flex-row-reverse items-end gap-3">
+                <div className="flex items-end gap-3">
                   <UserAvatar name={t('demoAuthor2')} avatarUrl={null} size={32} />
                   <p
                     className="rounded-xl bg-muted px-3 py-2 text-sm"

@@ -3,13 +3,15 @@ import { ChevronDown, ChevronRight, Hash } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import type { DragEvent, KeyboardEvent, ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'use-intl';
 import { PingBadge } from '@/components/ui/ping-badge';
 import { pingToast } from '@/components/ui/ping-toast';
 import { useMe } from '@/features/auth/hooks';
 import { useServerAbility } from '@/features/permissions/context';
+import { prefetchMessages } from '@/features/messages/hooks/use-messages';
 import { channelPath } from '@/features/servers/navigation';
-import { useUnread } from '@/features/unread/hooks';
+import { useUnreadChannel } from '@/features/unread/hooks';
 import { useErrorMessage } from '@/lib/error-message';
 import {
   readCollapsedCategories,
@@ -237,7 +239,7 @@ export function ChannelNavigation({ serverId, activeId }: { serverId: string; ac
   return (
     <nav
       aria-label={t('navLabel')}
-      className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto p-2"
+      className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto p-2 pb-16"
     >
       {channelSidebarEmpty && (
         <p className="px-2 py-1.5 text-sm text-muted-foreground">{t('empty')}</p>
@@ -475,10 +477,13 @@ function ChannelItem({
   onDrop: (event: DragEvent) => void;
   onDragEnd: () => void;
 }): ReactNode {
-  const { data: unread } = useUnread(serverId);
-  const row = unread?.find((item) => item.channelId === channelId);
+  const { data: row } = useUnreadChannel(serverId, channelId);
   const unreadCount = active ? 0 : (row?.unreadCount ?? 0);
   const mentionCount = active ? 0 : (row?.mentionCount ?? 0);
+  const queryClient = useQueryClient();
+  // Hover/focus/bấm xuống là tải trước tin mới nhất (cache còn tươi trong 30s thì prefetch
+  // không bắn request): gần như mọi cú chuyển kênh có ý định đều đã có cache sẵn.
+  const prefetch = () => void prefetchMessages(queryClient, channelId);
 
   return (
     <Link
@@ -486,7 +491,12 @@ function ChannelItem({
       ref={registerSlot(slot)}
       tabIndex={tabIndex}
       onKeyDown={onKeyDown}
-      onFocus={onFocus}
+      onFocus={() => {
+        onFocus();
+        prefetch();
+      }}
+      onMouseEnter={prefetch}
+      onPointerDown={prefetch}
       draggable={draggable}
       onDragStart={(event) => {
         event.dataTransfer.effectAllowed = 'move';

@@ -1,5 +1,11 @@
 'use client';
-import { AttachmentLimits, ErrorCodes, type AttachmentLink, type UploadDto } from '@ping/shared';
+import {
+  AttachmentLimits,
+  ErrorCodes,
+  type AttachmentDto,
+  type AttachmentLink,
+  type UploadDto,
+} from '@ping/shared';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { api, ApiError } from '@/lib/api-client';
@@ -10,6 +16,8 @@ export interface DraftFile {
   file: File;
   progress: number;
   id?: string;
+  /** DTO server trả lúc `ready` — đủ filename/mime/kích thước để tin lạc quan hiện ảnh ngay. */
+  attachment?: AttachmentDto;
   ready: boolean;
   error?: unknown;
 }
@@ -45,7 +53,7 @@ export function useAttachmentDrafts(channelId: string) {
           if (controller.signal.aborted) return;
           const status = await api.get<UploadDto>(`/uploads/${created.id}`);
           if (status.status === 'ready') {
-            patch({ ready: true });
+            patch({ ready: true, attachment: status.attachment ?? undefined });
             return;
           }
           if (['rejected', 'deleted', 'deleting'].includes(status.status))
@@ -97,7 +105,7 @@ export function useAttachmentDrafts(channelId: string) {
     add,
     remove,
     sent: () => setFiles([]),
-    ids: files.filter((file) => file.ready && file.id).map((file) => file.id!),
+    attachments: files.flatMap((file) => (file.ready && file.attachment ? [file.attachment] : [])),
     busy: files.some((file) => !file.ready),
   };
 }

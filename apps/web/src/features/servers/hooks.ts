@@ -15,6 +15,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import type { RealtimeSession } from '@/features/realtime/session';
 import { qk } from '@/lib/query-keys';
 import { ApiError } from '@/lib/api-client';
+import { serverIdFromPath } from '@/lib/channel-url';
 import { createServer, getServer, joinServer, leaveServer, listServers, updateServer } from './api';
 
 /** Chỉ dùng dưới AuthGate (đã giới hạn trong trình duyệt). */
@@ -104,8 +105,7 @@ export function useServerEvents(session: RealtimeSession) {
     queryClient.setQueryData<ServerSummary[]>(qk.servers, (old) =>
       old?.filter((server) => server.id !== serverId),
     );
-    if (pathname === `/servers/${serverId}` || pathname.startsWith(`/servers/${serverId}/`))
-      router.replace('/servers');
+    if (serverIdFromPath(pathname) === serverId) router.replace('/servers');
     // ADR-0077: bị kick khỏi server — unread gộp không được còn server đó.
     void queryClient.invalidateQueries({ queryKey: qk.unreadAll });
     void queryClient.invalidateQueries({ queryKey: qk.servers, exact: true });

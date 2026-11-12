@@ -15,6 +15,7 @@ import { RealtimeSession } from '@/features/realtime/session';
 import { createSocket } from '@/features/realtime/socket';
 import { useServerEvents } from '@/features/servers/hooks';
 import { useUnreadEvents } from '@/features/unread/hooks';
+import { channelIdFromPath } from '@/lib/channel-url';
 
 export function RealtimeProvider({ children }: { children: ReactNode }) {
   const { data: me } = useMe();
@@ -29,10 +30,8 @@ function SignedInRealtime({ userId, children }: { userId: string; children: Reac
   const [session] = useState(() => new RealtimeSession(createSocket()));
   const pathname = usePathname();
   // Channel đang xem (nếu có): unread của kênh này do mark-read lo, không tính badge (T4.3).
-  // TG.9: DM ở route `/dms/:channelId` — badge riêng qua `useDmEvents`, cùng cơ chế "đang xem".
-  const activeChannelId =
-    /^\/servers\/[^/]+\/channels\/([^/]+)/.exec(pathname)?.[1] ??
-    /^\/dms\/([^/]+)/.exec(pathname)?.[1];
+  // Kênh server và DM dùng chung `/channels/{serverId|@me}/{channelId}` (ADR-0088) nên đọc một lần.
+  const activeChannelId = channelIdFromPath(pathname) ?? undefined;
   useMessageEvents(session);
   useChannelEvents(session);
   useServerEvents(session);

@@ -3,7 +3,7 @@ import { loginRedirectPath, markSignedOut, safeRedirectPath } from './session';
 
 describe('safeRedirectPath', () => {
   it('giữ đường dẫn nội bộ', () => {
-    expect(safeRedirectPath('/servers/abc/channels/def')).toBe('/servers/abc/channels/def');
+    expect(safeRedirectPath('/channels/abc/def')).toBe('/channels/abc/def');
     expect(safeRedirectPath('/?tab=1')).toBe('/?tab=1');
   });
 
@@ -22,14 +22,12 @@ describe('safeRedirectPath', () => {
 
 describe('loginRedirectPath', () => {
   it('phiên hết hạn: giữ trang đang đứng trong ?next= để đăng nhập lại xong quay về', () => {
-    expect(loginRedirectPath('/servers/s1/channels/c1')).toBe(
-      '/login?next=%2Fservers%2Fs1%2Fchannels%2Fc1',
-    );
+    expect(loginRedirectPath('/channels/s1/c1')).toBe('/login?next=%2Fchannels%2Fs1%2Fc1');
   });
 
   it('tự đăng xuất: về /login không kèm next (người sau không bị dẫn tới trang của người trước), chỉ một lần', () => {
     markSignedOut();
-    expect(loginRedirectPath('/servers/s1/channels/c1')).toBe('/login');
-    expect(loginRedirectPath('/servers/s1')).toBe('/login?next=%2Fservers%2Fs1');
+    expect(loginRedirectPath('/channels/s1/c1')).toBe('/login');
+    expect(loginRedirectPath('/channels/s1')).toBe('/login?next=%2Fchannels%2Fs1');
   });
 });

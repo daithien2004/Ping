@@ -129,6 +129,7 @@ function ResendSection({ open, onOpen }: { open: boolean; onOpen: () => void }) 
   return (
     <PingForm
       form={form}
+      name="verifyResend"
       layout="vertical"
       noValidate
       className="flex w-full flex-col"

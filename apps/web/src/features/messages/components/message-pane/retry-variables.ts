@@ -33,7 +33,7 @@ export function retryVariables(message: ClientMessage): RetryPlan | null {
     };
   }
 
-  const attachmentIds = message.pendingAttachmentIds ?? message.attachments?.map((file) => file.id);
+  const attachmentIds = message.attachments?.map((file) => file.id);
   return {
     kind: 'text',
     variables: {
@@ -43,6 +43,8 @@ export function retryVariables(message: ClientMessage): RetryPlan | null {
         ...reply,
         ...(attachmentIds?.length ? { attachmentIds } : {}),
       },
+      // Dựng lại tin tạm (cùng nonce) khi gửi lại — ảnh đính kèm phải còn trên hàng đó.
+      ...(message.attachments?.length ? { preview: { attachments: message.attachments } } : {}),
     },
   };
 }

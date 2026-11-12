@@ -76,6 +76,57 @@ const nextConfig: NextConfig = {
   async headers() {
     return [{ source: '/(.*)', headers: securityHeaders }];
   },
+  /**
+   * ADR-0088: URL công khai theo dạng Discord `/channels/{serverId|@me}/{channelId}[/{messageId}]`.
+   * Redirect chạy trước rewrite (thứ tự của Next), nên đích rewrite `/servers/...`, `/dms/...`
+   * không bị redirect ngược. `/servers/:id/settings` có ba đoạn nên không khớp rule hai đoạn.
+   */
+  async redirects() {
+    return [
+      { source: '/dms', destination: '/channels/@me', permanent: true },
+      {
+        source: '/dms/:channelId/messages/:messageId',
+        destination: '/channels/@me/:channelId/:messageId',
+        permanent: true,
+      },
+      {
+        source: '/dms/:channelId',
+        destination: '/channels/@me/:channelId',
+        permanent: true,
+      },
+      {
+        source: '/servers/:serverId/channels/:channelId/messages/:messageId',
+        destination: '/channels/:serverId/:channelId/:messageId',
+        permanent: true,
+      },
+      {
+        source: '/servers/:serverId/channels/:channelId',
+        destination: '/channels/:serverId/:channelId',
+        permanent: true,
+      },
+      { source: '/servers/:serverId', destination: '/channels/:serverId', permanent: true },
+    ];
+  },
+  /** ADR-0088: URL công khai render route nội bộ; `@me` đặt trước `:serverId` để không bị nuốt. */
+  async rewrites() {
+    return [
+      { source: '/channels/@me', destination: '/dms' },
+      { source: '/channels/@me/:channelId', destination: '/dms/:channelId' },
+      {
+        source: '/channels/@me/:channelId/:messageId',
+        destination: '/dms/:channelId/messages/:messageId',
+      },
+      { source: '/channels/:serverId', destination: '/servers/:serverId' },
+      {
+        source: '/channels/:serverId/:channelId',
+        destination: '/servers/:serverId/channels/:channelId',
+      },
+      {
+        source: '/channels/:serverId/:channelId/:messageId',
+        destination: '/servers/:serverId/channels/:channelId/messages/:messageId',
+      },
+    ];
+  },
   turbopack: {
     rules: {
       '*.css': {

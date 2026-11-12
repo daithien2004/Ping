@@ -1,11 +1,11 @@
 'use client';
 
 import { MailX } from 'lucide-react';
-import Link from 'next/link';
 import { useTranslations } from 'use-intl';
 import { PingButton } from '@/components/ui/ping-button';
 import { pingToast } from '@/components/ui/ping-toast';
 import { useMe, useResendVerification } from '@/features/auth/hooks';
+import { useSettingsModal } from '@/features/settings/modal-store';
 import { useErrorMessage } from '@/lib/error-message';
 
 /**
@@ -19,6 +19,7 @@ export function VerifyEmailBanner() {
   const errorMessage = useErrorMessage();
   const { data: me } = useMe();
   const resend = useResendVerification();
+  const openSettings = useSettingsModal((state) => state.openSettings);
 
   if (!me || me.emailVerified) return null;
 
@@ -47,12 +48,16 @@ export function VerifyEmailBanner() {
       >
         {t('resendAction')}
       </PingButton>
-      {/* Đi thẳng mục Tài khoản nơi có trạng thái chi tiết; nhãn tránh chứa chuỗi «Cài đặt»
+      {/* Mở mục Tài khoản trong modal cài đặt (không đổi URL); nhãn tránh chứa chuỗi «Cài đặt»
           (bài học TG.12: va chạm accessible-name với nút Cài đặt của server). */}
-      <Link href="/settings" className="shrink-0 font-medium underline-offset-4 hover:underline">
-        {/* Màu ở span con: antd tô <a> bằng màu link tự sinh, đè class text-* trên Link. */}
+      <button
+        type="button"
+        onClick={() => openSettings('account')}
+        className="shrink-0 font-medium underline-offset-4 hover:underline"
+      >
+        {/* Màu ở span con để nút kế thừa chữ của banner, chỉ nhãn mang màu link. */}
         <span className="text-link">{t('unverifiedBannerMore')}</span>
-      </Link>
+      </button>
     </div>
   );
 }

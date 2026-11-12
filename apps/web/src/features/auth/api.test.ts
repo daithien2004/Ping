@@ -42,7 +42,12 @@ describe('getSession', () => {
     fetchMock.mockResolvedValue(json(401, { code: 'UNAUTHORIZED', message: 'x', requestId: 'r' }));
 
     await expect(getSession()).resolves.toBeNull();
-    expect(fetchMock.mock.calls.map(([url]) => url.split('/api/v1')[1])).toEqual(['/auth/refresh']);
+    // Refresh 401 được thử lại MỘT lần (ADR-0007: tab thua trong lần xoay vòng đồng thời); vẫn
+    // không gọi /users/me khi cả hai lần đều thất bại.
+    expect(fetchMock.mock.calls.map(([url]) => url.split('/api/v1')[1])).toEqual([
+      '/auth/refresh',
+      '/auth/refresh',
+    ]);
   });
 
   it('chưa có token (vừa F5), refresh thành công → lấy /users/me', async () => {

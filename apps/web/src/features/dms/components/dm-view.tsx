@@ -2,13 +2,13 @@
 
 import { ErrorCodes, type DmSummary } from '@ping/shared';
 import { useRouter } from 'next/navigation';
-import { use, useCallback, useMemo, useState } from 'react';
+import { Suspense, use, useCallback, useMemo } from 'react';
 import { useTranslations } from 'use-intl';
 import { Loading } from '@/components/loading';
 import { PingButton } from '@/components/ui/ping-button';
 import { pingToast } from '@/components/ui/ping-toast';
 import type { ChannelScope } from '@/features/messages/channel-scope';
-import { PinnedPanel } from '@/features/messages/components/pinned-panel';
+import { MessageListSkeleton } from '@/features/messages/components/message-list-skeleton';
 import { MessagePane } from '@/features/messages/components/message-pane';
 import { ApiError } from '@/lib/api-client';
 import { useErrorMessage } from '@/lib/error-message';
@@ -25,10 +25,11 @@ const EMPTY_QUERY: Promise<Record<string, string | string[] | undefined>> = Prom
 /**
  * Vùng nội dung của một DM (TG.9, ADR-0070): header đối tác + pane tin nhắn tái dùng.
  *
- * Route `/dms/:channelId` thay vì route channel của server vì DM không có `serverId` trong
- * URL và không qua `ServerAbilityProvider` (fetch quyền theo server) — quyền chat của
- * participant do `DmAbilityProvider` cấp. Các bề mặt chỉ có ở server (AI search/ask, panel
- * thành viên) không render ở đây; ghim vẫn dùng được (ADR-0070 mục 8).
+ * URL công khai `/channels/@me/:channelId` (ADR-0088) thay vì route channel của server vì DM
+ * không có `serverId` và không qua `ServerAbilityProvider` (fetch quyền theo server) — quyền chat
+ * của participant do `DmAbilityProvider` cấp. Route nội bộ vẫn là `/dms/:channelId`. Các bề mặt
+ * chỉ có ở server (AI search/ask, panel thành viên) không render ở đây; ghim vẫn dùng được
+ * (ADR-0070 mục 8).
  */
 export function DmView({
   params,
@@ -37,7 +38,7 @@ export function DmView({
 }: {
   params: Promise<{ channelId: string }>;
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
-  /** Permalink `/dms/:channelId/messages/:messageId`: tin đích lấy từ segment của route. */
+  /** Permalink `/channels/@me/:channelId/:messageId`: tin đích lấy từ segment của route. */
   focusId?: string | null;
 }) {
   const { channelId } = use(params);
@@ -96,12 +97,12 @@ function DmNotFound() {
 
 /**
  * Hội thoại đã có dữ liệu đối tác. Ghim, chặn/bỏ chặn và banner nằm ở đây; pane tin nhắn
- * nhận scope `dm` để chạy đúng chế độ DM (cursor đọc từ DmSummary, permalink `/dms/…`).
+ * nhận scope `dm` để chạy đúng chế độ DM (cursor đọc từ DmSummary, permalink
+ * `/channels/@me/:channelId/:messageId` — ADR-0088).
  */
 function DmConversation({ dm, focusId }: { dm: DmSummary; focusId: string | null }) {
   const errorMessage = useErrorMessage();
   const router = useRouter();
-  const [pinsOpen, setPinsOpen] = useState(false);
   const setBlocked = useDmBlockStore((state) => state.setBlocked);
   const blocked = useDmBlockStore(selectDmBlocked(dm.partner.id));
   const toggleBlock = useToggleBlock();
@@ -142,27 +143,23 @@ function DmConversation({ dm, focusId }: { dm: DmSummary; focusId: string | null
     <DmAbilityProvider partnerId={dm.partner.id}>
       <DmHeader
         dm={dm}
-        pinsOpen={pinsOpen}
-        onTogglePins={() => setPinsOpen((open) => !open)}
         blocked={blocked}
         onToggleBlock={toggle}
+        onOpenPin={(messageId) => router.push(pathToMessage(messageId))}
       />
       {blocked && <DmBlockedBanner />}
-      {/* key: mỗi tin đích permalink là một phiên xem riêng, như ChannelView. */}
-      <MessagePane
-        key={`${dm.channelId}:${focusId ?? ''}`}
-        scope={scope}
-        channelId={dm.channelId}
-        channelName={dm.partner.displayName}
-        focusId={focusId}
-      />
-      {/* Panel ghim là sibling của pane (không nằm trong danh sách ảo hóa), như ChannelView. */}
-      {pinsOpen && (
-        <PinnedPanel
+      {/* key: mỗi tin đích permalink là một phiên xem riêng, như ChannelView. Suspense riêng
+          để header đối tác đứng yên khi pane tin nhắn của DM mới còn tải (trước đây cả layout
+          thay bằng Loading, header biến mất rồi hiện lại). */}
+      <Suspense fallback={<MessageListSkeleton />}>
+        <MessagePane
+          key={`${dm.channelId}:${focusId ?? ''}`}
+          scope={scope}
           channelId={dm.channelId}
-          onOpen={(messageId) => router.push(pathToMessage(messageId))}
+          channelName={dm.partner.displayName}
+          focusId={focusId}
         />
-      )}
+      </Suspense>
     </DmAbilityProvider>
   );
 }

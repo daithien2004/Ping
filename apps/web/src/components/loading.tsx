@@ -3,23 +3,12 @@
 import { useTranslations } from 'use-intl';
 import { cn } from '@/lib/utils';
 
-/** `fullScreen`: fallback cấp trang, cao cả màn hình (antd App bọc div cao theo nội dung). */
-export function Loading({
-  className = 'text-sm text-muted-foreground',
-  fullScreen = false,
-}: {
-  className?: string;
-  fullScreen?: boolean;
-}) {
+export function Loading({ className = 'text-sm text-muted-foreground' }: { className?: string }) {
   const t = useTranslations('common');
   return (
     <p
       data-slot="loading"
-      className={cn(
-        'flex w-full items-center justify-center',
-        fullScreen ? 'min-h-dvh' : 'min-h-40 flex-1',
-        className,
-      )}
+      className={cn('flex min-h-40 w-full flex-1 items-center justify-center', className)}
     >
       <span data-slot="loading-label">{t('loading')}</span>
     </p>

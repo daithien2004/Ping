@@ -2,24 +2,26 @@
 
 import type { ButtonHTMLAttributes } from 'react';
 
+// Một khung 32×32 cho cả ba biến thể — trước đây mỗi biến thể tự đặt padding nên ba nút ba cỡ
+// (plus 22 px, emoji/send 36 px) và hàng nút so le.
+const BASE =
+  'focus-ring grid size-8 shrink-0 place-items-center transition-colors disabled:opacity-50';
+
 const VARIANTS = {
-  ghost: 'shrink-0 rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-foreground',
+  ghost: 'rounded-md text-muted-foreground hover:bg-accent hover:text-foreground',
   bordered:
-    'mb-0.5 shrink-0 rounded-full border border-border p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50',
-  primary:
-    'shrink-0 rounded-md bg-primary p-2 text-primary-foreground hover:bg-primary/90 disabled:opacity-50',
+    'rounded-full border border-border text-muted-foreground hover:bg-accent hover:text-foreground',
+  primary: 'rounded-md bg-primary text-primary-foreground hover:bg-primary/90',
 } as const;
 
 export function ComposerIconButton({
   variant = 'ghost',
   className = '',
   ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: keyof typeof VARIANTS }) {
+}: ButtonHTMLAttributes<HTMLButtonElement> & {
+  variant?: keyof typeof VARIANTS;
+}) {
   return (
-    <button
-      type="button"
-      className={`focus-ring transition-colors ${VARIANTS[variant]} ${className}`}
-      {...props}
-    />
+    <button type="button" className={`${BASE} ${VARIANTS[variant]} ${className}`} {...props} />
   );
 }

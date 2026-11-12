@@ -29,7 +29,13 @@ describe('addOptimisticMessage', () => {
     addOptimisticMessage(client, 'c1', author, {
       input: { content: 'trả lời', nonce: 'n2', replyToId: 'm1' },
     });
-    expect(first()?.replyTo).toEqual({ id: 'm1', authorName: 'A', content: 'gốc', deleted: false });
+    expect(first()?.replyTo).toEqual({
+      id: 'm1',
+      authorName: 'A',
+      content: 'gốc',
+      deleted: false,
+      kind: 'text',
+    });
   });
 
   it('tin đích không nằm trong cache thì không có trích dẫn', () => {
@@ -54,6 +60,17 @@ describe('addOptimisticMessage', () => {
       preview: { sticker },
     });
     expect(first()).toMatchObject({ kind: 'sticker', sticker });
+  });
+
+  it('tệp đính kèm: tin tạm mang DTO upload để hiện ảnh trước khi POST trả về', () => {
+    const attachments = [
+      { id: 'f1', filename: 'a.png', mime: 'image/png', sizeBytes: 10, width: 2, height: 3 },
+    ];
+    addOptimisticMessage(client, 'c1', author, {
+      input: { content: '', nonce: 'n6', attachmentIds: ['f1'] },
+      preview: { attachments },
+    });
+    expect(first()).toMatchObject({ status: 'sending', attachments });
   });
 
   it('gif: giữ preview để hiện ngay và gifId để gửi lại khi lỗi', () => {

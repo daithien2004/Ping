@@ -5,7 +5,7 @@
  *       landing-icon, landing-steps, landing-step, landing-step-number, landing-cta, landing-stamp,
  *       landing-footer, landing-eyebrow, sidebar, settings-nav, sidebar-header, user-card,
  *       channel-header, channel-actions, topic-inline, topic-strip, search, message-pane, message-body, message-text, author,
- *       avatar, reactions, reaction, notify-popover, notify-blocked, composer, send, members, member-row (+ data-mine, data-tone, data-active,
+ *       avatar, reactions, reaction, notify-popover, notify-blocked, send, members, member-row (+ data-mine, data-tone, data-active,
  *       data-me).
  * Ngoại lệ: phần tử antd tự dựng trong portal (khung modal, tooltip, dropdown, toast, nút OK/Cancel
  * mặc định) không đi qua wrapper nên không có slot, bám class `.ant-*`; sai class thì chỉ mất trang
@@ -145,13 +145,12 @@ html[data-skin='pop'] [data-slot='message-text'] {
   box-shadow: var(--ping-shadow-hard);
   font-size: 1.0625rem;
 }
-/* Xếp tin về bên phải dùng chung cho mọi skin (globals.css); ở đây chỉ còn phần riêng của Pop. */
+/* Tin của mình vẫn là bong bóng vàng để dễ nhận ra, nhưng cùng hướng trái như mọi tin (kiểu Discord). */
 html[data-skin='pop'] article[data-mine='true'] [data-slot='message-text'] {
-  margin: 2px 0 4px 6px;
   border-color: var(--palette-pop-ink);
   background: var(--palette-pop-yellow);
   color: var(--palette-pop-ink);
-  box-shadow: -3px 3px 0 var(--palette-pop-ink);
+  box-shadow: 3px 3px 0 var(--palette-pop-ink);
 }
 /* Vừa gửi: "đóng dấu" một lần trong lúc tin còn ở trạng thái sending. */
 html[data-skin='pop'] article[aria-busy='true'] [data-slot='message-text'] {
@@ -199,20 +198,10 @@ html[data-skin='pop'] [data-slot='reaction'][data-me='true'] {
   color: var(--palette-pop-ink);
 }
 
-/* ---------- Composer (dock) + nút gửi ---------- */
-html[data-skin='pop'] [data-slot='composer'] {
-  border: var(--pop-stroke) solid var(--border-strong);
-  border-radius: var(--ping-radius-xl);
-  box-shadow: var(--ping-shadow-hard);
-}
-html[data-skin='pop'] [data-slot='composer']:focus-within {
-  border-color: var(--ring);
-  box-shadow: 3px 3px 0 var(--ring);
-}
+/* ---------- Nút gửi ---------- */
 html[data-skin='pop'] button[data-slot='send'] {
   border: var(--pop-stroke-thin) solid var(--border-strong);
   box-shadow: 2px 2px 0 var(--border-strong);
-  transform: rotate(-3deg);
 }
 
 /* ---------- Bảng thành viên = bảng tin: mỗi người là một tờ ghi chú có ghim ---------- */
@@ -262,8 +251,8 @@ html[data-skin='pop'] li[data-slot='member-row']::before {
   }
 }
 
-/* ---------- Cụm dưới rail: nút vuông có bóng, đổi ngôn ngữ là tem vàng ---------- */
-html[data-skin='pop'] [data-slot='rail-footer'] button:not([data-testid='self-avatar']) {
+/* ---------- Cụm dưới rail: nút vuông có bóng ---------- */
+html[data-skin='pop'] [data-slot='rail-footer'] button {
   border: var(--pop-stroke) solid var(--border-strong);
   border-radius: var(--ping-radius-md);
   background: var(--card);
@@ -290,10 +279,12 @@ html[data-skin='pop'] [data-slot='language-switcher'] input:checked + span {
   color: var(--palette-pop-ink);
   box-shadow: 2px 2px 0 var(--palette-pop-ink);
 }
-html[data-skin='pop'] [data-slot='rail-footer'] [data-testid='self-avatar'] {
+/* Avatar trong thẻ người dùng: viền trùng nền tem vàng thay vì khay trắng. */
+html[data-skin='pop'] [data-slot='user-card'] [data-testid='self-avatar'] {
+  border-radius: 999px;
   box-shadow:
-    0 0 0 3px var(--background),
-    3px 3px 0 3px var(--border-strong);
+    0 0 0 2px var(--palette-pop-yellow),
+    2px 2px 0 2px var(--border-strong);
 }
 
 /* ---------- Phím tắt: nắp phím nổi khối ---------- */
@@ -376,9 +367,9 @@ html[data-skin='pop'] [data-slot='avatar'][data-tone] {
   box-shadow: 2px 2px 0 var(--border-strong);
 }
 
-/* Thẻ người dùng dưới sidebar: sticker vàng. */
+/* Thẻ người dùng nổi ở đáy khung: sticker vàng dán lên nội dung. Hình khối nổi (bo góc, cách
+   mép) do component dùng chung quyết định; skin chỉ đổi màu, độ dày viền và bóng. */
 html[data-skin='pop'] [data-slot='user-card'] {
-  margin: 8px;
   padding: 4px 8px;
   border: var(--pop-stroke) solid var(--border-strong);
   border-radius: var(--ping-radius-md);
@@ -395,7 +386,7 @@ html[data-skin='pop'] [data-slot='user-card'] p:first-child {
   font-family: var(--pop-display);
   font-size: 0.9rem;
 }
-html[data-skin='pop'] [data-slot='user-card'] button {
+html[data-skin='pop'] [data-slot='user-card'] button[data-testid='personal-settings'] {
   border: var(--pop-stroke-thin) solid var(--palette-pop-ink);
   border-radius: var(--ping-radius-md);
   background: var(--palette-white);
@@ -464,9 +455,6 @@ html[data-skin='pop'] [data-slot='channel-actions'] {
 html[data-skin='pop'] [data-slot='reactions'] {
   margin-top: 8px;
   gap: 8px;
-}
-html[data-skin='pop'] article[data-mine='true'] [data-slot='reactions'] {
-  justify-content: flex-end;
 }
 html[data-skin='pop'] aside[data-slot='members'] h2 {
   padding-bottom: 12px;

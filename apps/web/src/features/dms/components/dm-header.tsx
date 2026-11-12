@@ -2,29 +2,35 @@
 
 import type { DmSummary } from '@ping/shared';
 import { Ban, Pin, ShieldX } from 'lucide-react';
+import { useState } from 'react';
 import { useTranslations } from 'use-intl';
 import { PingButton } from '@/components/ui/ping-button';
 import { PingIconButton } from '@/components/ui/ping-icon-button';
 import { PingPopconfirm } from '@/components/ui/ping-popconfirm';
+import { PingPopover } from '@/components/ui/ping-popover';
+import { PinnedPanel } from '@/features/messages/components/pinned-panel';
 import { NotificationBell } from '@/features/notifications/components/notification-bell';
 import { UserAvatar } from '@/features/profile/components/user-avatar';
 
-/** Đầu trang hội thoại: đối tác, chuông thông báo, nút ghim và nút chặn/bỏ chặn. */
+/**
+ * Đầu trang hội thoại: đối tác, chuông thông báo, nút ghim và nút chặn/bỏ chặn.
+ *
+ * DM không có cột phải như kênh server: danh sách ghim mở thành popover ngay dưới nút ghim.
+ */
 export function DmHeader({
   dm,
-  pinsOpen,
-  onTogglePins,
   blocked,
   onToggleBlock,
+  onOpenPin,
 }: {
   dm: DmSummary;
-  pinsOpen: boolean;
-  onTogglePins: () => void;
   blocked: boolean;
   onToggleBlock: (block: boolean) => void;
+  onOpenPin: (messageId: string) => void;
 }) {
   const t = useTranslations('dms');
   const tm = useTranslations('messages');
+  const [pinsOpen, setPinsOpen] = useState(false);
   const name = dm.partner.displayName;
   return (
     <header data-testid="dm-header" className="flex h-header shrink-0 items-center gap-2 px-4">
@@ -34,13 +40,29 @@ export function DmHeader({
       <div className="ml-auto flex items-center gap-1">
         {/* TG.12: DM không có dòng server — chuông đặt mức/mute riêng cho hội thoại này. */}
         <NotificationBell serverId={null} channelId={dm.channelId} dm />
-        <PingIconButton
-          icon={<Pin />}
-          aria-pressed={pinsOpen}
-          aria-label={tm(pinsOpen ? 'pinnedHide' : 'pinnedShow')}
-          data-testid="pins-toggle"
-          onClick={onTogglePins}
-        />
+        <PingPopover
+          trigger="click"
+          placement="bottomRight"
+          open={pinsOpen}
+          onOpenChange={setPinsOpen}
+          content={
+            <PinnedPanel
+              channelId={dm.channelId}
+              variant="popover"
+              onOpen={(messageId) => {
+                setPinsOpen(false);
+                onOpenPin(messageId);
+              }}
+            />
+          }
+        >
+          <PingIconButton
+            icon={<Pin />}
+            aria-expanded={pinsOpen}
+            aria-label={tm(pinsOpen ? 'pinnedHide' : 'pinnedShow')}
+            data-testid="pins-toggle"
+          />
+        </PingPopover>
         {blocked ? (
           // Bỏ chặn: xác nhận nhẹ — không phải hành động nguy hiểm như chặn.
           <PingPopconfirm

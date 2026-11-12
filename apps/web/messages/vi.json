@@ -393,12 +393,16 @@
     "replyingTo": "Đang trả lời {author}",
     "cancelReply": "Hủy trả lời",
     "replyDeleted": "Tin nhắn đã bị xóa",
+    "replySticker": "Sticker",
+    "replyGif": "GIF",
+    "replyAttachments": "{count} tệp đính kèm",
     "jumpToOriginal": "Tới tin gốc của {author}",
     "copyLink": "Sao chép liên kết",
     "linkCopied": "Đã sao chép liên kết tin nhắn",
     "linkCopyFailed": "Không sao chép được liên kết. Hãy sao chép từ thanh địa chỉ.",
     "loadNewer": "Tải tin mới hơn",
     "loadingNewer": "Đang tải tin mới hơn…",
+    "jumpToPresent": "Tin mới",
     "focusLoading": "Đang tìm tin nhắn trong liên kết…",
     "focusMissing": "Không tìm thấy tin nhắn trong liên kết (có thể đã bị xóa hoặc bạn không còn quyền xem).",
     "addReaction": "Thêm cảm xúc",
@@ -460,7 +464,8 @@
     "tabServerEmoji": "Của server",
     "noServerEmojis": "Server chưa có emoji nào.",
     "serverEmojisLoadFailed": "Không tải được emoji của server.",
-    "pickCustomEmoji": "Chèn emoji {name}"
+    "pickCustomEmoji": "Chèn emoji {name}",
+    "searchResults": "Kết quả tìm kiếm"
   },
   "landing": {
     "eyebrow": "Chat realtime cho nhóm nhỏ",
@@ -564,7 +569,8 @@
     "loading": "Đang tải sticker…",
     "noResults": "Không tìm thấy sticker nào.",
     "pickSticker": "Gửi sticker {name}",
-    "deleted": "Sticker đã bị xóa"
+    "deleted": "Sticker đã bị xóa",
+    "searchResults": "Kết quả tìm kiếm"
   },
   "gifs": {
     "tab": "GIF",
@@ -610,12 +616,16 @@
     "bellDm": "Thông báo hội thoại",
     "levelLabel": "Mức thông báo",
     "levelAll": "Tất cả",
+    "levelAllHint": "Mọi tin nhắn",
     "levelMentions": "Chỉ đề cập",
+    "levelMentionsHint": "Chỉ khi bạn được nhắc",
     "levelNone": "Tắt",
+    "levelNoneHint": "Không nhận thông báo",
     "prefsLoadFailed": "Không tải được cài đặt thông báo.",
     "serverDefaultHint": "Đang theo mặc định server",
     "globalDefaultHint": "Đang theo mặc định chung",
     "muteLabel": "Tạm tắt tiếng",
+    "muteAction": "Tắt tiếng",
     "mute15m": "15 phút",
     "mute1h": "1 giờ",
     "mute3h": "3 giờ",
@@ -624,6 +634,7 @@
     "unmute": "Bỏ tắt tiếng",
     "mutedUntil": "Đang tắt tiếng (còn {count} phút)",
     "ignoreEveryone": "Bỏ qua @everyone",
+    "ignoreEveryoneScope": "Áp dụng cho mọi kênh",
     "enableBrowser": "Bật thông báo trình duyệt",
     "browserBlocked": "Bị chặn trong trình duyệt",
     "browserBlockedHint": "Thông báo đã bị chặn trong cài đặt trình duyệt.",
@@ -635,6 +646,7 @@
   },
   "settings": {
     "navLabel": "Cài đặt cá nhân",
+    "modalTitle": "Cài đặt",
     "railOpen": "Cài đặt cá nhân",
     "sections": {
       "account": "Tài khoản",

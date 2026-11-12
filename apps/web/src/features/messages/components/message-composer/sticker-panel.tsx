@@ -20,20 +20,18 @@ export function StickerPanel({
 }) {
   const recents = useRecentPicks();
   return (
-    <div className="mb-2 flex justify-start">
-      <StickerPicker
-        serverId={serverId}
-        recent={recents.recentStickers}
-        recentGifs={recents.recentGifs}
-        onPick={(sticker) => {
-          recents.addSticker(sticker.id);
-          onSticker(sticker);
-        }}
-        onPickGif={(gif) => {
-          recents.addGif(gif);
-          onGif(gif);
-        }}
-      />
-    </div>
+    <StickerPicker
+      serverId={serverId}
+      recent={recents.recentStickers}
+      recentGifs={recents.recentGifs}
+      onPick={(sticker) => {
+        recents.addSticker(sticker.id);
+        onSticker(sticker);
+      }}
+      onPickGif={(gif) => {
+        recents.addGif(gif);
+        onGif(gif);
+      }}
+    />
   );
 }

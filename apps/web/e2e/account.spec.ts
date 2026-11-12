@@ -141,14 +141,14 @@ test('(b) quên mật khẩu: thông báo trung lập → reset bằng token Mai
       await field(page, 'Email').fill(ALICE);
       await field(page, 'Mật khẩu').fill(newPassword);
       await page.getByRole('button', { name: 'Đăng nhập' }).click();
-      await expect(page.getByTestId('personal-settings-rail')).toBeVisible();
+      await expect(page.getByTestId('personal-settings')).toBeVisible();
       // 30s: danh sách channel sau login có thể chậm dưới tải (pattern admin-members TG.8).
-      await expect(page).toHaveURL(/\/servers\/[0-9a-f-]+\/channels\//, { timeout: 30_000 });
+      await expect(page).toHaveURL(/\/channels\/[0-9a-f-]+\/[0-9a-f-]+/, { timeout: 30_000 });
     });
 
-    await test.step('đổi NGƯỢC về password123 qua form Đổi mật khẩu trong /settings', async () => {
-      await page.getByTestId('personal-settings-rail').click();
-      await expect(page).toHaveURL(/\/settings$/);
+    await test.step('đổi NGƯỢC về password123 qua form Đổi mật khẩu trong modal cài đặt', async () => {
+      await page.getByTestId('personal-settings').click();
+      await expect(page.getByTestId('settings-account')).toBeVisible();
       await field(page, 'Mật khẩu hiện tại').fill(newPassword);
       await field(page, 'Mật khẩu mới').fill(SEED_PASSWORD);
       await field(page, 'Nhập lại mật khẩu mới').fill(SEED_PASSWORD);
@@ -169,16 +169,30 @@ test('(b) quên mật khẩu: thông báo trung lập → reset bằng token Mai
       expect(auth.user.email).toBe(ALICE);
     });
   } finally {
-    // Đỏ giữa chừng sau khi đã đổi mật khẩu: trả alice về password123 để các spec khác không dính.
+    // Đỏ giữa chừng sau khi đã đổi mật khẩu: trả alice về password123 để các spec khác không dính
+    // 401. Thử vài lần — một cú 429/401 ở đây từng để alice kẹt mật khẩu mới và làm đỏ cả bộ.
     if (alicePassword !== SEED_PASSWORD) {
-      await pacedLogin(page.context().request, ALICE, alicePassword)
-        .then((auth) =>
-          page.context().request.patch(`${API}/users/me/password`, {
+      const request = page.context().request;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          // Bước đổi ngược có thể đã kịp chạy trước khi timeout: thử mật khẩu seed trước.
+          await pacedLogin(request, ALICE, SEED_PASSWORD);
+          break;
+        } catch {
+          // Chưa về seed — thử đổi bằng mật khẩu tạm.
+        }
+        try {
+          const auth = await pacedLogin(request, ALICE, alicePassword);
+          const patched = await request.patch(`${API}/users/me/password`, {
             headers: { Authorization: `Bearer ${auth.accessToken}` },
             data: { currentPassword: alicePassword, password: SEED_PASSWORD },
-          }),
-        )
-        .catch(() => {});
+          });
+          if (patched.ok()) break;
+        } catch {
+          // 429/401: pacedLogin sẽ giãn cửa sổ ở lần sau.
+        }
+        await new Promise((resolve) => setTimeout(resolve, 1_000 * (attempt + 1)));
+      }
     }
   }
 });
@@ -213,7 +227,7 @@ test('(c) phiên đăng nhập: danh sách, thu hồi từng phiên và thu hồ
       await pacedLogin(ctx2.request, ALICE, SEED_PASSWORD);
       const page2 = await ctx2.newPage();
       await page2.goto('/');
-      await expect(page2.getByTestId('personal-settings-rail')).toBeVisible();
+      await expect(page2.getByTestId('personal-settings')).toBeVisible();
 
       const page1 = ctx1.pages()[0]!;
       // Tải lại để đọc danh sách mới (staleTime 30s — fetch lúc mở trang còn trước phiên 2).
@@ -238,7 +252,7 @@ test('(c) phiên đăng nhập: danh sách, thu hồi từng phiên và thu hồ
       await pacedLogin(ctx3.request, ALICE, SEED_PASSWORD);
       const page3 = await ctx3.newPage();
       await page3.goto('/');
-      await expect(page3.getByTestId('personal-settings-rail')).toBeVisible();
+      await expect(page3.getByTestId('personal-settings')).toBeVisible();
 
       const page1 = ctx1.pages()[0]!;
       await page1.reload();

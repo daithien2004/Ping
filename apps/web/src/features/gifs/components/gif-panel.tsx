@@ -147,7 +147,9 @@ export function GifPanel({
       <div ref={bodyRef} className="flex min-h-0 flex-col gap-1.5">
         {hasRecents && (
           <section aria-label={t('recent')} data-testid="gif-recent">
-            <p className="px-1 pb-1 text-xs font-medium text-muted-foreground">{t('recent')}</p>
+            <h3 className="pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              {t('recent')}
+            </h3>
             <GifGrid
               gifs={recentGifs}
               label={t('recent')}
@@ -159,13 +161,15 @@ export function GifPanel({
           </section>
         )}
         {active.isPending ? (
-          <p className="py-6 text-center text-sm text-muted-foreground">{t('loading')}</p>
+          <p className="flex min-h-32 items-center justify-center text-sm text-muted-foreground">
+            {t('loading')}
+          </p>
         ) : active.isError ? (
           unavailable ? (
             <p
               role="status"
               data-testid="gif-unavailable"
-              className="py-6 text-center text-sm text-muted-foreground"
+              className="flex min-h-32 items-center justify-center text-sm text-muted-foreground"
             >
               {t('unavailable')}
             </p>
@@ -173,22 +177,29 @@ export function GifPanel({
             <p
               role="alert"
               data-testid="gif-error"
-              className="py-6 text-center text-sm text-destructive"
+              className="flex min-h-32 items-center justify-center text-sm text-destructive"
             >
               {errorMessage(active.error)}
             </p>
           )
         ) : gifs.length === 0 ? (
-          <p className="py-6 text-center text-sm text-muted-foreground">{t('noResults')}</p>
+          <p className="flex min-h-32 items-center justify-center text-sm text-muted-foreground">
+            {t('noResults')}
+          </p>
         ) : (
-          <GifGrid
-            gifs={gifs}
-            label={searching ? t('searchResults') : t('trending')}
-            testId="gif-grid"
-            onPickGif={onPickGif}
-            pickLabel={pickLabel}
-            placeholderLabel={t('placeholder')}
-          />
+          <section aria-label={searching ? t('searchResults') : t('trending')}>
+            <h3 className="pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              {searching ? t('searchResults') : t('trending')}
+            </h3>
+            <GifGrid
+              gifs={gifs}
+              label={searching ? t('searchResults') : t('trending')}
+              testId="gif-grid"
+              onPickGif={onPickGif}
+              pickLabel={pickLabel}
+              placeholderLabel={t('placeholder')}
+            />
+          </section>
         )}
       </div>
       {showAttribution && (

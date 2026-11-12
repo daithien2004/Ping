@@ -34,6 +34,23 @@ export function useUnread(serverId: string | null) {
 }
 
 /**
+ * Đúng dòng unread của MỘT channel. Cache chỉ thay object của dòng vừa đổi (unread-cache giữ
+ * nguyên object các dòng khác), nên sidebar chỉ re-render đúng kênh có badge đổi thay vì cả
+ * danh sách như khi mỗi item tự `find` trên mảng mới.
+ */
+export function useUnreadChannel(serverId: string | null, channelId: string) {
+  return useQuery({
+    queryKey: qk.unreadAll,
+    queryFn: listAllUnread,
+    select: (servers: ServerUnreadDto[]) => {
+      if (serverId === null) return undefined;
+      const channels = servers.find((server) => server.serverId === serverId)?.channels;
+      return channels?.find((row) => row.channelId === channelId);
+    },
+  });
+}
+
+/**
  * Đánh dấu đã đọc đến một tin (T4.2). `read.updated` server phát sẽ tới các tab khác.
  */
 export function useMarkRead(channelId: string) {

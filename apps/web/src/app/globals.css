@@ -123,19 +123,6 @@ html[data-density='compact'] {
   --ping-message-leading: 1.3;
 }
 
-/* Tin của mình xếp về phía phải trên mọi skin; data-mine được gắn tại MessageItem. */
-article[data-mine='true'] > div {
-  flex-direction: row-reverse;
-}
-article[data-mine='true'] [data-slot='message-body'] {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-}
-article[data-mine='true'] [data-slot='message-body'] header {
-  justify-content: flex-end;
-}
-
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -186,12 +173,28 @@ html:is([data-skin='pixel'], [data-skin='pop']) .border-y {
   border-bottom-width: var(--ping-border-width);
 }
 
+/* Icon server của rail đổi bo góc khi hover/đang chọn. Không dùng class hover: antd Avatar tô
+   bo góc bằng CSS ngoài layer nên utility bị đè; style inline đọc biến, rule này chỉ đổi biến. */
+[data-slot='rail-icon']:hover,
+[data-slot='rail-icon'][data-active='true'] {
+  --rail-icon-radius: var(--ping-radius-xl);
+}
+
 /* Viền focus duy nhất cho phần tử tự vẽ (link, hàng danh sách, ô ảnh): 2 px màu --ring, cách
    2 px. Thay cho ring-1/2/3 rải rác trước đây — cùng một hình dạng ở mọi chỗ. */
 @utility focus-ring {
   &:focus-visible {
     outline: 2px solid var(--ring);
     outline-offset: 2px;
+  }
+}
+
+/* Ẩn thanh cuộn nhưng vẫn cuộn bằng wheel/bàn phím — rail 72 px không đủ chỗ cho scrollbar
+   Windows (~15 px), hiện ra là icon lệch trái. */
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
   }
 }
 

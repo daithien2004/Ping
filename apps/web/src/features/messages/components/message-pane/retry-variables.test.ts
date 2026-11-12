@@ -21,11 +21,12 @@ describe('retryVariables', () => {
     });
   });
 
-  it('tin chữ: mang theo reply và tệp đang chờ', () => {
+  it('tin chữ: mang theo reply và tệp đính kèm để hàng gửi lại vẫn hiện ảnh', () => {
+    const attachments = [{ id: 'f1' } as NonNullable<ClientMessage['attachments']>[number]];
     const plan = retryVariables(
       failed({
         replyTo: { id: 'm0', authorName: 'A', content: 'gốc', deleted: false },
-        pendingAttachmentIds: ['f1'],
+        attachments,
       }),
     );
     expect(plan?.variables.input).toEqual({
@@ -34,13 +35,7 @@ describe('retryVariables', () => {
       replyToId: 'm0',
       attachmentIds: ['f1'],
     });
-  });
-
-  it('tin chữ: tệp đã tải xong thì lấy id từ danh sách tệp', () => {
-    const plan = retryVariables(
-      failed({ attachments: [{ id: 'f2' } as NonNullable<ClientMessage['attachments']>[number]] }),
-    );
-    expect(plan?.variables.input.attachmentIds).toEqual(['f2']);
+    expect(plan?.variables.preview).toEqual({ attachments });
   });
 
   it('sticker: gửi lại stickerId, preview là sticker đang hiện', () => {

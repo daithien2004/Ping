@@ -52,6 +52,7 @@ export function RegisterForm() {
     <div ref={containerRef} className="flex w-full max-w-sm flex-col">
       <PingForm
         form={form}
+        name="register"
         layout="vertical"
         noValidate
         className="flex flex-col"

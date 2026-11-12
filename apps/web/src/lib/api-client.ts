@@ -223,6 +223,11 @@ async function send(
   for (const [name, value] of Object.entries(options?.headers ?? {})) {
     headers.set(name, value);
   }
+  // Refresh xoay vòng token và trả cookie mới. Nếu trang đang điều hướng (F5, mở URL khác) thì
+  // request thường bị hủy giữa chừng: server đã xoay vòng nhưng Set-Cookie không kịp vào cookie
+  // jar, tài liệu kế tiếp gửi token cũ và nhận 401 "already rotated". `keepalive` để trình duyệt
+  // hoàn tất request và ghi cookie dù tài liệu cũ đã bị gỡ. Logout cũng cần để cookie bị xóa hẳn.
+  const keepalive = path === '/auth/refresh' || path === '/auth/logout';
   const request = () =>
     fetch(`${apiBaseUrl}${path}`, {
       method,
@@ -231,6 +236,7 @@ async function send(
       credentials: 'include',
       body: body === undefined ? undefined : JSON.stringify(body),
       signal: options?.signal,
+      keepalive,
     });
   // Mỗi lần gọi thật chiếm một suất (ADR-0078); nhả ngay khi fetch trả về — kể cả SSE, để
   // một kết nối dài không giữ suất của cả app.
@@ -283,6 +289,27 @@ async function send(
 }
 
 /**
+ * Chờ trước khi thử refresh lần hai: request refresh thua trong một lần xoay vòng đồng thời
+ * (hai tab, hoặc tải lại trang giữa lúc khôi phục phiên) nhận 401 ngay sau khi bên thắng đã
+ * ghi cookie mới — chờ một nhịp để Set-Cookie của bên thắng kịp vào cookie jar.
+ */
+const REFRESH_RETRY_DELAY_MS = 200;
+
+/**
+ * Gọi /auth/refresh, thử lại MỘT lần khi gặp 401. ADR-0007: hai request refresh đồng thời
+ * (hai tab, hoặc trang cũ bị điều hướng giữa lúc khôi phục phiên) thì đúng một bên xoay vòng
+ * token thành công; bên thua gửi kèm cookie CŨ nên nhận 401 "already rotated" dù cookie jar
+ * đã có token mới. Không thử lại thì tab thua bị đăng xuất oan — đúng thứ ADR-0007 nói cửa sổ
+ * 10 giây phải tránh.
+ */
+async function requestRefresh(): Promise<Response> {
+  const first = await send('POST', '/auth/refresh');
+  if (first.status !== 401) return first;
+  await delay(REFRESH_RETRY_DELAY_MS);
+  return send('POST', '/auth/refresh');
+}
+
+/**
  * Đổi refresh cookie lấy access token mới. Gọi đồng thời bao nhiêu lần cũng chỉ một request
  * /auth/refresh — quan trọng vì API xoay vòng refresh token (ADR-0007).
  * Trả null nếu phiên đã hết (chưa đăng nhập, cookie hết hạn hoặc bị thu hồi).
@@ -290,7 +317,7 @@ async function send(
 export function refreshAccessToken(): Promise<string | null> {
   if (refreshing) return refreshing;
   const generation = tokenGeneration;
-  const pending = send('POST', '/auth/refresh')
+  const pending = requestRefresh()
     .then(async (res) => {
       if (res.status === 401) return null;
       if (!res.ok) throw await toApiError(res);
@@ -339,16 +366,26 @@ async function sendWithRefresh(
   options?: SendOptions,
 ): Promise<Response> {
   const generation = tokenGeneration;
+  // Token dùng cho lần gửi đầu: 401 về muộn có thể chỉ vì request này mang token CŨ trong khi
+  // request khác đã refresh xong. Khi đó gửi lại bằng token mới, KHÔNG xoay vòng thêm lần nữa —
+  // mỗi lần xoay vòng thừa là một cơ hội mất Set-Cookie lúc trang điều hướng.
+  let sentToken = accessToken;
   let res = await send(method, path, body, options);
 
   // Access token hết hạn (15 phút): refresh một lần rồi thử lại đúng một lần.
   // Bỏ qua /auth/*: login sai mật khẩu cũng là 401, refresh ở đó sẽ thành vòng lặp.
-  if (res.status === 401 && !path.startsWith('/auth/') && generation === tokenGeneration) {
-    if ((await refreshAccessToken()) && generation === tokenGeneration) {
+  if (res.status === 401 && !path.startsWith('/auth/')) {
+    if (generation === tokenGeneration && accessToken && accessToken !== sentToken) {
+      sentToken = accessToken;
       res = await send(method, path, body, options);
     }
     if (res.status === 401 && generation === tokenGeneration) {
-      expireSession();
+      if ((await refreshAccessToken()) && generation === tokenGeneration) {
+        res = await send(method, path, body, options);
+      }
+      if (res.status === 401 && generation === tokenGeneration) {
+        expireSession();
+      }
     }
   }
   return res;

@@ -14,7 +14,9 @@ kênh của server và DM. Feature này là mẫu cho cách tổ chức một fe
 | Gốc ghép  | Gắn hook với component, chặn quyền, bố cục    | `message-pane/index.tsx`, `message-composer/index.tsx`                                         |
 
 Cache TanStack Query là nguồn sự thật duy nhất của danh sách tin: tin tạm (`temp-<nonce>`), tin từ API và
-tin từ socket đi qua cùng `upsertMessage` nên không lặp.
+tin từ socket đi qua cùng `upsertMessage` nên không lặp. Tin tạm mang DTO tệp đã upload để ảnh hiện trước
+khi POST xác nhận, và `upsertMessage`/`preserveLocalMessages` giữ URL sticker đang hiện khi server trả cùng
+sticker với mốc ký mới ([ADR-0087](../../../../../docs/adr/0087-do-muot-khung-chat.md)).
 
 ## Cái bên ngoài được dùng
 

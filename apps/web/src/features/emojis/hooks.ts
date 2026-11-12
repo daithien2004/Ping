@@ -6,7 +6,7 @@ import {
   type CustomEmojiListResponse,
   type ExpressionsUpdatedPayload,
 } from '@ping/shared';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { useEffect, useEffectEvent, useMemo } from 'react';
 import type { RealtimeSession } from '@/features/realtime/session';
 import { qk } from '@/lib/query-keys';
@@ -31,6 +31,18 @@ function useEmojisQuery(serverId: string | undefined) {
 
 export function useEmojis(serverId: string) {
   return useEmojisQuery(serverId);
+}
+
+/**
+ * Tải trước danh sách emoji khi ô soạn tin rảnh: mở picker, gõ `:ten:` hoặc render tin chứa
+ * emoji không phải chờ mạng. Lỗi bị nuốt (prefetch mặc định) — query thật sẽ báo khi cần.
+ */
+export function prefetchEmojis(queryClient: QueryClient, serverId: string): Promise<void> {
+  return queryClient.prefetchQuery({
+    queryKey: qk.emojis(serverId),
+    queryFn: () => listEmojis(serverId),
+    staleTime: EMOJI_STALE_TIME,
+  });
 }
 
 export function useCreateEmoji(serverId: string) {

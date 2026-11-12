@@ -47,6 +47,10 @@ export function ChangePasswordForm() {
     <div ref={containerRef}>
       <PingForm
         form={form}
+        // Tên form làm tiền tố id các ô: trang /settings cũ vẫn nằm trong DOM (<Activity>) khi mở
+        // modal, nếu không có name thì ô `password` trùng id với form đặt lại mật khẩu và label
+        // "Mật khẩu mới" gắn nhầm vào ô ẩn.
+        name="settingsChangePassword"
         layout="vertical"
         noValidate
         className="flex max-w-sm flex-col"

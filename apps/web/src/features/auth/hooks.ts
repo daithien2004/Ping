@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { setUnauthenticatedHandler } from '@/lib/api-client';
+import { clearSessionQueries } from '@/lib/query-client';
 import { qk } from '@/lib/query-keys';
 import {
   changePassword,
@@ -38,9 +39,10 @@ export function useMe() {
 export function useSessionExpiry() {
   const queryClient = useQueryClient();
   useEffect(() => {
+    // Chỉ đặt `me = null`; AuthGate xóa các query còn lại sau khi cây `(app)` đã unmount —
+    // removeQueries trên query đang có observer sẽ refetch bằng token vừa bị xóa.
     setUnauthenticatedHandler(() => {
       queryClient.setQueryData(qk.me, null);
-      queryClient.removeQueries({ predicate: (query) => query.queryKey[0] !== qk.me[0] });
     });
     return () => setUnauthenticatedHandler(undefined);
   }, [queryClient]);
@@ -50,7 +52,12 @@ export function useLogin() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: login,
-    onSuccess: (user) => queryClient.setQueryData(qk.me, user),
+    onSuccess: (user) => {
+      // Phiên mới không được kế thừa query/lỗi của phiên trước: request cũ có thể vẫn đang bay
+      // và kịp ghi lỗi 401 vào cache trong lúc màn đăng nhập mở.
+      clearSessionQueries(queryClient);
+      queryClient.setQueryData(qk.me, user);
+    },
   });
 }
 
@@ -58,7 +65,10 @@ export function useRegister() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: register,
-    onSuccess: (user) => queryClient.setQueryData(qk.me, user),
+    onSuccess: (user) => {
+      clearSessionQueries(queryClient);
+      queryClient.setQueryData(qk.me, user);
+    },
   });
 }
 
@@ -73,9 +83,9 @@ export function useLogout() {
       // (Không dùng queryClient.clear(): nó xóa luôn query `me`, AuthGate mất theo dõi và
       // không bao giờ biết đã đăng xuất — đã gặp khi kiểm tra trong trình duyệt.)
       queryClient.setQueryData(qk.me, null);
-      // Xóa mọi dữ liệu còn lại (server, tin nhắn...): người đăng nhập sau trên cùng trình
-      // duyệt không được thấy dữ liệu của người trước.
-      queryClient.removeQueries({ predicate: (query) => query.queryKey[0] !== qk.me[0] });
+      // Dữ liệu còn lại (server, tin nhắn...) do AuthGate xóa ngay sau khi nó unmount cây
+      // `(app)` — xóa tại đây, khi AppShell còn observer, sẽ refetch bằng token vừa bị xóa.
+      // `useLogin` cũng xóa trước khi đặt phiên mới, phòng request cũ về muộn.
     },
   });
 }

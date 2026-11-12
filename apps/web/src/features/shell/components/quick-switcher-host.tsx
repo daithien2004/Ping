@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useParams } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
 import { useTranslations } from 'use-intl';
 import type { QuickSwitcherItem } from '@/components/quick-switcher';
@@ -11,6 +11,7 @@ import { useDms } from '@/features/dms/hooks';
 import { dmPath } from '@/features/dms/navigation';
 import { useServers } from '@/features/servers/hooks';
 import { channelPath, serverPath } from '@/features/servers/navigation';
+import { serverIdFromPath } from '@/lib/channel-url';
 
 // Tải lười: chunk của modal chỉ được tải ở lần bấm Ctrl/Cmd+K đầu tiên (T6.10).
 const LazyQuickSwitcher = dynamic(
@@ -56,7 +57,8 @@ function QuickSwitcherData({
 }) {
   const { data: servers } = useServers();
   const { data: dms } = useDms();
-  const { serverId } = useParams<{ serverId?: string }>();
+  // ADR-0088: server đang mở đọc từ pathname (`/channels/:serverId/...` hoặc `/servers/:id/settings`).
+  const serverId = serverIdFromPath(usePathname());
   const t = useTranslations('quickSwitcher');
 
   const base: QuickSwitcherItem[] = [

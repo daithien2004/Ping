@@ -1,14 +1,11 @@
 'use client';
 
+import type { MessageReplyPreview } from '@ping/shared';
 import { X } from 'lucide-react';
 import { useTranslations } from 'use-intl';
+import { ReplySnippet } from '../reply-snippet';
 
-export interface ReplyTarget {
-  id: string;
-  authorName: string;
-  content: string;
-  deleted: boolean;
-}
+export type ReplyTarget = MessageReplyPreview;
 
 export function ReplyBar({ replyTo, onCancel }: { replyTo: ReplyTarget; onCancel: () => void }) {
   const t = useTranslations('messages');
@@ -20,7 +17,7 @@ export function ReplyBar({ replyTo, onCancel }: { replyTo: ReplyTarget; onCancel
       <div className="min-w-0 flex-1">
         <p className="font-medium">{t('replyingTo', { author: replyTo.authorName })}</p>
         <p className="truncate text-muted-foreground">
-          {replyTo.deleted ? t('replyDeleted') : replyTo.content}
+          <ReplySnippet replyTo={replyTo} />
         </p>
       </div>
       <button

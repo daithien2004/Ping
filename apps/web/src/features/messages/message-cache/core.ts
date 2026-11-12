@@ -1,13 +1,17 @@
 import type {
+  AttachmentDto,
   MessageAuthor,
   MessageDto,
   MessageReplyPreview,
+  MessageStickerPreview,
   MessageUpdatedPayload,
 } from '@ping/shared';
 import { tempIdOf } from './temp-id';
 import type { ClientMessage, ClientMessagePage, MessagesCache } from './types';
 
 const REPLY_PREVIEW_LENGTH = 120;
+/** URL hồ sơ còn hạn trên 1 ngày thì dùng tiếp — chừa biên cho lần tải kế tiếp. */
+const STICKER_URL_REUSE_MARGIN_SECONDS = 24 * 60 * 60;
 
 export function mapPages(
   cache: MessagesCache,
@@ -43,12 +47,84 @@ export function oldestFirst(cache: { pages: ClientMessagePage[] } | undefined): 
   return (cache?.pages.flatMap((page) => page.messages) ?? []).reverse();
 }
 
+function profileUrlExpires(url: string | null): number | null {
+  if (!url) return null;
+  const match = /[?&]expires=(\d+)/.exec(url);
+  return match ? Number(match[1]) : null;
+}
+
+function reusableUrl(before: string | null, after: string | null): string | null {
+  if (!before) return after;
+  const expires = profileUrlExpires(before);
+  return expires !== null && expires > Date.now() / 1000 + STICKER_URL_REUSE_MARGIN_SECONDS
+    ? before
+    : after;
+}
+
+/**
+ * Giữ URL sticker đang hiện khi server trả CÙNG sticker với mốc ký mới (echo socket, phản hồi
+ * POST, refetch). Đổi `src` dù cùng tệp vẫn khiến `<img>` tải lại và nháy; URL còn hạn trên
+ * 1 ngày thì dùng tiếp, gần hạn mới nhận URL mới. Khác sticker hoặc sticker đã xóa → bản mới.
+ */
+function keepStickerUrls(
+  before: MessageStickerPreview | null | undefined,
+  after: MessageStickerPreview | null | undefined,
+): MessageStickerPreview | null | undefined {
+  if (!before || !after || before.id !== after.id || before.deleted || after.deleted) return after;
+  const url = reusableUrl(before.url, after.url);
+  const previewUrl = reusableUrl(before.previewUrl, after.previewUrl);
+  return url === after.url && previewUrl === after.previewUrl
+    ? after
+    : { ...after, url, previewUrl };
+}
+
+function withStickerUrls(existing: ClientMessage, incoming: ClientMessage): ClientMessage {
+  if (!incoming.sticker) return incoming;
+  const sticker = keepStickerUrls(existing.sticker, incoming.sticker);
+  return sticker === incoming.sticker ? incoming : { ...incoming, sticker };
+}
+
+function stickerUrlsByMessage(messages: ClientMessage[]): Map<string, MessageStickerPreview> {
+  const map = new Map<string, MessageStickerPreview>();
+  for (const message of messages) {
+    if (!message.sticker) continue;
+    map.set(message.id, message.sticker);
+    if (message.nonce !== null) map.set(nonceKey(message), message.sticker);
+  }
+  return map;
+}
+
+/** Áp URL sticker cũ lên dữ liệu vừa fetch — chỉ tạo object mới khi thật sự có URL được giữ. */
+function carryStickerUrls(
+  previous: Map<string, MessageStickerPreview>,
+  cache: MessagesCache,
+): MessagesCache {
+  let changed = false;
+  const pages = cache.pages.map((page) => {
+    let pageChanged = false;
+    const messages = page.messages.map((row) => {
+      if (!row.sticker) return row;
+      const before = previous.get(row.id) ?? previous.get(nonceKey(row));
+      const sticker = keepStickerUrls(before, row.sticker);
+      if (sticker === row.sticker) return row;
+      pageChanged = true;
+      return { ...row, sticker };
+    });
+    if (!pageChanged) return page;
+    changed = true;
+    return { ...page, messages };
+  });
+  return changed ? { ...cache, pages } : cache;
+}
+
 export function replyPreviewOf(message: ClientMessage): MessageReplyPreview {
   return {
     id: message.id,
     authorName: message.author.displayName,
     content: message.content.slice(0, REPLY_PREVIEW_LENGTH),
     deleted: false,
+    kind: message.kind ?? 'text',
+    ...(message.attachments?.length ? { attachmentCount: message.attachments.length } : {}),
   };
 }
 
@@ -56,7 +132,7 @@ export function optimisticMessage(
   input: {
     content: string;
     nonce: string;
-    attachmentIds?: string[];
+    attachments?: AttachmentDto[];
     stickerId?: string;
     sticker?: MessageDto['sticker'];
     gif?: MessageDto['gif'];
@@ -67,7 +143,9 @@ export function optimisticMessage(
 ): ClientMessage {
   return {
     id: tempIdOf(input.nonce),
-    ...(input.attachmentIds?.length ? { pendingAttachmentIds: input.attachmentIds } : {}),
+    // Tệp đã upload xong (có DTO server) → render ngay trong tin tạm, không đợi POST trả về;
+    // ảnh dùng width/height để chừa đúng ô nên danh sách không nhảy khi ảnh tải xong.
+    ...(input.attachments?.length ? { attachments: input.attachments } : {}),
     ...(input.stickerId ? { kind: 'sticker' as const, sticker: input.sticker ?? null } : {}),
     ...(input.gif
       ? { kind: 'gif' as const, gif: input.gif, ...(input.gifId ? { gifId: input.gifId } : {}) }
@@ -111,7 +189,9 @@ export function upsertMessage(
       if (replaced) return [];
       replaced = true;
       return [
-        existing.editedAt && existing.editedAt > (message.editedAt ?? '') ? existing : message,
+        existing.editedAt && existing.editedAt > (message.editedAt ?? '')
+          ? existing
+          : withStickerUrls(existing, message),
       ];
     }),
   );
@@ -211,7 +291,8 @@ export function preserveLocalMessages(
       }
     : after;
   for (const id of before?.deletedIds ?? []) result = deleteMessage(result, id) ?? result;
-  for (const message of oldestFirst(before)) {
+  const previousMessages = oldestFirst(before);
+  for (const message of previousMessages) {
     if (
       message.status &&
       !deletedNonces.includes(nonceKey(message)) &&
@@ -220,6 +301,7 @@ export function preserveLocalMessages(
       result = upsertMessage(result, message) ?? result;
     }
   }
+  result = carryStickerUrls(stickerUrlsByMessage(previousMessages), result);
   return after.window === undefined && before?.window
     ? { ...result, window: before.window }
     : result;

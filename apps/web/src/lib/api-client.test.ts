@@ -85,6 +85,26 @@ describe('api-client', () => {
     await pending;
     expect(getAccessToken()).toBeNull();
   });
+  it('refresh nhận 401 do xoay vòng đồng thời → thử lại một lần bằng cookie mới (ADR-0007)', async () => {
+    const { refreshAccessToken, getAccessToken } = await load();
+    fetchMock
+      .mockResolvedValueOnce(json(401, { code: 'UNAUTHORIZED', message: 'already rotated' }))
+      .mockResolvedValueOnce(json(200, { accessToken: 'fresh' }));
+
+    await expect(refreshAccessToken()).resolves.toBe('fresh');
+    expect(getAccessToken()).toBe('fresh');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('refresh nhận 401 hai lần → coi như hết phiên, không thử lần ba', async () => {
+    const { refreshAccessToken, getAccessToken } = await load();
+    fetchMock.mockResolvedValue(json(401, { code: 'UNAUTHORIZED', message: 'invalid' }));
+
+    await expect(refreshAccessToken()).resolves.toBeNull();
+    expect(getAccessToken()).toBeNull();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it('gắn Bearer token và gửi kèm cookie (credentials: include)', async () => {
     const { api, setAccessToken } = await load();
     setAccessToken('tok-1');
@@ -122,6 +142,50 @@ describe('api-client', () => {
     expect(headerOf(0)).toBe('web');
     expect(headerOf(1)).toBe('web');
     expect(headerOf(2)).toBeNull();
+  });
+
+  it('refresh/logout dùng keepalive: Set-Cookie không mất khi trang đang điều hướng', async () => {
+    const { api, refreshAccessToken } = await load();
+    fetchMock.mockImplementation(() => json(200, { accessToken: 't' }));
+    await refreshAccessToken();
+    await api.post('/auth/logout');
+    await api.get('/users/me');
+
+    const keepaliveOf = (call: number) => fetchMock.mock.calls[call]![1].keepalive;
+    expect(keepaliveOf(0)).toBe(true);
+    expect(keepaliveOf(1)).toBe(true);
+    expect(keepaliveOf(2)).toBe(false);
+  });
+
+  it('401 về muộn sau khi request khác refresh xong → gửi lại bằng token mới, không xoay vòng thêm', async () => {
+    const { api, refreshAccessToken, setAccessToken } = await load();
+    setAccessToken('old');
+    let releaseFirst!: (value: Response) => void;
+    let firstRequest = true;
+    fetchMock.mockImplementation((url, init) => {
+      if (url.endsWith('/auth/refresh')) return json(200, { accessToken: 'new' });
+      if (authHeader(init) === 'Bearer old' && firstRequest) {
+        firstRequest = false;
+        return new Promise<Response>((resolve) => {
+          releaseFirst = resolve;
+        });
+      }
+      return json(200, { ok: true });
+    });
+
+    const pending = api.get('/users/me');
+    await flushMicrotasks();
+    // Request khác đã refresh xong trong lúc request này còn bay.
+    await refreshAccessToken();
+    releaseFirst(json(401, { code: 'UNAUTHORIZED', message: 'x' }));
+    await expect(pending).resolves.toEqual({ ok: true });
+
+    const calls = (suffix: string) =>
+      fetchMock.mock.calls.filter(([url]) => url === `${API}${suffix}`);
+    expect(calls('/auth/refresh')).toHaveLength(1);
+    const retried = calls('/users/me');
+    expect(retried).toHaveLength(2);
+    expect(authHeader(retried[1]![1])).toBe('Bearer new');
   });
 
   it('401 → refresh rồi thử lại request với token mới', async () => {

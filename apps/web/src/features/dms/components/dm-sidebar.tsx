@@ -1,13 +1,16 @@
 'use client';
 
+import { useQueryClient } from '@tanstack/react-query';
 import { MessageCircle } from 'lucide-react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { useTranslations } from 'use-intl';
 import { PingButton } from '@/components/ui/ping-button';
 import { PingSkeleton } from '@/components/ui/ping-skeleton';
+import { channelIdFromPath } from '@/lib/channel-url';
 import { useErrorMessage } from '@/lib/error-message';
 import { PingBadge } from '@/components/ui/ping-badge';
+import { prefetchMessages } from '@/features/messages/hooks/use-messages';
 import { UserAvatar } from '@/features/profile/components/user-avatar';
 import { useMobileNav } from '@/features/shell/store';
 import { sortedDms } from '../dm-cache';
@@ -19,11 +22,11 @@ import { dmPath } from '../navigation';
  * mỗi dòng kèm badge đỏ số tin chưa đọc (mọi tin DM đều mention-style). Dữ liệu cùng cache
  * `qk.dms` với rail nên badge tăng realtime qua `useDmEvents` mà không cần reload.
  *
- * Dùng `useParams()` được theo ADR-0020: đây là component layout (như ChannelSidebar), không
- * phải trang — trang lấy params từ props.
+ * channelId đọc từ URL công khai `/channels/@me/:channelId` (ADR-0088): đây là component layout
+ * (như ChannelSidebar), không phải trang — trang lấy params từ props.
  */
 export function DmSidebar() {
-  const { channelId } = useParams<{ channelId?: string }>();
+  const channelId = channelIdFromPath(usePathname()) ?? undefined;
   const { data: dms, isPending, isError, error, refetch, isFetching } = useDms();
   const mobileNavOpen = useMobileNav((state) => state.open);
   const t = useTranslations('dms');
@@ -48,7 +51,7 @@ export function DmSidebar() {
         <MessageCircle className="size-4 text-muted-foreground" aria-hidden />
         <h2 className="font-semibold">{t('title')}</h2>
       </header>
-      <nav aria-label={t('navLabel')} className="flex-1 overflow-y-auto p-2">
+      <nav aria-label={t('navLabel')} className="flex-1 overflow-y-auto p-2 pb-16">
         {isPending ? (
           <div role="status" aria-label={t('loading')} className="flex flex-col gap-2 p-1">
             {[0, 1, 2].map((index) => (
@@ -109,6 +112,8 @@ function DmRow({
   active: boolean;
 }) {
   const t = useTranslations('dms');
+  const queryClient = useQueryClient();
+  const prefetch = () => void prefetchMessages(queryClient, channelId);
   const label =
     unreadCount > 0 ? t('rowLabelUnread', { name, count: unreadCount }) : t('rowLabel', { name });
   return (
@@ -118,6 +123,9 @@ function DmRow({
         aria-label={label}
         aria-current={active ? 'page' : undefined}
         data-testid="dm-row"
+        onFocus={prefetch}
+        onMouseEnter={prefetch}
+        onPointerDown={prefetch}
         className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-sidebar-foreground transition-colors hover:bg-accent ${
           active ? 'bg-accent' : ''
         }`}

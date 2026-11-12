@@ -1,4 +1,4 @@
-export { useMessages } from './use-messages';
+export { messagesQueryOptions, prefetchMessages, useMessages } from './use-messages';
 export {
   createMessageActions,
   useDeleteMessage,

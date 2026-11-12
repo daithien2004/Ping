@@ -30,8 +30,9 @@ const EMPTY_QUERY: Promise<Record<string, string | string[] | undefined>> = Prom
  * #dev, key của MessagePane đổi, nháp + vị trí cuộn mất (đã gặp khi kiểm tra). `params` của page
  * luôn là params của chính trang đó. `searchParams` cũng lấy từ page vì lý do tương tự.
  *
- * Tin cần nhảy tới có hai nguồn: permalink `/…/messages/:messageId` (TG.5, ADR-0063 — page
- * truyền `focusId`) và `?m=<messageId>` cũ (chip trích dẫn AI, link đã chia sẻ trước TG.5).
+ * Tin cần nhảy tới có hai nguồn: permalink `/channels/:serverId/:channelId/:messageId` (TG.5,
+ * ADR-0063, URL ADR-0088 — page truyền `focusId`) và `?m=<messageId>` cũ (chip trích dẫn AI,
+ * link đã chia sẻ trước TG.5).
  */
 export function ChannelView({
   params,

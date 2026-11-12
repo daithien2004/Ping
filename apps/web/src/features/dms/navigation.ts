@@ -1,13 +1,14 @@
-/**
- * Route DM (TG.9): route channel của server `/servers/:serverId/channels/:channelId` bắt buộc
- * có `serverId` trong URL — DM không thuộc server nào (ADR-0070: `Channel.serverId` null) nên
- * dùng route riêng `/dms/:channelId` ít xâm phạm nhất: không đụng route/AbilityProvider của
- * server, pane tin nhắn (`MessagePane`) vẫn tái dùng nguyên trạng qua chế độ `dm`.
- */
-export const dmsPath = () => '/dms';
+import { ME_SEGMENT, channelUrl, messageUrl, ownerUrl } from '@/lib/channel-url';
 
-export const dmPath = (channelId: string) => `/dms/${channelId}`;
+/**
+ * URL công khai kiểu Discord (ADR-0088): `/channels/@me/:channelId` — `@me` thay serverId vì DM
+ * không thuộc server nào (ADR-0070). Route nội bộ vẫn là `/dms/:channelId` (next.config rewrite),
+ * nên layout DM và chế độ `dm` của `MessagePane` không phải đổi.
+ */
+export const dmsPath = () => ownerUrl(ME_SEGMENT);
+
+export const dmPath = (channelId: string) => channelUrl(ME_SEGMENT, channelId);
 
 /** Permalink của một tin trong DM (TG.5 — mở cửa sổ quanh tin đích). */
 export const dmMessagePath = (channelId: string, messageId: string) =>
-  `/dms/${channelId}/messages/${messageId}`;
+  messageUrl(ME_SEGMENT, channelId, messageId);

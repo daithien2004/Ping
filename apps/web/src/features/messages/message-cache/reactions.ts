@@ -1,12 +1,7 @@
 import type { MessageReactionDto } from '@ping/shared';
 import { patchMessage } from './core';
+import { sortReactions } from './reactions-sort';
 import type { MessagesCache } from './types';
-
-function sortReactions(reactions: MessageReactionDto[]): MessageReactionDto[] {
-  return [...reactions].sort(
-    (a, b) => b.count - a.count || (a.emoji < b.emoji ? -1 : a.emoji > b.emoji ? 1 : 0),
-  );
-}
 
 export function reactionsOf(
   cache: MessagesCache | undefined,

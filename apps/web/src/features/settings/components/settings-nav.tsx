@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import { useTranslations } from 'use-intl';
 
 /** Các mục cài đặt (TG.13) — /settings là mục Tài khoản, còn lại là route con. */
-const ITEMS = [
+export const SETTINGS_ITEMS = [
   { href: '/settings', key: 'account', icon: User },
   { href: '/settings/appearance', key: 'appearance', icon: Palette },
   { href: '/settings/language', key: 'language', icon: Languages },
@@ -28,7 +28,7 @@ export function SettingsNav() {
       data-slot="settings-nav"
       className="flex w-full shrink-0 gap-1 overflow-x-auto border-b border-border bg-sidebar p-2 md:w-settings-nav md:flex-col md:overflow-visible md:border-0 md:p-2.5"
     >
-      {ITEMS.map(({ href, key, icon: Icon }) => {
+      {SETTINGS_ITEMS.map(({ href, key, icon: Icon }) => {
         const active = key === 'account' ? pathname === '/settings' : pathname.startsWith(href);
         return (
           <Link

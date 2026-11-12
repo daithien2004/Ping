@@ -16,11 +16,16 @@ import { badgeTotal } from './notification-cache';
 export function useNotifyBadge(appName: string) {
   const queryClient = useQueryClient();
   useEffect(() => {
+    // Cache đổi rất thường xuyên (mỗi event realtime, mỗi lần ghi tin); title + canvas chỉ
+    // được đụng tới khi TỔNG thật sự đổi — vẽ lại favicon mỗi event là việc thừa trên main thread.
+    let lastTotal: number | null = null;
     const update = () => {
       const servers = queryClient.getQueryData<ServerUnreadDto[]>(qk.unreadAll) ?? [];
       const rows = servers.map((server) => server.channels);
       const dms = queryClient.getQueryData<DmListResponse>(qk.dms);
       const total = badgeTotal(rows, dms);
+      if (total === lastTotal) return;
+      lastTotal = total;
       document.title = total > 0 ? `(${total}) ${appName}` : appName;
       drawFaviconBadge(total);
     };

@@ -1,11 +1,11 @@
 import { expect, type Page, test } from '@playwright/test';
 import { paceLogin, pacedLogin } from './login-pace';
 
-// Tìm ra bằng test tay (2026-11-06): rời server sang /dms thì layout `servers/[serverId]` bị
-// <Activity> giữ ẩn, `useParams()` trong đó trả serverId = undefined và web gọi
-// GET /servers/undefined và /servers/undefined/channels (400). ADR-0020, bản sửa 2026-11-06.
-const channelUrl = () =>
-  `/servers/${process.env.E2E_SERVER_ID!}/channels/${process.env.E2E_CHANNEL_ID!}`;
+// Tìm ra bằng test tay (2026-11-06): rời server sang DM thì layout `servers/[serverId]` bị
+// <Activity> giữ ẩn và mã cũ đọc id bằng `useParams()` (trả undefined khi ẩn) → web gọi
+// GET /servers/undefined và /servers/undefined/channels (400). Bản sửa 2026-11-06 (ADR-0020);
+// nay id đọc từ pathname công khai (`lib/channel-url.ts`, ADR-0088) nên cũng phải không gọi bừa.
+const channelUrl = () => `/channels/${process.env.E2E_SERVER_ID!}/${process.env.E2E_CHANNEL_ID!}`;
 const composer = (page: Page) => page.locator('[data-testid="message-composer"]:visible');
 
 async function signIn(page: Page) {
@@ -27,18 +27,25 @@ test('rời server sang tin nhắn trực tiếp (và quay lại) không gọi A
   });
 
   await signIn(page);
+  // URL cũ vẫn vào đúng trang qua chuyển hướng 308 (ADR-0088).
+  await page.goto(`/servers/${process.env.E2E_SERVER_ID}/channels/${process.env.E2E_CHANNEL_ID}`);
+  await expect(page).toHaveURL(
+    new RegExp(`/channels/${process.env.E2E_SERVER_ID}/${process.env.E2E_CHANNEL_ID}$`),
+  );
+  await page.goto('/dms');
+  await expect(page).toHaveURL(/\/channels\/@me$/);
   await page.goto(channelUrl());
   await expect(composer(page)).toBeVisible();
 
-  // Điều hướng phía client (không reload): layout của server vẫn được giữ ẩn khi sang /dms.
+  // Điều hướng phía client (không reload): layout của server vẫn được giữ ẩn khi sang DM.
   await page.getByTestId('dm-rail').click();
-  await expect(page).toHaveURL(/\/dms$/);
+  await expect(page).toHaveURL(/\/channels\/@me$/);
   await expect(page.getByText('Tin nhắn trực tiếp').first()).toBeVisible();
 
   await page.getByRole('link', { name: /^E2E / }).first().click();
-  await expect(page).toHaveURL(/\/servers\//);
+  await expect(page).toHaveURL(/\/channels\//);
   await page.getByTestId('dm-rail').click();
-  await expect(page).toHaveURL(/\/dms$/);
+  await expect(page).toHaveURL(/\/channels\/@me$/);
   // Cho các query lỗi (nếu có) kịp phát request trước khi kết luận.
   await page.waitForTimeout(1500);
 
@@ -79,16 +86,16 @@ test.fixme('chuyển sang server khác khi trang gốc server cũ vừa nhận k
         await delay(1_500);
         await route.continue();
       });
-      await page.route(new RegExp(`localhost:3000/servers/${serverB.id}`), async (route) => {
+      await page.route(new RegExp(`localhost:3000/channels/${serverB.id}`), async (route) => {
         await delay(3_000);
         await route.continue();
       });
-      await page.goto(`/servers/${serverA}`);
+      await page.goto(`/channels/${serverA}`);
       await page.getByRole('link', { name: serverB.name }).click();
 
       // Chờ quá cả hai độ trễ: URL phải kết thúc ở B, không bị kéo về kênh của A.
       await page.waitForTimeout(6_000);
-      await expect(page).toHaveURL(new RegExp(`/servers/${serverB.id}`));
+      await expect(page).toHaveURL(new RegExp(`/channels/${serverB.id}`));
     } finally {
       await context.request.delete(`${API}/servers/${serverB.id}`, { headers });
     }

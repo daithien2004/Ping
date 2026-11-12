@@ -7,6 +7,7 @@ const EmojiPicker = dynamic(
   { ssr: false },
 );
 
+/** Nội dung popover emoji của ô soạn tin (bề mặt do popover cung cấp). */
 export function EmojiPanel({
   serverId,
   onInsert,
@@ -14,9 +15,5 @@ export function EmojiPanel({
   serverId?: string;
   onInsert: (text: string) => void;
 }) {
-  return (
-    <div className="mb-2 flex justify-start">
-      <EmojiPicker serverId={serverId} onPick={onInsert} onPickCustom={onInsert} />
-    </div>
-  );
+  return <EmojiPicker serverId={serverId} onPick={onInsert} onPickCustom={onInsert} />;
 }

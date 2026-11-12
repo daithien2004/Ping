@@ -75,6 +75,9 @@ export function ResetPasswordForm() {
   return (
     <PingForm
       form={form}
+      // Tiền tố id các ô: form này có thể còn trong DOM (<Activity>) khi mở form khác cũng có ô
+      // `password`, tránh trùng id khiến label trỏ nhầm ô.
+      name="resetPassword"
       layout="vertical"
       noValidate
       className="flex w-full max-w-sm flex-col"

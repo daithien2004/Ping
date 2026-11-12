@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import { useFormatter, useTranslations } from 'use-intl';
 import type { ClientMessage } from '../../message-cache';
 import { UserAvatar } from '@/features/profile/components/user-avatar';
@@ -57,6 +57,7 @@ export const MessageItem = memo(function MessageItem({
     hour: '2-digit',
     minute: '2-digit',
   });
+  const [overlayOpen, setOverlayOpen] = useState(false);
   const actions = (
     <MessageActions
       message={message}
@@ -64,6 +65,7 @@ export const MessageItem = memo(function MessageItem({
       permalink={permalink}
       onAction={handlers.onAction}
       onReply={handlers.onReply}
+      onOverlayOpenChange={setOverlayOpen}
     />
   );
   return (
@@ -74,9 +76,21 @@ export const MessageItem = memo(function MessageItem({
         data-message-id={message.id}
         data-highlighted={highlighted ? 'true' : undefined}
         data-mine={mine ? 'true' : undefined}
-        className={`group relative px-4 pb-(--ping-message-py) leading-(--ping-message-leading) transition-colors hover:bg-accent/50 ${grouped ? 'pt-0.5' : 'pt-(--ping-message-gap)'} ${message.status === 'sending' ? 'opacity-60' : ''} ${highlighted ? 'bg-accent ring-1 ring-ring/40' : ''}`}
+        className={`group relative px-4 pb-(--ping-message-py) leading-(--ping-message-leading) ${grouped ? 'pt-0.5' : 'pt-(--ping-message-gap)'} ${highlighted ? 'bg-accent ring-1 ring-ring/40' : ''}`}
         aria-busy={message.status === 'sending' || undefined}
       >
+        {/* Cụm thao tác kiểu Discord: nổi ở góc trên-phải, chỉ hiện khi hover/focus; không còn nút icon dưới tin.
+            Khi ẩn thì tắt pointer-events — thanh nhô lên đè tin phía trên sẽ không "cướp" hover của tin đó.
+            `focus-visible` (không phải `focus-within`) để click chuột không ghim thanh của tin cũ khi
+            đang hover tin khác; overlay mở thì giữ thanh hiện bằng `data-open` như Discord. */}
+        {!message.status && (
+          <div
+            data-open={overlayOpen || undefined}
+            className="pointer-events-none absolute -top-2.5 right-3 z-10 flex items-center gap-0.5 rounded-md border border-border bg-card p-0.5 opacity-0 shadow-panel transition-opacity group-has-[:focus-visible]:pointer-events-auto group-has-[:focus-visible]:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 data-[open]:pointer-events-auto data-[open]:opacity-100"
+          >
+            {actions}
+          </div>
+        )}
         <div className="flex gap-4">
           <div className="w-10 shrink-0">
             {!grouped && (
@@ -89,17 +103,12 @@ export const MessageItem = memo(function MessageItem({
           </div>
           <div data-slot="message-body" className="min-w-0 flex-1">
             {grouped ? (
-              <>
-                <span className="sr-only">
-                  {t('messages.groupedContext', {
-                    author: message.author.displayName,
-                    time: clock,
-                  })}
-                </span>
-                <div className="absolute -top-3 right-4 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
-                  {actions}
-                </div>
-              </>
+              <span className="sr-only">
+                {t('messages.groupedContext', {
+                  author: message.author.displayName,
+                  time: clock,
+                })}
+              </span>
             ) : (
               <header className="flex items-baseline gap-2">
                 <span data-slot="author" className="font-medium">
@@ -117,7 +126,6 @@ export const MessageItem = memo(function MessageItem({
                 {message.pinnedAt && (
                   <PinBadge className="size-3 shrink-0 self-center text-muted-foreground" />
                 )}
-                {actions}
               </header>
             )}
             {message.replyTo && (

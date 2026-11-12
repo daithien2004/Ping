@@ -1,10 +1,18 @@
-import type { GifPayload, StickerDto } from '@ping/shared';
+import type { AttachmentDto, GifPayload, StickerDto } from '@ping/shared';
 import { describe, expect, it } from 'vitest';
 import { gifMessage, stickerMessage, textMessage, toSendVariables } from './outgoing-message';
 
 const nonce = '01900000-0000-7000-8000-000000000001';
 const file = '01900000-0000-7000-8000-000000000002';
 const reply = '01900000-0000-7000-8000-000000000003';
+const attachment: AttachmentDto = {
+  id: file,
+  filename: 'a.png',
+  mime: 'image/png',
+  sizeBytes: 10,
+  width: 2,
+  height: 3,
+};
 
 describe('textMessage', () => {
   it('chỉ toàn khoảng trắng và không có tệp thì không gửi', () => {
@@ -13,8 +21,12 @@ describe('textMessage', () => {
   it('cắt khoảng trắng hai đầu', () => {
     expect(textMessage('  chào  ', [])).toEqual({ kind: 'text', content: 'chào' });
   });
-  it('chỉ có tệp vẫn gửi được, nội dung rỗng', () => {
-    expect(textMessage('', [file])).toEqual({ kind: 'text', content: '', attachmentIds: [file] });
+  it('chỉ có tệp vẫn gửi được, mang DTO để tin tạm hiện ảnh ngay', () => {
+    expect(textMessage('', [attachment])).toEqual({
+      kind: 'text',
+      content: '',
+      attachments: [attachment],
+    });
   });
   it('mang theo reply khi có', () => {
     expect(textMessage('hi', [], reply)).toEqual({ kind: 'text', content: 'hi', replyToId: reply });
@@ -46,10 +58,13 @@ describe('toSendVariables', () => {
     });
     expect(
       toSendVariables(
-        { kind: 'text', content: '', attachmentIds: [file], replyToId: reply },
+        { kind: 'text', content: '', attachments: [attachment], replyToId: reply },
         nonce,
       ),
-    ).toEqual({ input: { content: '', nonce, replyToId: reply, attachmentIds: [file] } });
+    ).toEqual({
+      input: { content: '', nonce, replyToId: reply, attachmentIds: [file] },
+      preview: { attachments: [attachment] },
+    });
   });
   it('sticker: nội dung rỗng, kèm stickerId; preview tách riêng khỏi dữ liệu gửi API', () => {
     const sticker = {

@@ -234,6 +234,77 @@ describe('core', () => {
   });
 });
 
+describe('URL sticker ổn định khi merge/echo', () => {
+  const now = Math.floor(Date.now() / 1000);
+  const signed = (signature: string, expires = now + 30 * 24 * 60 * 60) =>
+    `/api/v1/attachments/s1/file?expires=${expires}&signature=${signature}`;
+  const stickerOf = (
+    url: string,
+    previewUrl: string,
+    id = 's1',
+  ): import('@ping/shared').MessageStickerPreview => ({
+    id,
+    name: 'x',
+    deleted: false,
+    url,
+    previewUrl,
+    width: 64,
+    height: 64,
+  });
+  const stickerRow = (sticker: ReturnType<typeof stickerOf>) => ({
+    ...msg('m1', null, ''),
+    kind: 'sticker' as const,
+    sticker,
+  });
+
+  it('echo/POST cùng sticker: giữ URL optimistic đang hiện dù mốc ký mới', () => {
+    const local = stickerOf(signed('a'), signed('pa'));
+    const pending = optimisticMessage(
+      { content: '', nonce: 'n1', stickerId: 's1', sticker: local },
+      author,
+    );
+    const confirmed = {
+      ...msg('m9', 'n1', ''),
+      kind: 'sticker' as const,
+      sticker: stickerOf(signed('b'), signed('pb'), 's1'),
+    };
+    const row = upsertMessage(cache([pending]), confirmed)!.pages[0]!.messages[0]!;
+    expect(row.sticker?.url).toBe(local.url);
+    expect(row.sticker?.previewUrl).toBe(local.previewUrl);
+    expect(row.sticker?.width).toBe(64);
+  });
+
+  it('URL cũ gần hạn (dưới 1 ngày) thì nhận URL mới', () => {
+    const before = cache([
+      stickerRow(stickerOf(signed('a', now + 3600), signed('pa', now + 3600))),
+    ]);
+    const fresh = stickerRow(stickerOf(signed('b'), signed('pb')));
+    const next = upsertMessage(before, fresh)!;
+    expect(next.pages[0]?.messages[0]?.sticker?.url).toBe(fresh.sticker.url);
+  });
+
+  it('refetch giữ URL sticker đang hiện thay vì đổi src', () => {
+    const shown = stickerOf(signed('a'), signed('pa'));
+    const refetched = stickerRow(stickerOf(signed('b'), signed('pb')));
+    const next = preserveLocalMessages(cache([stickerRow(shown)]), cache([refetched]));
+    expect(next.pages[0]?.messages[0]?.sticker?.url).toBe(shown.url);
+    expect(next.pages[0]?.messages[0]?.sticker?.previewUrl).toBe(shown.previewUrl);
+  });
+
+  it('sticker khác id thì dùng bản mới; URL không đổi thì giữ nguyên tham chiếu', () => {
+    const other = stickerRow(stickerOf(signed('b'), signed('pb'), 's2'));
+    const merged = preserveLocalMessages(
+      cache([stickerRow(stickerOf(signed('a'), signed('pa')))]),
+      cache([other]),
+    );
+    expect(merged.pages[0]?.messages[0]?.sticker?.id).toBe('s2');
+
+    const same = stickerRow(stickerOf(signed('a'), signed('pa')));
+    const unchanged = preserveLocalMessages(cache([same]), cache([same]));
+    expect(unchanged.pages[0]?.messages[0]).toBe(same);
+  });
+});
+
 describe('replyPreviewOf', () => {
   it('lấy id, tên tác giả và nội dung', () => {
     expect(replyPreviewOf(msg('m1', null, 'chào'))).toEqual({
@@ -241,6 +312,7 @@ describe('replyPreviewOf', () => {
       authorName: 'A',
       content: 'chào',
       deleted: false,
+      kind: 'text',
     });
   });
   it('cắt nội dung ở 120 ký tự', () => {

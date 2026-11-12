@@ -4,7 +4,14 @@ import { ApiError } from '@/lib/api-client';
 import { ErrorCodes, type MessageDto } from '@ping/shared';
 import { qk } from '@/lib/query-keys';
 import { createMessageActions } from './message-actions';
-import { applyReaction, deleteMessage, updateMessage, type MessagesCache } from '../message-cache';
+import {
+  applyReaction,
+  clearReactionIntents,
+  deleteMessage,
+  noteReactionEvent,
+  updateMessage,
+  type MessagesCache,
+} from '../message-cache';
 
 const requests = vi.hoisted(() => ({
   edit: vi.fn(),
@@ -36,6 +43,7 @@ const key = qk.messages('c1');
 let client: QueryClient;
 beforeEach(() => {
   vi.resetAllMocks();
+  clearReactionIntents();
   client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   client.setQueryData<MessagesCache>(key, {
     pages: [{ messages: [message], hasMore: false }],
@@ -172,6 +180,7 @@ describe('reaction actions (TG.2)', () => {
 
   it('reconciles a rejected toggle when a concurrent event has replaced its count', async () => {
     requests.addReaction.mockImplementation(async () => {
+      noteReactionEvent('m1', '👍');
       client.setQueryData<MessagesCache>(key, (old) =>
         applyReaction(old, 'm1', { emoji: '👍', count: 2 }),
       );
@@ -189,6 +198,7 @@ describe('reaction actions (TG.2)', () => {
 
   it('does not overwrite a newer realtime count with a delayed HTTP summary', async () => {
     requests.addReaction.mockImplementation(async () => {
+      noteReactionEvent('m1', '👍');
       client.setQueryData<MessagesCache>(key, (old) =>
         applyReaction(old, 'm1', { emoji: '👍', count: 2 }),
       );
@@ -200,6 +210,33 @@ describe('reaction actions (TG.2)', () => {
       active: true,
     });
     expect(current()?.[0]?.reactions).toEqual([{ emoji: '👍', count: 2, me: true }]);
-    expect(client.getQueryState(key)?.isInvalidated).toBe(true);
+    expect(client.getQueryState(key)?.isInvalidated).toBe(false);
+  });
+
+  it('adopts only the toggled emoji so other groups keep their newer counts', async () => {
+    client.setQueryData<MessagesCache>(key, {
+      pages: [
+        {
+          messages: [{ ...message, reactions: [{ emoji: '🔥', count: 5, me: false }] }],
+          hasMore: false,
+        },
+      ],
+      pageParams: [undefined],
+    });
+    requests.addReaction.mockResolvedValue(
+      summary([
+        { emoji: '👍', count: 3, me: true },
+        { emoji: '🔥', count: 1, me: false },
+      ]),
+    );
+    await createMessageActions(client, 's1', 'c1').react({
+      messageId: 'm1',
+      emoji: '👍',
+      active: true,
+    });
+    expect(current()?.[0]?.reactions).toEqual([
+      { emoji: '🔥', count: 5, me: false },
+      { emoji: '👍', count: 3, me: true },
+    ]);
   });
 });

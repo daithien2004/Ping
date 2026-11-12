@@ -1,6 +1,7 @@
 'use client';
 
 import type {
+  AttachmentDto,
   CreateMessageInput,
   MessageAuthor,
   MessageGifPreview,
@@ -21,7 +22,11 @@ import {
 
 export interface SendMessageVariables {
   input: CreateMessageInput;
-  preview?: { sticker?: MessageStickerPreview | null; gif?: MessageGifPreview | null };
+  preview?: {
+    sticker?: MessageStickerPreview | null;
+    gif?: MessageGifPreview | null;
+    attachments?: AttachmentDto[];
+  };
 }
 
 /**
@@ -36,7 +41,7 @@ export function addOptimisticMessage(
   { input, preview }: SendMessageVariables,
 ) {
   const key = qk.messages(channelId);
-  const { gif, ...rest } = input;
+  const { gif } = input;
   const target = input.replyToId
     ? oldestFirst(queryClient.getQueryData<MessagesCache>(key)).find(
         (message) => message.id === input.replyToId,
@@ -47,8 +52,12 @@ export function addOptimisticMessage(
       old,
       optimisticMessage(
         {
-          ...rest,
-          ...(input.stickerId ? { sticker: preview?.sticker ?? null } : {}),
+          content: input.content,
+          nonce: input.nonce,
+          attachments: preview?.attachments,
+          ...(input.stickerId
+            ? { stickerId: input.stickerId, sticker: preview?.sticker ?? null }
+            : {}),
           ...(gif ? { gif: preview?.gif ?? null, gifId: gif.id } : {}),
         },
         author,

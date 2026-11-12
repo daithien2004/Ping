@@ -1,12 +1,17 @@
 'use client';
 
 import { Limits } from '@ping/shared';
-import { useEffect, useState, type KeyboardEvent, type RefObject } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent, type RefObject } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'use-intl';
 import { Plus } from 'lucide-react';
 import { PingTextArea, type PingTextAreaRef } from '@/components/ui/ping-textarea';
 import { useRealtime } from '@/features/realtime/context';
 import { useServerAbility } from '@/features/permissions/context';
+import { preloadEmojiPicker } from '@/features/emoji/preload';
+import { prefetchEmojis } from '@/features/emojis/hooks';
+import { preloadStickerPicker } from '@/features/stickers/preload';
+import { prefetchStickers } from '@/features/stickers/hooks';
 import { isDmScope, serverIdOf, type ChannelScope } from '../../channel-scope';
 import { AttachmentTray } from './attachment-tray';
 import { ComposerActions, type Picker } from './composer-actions';
@@ -32,6 +37,7 @@ export function MessageComposer({
   onCancelReply,
   onSend,
   textareaRef,
+  focusRequest = 0,
 }: {
   scope: ChannelScope;
   channelId: string;
@@ -40,16 +46,16 @@ export function MessageComposer({
   onCancelReply: () => void;
   onSend: (message: OutgoingMessage) => void;
   textareaRef?: RefObject<PingTextAreaRef | null>;
+  focusRequest?: number;
 }) {
   const realtime = useRealtime();
+  const queryClient = useQueryClient();
   const { ability, ready } = useServerAbility();
   const canSend = ability.can('create', 'Message');
   const interactive = ready && canSend;
 
   const [draft, setDraft] = useState('');
   const [picker, setPicker] = useState<Picker>(null);
-  const togglePicker = (next: Exclude<Picker, null>) =>
-    setPicker((current) => (current === next ? null : next));
   const serverId = serverIdOf(scope) ?? undefined;
   const autocomplete = useEmojiAutocomplete(draft, setDraft, serverId);
   const attachments = useAttachmentInput(channelId, interactive);
@@ -64,16 +70,48 @@ export function MessageComposer({
   const nearLimit = draft.length >= NEAR_LIMIT;
 
   const replyToId = replyTo?.id;
+  const handledReplyFocus = useRef<string | undefined>(undefined);
+  const handledFocusRequest = useRef(focusRequest);
   useEffect(() => {
-    if (replyToId) textareaRef?.current?.focus();
-  }, [replyToId, textareaRef]);
+    if (!replyToId) {
+      handledReplyFocus.current = undefined;
+      return;
+    }
+    // Ô soạn có thể còn khóa trong lúc quyền đang refetch; chờ tới khi mở rồi mới focus.
+    if (!interactive || handledReplyFocus.current === replyToId) return;
+    handledReplyFocus.current = replyToId;
+    textareaRef?.current?.focus();
+  }, [replyToId, interactive, textareaRef]);
+
+  useEffect(() => {
+    if (focusRequest === handledFocusRequest.current || !interactive) return;
+    handledFocusRequest.current = focusRequest;
+    textareaRef?.current?.focus();
+  }, [focusRequest, interactive, textareaRef]);
+
+  // Hâm nóng chunk + dữ liệu picker lúc app rảnh — bấm nút lần đầu không phải chờ tải/chờ mạng.
+  useEffect(() => {
+    const warm = () => {
+      void preloadEmojiPicker();
+      if (serverId) void prefetchEmojis(queryClient, serverId);
+      if (isDm) return;
+      void preloadStickerPicker();
+      if (serverId) void prefetchStickers(queryClient, serverId);
+    };
+    if (typeof window.requestIdleCallback === 'function') {
+      const handle = window.requestIdleCallback(warm, { timeout: 2000 });
+      return () => window.cancelIdleCallback(handle);
+    }
+    const timer = window.setTimeout(warm, 1000);
+    return () => window.clearTimeout(timer);
+  }, [isDm, serverId, queryClient]);
 
   const insertAtCursor = useInsertAtCursor(textareaRef, draft, setDraft);
-  const hasContent = draft.trim().length > 0 || uploads.ids.length > 0;
+  const hasContent = draft.trim().length > 0 || uploads.attachments.length > 0;
 
   function submit() {
     if (!interactive || uploads.busy) return;
-    const message = textMessage(draft, uploads.ids, replyToId);
+    const message = textMessage(draft, uploads.attachments, replyToId);
     if (!message) return;
     onSend(message);
     uploads.sent();
@@ -93,7 +131,7 @@ export function MessageComposer({
 
   return (
     <div
-      className="shrink-0 px-2 pb-2"
+      className="shrink-0 px-4 pb-2"
       role="group"
       aria-label={label}
       onPaste={attachments.onPaste}
@@ -108,28 +146,6 @@ export function MessageComposer({
           />
           <AttachmentTray files={uploads.files} onRemove={uploads.remove} />
           {replyTo && <ReplyBar replyTo={replyTo} onCancel={onCancelReply} />}
-          {picker === 'emoji' && (
-            <EmojiPanel
-              serverId={serverId}
-              onInsert={(text) => {
-                insertAtCursor(text);
-                setPicker(null);
-              }}
-            />
-          )}
-          {scope.kind === 'server' && picker === 'sticker' && (
-            <StickerPanel
-              serverId={scope.serverId}
-              onSticker={(sticker) => {
-                setPicker(null);
-                onSend(stickerMessage(sticker, replyToId));
-              }}
-              onGif={(gif) => {
-                setPicker(null);
-                onSend(gifMessage(gif, replyToId));
-              }}
-            />
-          )}
           {autocomplete.open && (
             <EmojiSuggestionList
               suggestions={autocomplete.suggestions}
@@ -139,7 +155,7 @@ export function MessageComposer({
           )}
           <div
             data-slot="composer"
-            className="flex items-end gap-1 rounded-md border border-border bg-card p-2.5 transition-colors focus-within:border-primary focus-within:ring-2 focus-within:ring-ring"
+            className="flex items-end gap-1.5 rounded-lg bg-muted px-2 py-1.5"
           >
             <ComposerIconButton
               variant="bordered"
@@ -147,11 +163,14 @@ export function MessageComposer({
               disabled={attachments.disabled}
               aria-label={ta('choose')}
             >
-              <Plus className="size-4" />
+              <Plus className="size-[18px]" />
             </ComposerIconButton>
             <PingTextArea
               ref={textareaRef}
               variant="borderless"
+              className="min-h-8 flex-1 min-w-0"
+              // Chữ cân giữa hàng 32 px: 22 px dòng + 5 px đệm trên/dưới.
+              style={{ paddingBlock: 5 }}
               disabled={!interactive}
               value={draft}
               onChange={(event) => {
@@ -170,7 +189,31 @@ export function MessageComposer({
             />
             <ComposerActions
               picker={picker}
-              onTogglePicker={togglePicker}
+              onPickerChange={setPicker}
+              emojiPicker={() => (
+                <EmojiPanel
+                  serverId={serverId}
+                  onInsert={(text) => {
+                    insertAtCursor(text);
+                    setPicker(null);
+                  }}
+                />
+              )}
+              stickerPicker={() =>
+                scope.kind === 'server' ? (
+                  <StickerPanel
+                    serverId={scope.serverId}
+                    onSticker={(sticker) => {
+                      setPicker(null);
+                      onSend(stickerMessage(sticker, replyToId));
+                    }}
+                    onGif={(gif) => {
+                      setPicker(null);
+                      onSend(gifMessage(gif, replyToId));
+                    }}
+                  />
+                ) : null
+              }
               showSticker={!isDm}
               showSend={hasContent}
               sendDisabled={!interactive || uploads.busy}

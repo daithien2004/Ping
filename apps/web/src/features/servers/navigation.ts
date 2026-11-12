@@ -1,11 +1,13 @@
-export const serverPath = (serverId: string) => `/servers/${serverId}`;
+import { channelUrl, messageUrl, ownerUrl } from '@/lib/channel-url';
 
-export const channelPath = (serverId: string, channelId: string) =>
-  `/servers/${serverId}/channels/${channelId}`;
+/** URL công khai kiểu Discord `/channels/:serverId` (ADR-0088). */
+export const serverPath = (serverId: string) => ownerUrl(serverId);
 
-/** TG.5: permalink của một tin — mở channel ở cửa sổ quanh tin đó (ADR-0063). */
+export const channelPath = (serverId: string, channelId: string) => channelUrl(serverId, channelId);
+
+/** TG.5: permalink của một tin — mở channel ở cửa sổ quanh tin đó (ADR-0063, URL ADR-0088). */
 export const messagePath = (serverId: string, channelId: string, messageId: string) =>
-  `${channelPath(serverId, channelId)}/messages/${messageId}`;
+  messageUrl(serverId, channelId, messageId);
 
 /** Trang chủ: vào server đầu tiên nếu có; null = chưa có server nào (hiện màn hình trống). */
 export function homePath(servers: readonly { id: string }[]): string | null {

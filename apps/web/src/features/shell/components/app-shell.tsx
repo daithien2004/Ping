@@ -10,7 +10,9 @@ import { RailSkeleton } from '@/features/servers/components/rail-skeleton';
 import { PingIconButton } from '@/components/ui/ping-icon-button';
 import { ConnectionBanner } from '@/features/realtime/components/connection-banner';
 import { VerifyEmailBanner } from '@/features/auth/components/verify-email-banner';
+import { UserCard } from '@/features/profile/components/user-card';
 import { ServerRail } from '@/features/servers/components/server-rail';
+import { SettingsModal } from '@/features/settings/components/settings-modal';
 import { useMobileNav } from '../store';
 import { QuickSwitcherHost } from './quick-switcher-host';
 
@@ -27,6 +29,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   const close = useMobileNav((state) => state.close);
   const pathname = usePathname();
   const t = useTranslations('common');
+  // Trang cài đặt cá nhân dùng cột nav riêng 232 px, nên panel người dùng bám theo cột đó
+  // thay vì rộng 303 px của sidebar kênh/DM.
+  const onSettings = pathname === '/settings' || pathname.startsWith('/settings/');
 
   useEffect(() => {
     close();
@@ -89,6 +94,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       <ConnectionBanner />
       <VerifyEmailBanner />
       <QuickSwitcherHost />
+      {/* Cài đặt cá nhân: một modal dùng chung mở từ panel người dùng, URL không đổi. */}
+      <SettingsModal />
       <header className="flex h-12 shrink-0 items-center gap-2 border-b bg-background px-2 md:hidden">
         <PingIconButton
           id={TOGGLE_ID}
@@ -128,6 +135,18 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
         <div className="flex min-w-0 flex-1">
           <Suspense fallback={<Loading />}>{children}</Suspense>
+        </div>
+        {/* Panel người dùng nổi trên đáy cột trái, dùng chung cho mọi màn — không nằm trong
+            sidebar kênh/DM. `data-mobile-nav` để focus-trap của drawer phủ tới khi mở. */}
+        <div
+          data-mobile-nav
+          className={cn(
+            'absolute bottom-0 left-18 z-20 max-md:z-30',
+            onSettings ? 'w-settings-nav' : 'w-sidebar',
+            open ? 'block' : 'hidden md:block',
+          )}
+        >
+          <UserCard />
         </div>
       </div>
     </div>

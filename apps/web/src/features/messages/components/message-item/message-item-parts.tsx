@@ -1,7 +1,8 @@
+import type { MessageReplyPreview } from '@ping/shared';
 import { Pin } from 'lucide-react';
 import { useFormatter, useTranslations } from 'use-intl';
 import { useServerAbility } from '@/features/permissions/context';
-import type { ClientMessage } from '../../message-cache';
+import { ReplySnippet } from '../reply-snippet';
 
 export function DateDivider({ createdAt }: { createdAt: string }) {
   const format = useFormatter();
@@ -33,7 +34,7 @@ export function ReplyPreview({
   replyTo,
   onJumpTo,
 }: {
-  replyTo: NonNullable<ClientMessage['replyTo']>;
+  replyTo: MessageReplyPreview;
   onJumpTo: (messageId: string) => void;
 }) {
   const t = useTranslations('messages');
@@ -46,7 +47,9 @@ export function ReplyPreview({
       className="mb-1 flex max-w-full items-center gap-1.5 rounded border-l-2 border-muted-foreground/50 bg-muted/50 py-0.5 pl-2 pr-2 text-left text-xs text-muted-foreground transition-colors hover:bg-muted"
     >
       <span className="shrink-0 font-medium text-foreground/80">{replyTo.authorName}</span>
-      <span className="truncate">{replyTo.deleted ? t('replyDeleted') : replyTo.content}</span>
+      <span className="truncate">
+        <ReplySnippet replyTo={replyTo} />
+      </span>
     </button>
   );
 }
