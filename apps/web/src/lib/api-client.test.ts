@@ -96,6 +96,17 @@ describe('api-client', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it('refresh 401 vì không có cookie thì không thử lần hai (không đốt bucket authSession)', async () => {
+    const { refreshAccessToken, getAccessToken } = await load();
+    fetchMock.mockResolvedValue(
+      json(401, { code: 'UNAUTHORIZED', message: 'Missing refresh token' }),
+    );
+
+    await expect(refreshAccessToken()).resolves.toBeNull();
+    expect(getAccessToken()).toBeNull();
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
   it('refresh nhận 401 hai lần → coi như hết phiên, không thử lần ba', async () => {
     const { refreshAccessToken, getAccessToken } = await load();
     fetchMock.mockResolvedValue(json(401, { code: 'UNAUTHORIZED', message: 'invalid' }));

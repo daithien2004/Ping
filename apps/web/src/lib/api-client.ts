@@ -336,17 +336,35 @@ async function send(
 const REFRESH_RETRY_DELAY_MS = 200;
 
 /**
- * Gọi /auth/refresh, thử lại MỘT lần khi gặp 401. ADR-0007: hai request refresh đồng thời
- * (hai tab, hoặc trang cũ bị điều hướng giữa lúc khôi phục phiên) thì đúng một bên xoay vòng
- * token thành công; bên thua gửi kèm cookie CŨ nên nhận 401 "already rotated" dù cookie jar
- * đã có token mới. Không thử lại thì tab thua bị đăng xuất oan — đúng thứ ADR-0007 nói cửa sổ
- * 10 giây phải tránh.
+ * Gọi /auth/refresh, thử lại MỘT lần khi 401 do thua một lần xoay vòng đồng thời. ADR-0007: hai
+ * request refresh đồng thời (hai tab, hoặc trang cũ bị điều hướng giữa lúc khôi phục phiên) thì
+ * đúng một bên xoay vòng token thành công; bên thua gửi kèm cookie CŨ nên nhận 401 "already
+ * rotated" dù cookie jar đã có token mới. Không thử lại thì tab thua bị đăng xuất oan — đúng thứ
+ * ADR-0007 nói cửa sổ 10 giây phải tránh. Thiếu cookie hẳn thì không thử (xem `lostRotationRace`).
  */
 async function requestRefresh(): Promise<Response> {
   const first = await send('POST', '/auth/refresh');
-  if (first.status !== 401) return first;
+  if (!(await lostRotationRace(first))) return first;
   await delay(REFRESH_RETRY_DELAY_MS);
   return send('POST', '/auth/refresh');
+}
+
+/**
+ * Có nên thử lại sau 401 của `/auth/refresh`? Chỉ khi lần đầu CÓ cookie nhưng thua một lần xoay
+ * vòng đồng thời. 401 "Missing refresh token" nghĩa là request không mang cookie nào (khách chưa
+ * đăng nhập, hoặc đã đăng xuất ở tab khác) — gửi lại chắc chắn 401 nữa, chỉ tốn thêm một suất
+ * của bucket `authSession` (30/phút/IP, ADR-0080). Màn `/login` của khách vì thế tốn 1 request
+ * thay vì 2 mỗi lần mở.
+ */
+async function lostRotationRace(res: Response): Promise<boolean> {
+  if (res.status !== 401) return false;
+  try {
+    const body = (await res.clone().json()) as { message?: unknown };
+    return body.message !== 'Missing refresh token';
+  } catch {
+    // Không đọc được body (proxy trả HTML): giữ hành vi cũ là thử lại một lần.
+    return true;
+  }
 }
 
 /**
