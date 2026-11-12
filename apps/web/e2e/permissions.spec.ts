@@ -59,7 +59,7 @@ test('permissions in the UI: menus follow ownership, edit and delete, live permi
     await send(a, ownerAuth, `owner says ${suffix}`);
     await send(b, memberAuth, `member says ${suffix}`);
 
-    const path = `/servers/${serverId}/channels/${channel.id}`;
+    const path = `/channels/${serverId}/${channel.id}`;
     const pa = await a.newPage();
     const pb = await b.newPage();
     await pa.goto(path);
@@ -68,15 +68,31 @@ test('permissions in the UI: menus follow ownership, edit and delete, live permi
       page.locator('article:visible', { hasText: text });
     const menu = (page: typeof pa, text: string) =>
       row(page, text).getByRole('button', { name: 'Thao tác tin nhắn' });
+    /**
+     * Mở menu thao tác của một tin. Thanh thao tác ẩn có `pointer-events-none`, chỉ mở khi
+     * article đang hover — click thẳng sẽ bị article chặn. Rê chuột vào đúng nút (như người
+     * dùng thật) rồi mới click; cuộn nút vào khung nhìn trước để vị trí chuột chính xác.
+     */
+    const openMenu = async (page: typeof pa, text: string) => {
+      const button = menu(page, text);
+      await button.scrollIntoViewIfNeeded();
+      const box = await button.boundingBox();
+      await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);
+      await button.click();
+    };
 
     await test.step('menu thao tác theo quyền: member chỉ sửa/xóa tin của mình, owner mọi tin; ai gửi được thì trả lời được', async () => {
       await expect(row(pb, `owner says ${suffix}`)).toBeVisible();
       await expect(menu(pb, `member says ${suffix}`)).toHaveCount(1);
-      // TG.1: reply mở cho mọi tin khi còn quyền gửi — menu vẫn hiện, nhưng chỉ có "Trả lời".
+      // TG.1: reply là nút riêng trong cụm thao tác (không còn trong menu) khi còn quyền gửi.
+      await expect(
+        row(pb, `owner says ${suffix}`).getByRole('button', { name: 'Trả lời' }),
+      ).toBeVisible();
       const ownerMenu = menu(pb, `owner says ${suffix}`);
       await expect(ownerMenu).toHaveCount(1);
+      await row(pb, `owner says ${suffix}`).hover();
       await ownerMenu.click();
-      await expect(pb.getByRole('menuitem', { name: 'Trả lời' })).toBeVisible();
+      await expect(pb.getByRole('menuitem', { name: 'Sao chép liên kết' })).toBeVisible();
       await expect(pb.getByRole('menuitem', { name: 'Sửa' })).toHaveCount(0);
       await expect(pb.getByRole('menuitem', { name: 'Xóa' })).toHaveCount(0);
       await pb.keyboard.press('Escape');
@@ -92,7 +108,7 @@ test('permissions in the UI: menus follow ownership, edit and delete, live permi
     await test.step('tin rất dài: hộp sửa không đẩy nút Lưu ra ngoài khung nhìn', async () => {
       const longContent = `long ${suffix} ${'lorem ipsum '.repeat(300)}`.trim();
       await send(a, ownerAuth, longContent);
-      await menu(pa, `long ${suffix}`).click();
+      await openMenu(pa, `long ${suffix}`);
       await pa.getByRole('menuitem', { name: 'Sửa' }).click();
       const dialog = pa.getByRole('dialog', { name: 'Sửa tin nhắn' });
       await expect(dialog.getByRole('button', { name: 'Lưu' })).toBeInViewport();
@@ -101,7 +117,7 @@ test('permissions in the UI: menus follow ownership, edit and delete, live permi
     });
 
     await test.step('member sửa tin của mình → cả hai phiên thấy nội dung mới và "(đã sửa)"', async () => {
-      await menu(pb, `member says ${suffix}`).click();
+      await openMenu(pb, `member says ${suffix}`);
       await pb.getByRole('menuitem', { name: 'Sửa' }).click();
       const dialog = pb.getByRole('dialog', { name: 'Sửa tin nhắn' });
       await dialog
@@ -115,7 +131,7 @@ test('permissions in the UI: menus follow ownership, edit and delete, live permi
     });
 
     await test.step('owner xóa tin của member sau khi xác nhận → biến mất ở cả hai phiên', async () => {
-      await menu(pa, `member edited ${suffix}`).click();
+      await openMenu(pa, `member edited ${suffix}`);
       await pa.getByRole('menuitem', { name: 'Xóa' }).click();
       const dialog = pa.getByRole('dialog', { name: 'Xóa tin nhắn' });
       await expect(dialog).toContainText(`member edited ${suffix}`);

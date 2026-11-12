@@ -10,9 +10,9 @@ const MAILPIT = 'http://127.0.0.1:8025/api/v1';
 const repoRoot = path.resolve(__dirname, '../../..');
 
 /**
- * Chờ API sẵn sàng trước khi seed. API chạy ở chế độ watch nên có thể đang khởi động lại
- * (sửa mã nguồn → nest watch restart) lúc bắt đầu run; không chờ thì test fail với lỗi mạng
- * khó hiểu thay vì thông báo rõ ràng.
+ * Chờ API sẵn sàng trước khi seed. Mỗi run Playwright bật API mới (compile nguội rồi `listen`)
+ * nên có thể chưa nghe cổng lúc bắt đầu; không chờ thì test fail với lỗi mạng khó hiểu thay vì
+ * thông báo rõ ràng.
  */
 async function waitForApi(timeoutMs = 30_000): Promise<void> {
   const deadline = Date.now() + timeoutMs;
@@ -67,8 +67,8 @@ export default async function globalSetup() {
     throw new Error('seed-messages failed');
   }
 
-  // Script seed có thể chạm vào file mà API đang watch (ví dụ sinh lại Prisma client) → nest
-  // restart API giữa chừng, test gặp ECONNREFUSED. Chờ API sẵn sàng lại trước khi chạy test.
+  // Script seed ghi thẳng DB; nếu nó vô tình khởi động lại tiến trình API (ví dụ sinh lại Prisma
+  // client), chờ API nghe cổng lại trước khi chạy test thay vì để test gặp ECONNREFUSED.
   await waitForApi(60_000);
 
   process.env.E2E_EMAIL = email;

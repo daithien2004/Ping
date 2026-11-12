@@ -42,12 +42,12 @@ test('pins: pin from menu, panel, realtime and unpin', async ({ browser }) => {
     expect(joined.ok()).toBeTruthy();
 
     const page = await ownerContext.newPage();
-    await page.goto(`/servers/${server.id}/channels/${channelId}`);
+    await page.goto(`/channels/${server.id}/${channelId}`);
     const article = page.locator(`article[data-message-id="${message.id}"]`);
     await expect(article).toBeVisible({ timeout: 45_000 });
 
     const bobPage = await otherContext.newPage();
-    await bobPage.goto(`/servers/${server.id}/channels/${channelId}`);
+    await bobPage.goto(`/channels/${server.id}/${channelId}`);
     const bobArticle = bobPage.locator(`article[data-message-id="${message.id}"]`);
     await expect(bobArticle).toBeVisible({ timeout: 45_000 });
 
@@ -64,7 +64,10 @@ test('pins: pin from menu, panel, realtime and unpin', async ({ browser }) => {
     });
 
     await test.step('menu tin nhắn → Ghim, chỉ báo hiện ngay', async () => {
-      await article.getByRole('button', { name: 'Thao tác' }).click();
+      // Cụm thao tác ẩn có `pointer-events-none` tới khi article được hover (như người dùng
+      // thật rê chuột vào tin); click thẳng sẽ chờ mãi vì nút không nhận chuột.
+      await article.hover();
+      await article.getByRole('button', { name: 'Thao tác tin nhắn' }).click();
       await page.getByTestId('pin').click();
       await expect(article.getByTestId('pin-indicator')).toBeVisible({ timeout: 15_000 });
       // Realtime: tab của bob thấy tin được ghim mà không cần tải lại.

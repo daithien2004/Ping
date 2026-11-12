@@ -41,7 +41,7 @@ test('member panel shows who is online, follows presence live, and can be hidden
       ).ok(),
     ).toBeTruthy();
 
-    const path = `/servers/${serverId}/channels/${process.env.E2E_CHANNEL_ID}`;
+    const path = `/channels/${serverId}/${process.env.E2E_CHANNEL_ID}`;
     const pa = await a.newPage();
     await pa.goto(path);
     const panel = pa.getByRole('complementary', { name: 'Thành viên' });

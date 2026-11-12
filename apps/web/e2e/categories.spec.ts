@@ -113,7 +113,7 @@ test('categories: create, keyboard move, collapse persistence, topic header, ren
     await test.step('topic: đặt trong header → hiển thị dưới tên kênh và API lưu', async () => {
       // Mở thẳng URL kênh (tải document mới): điều hướng client trong dev có lúc tồn tại hai
       // cây ChannelView (kênh cũ + kênh mới), click rơi vào node sắp bị gỡ nên modal mất state.
-      await page.goto(`/servers/${server.id}/channels/${channel.id}`);
+      await page.goto(`/channels/${server.id}/${channel.id}`);
       const topic = 'Chủ đề bằng UI';
       const edit = page.getByTestId('channel-topic-edit');
       await expect(edit).toHaveCount(1);

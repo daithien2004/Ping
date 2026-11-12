@@ -55,7 +55,7 @@ test('skin Pop: các trang chính qua axe, ảnh sáng và tối', async ({
 
   const pages: Array<[string, string, string?]> = [
     ['servers', '/servers'],
-    ['server-home', `/servers/${demo.serverId}`],
+    ['server-home', `/channels/${demo.serverId}`],
     ['server-settings', `/servers/${demo.serverId}/settings`],
     ['settings-account', '/settings', 'settings-account'],
     ['settings-appearance', '/settings/appearance', 'settings-appearance'],
@@ -63,22 +63,22 @@ test('skin Pop: các trang chính qua axe, ảnh sáng và tối', async ({
     ['settings-notifications', '/settings/notifications', 'settings-notifications'],
     ['settings-privacy', '/settings/privacy', 'settings-privacy'],
     ['settings-shortcuts', '/settings/shortcuts', 'settings-shortcuts'],
-    ['dms', '/dms'],
+    ['dms', '/channels/@me'],
   ];
   for (const colorScheme of SCHEMES) {
     await page.emulateMedia({ colorScheme });
     for (const [name, url, testId] of pages) {
       await page.goto(url);
       if (testId) await expect(page.getByTestId(testId)).toBeVisible();
-      // Trang dev biên dịch lần đầu: đợi hết màn "Đang tải…" kẻo quét và chụp một trang rỗng.
-      await expect(page.getByText('Đang tải…')).toHaveCount(0, { timeout: 45_000 });
+      // Trang app vẽ khung trước rồi mới có nội dung — đợi khung biến mất để quét đúng trang thật.
+      await expect(page.getByTestId('shell-skeleton')).toHaveCount(0, { timeout: 45_000 });
       await page.waitForTimeout(500);
       await scan(page, `${name} ${colorScheme}`);
       await shot(`${name}-${colorScheme}`);
     }
   }
 
-  // Màn "Đang tải…" toàn trang: làm chậm API để Suspense còn hiện đủ lâu mà chụp, rồi gỡ chặn.
+  // Lúc mới vào app: khung rail + sidebar + vùng tin hiện trước, dữ liệu lấp sau.
   for (const colorScheme of SCHEMES) {
     await page.emulateMedia({ colorScheme });
     await page.route('**/api/v1/**', async (route) => {
@@ -86,7 +86,7 @@ test('skin Pop: các trang chính qua axe, ảnh sáng và tối', async ({
       await route.continue();
     });
     await page.goto('/settings', { waitUntil: 'commit' });
-    await expect(page.locator('[data-slot="loading"]').first()).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByTestId('shell-skeleton').first()).toBeVisible({ timeout: 20_000 });
     await shot(`loading-${colorScheme}`);
     await page.unroute('**/api/v1/**');
     await expect(page.getByTestId('settings-account')).toBeVisible({ timeout: 45_000 });

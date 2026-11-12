@@ -86,8 +86,9 @@ test('permalink: around window on a 10k channel, highlight, copy link, reply jum
       )
       .toBe('ok');
 
-    const permalink = `/servers/${server.id}/channels/${channelId}/messages/${ids.middle}`;
-    const channelPath = `/servers/${server.id}/channels/${channelId}`;
+    // URL công khai kiểu Discord (ADR-0088): `/channels/:owner/:channelId[/:messageId]`.
+    const permalink = `/channels/${server.id}/${channelId}/${ids.middle}`;
+    const channelPath = `/channels/${server.id}/${channelId}`;
 
     await test.step('API around: cửa sổ 50 tin quanh tin giữa, nhanh và đúng cờ', async () => {
       // Một lần làm nóng (connection pool + plan cache sau khi seed 10k dòng) không tính điểm.
@@ -195,6 +196,12 @@ test('permalink: around window on a 10k channel, highlight, copy link, reply jum
     });
 
     const page = await ownerContext.newPage();
+    await test.step('URL cũ chuyển hướng 308 sang dạng Discord', async () => {
+      await page.goto(`/servers/${server.id}/channels/${channelId}/messages/${ids.middle}`, {
+        waitUntil: 'domcontentloaded',
+      });
+      expect(new URL(page.url()).pathname).toBe(permalink);
+    });
     // Làm nóng route (next dev biên dịch theo route): đo ở lần mở thứ hai mới phản ánh chi phí dữ liệu.
     await page.goto(permalink, { waitUntil: 'domcontentloaded' });
     const target = page.locator(`article[data-message-id="${ids.middle}"]`);
@@ -269,6 +276,7 @@ test('permalink: around window on a 10k channel, highlight, copy link, reply jum
     });
 
     await test.step('Sao chép liên kết: clipboard đúng permalink + toast xác nhận', async () => {
+      await target.hover();
       await target.getByRole('button', { name: 'Thao tác tin nhắn' }).click();
       await page.getByRole('menuitem', { name: 'Sao chép liên kết' }).click();
       await expect(page.getByText('Đã sao chép liên kết tin nhắn')).toBeVisible();
@@ -291,7 +299,7 @@ test('permalink: around window on a 10k channel, highlight, copy link, reply jum
       const reply = page.locator(`article[data-message-id="${replyId}"]`);
       await expect(reply).toBeVisible({ timeout: 60_000 });
       await reply.getByTestId('reply-preview').click();
-      await expect(page).toHaveURL(new RegExp(`/messages/${ids.middle}$`), { timeout: 15_000 });
+      await expect(page).toHaveURL(new RegExp(`/${ids.middle}$`), { timeout: 15_000 });
       await expect(target).toHaveAttribute('data-highlighted', 'true', { timeout: 15_000 });
     });
 
@@ -303,7 +311,7 @@ test('permalink: around window on a 10k channel, highlight, copy link, reply jum
     await test.step('tin đã xóa → báo không tìm thấy thay vì treo', async () => {
       const removed = await ownerContext.request.delete(`${API}/messages/${replyId}`, { headers });
       expect(removed.ok()).toBeTruthy();
-      await page.goto(`/servers/${server.id}/channels/${channelId}/messages/${replyId}`);
+      await page.goto(`/channels/${server.id}/${channelId}/${replyId}`);
       await expect(page.getByTestId('focus-missing')).toBeVisible({ timeout: 60_000 });
     });
 
@@ -320,7 +328,7 @@ test('permalink: around window on a 10k channel, highlight, copy link, reply jum
           data: { content: `tin channel khác ${suffix}`, nonce: randomUUID() },
         })
       ).json()) as MessageDto;
-      await page.goto(`/servers/${server.id}/channels/${channelId}/messages/${foreign.id}`);
+      await page.goto(`/channels/${server.id}/${channelId}/${foreign.id}`);
       await expect(page.getByTestId('focus-missing')).toBeVisible({ timeout: 60_000 });
       await expect(page.getByText(`tin channel khác ${suffix}`)).toHaveCount(0);
     });

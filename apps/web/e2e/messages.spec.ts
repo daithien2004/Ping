@@ -21,7 +21,7 @@ test.beforeAll(async ({ browser }) => {
   await page.getByLabel('Mật khẩu').fill(process.env.E2E_PASSWORD!);
   await page.getByRole('button', { name: 'Đăng nhập' }).click();
   await expect(page.getByRole('link', { name: '# general' })).toBeVisible();
-  await page.goto(`/servers/${serverId()}/channels/${channelId()}`);
+  await page.goto(`/channels/${serverId()}/${channelId()}`);
 });
 
 test.afterAll(() => page.close());

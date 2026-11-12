@@ -45,7 +45,7 @@ test('search ui: find messages, filter by channel, jump to message', async ({ br
     ).toBeTruthy();
 
     const page = await ownerContext.newPage();
-    await page.goto(`/servers/${server.id}/channels/${generalId}`);
+    await page.goto(`/channels/${server.id}/${generalId}`);
     await expect(page.getByText(`họp nhóm lúc 9h về kế hoạch ${suffix}`)).toBeVisible({
       timeout: 15_000,
     });
@@ -78,10 +78,9 @@ test('search ui: find messages, filter by channel, jump to message', async ({ br
         .getByTestId('search-results')
         .getByRole('button', { name: new RegExp(`biên bản họp ${suffix}`) })
         .click();
-      await expect(page).toHaveURL(
-        new RegExp(`/servers/${server.id}/channels/${second}/messages/[0-9a-f-]{36}$`),
-        { timeout: 15_000 },
-      );
+      await expect(page).toHaveURL(new RegExp(`/channels/${server.id}/${second}/[0-9a-f-]{36}$`), {
+        timeout: 15_000,
+      });
       // Tin đích hiện trong kênh đích.
       await expect(
         page.getByText(`biên bản họp ${suffix} đã được lưu vào kho tài liệu`),

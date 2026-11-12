@@ -27,8 +27,11 @@ test('keyboard: dialog focus in and back, message menu', async ({ page }) => {
   await expect(dialog).toHaveCount(0);
   await expect(createButton).toBeFocused();
 
-  await page.goto(`/servers/${process.env.E2E_SERVER_ID}/channels/${process.env.E2E_CHANNEL_ID}`);
+  await page.goto(`/channels/${process.env.E2E_SERVER_ID}/${process.env.E2E_CHANNEL_ID}`);
   const menuButton = page.getByRole('button', { name: 'Thao tác tin nhắn' }).last();
+  // Quyền server được làm mới ngầm sau khi shell vẽ từ cache (ADR-0087), nên thanh thao tác
+  // tạm disabled tới khi quyền sẵn sàng. Chờ nút dùng được rồi mới focus như người dùng bàn phím.
+  await expect(menuButton).toBeEnabled();
   await menuButton.focus();
   await page.keyboard.press('Enter');
   await expect(page.getByRole('menuitem', { name: 'Sửa' })).toBeVisible();

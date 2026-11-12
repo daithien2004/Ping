@@ -72,7 +72,7 @@ test('chaos: dropped and reordered message.created frames - no duplicates, order
       });
     });
 
-    await page.goto(`/servers/${server.id}/channels/${channelId}`);
+    await page.goto(`/channels/${server.id}/${channelId}`);
     await expect(page.getByText('Chưa có tin nhắn nào. Hãy gửi tin đầu tiên!')).toBeVisible({
       timeout: 15_000,
     });

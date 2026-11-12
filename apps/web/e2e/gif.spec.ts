@@ -85,7 +85,7 @@ test('tab GIF: trending, ghi công, bấm-là-gửi, gần đây, tìm kiếm th
 
     const page = await alice.newPage();
     await mockGifRoutes(page);
-    await page.goto(`/servers/${server.id}/channels/${channel.id}`);
+    await page.goto(`/channels/${server.id}/${channel.id}`);
     await expect(page.getByTestId('message-composer')).toBeVisible({ timeout: 45_000 });
 
     await test.step('tab GIF: trending grid hiện ảnh + ghi công "GIFs by Tenor"', async () => {
@@ -172,7 +172,7 @@ test('GIF 503 provider unavailable: empty state riêng, gửi tin thường vẫ
         }),
       }),
     );
-    await page.goto(`/servers/${server.id}/channels/${channel.id}`);
+    await page.goto(`/channels/${server.id}/${channel.id}`);
     await expect(page.getByTestId('message-composer')).toBeVisible({ timeout: 45_000 });
 
     await test.step('tab GIF: empty state "chưa khả dụng", không lưới, không ghi công', async () => {
@@ -181,7 +181,8 @@ test('GIF 503 provider unavailable: empty state riêng, gửi tin thường vẫ
       await expect(picker.getByTestId('gif-grid')).toHaveCount(0);
       await expect(picker.getByTestId('gif-recent')).toHaveCount(0);
       await expect(picker.getByTestId('gif-attribution')).toHaveCount(0);
-      await page.getByTestId('sticker-button').click(); // đóng picker
+      // Bấm góc trên trái (ngoài panel, panel luôn cách mép ≥8 px) — bấm giữa scrim dễ trúng panel.
+      await page.getByTestId('ping-popover-scrim').click({ position: { x: 4, y: 4 } });
     });
 
     await test.step('chat vẫn gửi tin thường được (API thật)', async () => {

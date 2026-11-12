@@ -111,7 +111,7 @@ test('ask ui: stream answer, citation chip, skeleton and aria-live', async ({ br
       };
     });
 
-    await page.goto(`/servers/${server.id}/channels/${channelId}`);
+    await page.goto(`/channels/${server.id}/${channelId}`);
     await page.getByTestId('ask-ai-button').click();
     await expect(page.getByTestId('ask-input')).toBeVisible();
 
@@ -178,7 +178,7 @@ test('ask ui: per-error code message and cancel stops the skeleton', async ({ br
       };
     });
 
-    await page.goto(`/servers/${server.id}/channels/${channelId}`);
+    await page.goto(`/channels/${server.id}/${channelId}`);
     await page.getByTestId('ask-ai-button').click();
     await page.getByTestId('ask-input').fill('Còn lượt hỏi không?');
     await page.getByTestId('ask-send').click();

@@ -55,22 +55,23 @@ test('tg13 settings: theme sync hai tab, riêng tư/chặn, thông báo kênh, g
     bobForCleanup = bob;
     const alicePage = await aliceContext.newPage();
 
-    await test.step('(a) mở /settings từ rail, đổi theme dark, tab hai nhận theme', async () => {
+    await test.step('(a) mở cài đặt (modal) từ panel người dùng, đổi theme dark, tab hai nhận theme', async () => {
       await alicePage.goto('/');
       // '/' → landing thay '/servers' → server đầu tiên → kênh đầu: đợi URL ổn định rồi mới
-      // bấm rail, không thì navigation của landing/server đè mất điều hướng sang /settings.
-      await expect(alicePage.getByTestId('personal-settings-rail')).toBeVisible();
-      await expect(alicePage).toHaveURL(/\/servers\/[0-9a-f-]+\/channels\/[0-9a-f-]+/, {
+      // bấm panel người dùng, không thì navigation của landing/server đè mất.
+      await expect(alicePage.getByTestId('personal-settings')).toBeVisible();
+      await expect(alicePage).toHaveURL(/\/channels\/[0-9a-f-]+\/[0-9a-f-]+/, {
         timeout: 20_000,
       });
       // User e2e mới mỗi lần chạy: cài đặt là mặc định lazy (system) → không attr cưỡng bức.
       await expect(alicePage.locator('html')).toHaveAttribute('data-theme', 'system');
 
-      await alicePage.getByTestId('personal-settings-rail').click();
-      await expect(alicePage).toHaveURL(/\/settings$/);
+      await alicePage.getByTestId('personal-settings').click();
       await expect(alicePage.getByTestId('settings-account')).toBeVisible();
+      // Cài đặt là modal kiểu Discord: mở tại chỗ, URL đứng yên ở kênh đang xem.
+      await expect(alicePage).toHaveURL(/\/channels\/[0-9a-f-]+\/[0-9a-f-]+/);
 
-      await alicePage.getByRole('link', { name: 'Giao diện' }).click();
+      await alicePage.getByTestId('settings-modal-nav-appearance').click();
       await expect(alicePage.getByTestId('settings-appearance')).toBeVisible();
 
       const done = patchSettingsOk(alicePage);
@@ -129,6 +130,9 @@ test('tg13 settings: theme sync hai tab, riêng tư/chặn, thông báo kênh, g
       const skinCookie = (await aliceContext.cookies()).find((item) => item.name === 'ping-skin');
       expect(skinCookie?.value).toBe('pixel');
       await alicePage.reload();
+      // Reload reset state modal: mở lại đúng mục Giao diện.
+      await alicePage.getByTestId('personal-settings').click();
+      await alicePage.getByTestId('settings-modal-nav-appearance').click();
       await expect(alicePage.getByTestId('settings-appearance')).toBeVisible();
       await expect(html).toHaveAttribute('data-skin', 'pixel');
       await expect(alicePage.getByRole('radio', { name: 'Pixel' })).toBeChecked();
@@ -146,7 +150,7 @@ test('tg13 settings: theme sync hai tab, riêng tư/chặn, thông báo kênh, g
     });
 
     await test.step('(b) riêng tư: tắt dmAllow → bob tạo DM 403 DM_BLOCKED; chặn/bỏ chặn', async () => {
-      await alicePage.getByRole('link', { name: 'Riêng tư' }).click();
+      await alicePage.getByTestId('settings-modal-nav-privacy').click();
       await expect(alicePage.getByTestId('settings-privacy')).toBeVisible();
 
       const privacyDone = alicePage.waitForResponse(
@@ -159,6 +163,8 @@ test('tg13 settings: theme sync hai tab, riêng tư/chặn, thông báo kênh, g
 
       // Tải lại: GET /users/me/privacy phải trả giá trị đã lưu, switch không nhảy về mặc định.
       await alicePage.reload();
+      await alicePage.getByTestId('personal-settings').click();
+      await alicePage.getByTestId('settings-modal-nav-privacy').click();
       await expect(alicePage.getByTestId('settings-privacy')).toBeVisible();
       await expect(alicePage.getByTestId('settings-dm-allow')).not.toBeChecked();
 
@@ -204,11 +210,13 @@ test('tg13 settings: theme sync hai tab, riêng tư/chặn, thông báo kênh, g
       );
       expect(seed.ok()).toBeTruthy();
 
-      await alicePage.getByRole('link', { name: 'Thông báo' }).click();
+      await alicePage.getByTestId('settings-modal-nav-notifications').click();
       await expect(alicePage.getByTestId('settings-notifications')).toBeVisible();
       // Prefs đã bị fetch từ lúc boot (hook realtime TG.12, staleTime 30s) nên cache còn dữ
       // liệu cũ "chưa có override" — tải lại trang để đọc trạng thái server sau khi seed.
       await alicePage.reload();
+      await alicePage.getByTestId('personal-settings').click();
+      await alicePage.getByTestId('settings-modal-nav-notifications').click();
       const row = alicePage.getByTestId(`settings-channel-row-${channelId}`);
       await expect(row).toBeVisible();
 
@@ -260,7 +268,7 @@ test('tg13 settings: theme sync hai tab, riêng tư/chặn, thông báo kênh, g
       expect(invalid.status()).toBe(400);
 
       // UI không cho chọn giá trị lạ: segmented theme chỉ có đúng 3 lựa chọn của shared.
-      await alicePage.getByRole('link', { name: 'Giao diện' }).click();
+      await alicePage.getByTestId('settings-modal-nav-appearance').click();
       await expect(alicePage.getByTestId('settings-appearance')).toBeVisible();
       await expect(alicePage.locator('[data-testid^="settings-theme-"]')).toHaveCount(3);
     });
@@ -313,21 +321,25 @@ test('tg13 settings: theme sync hai tab, riêng tư/chặn, thông báo kênh, g
     });
 
     await test.step('(f) ngôn ngữ: đổi en, reload giữ nguyên (chạy cuối vì đổi chữ)', async () => {
-      await alicePage.getByRole('link', { name: 'Ngôn ngữ' }).click();
+      await alicePage.getByTestId('settings-modal-nav-language').click();
       await expect(alicePage.getByTestId('settings-language')).toBeVisible();
 
       const localeDone = patchSettingsOk(alicePage);
       await alicePage.getByTestId('settings-locale-en').click();
       await localeDone;
-      // PATCH xong app ghi cookie rồi reload — chữ UI sang tiếng Anh, <html lang> đổi theo.
-      await expect(alicePage.getByRole('link', { name: 'Appearance' })).toBeVisible({
-        timeout: 15_000,
-      });
+      // PATCH xong app ghi cookie và đổi chữ ngay (TF.12: không tải lại trang) — modal vẫn mở,
+      // rail mục đã sang tiếng Anh.
+      await expect(alicePage.getByTestId('settings-modal-nav-appearance')).toHaveText(
+        /Appearance/,
+        { timeout: 15_000 },
+      );
       await expect(alicePage.locator('html')).toHaveAttribute('lang', 'en');
 
       // Reload lần nữa vẫn giữ nguyên (cookie là nguồn của i18n, server settings là nguồn sync).
       await alicePage.reload();
-      await expect(alicePage.getByRole('link', { name: 'Appearance' })).toBeVisible();
+      await alicePage.getByTestId('personal-settings').click();
+      await expect(alicePage.getByTestId('settings-modal-nav-appearance')).toHaveText(/Appearance/);
+      await alicePage.getByTestId('settings-modal-nav-language').click();
       await expect(alicePage.getByTestId('settings-language')).toBeVisible();
     });
   } finally {

@@ -7,7 +7,7 @@ test.describe.configure({ mode: 'serial' });
 let page: Page;
 const serverId = () => process.env.E2E_SERVER_ID!;
 const channelId = () => process.env.E2E_CHANNEL_ID!;
-const channelUrl = () => `/servers/${serverId()}/channels/${channelId()}`;
+const channelUrl = () => `/channels/${serverId()}/${channelId()}`;
 // <Activity> giữ trang kênh cũ ẩn trong DOM nên mọi locator phải lọc `:visible`.
 const composer = () => page.locator('[data-testid="message-composer"]:visible');
 const scroller = () => page.locator('[data-testid="message-scroll"]:visible');

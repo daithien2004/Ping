@@ -6,6 +6,7 @@ import type { ServerDetail } from '@ping/shared';
 import type { AuthResponse } from '@ping/shared';
 import { ensureUserVerified } from './global-setup';
 import { pacedLogin } from './login-pace';
+import { openServerSettings } from './open-server-settings';
 
 const API = 'http://localhost:4000/api/v1';
 // PNG nhỏ sinh cục bộ; không dùng tài nguyên ngoài hay dữ liệu người dùng thật.
@@ -69,8 +70,8 @@ test('profile: avatar and display name update everywhere without reload, nicknam
     ).toBeTruthy();
     const page = await owner.newPage();
     const second = await other.newPage();
-    await page.goto(`/servers/${server.id}/channels/${channelId}`);
-    await second.goto(`/servers/${server.id}/channels/${channelId}`);
+    await page.goto(`/channels/${server.id}/${channelId}`);
+    await second.goto(`/channels/${server.id}/${channelId}`);
     await expect(page.getByTestId('message-composer')).toBeVisible({ timeout: 45_000 });
     await expect(second.getByTestId('message-composer')).toBeVisible({ timeout: 45_000 });
 
@@ -116,13 +117,13 @@ test('profile: avatar and display name update everywhere without reload, nicknam
     await expect(page.getByTestId('member-row').filter({ hasText: 'Alice Q' })).toBeVisible();
 
     // 3. Icon server qua bề mặt quản trị; rail đổi sang icon ngay.
-    await page.getByRole('button', { name: 'Cài đặt' }).click();
+    await openServerSettings(page);
     await expect(page.getByTestId('server-icon-input')).toBeAttached({ timeout: 30_000 });
     await page
       .getByTestId('server-icon-input')
       .setInputFiles({ name: 'icon.png', mimeType: 'image/png', buffer: png });
     await expect(page.getByTestId('server-icon-input')).toBeEnabled({ timeout: 60_000 });
-    await page.goto(`/servers/${server.id}/channels/${channelId}`);
+    await page.goto(`/channels/${server.id}/${channelId}`);
     await expect(
       page
         .locator('nav')

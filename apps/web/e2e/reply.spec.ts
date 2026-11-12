@@ -6,8 +6,8 @@ import { pacedLogin } from './login-pace';
 const API = 'http://localhost:4000/api/v1';
 
 /**
- * TG.1: reply qua UI — chọn "Trả lời" từ menu tin, thanh reply trong composer, khối trích dẫn
- * ở tin trả lời, bấm để nhảy tới tin gốc, hủy reply, và tin gốc bị xóa hiển thị "đã bị xóa".
+ * TG.1: reply qua UI — nút "Trả lời" trong cụm thao tác nổi, thanh reply trong composer, khối
+ * trích dẫn ở tin trả lời, bấm để nhảy tới tin gốc, hủy reply, và tin gốc bị xóa hiển thị "đã bị xóa".
  */
 test('reply: composer bar, quote block, jump to original, cancel, deleted original', async ({
   browser,
@@ -28,7 +28,7 @@ test('reply: composer bar, quote block, jump to original, cancel, deleted origin
     const channelId = server.channels[0]!.id;
 
     const page = await ownerContext.newPage();
-    await page.goto(`/servers/${server.id}/channels/${channelId}`);
+    await page.goto(`/channels/${server.id}/${channelId}`);
     const composer = page.getByTestId('message-composer');
     await expect(composer).toBeVisible({ timeout: 45_000 });
 
@@ -48,9 +48,9 @@ test('reply: composer bar, quote block, jump to original, cancel, deleted origin
     const originalId = await articles.last().getAttribute('data-message-id');
     expect(originalId).toBeTruthy();
 
-    await test.step('chọn Trả lời → thanh reply hiện đúng tác giả + trích đoạn', async () => {
-      await articles.last().getByRole('button', { name: 'Thao tác tin nhắn' }).click();
-      await page.getByRole('menuitem', { name: 'Trả lời' }).click();
+    await test.step('bấm Trả lời → thanh reply hiện đúng tác giả + trích đoạn', async () => {
+      await articles.last().hover();
+      await articles.last().getByRole('button', { name: 'Trả lời' }).click();
       const bar = page.getByTestId('reply-bar');
       await expect(bar).toBeVisible();
       await expect(bar).toContainText('Đang trả lời');
@@ -79,8 +79,8 @@ test('reply: composer bar, quote block, jump to original, cancel, deleted origin
     });
 
     await test.step('hủy reply → thanh reply biến mất', async () => {
-      await articles.last().getByRole('button', { name: 'Thao tác tin nhắn' }).click();
-      await page.getByRole('menuitem', { name: 'Trả lời' }).click();
+      await articles.last().hover();
+      await articles.last().getByRole('button', { name: 'Trả lời' }).click();
       await expect(page.getByTestId('reply-bar')).toBeVisible();
       await page.getByRole('button', { name: 'Hủy trả lời' }).click();
       await expect(page.getByTestId('reply-bar')).toHaveCount(0);

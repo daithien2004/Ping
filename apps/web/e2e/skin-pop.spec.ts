@@ -35,14 +35,14 @@ test('skin Pop: màn đăng nhập, khung chat và cài đặt giao diện qua a
 
   for (const colorScheme of SCHEMES) {
     await page.emulateMedia({ colorScheme });
-    await page.goto(`/servers/${demo.serverId}/channels/${demo.channelId}`);
+    await page.goto(`/channels/${demo.serverId}/${demo.channelId}`);
     await expect(page.getByRole('textbox', { name: 'Nhắn #thiet-ke' })).toBeVisible();
     await expect(page.getByTestId('message-reactions').first()).toBeVisible();
     await scan(page, `talk pop ${colorScheme}`);
     await shot(page, `talk-${colorScheme}`);
 
     // Popup qua portal: tooltip, menu, toast, hộp thoại (ảnh để duyệt hình thức; axe cho menu và hộp thoại).
-    await page.getByTestId('personal-settings-rail').hover();
+    await page.getByTestId('personal-settings').hover();
     await expect(page.getByRole('tooltip')).toBeVisible();
     await page.waitForTimeout(300); // đợi hiệu ứng mở của antd xong để ảnh thấy popup rõ
     await shot(page, `tooltip-${colorScheme}`);

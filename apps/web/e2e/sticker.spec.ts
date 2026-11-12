@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import type { ServerDetail, ServerSummary, StickerDto, UploadDto } from '@ping/shared';
 import { pacedLogin } from './login-pace';
+import { openServerSettings } from './open-server-settings';
 
 const API = 'http://localhost:4000/api/v1';
 // PNG fixture được sinh cục bộ, không dùng tài nguyên ngoài (như attachment.spec).
@@ -64,8 +65,8 @@ test('sticker picker: tabs, gửi realtime, tìm không dấu "cuoi"', async ({ 
 
     const page = await alice.newPage();
     const bobPage = await bob.newPage();
-    await page.goto(`/servers/${seed!.id}/channels/${general.id}`);
-    await bobPage.goto(`/servers/${seed!.id}/channels/${general.id}`);
+    await page.goto(`/channels/${seed!.id}/${general.id}`);
+    await bobPage.goto(`/channels/${seed!.id}/${general.id}`);
     await expect(page.getByTestId('message-composer')).toBeVisible({ timeout: 45_000 });
     await expect(bobPage.getByTestId('message-composer')).toBeVisible({ timeout: 45_000 });
 
@@ -102,7 +103,8 @@ test('sticker picker: tabs, gửi realtime, tìm không dấu "cuoi"', async ({ 
       await expect(first).toHaveAttribute('aria-label', /Cười/);
       // Sticker không khớp truy vấn phải bị lọc ra khỏi grid.
       await expect(picker.getByRole('gridcell', { name: 'Gửi sticker Tên lửa' })).toHaveCount(0);
-      await page.getByTestId('sticker-button').click(); // đóng picker
+      // Bấm góc trên trái (ngoài panel, panel luôn cách mép ≥8 px) — bấm giữa scrim dễ trúng panel.
+      await page.getByTestId('ping-popover-scrim').click({ position: { x: 4, y: 4 } });
     });
   } finally {
     await alice.close();
@@ -130,12 +132,11 @@ test('sticker quản trị: upload, gửi, xóa → tin cũ thành "đã xóa"',
     const channelId = server.channels[0]!.id;
 
     const page = await alice.newPage();
-    await page.goto(`/servers/${server.id}/channels/${channelId}`);
+    await page.goto(`/channels/${server.id}/${channelId}`);
     await expect(page.getByTestId('message-composer')).toBeVisible({ timeout: 45_000 });
 
     await test.step('mở Cài đặt → upload PNG nhỏ, đợi worker kiểm định xong', async () => {
-      await page.getByRole('button', { name: 'Cài đặt', exact: true }).click();
-      await expect(page.getByRole('heading', { name: 'Cài đặt server' })).toBeVisible();
+      await openServerSettings(page);
       const section = page.getByTestId('sticker-section');
       await expect(section).toBeVisible({ timeout: 15_000 });
       await section.getByTestId('sticker-upload-input').setInputFiles({
@@ -181,8 +182,7 @@ test('sticker quản trị: upload, gửi, xóa → tin cũ thành "đã xóa"',
     });
 
     await test.step('xóa sticker qua Popconfirm → tin cũ đổi thành khung "đã xóa"', async () => {
-      await page.getByRole('button', { name: 'Cài đặt', exact: true }).click();
-      await expect(page.getByRole('heading', { name: 'Cài đặt server' })).toBeVisible();
+      await openServerSettings(page);
       const section = page.getByTestId('sticker-section');
       const item = section.getByTestId('sticker-item').filter({ hasText: stickerName });
       await expect(item).toBeVisible({ timeout: 15_000 });
@@ -276,7 +276,7 @@ test('sticker reduced motion: render qua preview server (thumbnail=1)', async ({
     ).toBeTruthy();
 
     const page = await alice.newPage();
-    await page.goto(`/servers/${server.id}/channels/${channelId}`);
+    await page.goto(`/channels/${server.id}/${channelId}`);
     await expect(page.getByTestId('message-composer')).toBeVisible({ timeout: 45_000 });
     const image = paneOf(page, 'general').getByTestId('sticker-image');
     await expect(image).toHaveCount(1, { timeout: 15_000 });

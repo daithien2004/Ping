@@ -63,7 +63,7 @@ test('two isolated sessions: messages, typing, missed events, edits, deletes and
         data: { name: `rt-${suffix}` },
       })
     ).json()) as ChannelDto;
-    const path = `/servers/${serverId}/channels/${channel.id}`;
+    const path = `/channels/${serverId}/${channel.id}`;
     const pa = await a.newPage();
     const pb = await b.newPage();
     let refreshes = 0;

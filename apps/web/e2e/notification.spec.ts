@@ -151,6 +151,8 @@ test('tg12 notifications: bell prefs, browser notification, mute/focus gates, ti
       await popover.getByTestId('notify-level-mentions').click();
       await done;
       done = putChannelPref();
+      // Thời lượng mute nằm trong khối mở rộng — mở bằng nút "Tắt tiếng" trước.
+      await popover.getByTestId('notify-mute-toggle').click();
       await popover.getByTestId('notify-mute-15m').click();
       await done;
       // remaining làm tròn LÊN nên 15 phút + độ trễ hiển thị 16 — chỉ cần dòng trạng thái hiện ra.
@@ -207,8 +209,9 @@ test('tg12 notifications: bell prefs, browser notification, mute/focus gates, ti
         },
         [pingChannel.id] as const,
       );
+      // ADR-0088: permalink công khai là `/channels/:serverId/:channelId/:messageId`.
       await expect(alicePage).toHaveURL(
-        new RegExp(`channels/${pingChannel.id}/messages/${mention.id}`),
+        new RegExp(`channels/${server.id}/${pingChannel.id}/${mention.id}`),
         { timeout: 15_000 },
       );
     });
@@ -243,10 +246,20 @@ test('tg12 notifications: bell prefs, browser notification, mute/focus gates, ti
       // ở đây chỉ cần semantic "mở kênh → mark-read" (bài học CI 5a897bb: click link flaky
       // khi badge re-render churn, nợ điều tra vòng re-render).
       for (const channelId of [loudChannel.id, pingChannel.id, notifyChannel.id]) {
-        await alicePage.goto(`/servers/${server.id}/channels/${channelId}`);
+        // Chờ đúng PUT đánh dấu đã đọc trước khi đi tiếp: goto kênh kế tiếp hủy request
+        // đang bay, nếu bỏ qua thì unread của kênh vừa mở còn nguyên ở server.
+        const marked = alicePage.waitForResponse(
+          (res) =>
+            res.url().includes(`/channels/${channelId}/read`) &&
+            res.request().method() === 'PUT' &&
+            res.ok(),
+          { timeout: 30_000 },
+        );
+        await alicePage.goto(`/channels/${server.id}/${channelId}`);
         await expect(alicePage.getByTestId('message-composer')).toBeVisible({
           timeout: 30_000,
         });
+        await marked;
       }
       // Đi tuyến nhanh qua 3 kênh: mark-read phía client có debounce — khẳng định GIÁ TRỊ
       // TUYỆT ĐỐI 'Ping' ở đây flaky giữa nhiều lần chạy. Truth là server unread; "badge về 0

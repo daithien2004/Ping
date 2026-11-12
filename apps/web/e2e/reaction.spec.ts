@@ -47,11 +47,11 @@ test('reactions: pick, toggle, reactor list and realtime from another member', a
     expect(joined.ok()).toBeTruthy();
 
     const page = await ownerContext.newPage();
-    await page.goto(`/servers/${server.id}/channels/${channelId}`);
+    await page.goto(`/channels/${server.id}/${channelId}`);
     const article = page.locator(`article[data-message-id="${message.id}"]`);
     await expect(article).toBeVisible({ timeout: 45_000 });
     const bobPage = await otherContext.newPage();
-    await bobPage.goto(`/servers/${server.id}/channels/${channelId}`);
+    await bobPage.goto(`/channels/${server.id}/${channelId}`);
     const bobArticle = bobPage.locator(`article[data-message-id="${message.id}"]`);
     await expect(bobArticle).toBeVisible({ timeout: 45_000 });
 
@@ -70,6 +70,7 @@ test('reactions: pick, toggle, reactor list and realtime from another member', a
     });
 
     await test.step('chọn 👍 trong hộp chọn → viên thuốc hiện 1 và là của mình', async () => {
+      await article.hover();
       await article.getByTestId('add-reaction').click();
       const picker = page.getByTestId('emoji-picker');
       await expect(picker).toBeVisible();
@@ -150,6 +151,7 @@ test('reactions: pick, toggle, reactor list and realtime from another member', a
           }),
         });
       });
+      await article.hover();
       await article.getByTestId('add-reaction').click();
       await page.getByTestId('emoji-search').fill('fire');
       const rejected = page.waitForResponse(

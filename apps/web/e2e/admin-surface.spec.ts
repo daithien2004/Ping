@@ -65,8 +65,12 @@ test('admin surface: audit log follows permissions, role permissions save, dange
       await expect(memberPage.getByRole('heading', { name: 'Cài đặt server' })).toBeVisible();
       await expect(memberPage.getByRole('region', { name: 'Nhật ký hành động' })).toHaveCount(0);
       await expect(memberPage.getByRole('region', { name: 'Thông tin server' })).toHaveCount(0);
-      // Member không có quyền quản trị nào thì không thấy lối vào từ sidebar.
-      await expect(memberPage.getByRole('button', { name: 'Cài đặt' })).toHaveCount(0);
+      // Member không có quyền quản trị nào thì menu tên server không có lối vào Cài đặt server
+      // (nút «Cài đặt cá nhân» ở panel người dùng là quyền của mọi thành viên, không tính).
+      await memberPage.getByRole('button', { name: 'Menu server' }).click();
+      await expect(memberPage.getByRole('menuitem', { name: 'Cài đặt server' })).toHaveCount(0);
+      await expect(memberPage.getByRole('menuitem', { name: 'Sao chép mã mời' })).toBeVisible();
+      await memberPage.keyboard.press('Escape');
     });
 
     await test.step('đổi tên server: form lưu qua API và rail đổi ngay', async () => {

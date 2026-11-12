@@ -1,12 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { expect, test, type Page } from '@playwright/test';
-import {
-  Permissions,
-  type AuthResponse,
-  type MemberDto,
-  type RoleDto,
-  type ServerDetail,
-} from '@ping/shared';
+import { Permissions, type MemberDto, type RoleDto, type ServerDetail } from '@ping/shared';
+import { pacedLogin } from './login-pace';
 
 const API = 'http://localhost:4000/api/v1';
 const SEED_PASSWORD = 'password123';
@@ -32,11 +27,8 @@ test('admin members: role badges, kick hierarchy guard and realtime removal', as
   try {
     const suffix = randomUUID().slice(0, 8);
     const login = async (context: typeof ownerContext, email: string, password: string) => {
-      const response = await context.request.post(`${API}/auth/login`, {
-        data: { email, password },
-      });
-      expect(response.ok()).toBeTruthy();
-      const auth = (await response.json()) as AuthResponse;
+      // Mọi login phải qua pacedLogin: bộ e2e chạy chung IP, API giới hạn 10 lượt/phút.
+      const auth = await pacedLogin(context.request, email, password);
       return { auth, headers: { Authorization: `Bearer ${auth.accessToken}` } };
     };
 
@@ -148,7 +140,7 @@ test('admin members: role badges, kick hierarchy guard and realtime removal', as
       const detail = (await (
         await ownerContext.request.get(`${API}/servers/${serverId}`, { headers: owner.headers })
       ).json()) as ServerDetail;
-      await victimPage.goto(`/servers/${serverId}/channels/${detail.channels[0]!.id}`);
+      await victimPage.goto(`/channels/${serverId}/${detail.channels[0]!.id}`);
       await expect(victimPage.getByRole('link', { name: '# general' })).toBeVisible();
       // Đánh dấu window để chứng minh lần chuyển trang sau đó là điều hướng client, không reload.
       await victimPage.evaluate(() => {

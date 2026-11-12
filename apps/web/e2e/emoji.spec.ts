@@ -26,7 +26,7 @@ test('emoji picker: search, insert, recent, suggestion and big emoji', async ({ 
     const channelId = server.channels[0]!.id;
 
     const page = await ownerContext.newPage();
-    await page.goto(`/servers/${server.id}/channels/${channelId}`);
+    await page.goto(`/channels/${server.id}/${channelId}`);
     const composer = page.getByTestId('message-composer');
     await expect(composer).toBeVisible({ timeout: 45_000 });
 

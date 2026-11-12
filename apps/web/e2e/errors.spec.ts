@@ -14,13 +14,22 @@ async function signIn(page: Page) {
   await expect(page.getByRole('link', { name: '# general' })).toBeVisible();
 }
 
-const channelPath = () =>
-  `/servers/${process.env.E2E_SERVER_ID}/channels/${process.env.E2E_CHANNEL_ID}`;
+/**
+ * ADR-0087: F5 vẽ ngay khung đã lưu trong localStorage rồi mới refetch nền. Với dữ liệu còn
+ * trong cache, query lỗi khi refetch không ném lỗi Suspense nên không có trang lỗi — muốn kiểm
+ * tra đúng đường "request đầu tiên hỏng" thì phải vào với cache rỗng (như loading-and-empty).
+ */
+async function withoutPersistedCache(page: Page) {
+  await page.addInitScript(() => localStorage.removeItem('ping:query-cache'));
+}
+
+const channelPath = () => `/channels/${process.env.E2E_SERVER_ID}/${process.env.E2E_CHANNEL_ID}`;
 
 test('a 4xx in the content area shows the explanation and the error id, with the rail still usable', async ({
   page,
 }) => {
   await signIn(page);
+  await withoutPersistedCache(page);
   await page.route('**/api/v1/servers/*/channels', (route) =>
     route.fulfill({
       status: 403,
@@ -40,6 +49,7 @@ test('a 4xx in the content area shows the explanation and the error id, with the
 
 test('a 5xx quotes the error id inside the message itself (not twice)', async ({ page }) => {
   await signIn(page);
+  await withoutPersistedCache(page);
   await page.route('**/api/v1/servers/*/channels', (route) =>
     route.fulfill({
       status: 500,
@@ -58,6 +68,7 @@ test('an error in the root area (server list) falls to global-error with the id 
   page,
 }) => {
   await signIn(page);
+  await withoutPersistedCache(page);
   await page.route('**/api/v1/servers', (route) =>
     route.fulfill({
       status: 500,

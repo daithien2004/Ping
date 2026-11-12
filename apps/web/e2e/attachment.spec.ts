@@ -55,8 +55,8 @@ test('attachments: select, cancel, reject fake file, send image, preview, realti
     ).toBeTruthy();
     const page = await owner.newPage();
     const second = await other.newPage();
-    await page.goto(`/servers/${server.id}/channels/${channelId}`);
-    await second.goto(`/servers/${server.id}/channels/${channelId}`);
+    await page.goto(`/channels/${server.id}/${channelId}`);
+    await second.goto(`/channels/${server.id}/${channelId}`);
     await expect(page.getByTestId('message-composer')).toBeVisible({ timeout: 45_000 });
     await expect(second.getByTestId('message-composer')).toBeVisible({ timeout: 45_000 });
     await page.getByTestId('attachment-input').setInputFiles({

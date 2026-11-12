@@ -3,8 +3,7 @@ import { paceLogin } from './login-pace';
 
 // Phần A.2 của docs/perf/viec-con-lai-va-cuon-tin-nhan.md: PUT /read lỗi mạng một lần phải được
 // gửi lại (và chỉ gửi lại một lần), thay vì bỏ mất mốc đã đọc tới khi có tin mới/remount.
-const channelUrl = () =>
-  `/servers/${process.env.E2E_SERVER_ID!}/channels/${process.env.E2E_CHANNEL_ID!}`;
+const channelUrl = () => `/channels/${process.env.E2E_SERVER_ID!}/${process.env.E2E_CHANNEL_ID!}`;
 const composer = (page: Page) => page.locator('[data-testid="message-composer"]:visible');
 
 async function signIn(page: Page) {

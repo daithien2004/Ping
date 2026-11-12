@@ -4,7 +4,7 @@ import { paceLogin } from './login-pace';
 // T6.10: quick switcher tải lười — chunk modal chỉ nạp sau lần bấm Ctrl/Cmd+K đầu tiên, dữ liệu
 // thật (server của tôi, kênh server đang mở), lọc + điều hướng bằng bàn phím theo mẫu combobox.
 const serverId = () => process.env.E2E_SERVER_ID!;
-const channelUrl = () => `/servers/${serverId()}/channels/${process.env.E2E_CHANNEL_ID!}`;
+const channelUrl = () => `/channels/${serverId()}/${process.env.E2E_CHANNEL_ID!}`;
 const composer = (page: Page) => page.locator('[data-testid="message-composer"]:visible');
 
 async function signIn(page: Page) {
@@ -72,7 +72,8 @@ test('Ctrl+K mở chuyển nhanh, lọc theo dữ liệu thật, Enter/Arrow đi
   await expect(e2eServer).toHaveCount(1);
   await input.press('Enter');
   await expect(dialog).toHaveCount(0);
-  await expect(page).toHaveURL(new RegExp(`/servers/${serverId()}/(channels/|$)`));
+  // ADR-0088: ChannelRedirect đưa `/channels/:serverId` vào channel đầu tiên.
+  await expect(page).toHaveURL(new RegExp(`/channels/${serverId()}/[0-9a-f-]+$`));
 
   await page.keyboard.press('Control+k');
   await expect(dialog).toBeVisible();

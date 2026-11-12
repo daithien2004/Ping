@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { expect, type Page, test } from '@playwright/test';
 import type { AuthResponse, ServerDetail } from '@ping/shared';
 import { scan } from './axe';
-import { paceLogin } from './login-pace';
+import { paceLogin, pacedLogin } from './login-pace';
 
 const API = 'http://localhost:4000/api/v1';
 
@@ -49,7 +49,7 @@ test('app shell with a channel, the message menu and the create-server dialog, l
 }) => {
   test.setTimeout(300_000);
   await signIn(page);
-  await page.goto(`/servers/${process.env.E2E_SERVER_ID}/channels/${process.env.E2E_CHANNEL_ID}`);
+  await page.goto(`/channels/${process.env.E2E_SERVER_ID}/${process.env.E2E_CHANNEL_ID}`);
   await expect(page.getByRole('textbox', { name: 'Nhắn #long' })).toBeVisible();
 
   // T6.9: hai vùng aria-live được khai báo cho trình đọc màn hình (tin mới + nhắc ngoài kênh).
@@ -60,7 +60,9 @@ test('app shell with a channel, the message menu and the create-server dialog, l
     await page.emulateMedia({ colorScheme });
     await scan(page, `app shell ${colorScheme}`);
 
-    await page.getByRole('button', { name: 'Thao tác tin nhắn' }).last().click();
+    const menuButton = page.getByRole('button', { name: 'Thao tác tin nhắn' }).last();
+    await menuButton.locator('xpath=ancestor::article').hover();
+    await menuButton.click();
     await expect(page.getByRole('menuitem', { name: 'Sửa' })).toBeVisible();
     await scan(page, `message actions menu ${colorScheme}`, '[role="menu"]');
     await page.keyboard.press('Escape');
@@ -93,7 +95,7 @@ test('app shell with a channel, the message menu and the create-server dialog, l
   }
 
   // T6.8/T6.9: drawer chung ở 375 (rail + sidebar trong một drawer) và sidebar tĩnh ở 768.
-  await page.goto(`/servers/${process.env.E2E_SERVER_ID}/channels/${process.env.E2E_CHANNEL_ID}`);
+  await page.goto(`/channels/${process.env.E2E_SERVER_ID}/${process.env.E2E_CHANNEL_ID}`);
   await expect(page.getByRole('textbox', { name: 'Nhắn #long' })).toBeVisible();
   await page.setViewportSize({ width: 375, height: 812 });
   const toggle = page.getByTestId('mobile-nav-toggle');
@@ -118,11 +120,7 @@ test('app shell with a channel, the message menu and the create-server dialog, l
   await page.setViewportSize({ width: 1280, height: 900 });
 
   // T6.9: hội thoại DM (tạo thật qua API: partner mới join server rồi get-or-create).
-  const auth = (await (
-    await request.post(`${API}/auth/login`, {
-      data: { email: process.env.E2E_EMAIL!, password: process.env.E2E_PASSWORD! },
-    })
-  ).json()) as AuthResponse;
+  const auth = await pacedLogin(request, process.env.E2E_EMAIL!, process.env.E2E_PASSWORD!);
   const suffix = randomUUID().slice(0, 8);
   const partner = (await (
     await request.post(`${API}/auth/register`, {
@@ -148,7 +146,7 @@ test('app shell with a channel, the message menu and the create-server dialog, l
   const dm = (await (
     await request.post(`${API}/dms`, { headers, data: { userId: partner.user.id } })
   ).json()) as { channelId: string };
-  await page.goto(`/dms/${dm.channelId}`);
+  await page.goto(`/channels/@me/${dm.channelId}`);
   await expect(page.getByTestId('dm-header')).toBeVisible({ timeout: 45_000 });
   for (const colorScheme of SCHEMES) {
     await page.emulateMedia({ colorScheme });

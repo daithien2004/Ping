@@ -13,6 +13,12 @@ const webPort = Number(process.env.WEB_PORT ?? 3000);
  * — loại chi phí compile lạnh từng route của next dev (đo baseline: test:e2e chiếm 85–90%
  * thời gian job CI). Máy dev giữ chế độ dev cho vòng lặp nhanh; đặt biến này khi cần tái lập.
  * Chế độ production yêu cầu build trước: `pnpm --filter api build && pnpm --filter web build`.
+ *
+ * Máy dev chạy API bằng `start` (compile một lần, KHÔNG `start:dev`): watch mode từng tự build lại
+ * giữa run (log chỉ báo "File change detected", không nêu file nào — đủ để API mất vài giây), và
+ * khi `taskkill` cây tiến trình cũ gặp PID bọc `cmd.exe` đã thoát thì Nest CLI ném lỗi rồi chết
+ * luôn, API mất hẳn tới hết run (đã gặp: attachment/pin/profile/quick-switcher đỏ vì ECONNREFUSED).
+ * Compile nguội tốn đúng bằng lần compile đầu của watch nên không chậm hơn; e2e không cần hot reload.
  */
 const production = process.env.E2E_PRODUCTION === '1';
 
@@ -49,7 +55,7 @@ export default defineConfig({
     {
       command: [
         ci ? '' : 'node ../../scripts/prepare-e2e-db.mjs && ',
-        production ? 'pnpm --filter api start:prod' : 'pnpm --filter api start:dev',
+        production ? 'pnpm --filter api start:prod' : 'pnpm --filter api start',
       ].join(''),
       url: 'http://localhost:4000/api/v1/health',
       reuseExistingServer: ci,

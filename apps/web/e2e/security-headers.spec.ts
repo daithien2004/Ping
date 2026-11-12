@@ -48,7 +48,7 @@ test('security headers are present and the app runs without CSP violations or sc
   await page.getByRole('button', { name: 'Đăng nhập' }).click();
   // Đợi đăng nhập xong rồi mới đi tiếp: goto ngay sau khi bấm sẽ hủy request đăng nhập đang bay.
   await expect(page.getByRole('link', { name: '# general' })).toBeVisible();
-  await page.goto(`/servers/${process.env.E2E_SERVER_ID}/channels/${process.env.E2E_CHANNEL_ID}`);
+  await page.goto(`/channels/${process.env.E2E_SERVER_ID}/${process.env.E2E_CHANNEL_ID}`);
   // Các spec khác đã thêm tin vào #long nên #300 không còn ở đáy: chờ ô soạn tin thay vì một tin cụ thể.
   await expect(page.getByRole('textbox', { name: 'Nhắn #long' })).toBeVisible();
 

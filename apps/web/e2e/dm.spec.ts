@@ -59,7 +59,7 @@ test('TG.9: tạo DM từ profile card, gửi tin, badge realtime, chặn/bỏ c
     const dmsLoaded = alice.waitForResponse((res) => res.url() === `${API}/dms` && res.ok(), {
       timeout: 20_000,
     });
-    await alice.goto(`/servers/${seed!.id}/channels/${general.id}`);
+    await alice.goto(`/channels/${seed!.id}/${general.id}`);
     await expect(composerOf(alice)).toBeVisible({ timeout: 45_000 });
     await dmsLoaded;
 
@@ -69,8 +69,8 @@ test('TG.9: tạo DM từ profile card, gửi tin, badge realtime, chặn/bỏ c
       await expect(alice.getByTestId('send-dm-button')).toBeEnabled();
       await expect(alice.getByTestId('block-user-button')).toBeVisible();
       await alice.getByTestId('send-dm-button').click();
-      // Get-or-create 200 → điều hướng /dms/:channelId (route riêng vì DM không có serverId).
-      await expect(alice).toHaveURL(/\/dms\/[0-9a-f-]{36}$/);
+      // Get-or-create 200 → điều hướng /channels/@me/:channelId (DM dùng `@me`, ADR-0088).
+      await expect(alice).toHaveURL(/\/channels\/@me\/[0-9a-f-]{36}$/);
       await expect(composerOf(alice)).toBeVisible({ timeout: 45_000 });
       // Header DM hiển thị partner theo hồ sơ user (không phải nickname "Bobby" trong server).
       await expect(alice.getByTestId('dm-header')).toContainText('Bob Tran');
@@ -88,7 +88,7 @@ test('TG.9: tạo DM từ profile card, gửi tin, badge realtime, chặn/bỏ c
     const dmChannelId =
       await test.step('(b) bob gửi qua API → badge đỏ mục DM, không reload', async () => {
         // Rời DM về kênh server để DM không còn là channel đang xem (mark-read không nuốt badge).
-        await alice.goto(`/servers/${seed!.id}/channels/${general.id}`);
+        await alice.goto(`/channels/${seed!.id}/${general.id}`);
         await expect(composerOf(alice)).toBeVisible({ timeout: 45_000 });
 
         const dms = (await (
@@ -114,9 +114,9 @@ test('TG.9: tạo DM từ profile card, gửi tin, badge realtime, chặn/bỏ c
           { timeout: 15_000 },
         );
 
-        // Mở /dms: hàng hội thoại có badge + aria đủ thông tin → bấm vào → badge dọn sau mark-read.
+        // Mở danh sách DM: hàng hội thoại có badge + aria đủ thông tin → bấm vào → badge dọn sau mark-read.
         await alice.getByTestId('dm-rail').click();
-        await expect(alice).toHaveURL(/\/dms$/);
+        await expect(alice).toHaveURL(/\/channels\/@me$/);
         const row = alice.getByTestId('dm-row').filter({ hasText: 'Bob Tran' });
         await expect(row).toHaveAttribute(
           'aria-label',
@@ -124,7 +124,7 @@ test('TG.9: tạo DM từ profile card, gửi tin, badge realtime, chặn/bỏ c
           { timeout: 15_000 },
         );
         await row.click();
-        await expect(alice).toHaveURL(/\/dms\/[0-9a-f-]{36}$/);
+        await expect(alice).toHaveURL(/\/channels\/@me\/[0-9a-f-]{36}$/);
         await expect(composerOf(alice)).toBeVisible({ timeout: 45_000 });
         await expect(
           dmPaneOf(alice, 'Bob Tran')
@@ -205,7 +205,7 @@ test('TG.9: tạo DM từ profile card, gửi tin, badge realtime, chặn/bỏ c
       await pacedLogin(freshCtx.request, `dm-e2e-${throwawaySuffix}@example.test`, 'e2e-password');
 
       const fresh = await freshCtx.newPage();
-      await fresh.goto(`/servers/${throwaway.id}/channels/${throwaway.channels[0]!.id}`);
+      await fresh.goto(`/channels/${throwaway.id}/${throwaway.channels[0]!.id}`);
       await expect(composerOf(fresh)).toBeVisible({ timeout: 45_000 });
       await fresh.getByTestId('member-row').filter({ hasText: 'Bob Tran' }).click();
       await expect(fresh.getByTestId('member-profile')).toBeVisible();
@@ -216,7 +216,7 @@ test('TG.9: tạo DM từ profile card, gửi tin, badge realtime, chặn/bỏ c
           'Không nhắn được: một trong hai người đã chặn hoặc đã tắt nhận tin nhắn riêng.',
         ),
       ).toBeVisible({ timeout: 15_000 });
-      await expect(fresh).toHaveURL(new RegExp(`/servers/${throwaway.id}/`));
+      await expect(fresh).toHaveURL(new RegExp(`/channels/${throwaway.id}/`));
 
       // Dọn dẹp: trả dmAllow về mặc định và xóa server phủi tay (không đụng dữ liệu seed).
       const restore = await bobCtx.request.patch(`${API}/users/me/privacy`, {

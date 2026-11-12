@@ -63,7 +63,7 @@ test('gap recovery: 100 messages sent while offline are patched in order after r
     });
     expect(viewerJoined.ok()).toBeTruthy();
     const page = await viewerContext.newPage();
-    await page.goto(`/servers/${server.id}/channels/${channelId}`);
+    await page.goto(`/channels/${server.id}/${channelId}`);
     await expect(page.getByText('Chưa có tin nhắn nào. Hãy gửi tin đầu tiên!')).toBeVisible({
       timeout: 15_000,
     });
