@@ -1,5 +1,5 @@
 import { QueryClient } from '@tanstack/react-query';
-import { ApiError } from './api-client';
+import { ApiError, restoreSession } from './api-client';
 import { qk } from './query-keys';
 import {
   clearPersistedQueries,
@@ -64,8 +64,12 @@ export function getQueryClient(): QueryClient {
   }
   if (!browserQueryClient) {
     browserQueryClient = makeQueryClient();
-    hydratePersistedQueries(browserQueryClient);
+    const signedIn = hydratePersistedQueries(browserQueryClient);
     startPersistingQueries(browserQueryClient);
+    // Cache khung có `me` ⇒ tab này từng đăng nhập nhưng access token đã mất theo lần tải
+    // trang. Khôi phục ngay để các query mount kế tiếp chờ token (xem `restoreSession`).
+    // Lỗi mạng/429 để request đi tiếp như cũ — không chặn app vì một lần khôi phục hỏng.
+    if (signedIn) void restoreSession().catch(() => undefined);
   }
   return browserQueryClient;
 }

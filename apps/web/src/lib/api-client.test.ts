@@ -118,6 +118,47 @@ describe('api-client', () => {
     expect(init.credentials).toBe('include');
   });
 
+  it('sau F5 các query mount sớm chờ khôi phục phiên rồi mới gửi, không bắn 401 hàng loạt', async () => {
+    const { api, restoreSession, getAccessToken } = await load();
+    let completeRefresh!: (value: Response) => void;
+    fetchMock.mockImplementation((url, init) => {
+      if (url.endsWith('/auth/refresh')) {
+        return new Promise<Response>((resolve) => {
+          completeRefresh = resolve;
+        });
+      }
+      return Promise.resolve(json(200, { auth: authHeader(init) }));
+    });
+
+    const restore = restoreSession();
+    // Ba query cùng mount lúc chưa có token (cache khung được hydrate từ localStorage).
+    const requests = [api.get('/servers'), api.get('/dms'), api.get('/users/me/unread')];
+    await flushMicrotasks();
+    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([`${API}/auth/refresh`]);
+
+    completeRefresh(json(200, { accessToken: 'fresh' }));
+    await expect(restore).resolves.toBe('fresh');
+    await expect(Promise.all(requests)).resolves.toEqual([
+      { auth: 'Bearer fresh' },
+      { auth: 'Bearer fresh' },
+      { auth: 'Bearer fresh' },
+    ]);
+    expect(getAccessToken()).toBe('fresh');
+  });
+
+  it('restoreSession: dùng token đang có, gộp các lời gọi đồng thời thành một lần refresh', async () => {
+    const { restoreSession, setAccessToken } = await load();
+    setAccessToken('tok');
+    await expect(restoreSession()).resolves.toBe('tok');
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    setAccessToken(null);
+    fetchMock.mockResolvedValue(json(200, { accessToken: 'new' }));
+    const [a, b] = await Promise.all([restoreSession(), restoreSession()]);
+    expect([a, b]).toEqual(['new', 'new']);
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
   it('gửi body dạng JSON và parse response bằng schema nếu có', async () => {
     const { api } = await load();
     fetchMock.mockResolvedValue(json(201, { id: 'a', extra: 1 }));
@@ -340,6 +381,26 @@ describe('api-client', () => {
     await expect(a).resolves.toEqual({ ok: true });
     await expect(b).resolves.toEqual({ ok: true });
     expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it('thử lại sau 429 dựng lại header, dùng token mới nhất', async () => {
+    vi.useFakeTimers();
+    const { api, setAccessToken } = await load();
+    setAccessToken('old');
+    fetchMock.mockImplementation(() =>
+      fetchMock.mock.calls.length === 1
+        ? json(429, { code: 'TOO_MANY_REQUESTS' }, { 'Retry-After': '1' })
+        : json(200, { ok: true }),
+    );
+
+    const request = api.get('/servers');
+    await flushMicrotasks();
+    // Token đổi trong lúc request đang chờ Retry-After (ví dụ refresh của tab khác vừa xong).
+    setAccessToken('new');
+    await vi.advanceTimersByTimeAsync(1_000);
+
+    await expect(request).resolves.toEqual({ ok: true });
+    expect(authHeader(fetchMock.mock.calls[1]![1])).toBe('Bearer new');
   });
 
   it('GET gặp 429 hai lần liên tiếp thì báo lỗi, không thử lần ba', async () => {

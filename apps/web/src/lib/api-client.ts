@@ -46,6 +46,40 @@ export function expireSession(): void {
   unauthenticatedHandler?.();
 }
 
+// Lần khôi phục phiên đang chạy (F5): dùng chung cho query mount sớm và socket.
+let restoring: Promise<string | null> | null = null;
+
+/**
+ * Khôi phục access token từ cookie refresh, tối đa MỘT request cho cả lượt tải trang.
+ *
+ * Sau F5 token trong RAM đã mất, nhưng cache khung lưu trong localStorage khiến cây `(app)`
+ * mount và bắn query trước khi `getSession` kịp đổi cookie. Không chờ nhau thì cả loạt query
+ * gửi đi không kèm `Authorization`, nhận 401, rồi mỗi 401 lại xoay vòng refresh token — đốt
+ * sạch bucket `authSession` (30/phút/IP, ADR-0080) chỉ bằng một lần F5.
+ *
+ * Ném lỗi khi refresh hỏng tạm thời (mạng, 429, 5xx) để caller tự quyết định thử lại.
+ */
+export function restoreSession(): Promise<string | null> {
+  if (accessToken) return Promise.resolve(accessToken);
+  restoring ??= refreshAccessToken().finally(() => {
+    restoring = null;
+  });
+  return restoring;
+}
+
+/**
+ * Chờ lần khôi phục phiên đang chạy (nếu có) trước khi gửi request cần token. Không tự bắt
+ * đầu refresh: trang chưa đăng nhập không phải trả giá bằng một request /auth/refresh.
+ */
+async function waitForSession(): Promise<void> {
+  if (accessToken || !restoring) return;
+  try {
+    await restoring;
+  } catch {
+    // Lỗi tạm thời: cứ gửi request; nếu 401 thì `sendWithRefresh` chờ Retry-After rồi xử lý.
+  }
+}
+
 /** Gọi khi phiên đăng nhập hết hẳn (refresh thất bại) — F2 nối vào điều hướng tới /login. */
 export function setUnauthenticatedHandler(handler?: () => void): void {
   unauthenticatedHandler = handler;
@@ -209,20 +243,26 @@ async function send(
   body?: unknown,
   options?: SendOptions,
 ): Promise<Response> {
-  const headers = new Headers();
-  if (accessToken) {
-    headers.set('Authorization', `Bearer ${accessToken}`);
-  }
-  if (body !== undefined) {
-    headers.set('Content-Type', 'application/json');
-  }
-  // Endpoint dùng cookie (refresh, logout) đòi header này để chống CSRF (ADR-0027).
-  if (path === '/auth/refresh' || path === '/auth/logout') {
-    headers.set(CLIENT_HEADER, CLIENT_HEADER_VALUE);
-  }
-  for (const [name, value] of Object.entries(options?.headers ?? {})) {
-    headers.set(name, value);
-  }
+  // Header dựng ở MỖI lần gửi, không phải một lần lúc gọi: request chờ suất trong hàng đợi
+  // (hoặc chờ khôi phục phiên) có thể được gửi sau khi token vừa đổi — dựng sớm sẽ mang
+  // token cũ/không có và nhận 401 oan.
+  const buildHeaders = (): Headers => {
+    const headers = new Headers();
+    if (accessToken) {
+      headers.set('Authorization', `Bearer ${accessToken}`);
+    }
+    if (body !== undefined) {
+      headers.set('Content-Type', 'application/json');
+    }
+    // Endpoint dùng cookie (refresh, logout) đòi header này để chống CSRF (ADR-0027).
+    if (path === '/auth/refresh' || path === '/auth/logout') {
+      headers.set(CLIENT_HEADER, CLIENT_HEADER_VALUE);
+    }
+    for (const [name, value] of Object.entries(options?.headers ?? {})) {
+      headers.set(name, value);
+    }
+    return headers;
+  };
   // Refresh xoay vòng token và trả cookie mới. Nếu trang đang điều hướng (F5, mở URL khác) thì
   // request thường bị hủy giữa chừng: server đã xoay vòng nhưng Set-Cookie không kịp vào cookie
   // jar, tài liệu kế tiếp gửi token cũ và nhận 401 "already rotated". `keepalive` để trình duyệt
@@ -231,7 +271,7 @@ async function send(
   const request = () =>
     fetch(`${apiBaseUrl}${path}`, {
       method,
-      headers,
+      headers: buildHeaders(),
       // Gửi kèm cookie refresh (httpOnly) cho /auth/*; API bật CORS credentials cho WEB_ORIGIN.
       credentials: 'include',
       body: body === undefined ? undefined : JSON.stringify(body),
@@ -365,7 +405,12 @@ async function sendWithRefresh(
   body?: unknown,
   options?: SendOptions,
 ): Promise<Response> {
+  // Chụp "thế hệ" phiên TRƯỚC mọi await: request thuộc phiên nào thì 401 về muộn cũng không
+  // được xóa token của phiên mới (đăng nhập/đăng xuất trong lúc request đang bay).
   const generation = tokenGeneration;
+  // F5: chờ phiên khôi phục xong rồi mới gửi, thay vì bắn đi thiếu `Authorization` (xem
+  // `restoreSession`). `/auth/*` không cần token nên bỏ qua để không chờ chính nó.
+  if (!path.startsWith('/auth/')) await waitForSession();
   // Token dùng cho lần gửi đầu: 401 về muộn có thể chỉ vì request này mang token CŨ trong khi
   // request khác đã refresh xong. Khi đó gửi lại bằng token mới, KHÔNG xoay vòng thêm lần nữa —
   // mỗi lần xoay vòng thừa là một cơ hội mất Set-Cookie lúc trang điều hướng.
@@ -487,6 +532,7 @@ export const api = {
       }
     };
     try {
+      await waitForSession();
       await run();
     } catch (error) {
       if (error instanceof ApiError && error.status === 401 && (await refreshAccessToken()))

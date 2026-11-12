@@ -95,10 +95,15 @@ function write(queryClient: QueryClient) {
   }
 }
 
-/** Nạp lại cache đã lưu ngay khi client được tạo, trước lần render đầu tiên. */
-export function hydratePersistedQueries(queryClient: QueryClient) {
+/**
+ * Nạp lại cache đã lưu ngay khi client được tạo, trước lần render đầu tiên. Trả `true` khi
+ * `me` được nạp — tức tab này từng đăng nhập, nên access token (chỉ sống trong RAM) cần được
+ * khôi phục ngay: query mount sau đó chờ token thay vì gửi đi rồi 401 (xem `restoreSession`).
+ */
+export function hydratePersistedQueries(queryClient: QueryClient): boolean {
   const stored = read();
-  if (!stored) return;
+  if (!stored) return false;
+  let signedIn = false;
   for (const entry of stored.queries) {
     if (!Array.isArray(entry.key) || entry.data == null) continue;
     if (!isPersistable(entry.key)) continue;
@@ -106,10 +111,12 @@ export function hydratePersistedQueries(queryClient: QueryClient) {
     // mount lên là refetch nền liền thay vì coi dữ liệu cũ còn "tươi" 30 giây. Quan trọng với
     // quyền: thành viên vừa được cấp/thu quyền ở nơi khác phải thấy UI đổi ngay sau F5.
     queryClient.setQueryData(entry.key, entry.data, { updatedAt: 0 });
+    if (entry.key[0] === qk.me[0]) signedIn = true;
   }
   // `me` có staleTime Infinity nên `updatedAt: 0` vẫn không đủ làm nó cũ; invalidate để lần
   // mount đầu refetch nền — người dùng thấy khung ngay, phiên hết hạn vẫn bị phát hiện.
   void queryClient.invalidateQueries({ queryKey: qk.me });
+  return signedIn;
 }
 
 let started = false;

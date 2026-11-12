@@ -1,6 +1,6 @@
 import type { ClientToServerEvents, ServerToClientEvents } from '@ping/shared';
 import { io, type Socket } from 'socket.io-client';
-import { getAccessToken } from '@/lib/api-client';
+import { getAccessToken, restoreSession } from '@/lib/api-client';
 import { env } from '@/lib/env';
 
 export type RealtimeSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
@@ -31,6 +31,16 @@ export function createSocket(): RealtimeSocket {
     reconnectionDelay: 1_000,
     reconnectionDelayMax: 10_000,
     randomizationFactor: 0.5,
-    auth: (cb) => cb({ token: getAccessToken() }),
+    // Token chỉ sống trong RAM: sau F5 phải đổi cookie refresh lấy token mới TRƯỚC khi bắt
+    // tay. Gửi `null` thì middleware của API từ chối (connect_error), client lại xoay vòng
+    // refresh token thêm lần nữa — mỗi lần tải trang tốn hai lần refresh. Socket.IO gọi hàm
+    // này cho từng lần kết nối và chờ callback, nên handshake đợi đúng lần khôi phục đang chạy.
+    auth: (cb) => {
+      void restoreSession().then(
+        (token) => cb({ token }),
+        // Refresh hỏng tạm thời: cứ thử với token hiện có; connect_error → recover() lo tiếp.
+        () => cb({ token: getAccessToken() }),
+      );
+    },
   });
 }
