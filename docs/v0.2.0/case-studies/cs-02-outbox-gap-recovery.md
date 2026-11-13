@@ -68,7 +68,15 @@ sequenceDiagram
   thực tế của người dùng đang mở kênh.
 - Hiệu chỉnh xóa chỉ áp dụng trong khoảng `(afterId, maxFetchedId]` — ngoài khoảng là việc của
   refetch nền sau này; tránh đua với event socket đến song song.
-- Bài học phỏng vấn: nguồn sự thật là DB; realtime chỉ là bản sao tốt nhất. Server đảm bảo
-  at-least-once bằng outbox; client tự chịu trách nhiệm "đón cho đủ" bằng cursor — chia bài
-  toán mất gói thành hai nửa nhỏ, mỗi bên một cơ chế đơn giản thay vì một giao thức phân
-  phối đảm bảo exactly-once.
+- Phạm vi thật của outbox (đối chiếu code 2026-11-13): relay đẩy `OutboxEvent` vào
+  `stream:outbox` với đảm bảo at-least-once, và consumer duy nhất hiện nay là AI indexer.
+  Realtime tới client **không** đi qua outbox: REST ghi DB rồi gateway phát trực tiếp. Nên
+  "đón cho đủ" ở client không dựa vào outbox mà dựa vào cursor `?after=`.
+- Relay từng có ba lỗi, sửa ở [ADR-0090](../../adr/0090-outbox-relay-skip-locked.md): hai relay
+  (API + worker) phát trùng cùng một hàng (e2e tái hiện: 30 event → 59 entry), event vượt số
+  lần thử vẫn bị thử mãi, và Redis chết làm mỗi tick đốt `attempts` của mọi event. Sau sửa:
+  `FOR UPDATE SKIP LOCKED`, `outbox_dead`, Redis chết thì để event yên.
+- Bài học phỏng vấn: nguồn sự thật là DB; realtime chỉ là bản sao tốt nhất. Outbox cho các
+  consumer bền (indexer) at-least-once; client tự chịu trách nhiệm "đón cho đủ" bằng cursor —
+  chia bài toán mất gói thành hai nửa nhỏ, mỗi bên một cơ chế đơn giản thay vì một giao thức
+  phân phối đảm bảo exactly-once.
