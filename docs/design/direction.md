@@ -50,16 +50,6 @@ phải đạt AA — `audit:design` in ra từng tỉ lệ.
 
 - ≤ 200 ms cho chuyển trạng thái; tôn trọng `prefers-reduced-motion`.
 
-## Skin Pixel (tùy chọn, theo thiết bị)
-
-Ngoài giao diện mặc định bám Discord, có skin thứ hai "Pixel" cho người thích chất ô bàn phím
-([ADR-0076](../adr/0076-skin-pixel-truc-hinh-thuc-thiet-bi.md)): bo góc 0 (kể cả avatar/chấm trạng
-thái), viền 2 px, bóng cứng không blur, chuyển động `steps(2, end)`. Màu và nhịp giữ nguyên — skin
-không đổi palette. Chọn ở Cài đặt > Giao diện, lưu ở cookie thiết bị, không đồng bộ tài khoản.
-
-Không dùng font pixel: Pixelify Sans không có subset tiếng Việt, dấu sẽ rơi về font hệ điều hành.
-Cá tính Pixel đến từ hình khối, không từ chữ.
-
 ## Nguyên tắc
 
 - Bảng màu/layout lấy Discord làm chuẩn; **logo, tên sản phẩm, sticker và tài sản hình ảnh vẫn là

@@ -37,10 +37,6 @@ test('tg13 settings: theme sync hai tab, riêng tư/chặn, thông báo kênh, g
   test.setTimeout(420_000);
   const aliceContext = await browser.newContext();
   const bobContext = await browser.newContext();
-  // Skin thuộc thiết bị và mặc định là Pop; test này kiểm tra chuyển đổi từ skin mặc định cũ.
-  await aliceContext.addCookies([
-    { name: 'ping-skin', value: 'default', url: 'http://localhost:3000' },
-  ]);
   // Lưu lại để finally phủi tay được cả khi test đỏ giữa chừng.
   let aliceForCleanup: AuthResponse | undefined;
   let bobForCleanup: AuthResponse | undefined;
@@ -107,46 +103,6 @@ test('tg13 settings: theme sync hai tab, riêng tư/chặn, thông báo kênh, g
       } finally {
         await alice2Context.close();
       }
-    });
-
-    await test.step('(a2) skin Pixel: đổi cục bộ, tải lại giữ nguyên, trả về mặc định', async () => {
-      await expect(alicePage.getByTestId('settings-appearance')).toBeVisible();
-      const html = alicePage.locator('html');
-      await expect(html).toHaveAttribute('data-skin', 'default');
-
-      await alicePage.getByTestId('settings-skin-pixel').click();
-      await expect(html).toHaveAttribute('data-skin', 'pixel');
-      // Đổi hình thức THẬT chứ không chỉ đổi attr: token bo góc về 0 (ADR-0076).
-      await expect
-        .poll(() =>
-          alicePage.evaluate(() =>
-            getComputedStyle(document.documentElement).getPropertyValue('--ping-radius-lg').trim(),
-          ),
-        )
-        .toBe('0px');
-      await expect(alicePage.getByRole('radio', { name: 'Pixel' })).toBeChecked();
-
-      // Skin là cookie THIẾT BỊ: không PATCH server, tải lại vẫn giữ lựa chọn.
-      const skinCookie = (await aliceContext.cookies()).find((item) => item.name === 'ping-skin');
-      expect(skinCookie?.value).toBe('pixel');
-      await alicePage.reload();
-      // Reload reset state modal: mở lại đúng mục Giao diện.
-      await alicePage.getByTestId('personal-settings').click();
-      await alicePage.getByTestId('settings-modal-nav-appearance').click();
-      await expect(alicePage.getByTestId('settings-appearance')).toBeVisible();
-      await expect(html).toHaveAttribute('data-skin', 'pixel');
-      await expect(alicePage.getByRole('radio', { name: 'Pixel' })).toBeChecked();
-
-      // Trả về mặc định để ảnh evidence và các spec sau không dính skin.
-      await alicePage.getByTestId('settings-skin-default').click();
-      await expect(html).toHaveAttribute('data-skin', 'default');
-      await expect
-        .poll(() =>
-          alicePage.evaluate(() =>
-            getComputedStyle(document.documentElement).getPropertyValue('--ping-radius-lg').trim(),
-          ),
-        )
-        .toBe('12px');
     });
 
     await test.step('(b) riêng tư: tắt dmAllow → bob tạo DM 403 DM_BLOCKED; chặn/bỏ chặn', async () => {

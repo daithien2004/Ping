@@ -1,6 +1,9 @@
 # ADR-0076: Skin "Pixel" — trục hình thức thứ hai, chọn theo thiết bị
 
-Status: accepted — trong phạm vi PR2 của kế hoạch UI (OWNER duyệt ngày 2026-11-02), thi công phiên
+Status: superseded by [ADR-0089](0089-bo-skin-pixel-va-pop.md) (2026-11-13 — OWNER yêu cầu bỏ hẳn
+skin Pixel và Pop). Nội dung dưới đây giữ nguyên làm lịch sử.
+
+Trước đó: accepted — trong phạm vi PR2 của kế hoạch UI (OWNER duyệt ngày 2026-11-02), thi công phiên
 2026-11-02.
 Date: 2026-11-02
 

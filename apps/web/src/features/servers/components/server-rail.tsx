@@ -18,9 +18,9 @@ import { EnableNotificationsButton } from '@/features/notifications/components/e
 import { useNotifyBadge } from '@/features/notifications/badge';
 import { profileImageUrl } from '@/features/profile/hooks';
 import { useRealtime } from '@/features/realtime/context';
+import { onServerEvent } from '@/features/realtime/socket';
 import { useUnread } from '@/features/unread/hooks';
 import { totals } from '@/features/unread/unread-cache';
-import { avatarTone } from '@/lib/avatar-tone';
 import { isDmPath, serverIdFromPath } from '@/lib/channel-url';
 import { initials } from '@/lib/initials';
 import { useServers } from '../hooks';
@@ -172,11 +172,7 @@ function DmRailItem({ active }: { active: boolean }) {
           offset={[-4, 4]}
           aria-label={unreadTotal > 0 ? t('mentionCount', { count: unreadTotal }) : undefined}
         >
-          <span
-            data-slot="rail-icon"
-            data-tone={1}
-            className={`${railIcon} flex items-center justify-center`}
-          >
+          <span data-slot="rail-icon" className={`${railIcon} flex items-center justify-center`}>
             <MessageCircle className="size-5" />
           </span>
         </PingBadge>
@@ -238,7 +234,6 @@ function ServerRailItem({
             <PingAvatar
               size={40}
               data-slot="rail-icon"
-              data-tone={avatarTone(name)}
               data-active={active ? 'true' : undefined}
               src={profileImageUrl(iconUrl)}
               alt={name}
@@ -270,10 +265,7 @@ function MentionAnnouncer() {
       const name = servers.find((server) => server.id === event.serverId)?.name;
       setAnnouncement(name ? t('mentionAnnounce', { server: name }) : t('mentionAnnounceGeneric'));
     };
-    session.socket.on(ServerEvents.MentionCreated, handler);
-    return () => {
-      session.socket.off(ServerEvents.MentionCreated, handler);
-    };
+    return onServerEvent(session.socket, ServerEvents.MentionCreated, handler);
   }, [session, servers, t]);
 
   return (

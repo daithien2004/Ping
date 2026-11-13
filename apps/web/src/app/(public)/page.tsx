@@ -17,7 +17,6 @@ import { qk } from '@/lib/query-keys';
  *
  * Người đã đăng nhập thì vào app luôn; khách mới thấy phần giới thiệu + đường vào đăng nhập /
  * đăng ký. Mọi chuỗi nằm trong `messages/*.json` (namespace `landing`) — không hardcode.
- * Hình thức Pop (ADR-0084) bám vào các `data-slot="landing-*"`; skin khác dùng khung trung tính.
  */
 export default function LandingPage() {
   const router = useRouter();

@@ -153,12 +153,6 @@ export function ChannelView({
             <SearchDialog serverId={serverId} />
           </div>
         </header>
-        {/* Dải chủ đề chạy chữ của skin Pop: ẩn mặc định, aria-hidden vì chủ đề đã đọc ở header. */}
-        {channel.topic && (
-          <p aria-hidden data-slot="topic-strip" className="hidden">
-            <span>{channel.topic}</span>
-          </p>
-        )}
         <Suspense fallback={<MessageListSkeleton />}>
           {/* key: mỗi channel một trạng thái riêng (nháp, vị trí cuộn lần đầu). Tin đích của
               permalink cũng là một "phiên xem" riêng: mở link khác thì nạp lại cửa sổ mới. */}

@@ -12,14 +12,12 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  borderWidth,
   darkColors,
   easing,
   lightColors,
   palette,
   radius,
   shadow,
-  skins,
   typography,
 } from '../src/lib/theme/tokens.ts';
 
@@ -69,26 +67,6 @@ const shadowDeclarations = (mode, indent = 2) =>
     .map(([key, value]) => `${' '.repeat(indent)}--ping-shadow-${key}: ${value[mode]};`)
     .join('\n');
 
-// Skin Pixel (ADR-0076): cùng bảng token, chỉ đổi hình thức. Bo góc 0 gồm cả `full` (avatar,
-// chấm hiện diện thành ô vuông — đúng chất pixel); viền dày 2 px; bóng cứng không alpha mờ.
-const skinRadiusDeclarations = Object.keys(radius)
-  .map((key) => `  --ping-radius-${key}: ${skins.pixel.radius}px;`)
-  .join('\n');
-
-const skinShadowDeclarations = (mode, indent = 2) =>
-  Object.entries(skins.pixel.shadow)
-    .map(([key, value]) => `${' '.repeat(indent)}--ping-shadow-${key}: ${value[mode]};`)
-    .join('\n');
-
-const popRadiusDeclarations = Object.entries(skins.pop.radius)
-  .map(([key, value]) => `  --ping-radius-${key}: ${value}px;`)
-  .join('\n');
-
-const popShadowDeclarations = (mode, indent = 2) =>
-  Object.entries(skins.pop.shadow)
-    .map(([key, value]) => `${' '.repeat(indent)}--ping-shadow-${key}: ${value[mode]};`)
-    .join('\n');
-
 const css = `/* AUTO-GENERATED từ src/lib/theme/tokens.ts — KHÔNG sửa tay.
  * Sinh lại: pnpm --filter web gen:theme
  * CI chạy --check và đỏ nếu file này lệch token.
@@ -99,9 +77,6 @@ ${paletteDeclarations()}
   /* Bo góc: Tailwind rounded-* đọc các biến này qua @theme trong globals.css. */
 ${radiusDeclarations}
   --radius: ${radius.lg}px;
-
-  /* Độ dày viền mặc định của khung Tailwind (globals.css đọc khi có [data-skin]). */
-  --ping-border-width: ${borderWidth}px;
 
   /* Đường cong chuyển động (ease-* của Tailwind). */
 ${easingDeclarations}
@@ -127,48 +102,6 @@ ${shadowDeclarations('dark', 4)}
 html[data-theme='dark'] {
 ${declarations(darkColors, 2)}
 ${shadowDeclarations('dark')}
-}
-
-/* Skin Pixel (ADR-0076) — trục độc lập với sáng/tối: đặt sau các khối theme để thắng cascade
- * ở cùng độ đặc hiệu. Chỉ hình thức; màu và nhịp giữ nguyên nên ảnh baseline mặc định không đổi. */
-html[data-skin='pixel'] {
-${skinRadiusDeclarations}
-  --radius: ${skins.pixel.radius}px;
-  --ping-border-width: ${skins.pixel.borderWidth}px;
-  --ping-ease-standard: ${skins.pixel.easing};
-${skinShadowDeclarations('light')}
-}
-
-@media (prefers-color-scheme: dark) {
-  html[data-skin='pixel']:not([data-theme='light']) {
-${skinShadowDeclarations('dark', 4)}
-  }
-}
-
-html[data-skin='pixel'][data-theme='dark'] {
-${skinShadowDeclarations('dark')}
-}
-
-/* Skin Pop (ADR-0084): ngoài hình thức còn ghi đè một phần màu theo mode. Khối dark có độ đặc hiệu
- * cao hơn khối light nên thắng khi nền tối; thứ tự như Pixel. */
-html[data-skin='pop'] {
-${popRadiusDeclarations}
-  --radius: ${skins.pop.radius.lg}px;
-  --ping-border-width: ${skins.pop.borderWidth}px;
-${declarations(skins.pop.colors.light, 2)}
-${popShadowDeclarations('light')}
-}
-
-@media (prefers-color-scheme: dark) {
-  html[data-skin='pop']:not([data-theme='light']) {
-${declarations(skins.pop.colors.dark, 4)}
-${popShadowDeclarations('dark', 4)}
-  }
-}
-
-html[data-skin='pop'][data-theme='dark'] {
-${declarations(skins.pop.colors.dark, 2)}
-${popShadowDeclarations('dark')}
 }
 `;
 

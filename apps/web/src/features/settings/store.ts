@@ -8,7 +8,6 @@ import {
   type SettingsTheme,
 } from '@ping/shared';
 import { create } from 'zustand';
-import { readSkinCookie, writeSkinCookie, type Skin } from '@/lib/theme/skin';
 
 /**
  * Bản cài đặt ĐANG ÁP DỤNG trên thiết bị này (TG.13) — UI state, không phải server state:
@@ -19,15 +18,11 @@ import { readSkinCookie, writeSkinCookie, type Skin } from '@/lib/theme/skin';
  * tab mới thấy tối ngay, không đợi GET settings về mới đổi màu (tránh nháy sáng rồi tối).
  * Giá trị server vẫn là nguồn sự thật: SettingsSync bơm sau khi đăng nhập, lệch thì sửa lại.
  * Chưa đăng nhập/lần đầu trên máy: mặc định trùng mặc định server ('system'/'comfortable'/'md').
- *
- * `skin` (ADR-0076) là ngoại lệ: chỉ thuộc THIẾT BỊ, lưu ở cookie chứ không lên server và không
- * vào cache localStorage — một người có thể thích Pixel trên laptop nhưng không trên điện thoại.
  */
 interface AppliedSettingsState {
   theme: SettingsTheme;
   density: SettingsDensity;
   fontSize: SettingsFontSize;
-  skin: Skin;
   apply: (partial: Partial<Omit<AppliedSettingsState, 'apply'>>) => void;
 }
 
@@ -76,12 +71,8 @@ export const useAppliedSettings = create<AppliedSettingsState>((set) => ({
   theme: cached.theme ?? USER_SETTINGS_DEFAULTS.theme,
   density: cached.density ?? USER_SETTINGS_DEFAULTS.density,
   fontSize: cached.fontSize ?? USER_SETTINGS_DEFAULTS.fontSize,
-  skin: readSkinCookie(),
   apply: (partial) => {
-    // Skin đi đường cookie riêng, không ghi lẫn vào cache localStorage của cài đặt server.
-    const { skin, ...rest } = partial;
-    if (Object.keys(rest).length > 0) writeCache(rest);
-    if (skin) writeSkinCookie(skin);
+    writeCache(partial);
     set(partial);
   },
 }));
