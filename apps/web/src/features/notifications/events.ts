@@ -16,6 +16,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'use-intl';
 import { useEffect } from 'react';
 import type { RealtimeSession } from '@/features/realtime/session';
+import { onServerEvent } from '@/features/realtime/socket';
 import { dmMessagePath } from '@/features/dms/navigation';
 import { listMessagesAround } from '@/features/messages/api';
 import { messagePath } from '@/features/servers/navigation';
@@ -139,12 +140,11 @@ export function useNotificationEvents(session: RealtimeSession, userId: string) 
       );
     };
 
-    session.socket.on(ServerEvents.ChannelActivity, activity);
-    session.socket.on(ServerEvents.MentionCreated, mention);
-    return () => {
-      session.socket.off(ServerEvents.ChannelActivity, activity);
-      session.socket.off(ServerEvents.MentionCreated, mention);
-    };
+    const off = [
+      onServerEvent(session.socket, ServerEvents.ChannelActivity, activity),
+      onServerEvent(session.socket, ServerEvents.MentionCreated, mention),
+    ];
+    return () => off.forEach((stop) => stop());
   }, [session, userId, queryClient, router, t]);
 }
 

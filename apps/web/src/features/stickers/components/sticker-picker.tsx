@@ -1,7 +1,7 @@
 'use client';
 import type { GifPayload, StickerDto } from '@ping/shared';
 import { Film, History, Search, Sparkles, Sticker as StickerIcon } from 'lucide-react';
-import { useMemo, useRef, useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { useTranslations } from 'use-intl';
 import { useStickers, flattenStickers } from '../hooks';
 import { pushRecentSticker, saveRecentStickers, stickerMatchesSearch } from '../sticker-utils';
@@ -9,8 +9,13 @@ import { profileImageUrl } from '@/features/profile/hooks';
 import { useGifTrending } from '@/features/gifs/hooks';
 import { GifPanel } from '@/features/gifs/components/gif-panel';
 import { PingInput } from '@/components/ui/ping-input';
+import { gridArrowKeyIndex } from '@/lib/grid-arrow-key-index';
+import { useSectionRail } from '@/lib/use-section-rail';
 
 export type StickerTab = 'recent' | 'system' | 'server' | 'gif';
+
+/** Lưới 4 cột — bước nhảy của ArrowUp/ArrowDown. */
+const STICKER_COLUMNS = 4;
 
 /** Icon cho thanh mục dọc bên trái — cùng kiểu emoji picker, nhãn chữ ở title/aria. */
 const TAB_ICONS: Record<StickerTab, ReactNode> = {
@@ -51,8 +56,11 @@ export function StickerPicker({
   // chờ request (cache 5 phút, panel GIF dùng lại đúng key này).
   useGifTrending();
   const [query, setQuery] = useState('');
-  const [tab, setTab] = useState<StickerTab>('recent');
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const { tab, scrollRef, jumpTo, syncActive } = useSectionRail<StickerTab>({
+    initialTab: 'recent',
+    clearQuery: () => setQuery(''),
+    skipScroll: (name) => name === 'gif',
+  });
 
   const stickers = useMemo(() => flattenStickers(data), [data]);
   const byId = useMemo(() => new Map(stickers.map((sticker) => [sticker.id, sticker])), [stickers]);
@@ -74,53 +82,16 @@ export function StickerPicker({
     onPick(sticker);
   }
 
-  /** Bấm icon bên trái: bỏ tìm kiếm rồi nhảy tới gói đầu tiên của mục đó (kiểu Discord). */
-  function jumpTo(name: StickerTab) {
-    setTab(name);
-    setQuery('');
-    if (name === 'gif') return;
-    // Chờ commit rồi mới cuộn: từ tab GIF, khung cuộn của danh sách sticker mới được mount.
-    requestAnimationFrame(() => {
-      const container = scrollRef.current;
-      if (!container) return;
-      const node = container.querySelector<HTMLElement>(`[data-section="${name}"]`);
-      container.scrollTop = node?.offsetTop ?? 0;
-    });
-  }
-
-  /** Icon đang sáng theo gói đang đọc khi cuộn. */
-  function syncActive() {
-    if (tab === 'gif') return;
-    const container = scrollRef.current;
-    if (!container) return;
-    const top = container.scrollTop + 4;
-    let current: StickerTab = 'recent';
-    for (const node of container.querySelectorAll<HTMLElement>('[data-section]')) {
-      if (node.offsetTop <= top) current = node.dataset.section as StickerTab;
-    }
-    if (current !== tab) setTab(current);
-  }
-
   function onGridKeyDown(event: React.KeyboardEvent<HTMLButtonElement>) {
     // Chỉ điều hướng trong lưới hiện tại — mỗi gói là một lưới riêng.
     const grid = event.currentTarget.closest('[data-grid]');
     const buttons = Array.from(grid?.querySelectorAll<HTMLButtonElement>('button') ?? []);
     const index = buttons.indexOf(event.currentTarget);
     if (index < 0) return;
-    const columns = 4;
-    const next =
-      event.key === 'ArrowRight'
-        ? index + 1
-        : event.key === 'ArrowLeft'
-          ? index - 1
-          : event.key === 'ArrowDown'
-            ? index + columns
-            : event.key === 'ArrowUp'
-              ? index - columns
-              : undefined;
-    event.preventDefault();
+    const next = gridArrowKeyIndex(event.key, index, buttons.length, STICKER_COLUMNS);
     if (next === undefined) return;
-    if (next >= 0 && next < buttons.length) buttons[next]!.focus();
+    event.preventDefault();
+    buttons[next]!.focus();
   }
 
   const tabLabels: Record<StickerTab, string> = {
@@ -220,7 +191,7 @@ export function StickerPicker({
         ) : (
           <div
             ref={scrollRef}
-            onScroll={syncActive}
+            onScroll={() => syncActive('recent')}
             className="relative h-80 max-h-full min-w-0 flex-1 overflow-y-auto pr-1"
           >
             {searching ? (

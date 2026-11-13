@@ -1,5 +1,5 @@
 import type { StickerDto } from '@ping/shared';
-import { foldVi } from '@/features/emoji/fold-vi';
+import { foldVi } from '@/lib/fold-vi';
 
 /** Số sticker tối đa lưu trong "Gần đây" (localStorage) — như emoji picker (TG.23). */
 export const STICKER_RECENT_MAX = 24;

@@ -14,26 +14,30 @@ import {
   UtensilsCrossed,
   Users,
 } from 'lucide-react';
-import { useMemo, useRef, useState, type ReactNode } from 'react';
+import { useMemo, useState, useSyncExternalStore, type KeyboardEvent, type ReactNode } from 'react';
 import { useTranslations } from 'use-intl';
 import { PingInput } from '@/components/ui/ping-input';
 import { PingPopover } from '@/components/ui/ping-popover';
 import { emojiInsertToken, emojiMatchesSearch } from '@/features/emojis/emoji-utils';
 import { useEmojis } from '@/features/emojis/hooks';
-import { profileImageUrl } from '@/features/profile/hooks';
-
-import { loadRecentEmoji, rememberEmoji } from '../recent';
-
+import { foldVi } from '@/lib/fold-vi';
+import { gridArrowKeyIndex } from '@/lib/grid-arrow-key-index';
+import { useSectionRail } from '@/lib/use-section-rail';
 import {
   EMOJI_DATA,
   EMOJI_GROUPS,
   SKIN_MODIFIERS,
   type EmojiEntry,
   type EmojiGroup,
-} from '../data';
-import { foldVi } from '../fold-vi';
-// Tái dùng từ nơi khác (sticker picker TG.22): re-export giữ đường import cũ.
-export { foldVi };
+} from '../../data';
+import {
+  recentEmojiSnapshot,
+  rememberEmoji,
+  serverRecentEmojiSnapshot,
+  subscribeRecentEmoji,
+} from '../../recent';
+import { CustomEmojiButton } from './custom-emoji-button';
+import { EmojiButton } from './emoji-button';
 
 export function matchesSearch(entry: EmojiEntry, query: string): boolean {
   const q = foldVi(query.trim().toLowerCase());
@@ -64,6 +68,8 @@ const TAB_ICONS: Record<EmojiTab, ReactNode> = {
 /** Lưới 9 cột như Discord; cũng là bước nhảy của ArrowUp/ArrowDown. */
 const EMOJI_COLUMNS = 9;
 
+type Hovered = { glyph?: string; image?: string; label: string } | null;
+
 /**
  * Emoji picker (TG.23, ADR-0057 — hình do font hệ thống; TG.24 thêm mục "Của server").
  * Bố cục theo Discord: ô tìm kiếm trên cùng, thanh icon dọc bên trái để nhảy giữa các mục,
@@ -84,20 +90,20 @@ export function EmojiPicker({
   const t = useTranslations('emoji');
   const tc = useTranslations('common');
   const [query, setQuery] = useState('');
-  const [tab, setTab] = useState<EmojiTab>('recent');
   const [tone, setTone] = useState(0); // 0 = mặc định; 1-5 = Fitzpatrick modifier
   const [toneOpen, setToneOpen] = useState(false);
-  const [hovered, setHovered] = useState<{
-    glyph?: string;
-    image?: string;
-    label: string;
-  } | null>(null);
-  // localStorage chỉ đọc được ở client — lazy initializer của useState chạy đúng một lần
-  // khi mount (client), không cần effect và không vi phạm purity.
-  const [recent, setRecent] = useState<string[]>(() =>
-    typeof window === 'undefined' ? [] : loadRecentEmoji(),
+  const [hovered, setHovered] = useState<Hovered>(null);
+  const { tab, scrollRef, jumpTo, syncActive } = useSectionRail<EmojiTab>({
+    initialTab: 'recent',
+    clearQuery: () => setQuery(''),
+  });
+  // Store ngoài React (xem recent.ts): đồng bộ với mọi nơi khác ghi "gần đây" (vd thanh reaction
+  // trong message-actions.tsx) thay vì giữ state cục bộ riêng.
+  const recent = useSyncExternalStore(
+    subscribeRecentEmoji,
+    recentEmojiSnapshot,
+    serverRecentEmojiSnapshot,
   );
-  const scrollRef = useRef<HTMLDivElement>(null);
   // Emoji server (TG.24): cùng query với renderer và màn quản trị (cache chia sẻ, event
   // `expressions.updated` invalidate — mục server tự cập nhật khi có emoji mới).
   const { data: emojiData, isError, refetch, isFetching } = useEmojis(serverId ?? '');
@@ -125,7 +131,7 @@ export function EmojiPicker({
   function pick(entry: EmojiEntry) {
     const unicode =
       entry.tone && tone > 0 ? entry.unicode + SKIN_MODIFIERS[tone - 1] : entry.unicode;
-    setRecent(rememberEmoji(unicode));
+    rememberEmoji(unicode);
     onPick(unicode);
   }
 
@@ -134,50 +140,16 @@ export function EmojiPicker({
     onPickCustom?.(emojiInsertToken(emoji));
   }
 
-  /** Bấm icon bên trái: bỏ tìm kiếm rồi cuộn tới tiêu đề mục đó (kiểu Discord). */
-  function jumpTo(name: EmojiTab) {
-    setQuery('');
-    setTab(name);
-    // Chờ commit rồi mới cuộn: đang tìm kiếm thì danh sách mục chỉ được render lại sau đó.
-    requestAnimationFrame(() => {
-      const container = scrollRef.current;
-      if (!container) return;
-      const node = container.querySelector<HTMLElement>(`[data-section="${name}"]`);
-      container.scrollTop = node?.offsetTop ?? 0;
-    });
-  }
-
-  /** Icon đang sáng theo mục đang đọc khi cuộn (Discord tô sáng thanh trái). */
-  function syncActive() {
-    const container = scrollRef.current;
-    if (!container) return;
-    const top = container.scrollTop + 4;
-    let current: EmojiTab = 'recent';
-    for (const node of container.querySelectorAll<HTMLElement>('[data-section]')) {
-      if (node.offsetTop <= top) current = node.dataset.section as EmojiTab;
-    }
-    if (current !== tab) setTab(current);
-  }
-
-  function onGridKeyDown(event: React.KeyboardEvent<HTMLButtonElement>) {
+  function onGridKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
     // Chỉ điều hướng trong lưới hiện tại — mỗi mục là một lưới riêng.
     const grid = event.currentTarget.closest('[data-grid]');
     const buttons = Array.from(grid?.querySelectorAll<HTMLButtonElement>('button') ?? []);
     const index = buttons.indexOf(event.currentTarget);
     if (index < 0) return;
-    const next =
-      event.key === 'ArrowRight'
-        ? index + 1
-        : event.key === 'ArrowLeft'
-          ? index - 1
-          : event.key === 'ArrowDown'
-            ? index + EMOJI_COLUMNS
-            : event.key === 'ArrowUp'
-              ? index - EMOJI_COLUMNS
-              : undefined;
-    event.preventDefault();
+    const next = gridArrowKeyIndex(event.key, index, buttons.length, EMOJI_COLUMNS);
     if (next === undefined) return;
-    if (next >= 0 && next < buttons.length) buttons[next]!.focus();
+    event.preventDefault();
+    buttons[next]!.focus();
   }
 
   const groupLabels: Record<EmojiGroup | 'recent', string> = {
@@ -241,7 +213,7 @@ export function EmojiPicker({
         </div>
         <div
           ref={scrollRef}
-          onScroll={syncActive}
+          onScroll={() => syncActive('recent')}
           className="relative h-80 max-h-full min-w-0 flex-1 overflow-y-auto pr-1"
         >
           {searching ? (
@@ -261,63 +233,22 @@ export function EmojiPicker({
                   className="grid grid-cols-9 justify-items-center gap-0.5"
                 >
                   {unicodeResults.map((entry) => (
-                    <button
+                    <EmojiButton
                       key={entry.unicode}
-                      type="button"
-                      role="gridcell"
-                      title={`:${entry.shortcode}:`}
-                      aria-label={t('pickEmoji', { name: entry.keywords[0]! })}
-                      onClick={() => pick(entry)}
+                      entry={entry}
+                      onPick={pick}
+                      onHover={setHovered}
                       onKeyDown={onGridKeyDown}
-                      onMouseEnter={() =>
-                        setHovered({
-                          glyph: entry.unicode,
-                          label: `:${entry.shortcode}:`,
-                        })
-                      }
-                      onFocus={() =>
-                        setHovered({
-                          glyph: entry.unicode,
-                          label: `:${entry.shortcode}:`,
-                        })
-                      }
-                      className="grid size-9 place-items-center rounded-md text-xl leading-none transition-colors hover:bg-accent focus-visible:bg-accent focus-visible:outline-none"
-                    >
-                      {entry.unicode}
-                    </button>
+                    />
                   ))}
                   {customResults.map((emoji) => (
-                    <button
+                    <CustomEmojiButton
                       key={emoji.id}
-                      type="button"
-                      role="gridcell"
-                      title={`:${emoji.name}:`}
-                      aria-label={t('pickCustomEmoji', { name: emoji.name })}
-                      onClick={() => pickCustom(emoji)}
+                      emoji={emoji}
+                      onPick={pickCustom}
+                      onHover={setHovered}
                       onKeyDown={onGridKeyDown}
-                      onMouseEnter={() =>
-                        setHovered({
-                          image: profileImageUrl(emoji.previewUrl || emoji.url),
-                          label: `:${emoji.name}:`,
-                        })
-                      }
-                      onFocus={() =>
-                        setHovered({
-                          image: profileImageUrl(emoji.previewUrl || emoji.url),
-                          label: `:${emoji.name}:`,
-                        })
-                      }
-                      data-testid="custom-emoji-option"
-                      className="grid size-9 place-items-center rounded-md transition-colors hover:bg-accent focus-visible:bg-accent focus-visible:outline-none"
-                    >
-                      {/* previewUrl tĩnh nếu có — lưới nhẹ; bản động xem ở tin nhắn. */}
-                      <img
-                        src={profileImageUrl(emoji.previewUrl || emoji.url)}
-                        alt=""
-                        loading="lazy"
-                        className="size-7 object-contain"
-                      />
-                    </button>
+                    />
                   ))}
                 </div>
               </section>
@@ -354,37 +285,13 @@ export function EmojiPicker({
                       className="grid grid-cols-9 justify-items-center gap-0.5"
                     >
                       {serverEmojis.map((emoji) => (
-                        <button
+                        <CustomEmojiButton
                           key={emoji.id}
-                          type="button"
-                          role="gridcell"
-                          title={`:${emoji.name}:`}
-                          aria-label={t('pickCustomEmoji', { name: emoji.name })}
-                          onClick={() => pickCustom(emoji)}
+                          emoji={emoji}
+                          onPick={pickCustom}
+                          onHover={setHovered}
                           onKeyDown={onGridKeyDown}
-                          onMouseEnter={() =>
-                            setHovered({
-                              image: profileImageUrl(emoji.previewUrl || emoji.url),
-                              label: `:${emoji.name}:`,
-                            })
-                          }
-                          onFocus={() =>
-                            setHovered({
-                              image: profileImageUrl(emoji.previewUrl || emoji.url),
-                              label: `:${emoji.name}:`,
-                            })
-                          }
-                          data-testid="custom-emoji-option"
-                          className="grid size-9 place-items-center rounded-md transition-colors hover:bg-accent focus-visible:bg-accent focus-visible:outline-none"
-                        >
-                          {/* previewUrl tĩnh nếu có — lưới nhẹ; bản động xem ở tin nhắn. */}
-                          <img
-                            src={profileImageUrl(emoji.previewUrl || emoji.url)}
-                            alt=""
-                            loading="lazy"
-                            className="size-7 object-contain"
-                          />
-                        </button>
+                        />
                       ))}
                     </div>
                   )
@@ -399,30 +306,13 @@ export function EmojiPicker({
                       ? recentEntries
                       : EMOJI_DATA.filter((entry) => entry.group === name)
                     ).map((entry) => (
-                      <button
+                      <EmojiButton
                         key={entry.unicode}
-                        type="button"
-                        role="gridcell"
-                        title={`:${entry.shortcode}:`}
-                        aria-label={t('pickEmoji', { name: entry.keywords[0]! })}
-                        onClick={() => pick(entry)}
+                        entry={entry}
+                        onPick={pick}
+                        onHover={setHovered}
                         onKeyDown={onGridKeyDown}
-                        onMouseEnter={() =>
-                          setHovered({
-                            glyph: entry.unicode,
-                            label: `:${entry.shortcode}:`,
-                          })
-                        }
-                        onFocus={() =>
-                          setHovered({
-                            glyph: entry.unicode,
-                            label: `:${entry.shortcode}:`,
-                          })
-                        }
-                        className="grid size-9 place-items-center rounded-md text-xl leading-none transition-colors hover:bg-accent focus-visible:bg-accent focus-visible:outline-none"
-                      >
-                        {entry.unicode}
-                      </button>
+                      />
                     ))}
                   </div>
                 )}
