@@ -14,6 +14,7 @@ Tra cứu khi vận hành. Các runbook mới (tra lỗi, migration, sao lưu, r
 | Có cảnh báo từ Prometheus                     | [alerts.md](alerts.md)                           |
 | Triển khai stack production chạy local        | [deploy.md](deploy.md)                           |
 | CI/CD từ GitHub Actions lên VPS               | [ci-cd-vps.md](ci-cd-vps.md)                     |
+| Cần biết dữ liệu demo trên production         | [demo-data.md](demo-data.md)                     |
 
 Đã có [`deploy.md`](deploy.md) cho stack production chạy local bằng Docker ([ADR-0036](../adr/0036-local-deployment.md)).
 Runbook triển khai cho nơi chạy thật (chọn môi trường, tên miền, TLS tự động, lịch backup ngoài máy)

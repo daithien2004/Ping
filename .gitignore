@@ -18,6 +18,8 @@ playwright-report/
 
 # Biến môi trường production (ADR-0032)
 .env.prod
+# Tài khoản demo production (không commit)
+.env.demo
 
 # Lighthouse CI (local)
 .lighthouseci/
