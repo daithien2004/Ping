@@ -6,6 +6,7 @@ import { SharedArray } from 'k6/data';
 const tokens = new SharedArray('tokens', () => JSON.parse(open('./data/tokens.json')));
 const meta = JSON.parse(open('./data/meta.json'));
 const PORTS = (__ENV.PORTS || '4001').split(',');
+const BASE_URL = (__ENV.BASE_URL || '').replace(/\/+$/, '');
 
 export const options = {
   scenarios: {
@@ -41,9 +42,13 @@ const xff = (i) => `10.${(i >> 16) & 255}.${(i >> 8) & 255}.${i & 255}`;
 
 export default function () {
   const i = Math.floor(Math.random() * tokens.length);
-  const base = `http://127.0.0.1:${PORTS[i % PORTS.length]}/api/v1`;
+  const base = BASE_URL
+    ? `${BASE_URL}/api/v1`
+    : `http://127.0.0.1:${PORTS[i % PORTS.length]}/api/v1`;
   const params = (kind) => ({
-    headers: { Authorization: `Bearer ${tokens[i].token}`, 'X-Forwarded-For': xff(i) },
+    headers: BASE_URL
+      ? { Authorization: `Bearer ${tokens[i].token}` }
+      : { Authorization: `Bearer ${tokens[i].token}`, 'X-Forwarded-For': xff(i) },
     tags: { kind: __ENV.PHASE === 'warmup' ? `warmup_${kind}` : kind },
   });
   const channel =
