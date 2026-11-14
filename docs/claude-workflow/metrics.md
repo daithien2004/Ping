@@ -30,3 +30,17 @@ Hook tự append một dòng cho mỗi lần chặn, chỉ timestamp UTC và rea
 | 2026-11-09T00:57:39.797Z | hook-block | outside-workspace |
 | 2026-11-09T00:58:18.237Z | hook-block | outside-workspace |
 | 2026-11-09T00:58:20.375Z | hook-block | outside-workspace |
+| 2026-11-14T02:35:21.042Z | hook-block | outside-workspace |
+| 2026-11-14T02:35:22.176Z | hook-block | outside-workspace |
+| 2026-11-14T02:35:31.720Z | hook-block | outside-workspace |
+| 2026-11-14T02:35:44.022Z | hook-block | outside-workspace |
+| 2026-11-14T02:46:37.910Z | hook-block | outside-workspace |
+| 2026-11-14T02:46:53.661Z | hook-block | outside-workspace |
+| 2026-11-14T02:47:15.996Z | hook-block | outside-workspace |
+| 2026-11-14T02:47:22.512Z | hook-block | typecheck-failed  |
+| 2026-11-14T02:48:39.644Z | hook-block | outside-workspace |
+| 2026-11-14T02:51:10.556Z | hook-block | outside-workspace |
+| 2026-11-14T02:51:12.994Z | hook-block | outside-workspace |
+| 2026-11-14T02:51:44.036Z | hook-block | outside-workspace |
+| 2026-11-14T02:52:29.229Z | hook-block | outside-workspace |
+| 2026-11-14T03:11:13.809Z | hook-block | outside-workspace |
