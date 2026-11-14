@@ -36,11 +36,12 @@ phải đọc lại quyền từ Postgres ([case 9](case-studies/cs-09-upload-ma
 Gửi/nhận tin realtime có phục hồi khoảng trống, phân quyền theo vai trò, và DM riêng tư. Ba thứ
 này tạo thành một sản phẩm chat dùng được; search, AI, sticker, emoji chỉ là lớp cộng thêm.
 
-**5. Vì sao v0.2.0 dừng ở đây?**
+**5. Vì sao phạm vi v0.2.0 dừng ở đây?**
 
-Vì phần còn lại đều cần tiền hoặc người: staging/VPS, backup ngoài máy, load test từ máy khác,
-pilot 5–10 người ([ADR-0059](../adr/0059-defer-paid-infrastructure.md)). Tôi chốt phạm vi theo
-[ADR-0038](../adr/0038-release-scope-v0.2.0.md) và để các ô chưa đo là "chưa đo" trong
+Phần tính năng đã đóng; thứ bị cắt là những mảng cần hạ tầng hoặc người thật: voice/video, mã hoá
+đầu cuối, S3, đa server, mobile native ([ADR-0038](../adr/0038-release-scope-v0.2.0.md)), cộng pilot
+5–10 người và load test từ máy ngoài. Phần vận hành cơ bản (VPS công khai, HTTPS, backup mã hoá,
+rollback) đã chạy thật trên production; ô nào chưa đo vẫn để "chưa đo" trong
 [nghiệm thu](acceptance/v0.2.0.md) thay vì điền số ước lượng.
 
 ## Case 1 — Bão presence
@@ -190,9 +191,10 @@ kiểm chứng được. UI map `AI_NO_CITATION` thành thông báo riêng, khô
 
 **28. "Dưới 20 USD" đã chứng minh chưa?**
 
-Chưa. Hiện có trần ngân sách và **0 USD** hạ tầng trả phí; chưa có VPS, domain, staging hay bảng
-giá. Tôi không tuyên bố "đã vận hành dưới 20 USD" khi chưa tiêu đồng nào
-([case 6](case-studies/cs-06-ops-under-20usd.md)).
+Chưa. Có một VPS nhỏ chạy production bằng hạn mức của OWNER và không có dịch vụ trả
+phí nào khác: LLM free tier, không S3, không Sentry, không domain. Nhưng tôi chưa có bảng giá từng
+dòng, chưa ghi cấu hình máy bằng `nproc`/`free -m`, và chưa theo dõi đủ một chu kỳ, nên không tuyên
+bố "đã vận hành dưới 20 USD" ([case 6](case-studies/cs-06-ops-under-20usd.md)).
 
 **29. Vậy đã kiểm được gì?**
 
@@ -204,13 +206,18 @@ redirect, CSP, WebSocket, SIGTERM thoát mã 0.
 **30. Drill đó có phải RTO không?**
 
 Không. Đó là **ngưỡng assert** cho hành vi degrade/recover, không phải thời gian khôi phục sau sự
-cố thật. RPO ≤ 24 giờ và RTO ≤ 60 phút vẫn là **mục tiêu chưa đo**.
+cố thật. RTO đã đo một lần trên snapshot production: ~4,5 giây cho 122 KB DB + 86 KB uploads, trong
+đó Postgres restore 1,1 giây, giải nén uploads 0,1 giây, API sẵn sàng 3,2 giây. Con số đó **không đại
+diện** cho dữ liệu lớn; RPO ≤ 24 giờ dựa vào cron hằng ngày, chưa có PITR
+([V5-backup](evidence/V2-final/V5-backup.md)).
 
 **31. Backup đã chạy thật chưa?**
 
-Có, nhưng local: dump DB dev rồi restore vào DB mới — 561 user, 146 server, 27.860 tin, số hàng
-giống hệt kể cả `_prisma_migrations` ([runbook](../runbook/backup-restore.md)). Chưa có lịch tự
-động, mã hóa, retention hay bản sao ngoài máy.
+Có, trên production: cron 02:30 UTC dump `-Fc` + tar volume uploads, mã hoá `age`, giữ 14 ngày;
+bản `.age` được kéo về máy OWNER. Lần diễn tập 2026-11-14 restore vào DB mới: số hàng khớp tới mốc
+chụp (179 + 3 tin ghi sau = 182), 22/22 hash tệp uploads trùng, `/ready` 200. Giới hạn: cron không
+dừng API/worker nên snapshot không nhất quán tuyệt đối, và script kéo chưa đặt lịch
+([runbook](../runbook/backup-restore.md)).
 
 ## Case 7 — Quy trình làm việc có rào chắn
 
@@ -302,8 +309,9 @@ ký nên chia sẻ cho người khác vẫn bị chặn ở bước kiểm quy�
 **45. Nếu được hỏi "hệ thống này chịu được bao nhiêu người"?**
 
 Tôi chỉ có số trên một laptop: 500 socket (3 instance) với 919.318 thông điệp/71,2 giây, p95
-reconnect 3,14 giây; và 2.000 socket một instance ở v0.1.0 cho thấy điểm gãy. **Chưa có load test
-từ máy khác hay qua Nginx/TLS**, nên tôi không đưa ra con số người dùng.
+reconnect 3,14 giây; và 2.000 socket một instance ở v0.1.0 cho thấy điểm gãy. Bộ k6 đã sẵn sàng bắn
+vào production qua Nginx (`BASE_URL`, token lấy qua API thật), nhưng **chưa chạy nấc tải nào**, nên
+tôi không đưa ra con số người dùng.
 
 ## Điều tôi sẽ làm khác đi
 

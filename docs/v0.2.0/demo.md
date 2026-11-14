@@ -8,6 +8,24 @@ Mục tiêu: người xem hiểu trong 5 phút rằng đây là **sản phẩm c
 (không mất/không lặp tin, quyền không rò rỉ, LLM là dependency không tin cậy) đã được xử lý —
 không phải danh sách tính năng.
 
+## 0. Bản thật (dùng khi phỏng vấn)
+
+Bản chạy công khai là **https://20.193.75.48**. Hai tài khoản quyền thấp `demo1@ping.dev` và
+`demo2@ping.dev`; mật khẩu do OWNER gửi riêng, không nằm trong repo. Dữ liệu demo tạo qua API công
+khai trên server "Ping Demo" (`#general`, `#random`, `#dev`; 40 tin, 6 reaction, 1 ghim, 1 DM),
+kèm ảnh chụp ở [evidence/V2-final/screens](evidence/V2-final/screens/) — chi tiết và lệnh chạy lại
+ở [demo-data.md](../runbook/demo-data.md).
+
+Nhịp chạy được trên bản thật: đăng nhập; gửi tin và thấy realtime giữa hai tab `demo1`/`demo2`;
+reply, reaction, ghim; tìm kiếm có bộ lọc; đính kèm ảnh; quyền (`demo1` mở nhật ký hành động nhận
+403, không thấy mục quản trị server); đổi theme và ngôn ngữ.
+
+Không chạy được trên bản thật vì thiếu khoá: **Hỏi AI** trả `AI_UNAVAILABLE`, tab **GIF** trả 503,
+và **xác minh email** không áp dụng (không có mailer). Nói thẳng ba điểm này thay vì bấm thử.
+
+Kịch bản 5 phút dưới đây viết cho DB local với seed đầy đủ; khi diễn trên bản thật, thay
+`alice/bob` bằng `demo1/demo2` và dùng các kênh của "Ping Demo".
+
 ## 1. Chuẩn bị (làm trước, không tính vào 5 phút)
 
 ### 1.1. Dữ liệu sạch trên một DB riêng
@@ -88,8 +106,9 @@ Bấm giờ ở 0:00 khi trang `/login` đã mở sẵn, ô email đã focus.
 | 3:50–4:30 | Cài đặt server           | `Ping Dev Team › Cài đặt`: vai trò, mã mời, danh mục kênh; sửa chủ đề kênh.                                     | "Quản trị ngay trong sản phẩm: vai trò theo quyền, mã mời tái tạo, danh mục kéo–thả."                                                      |
 | 4:30–5:00 | Cài đặt cá nhân          | Đổi theme Sáng/Tối, đổi ngôn ngữ vi→en→vi; quay lại kênh.                                                       | "Hai ngôn ngữ, hai theme, đồng bộ theo tài khoản; đổi là áp dụng ngay."                                                                    |
 
-Câu chốt (5 giây cuối): "Chạy thật trên Postgres/Redis thật, CI có 6 check bắt buộc; chưa có bản
-công khai và chưa đo RPO/RTO — những ô đó tôi để 'chưa đo' thay vì điền số ước lượng."
+Câu chốt (5 giây cuối): "Chạy thật trên VPS công khai với Postgres/Redis thật; CI có 6 check bắt
+buộc, rollback theo SHA và backup mã hóa đã diễn tập. Phần chưa đo — load test từ máy ngoài, RTO
+với dữ liệu lớn — tôi để đúng 'chưa đo' thay vì điền số ước lượng."
 
 ## 3. Số đo app-side (dùng khi bị hỏi "nhanh không?")
 
@@ -119,9 +138,12 @@ công khai và chưa đo RPO/RTO — những ô đó tôi để 'chưa đo' thay
 
 ## 5. Không demo (và nói thẳng nếu bị hỏi)
 
-- Không có bản chạy công khai/staging; demo chạy local ([ADR-0059](../adr/0059-defer-paid-infrastructure.md)).
-- Không load test ngoài laptop; con số 500 socket là T0.6 trên một máy.
-- Chưa quét virus tệp; chưa có RPO/RTO đo thật; backup mới diễn tập local.
+- Có bản chạy công khai https://20.193.75.48, nhưng **không có staging riêng**: mọi diễn tập chạy
+  trên production ([ADR-0059](../adr/0059-defer-paid-infrastructure.md)).
+- Load test từ máy ngoài chưa chạy (V9); con số 500 socket là T0.6 trên một máy.
+- Chưa quét virus tệp. Backup mã hóa và restore đã diễn tập trên production nhưng với dữ liệu nhỏ
+  (122 KB DB, 86 KB uploads), nên RTO ~4,5 giây **không đại diện**; chưa có PITR.
+- AI/GIF chưa cấu hình khoá trên production; Hỏi AI và tab GIF chỉ báo không khả dụng.
 - Không demo gọi video/voice, E2E encryption, mobile native — ngoài phạm vi v0.2.0.
 
 ## 6. Điều chưa diễn tập được

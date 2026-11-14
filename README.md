@@ -6,11 +6,11 @@ ngôn ngữ, hai theme.
 
 [![CI](https://github.com/daithien2004/Ping/actions/workflows/ci.yml/badge.svg)](https://github.com/daithien2004/Ping/actions/workflows/ci.yml)
 
-> **Trạng thái 2026-11-01 — bản demo local.** Mọi hạng mục `v0.2.0` không cần hạ tầng trả phí đã xong và merge
-> `main`; OWNER chốt dừng ở mức demo nên **chưa tag `v0.2.0`**. Phần vận hành (staging, HTTPS, backup/restore,
-> Sentry, load test ngoài máy) làm khi có kinh phí, lúc đó mới đóng cổng nghiệm thu và tag. Xem
-> [trạng thái](docs/v0.2.0/status.md#chốt-bản-demo-2026-11-01) và
-> [nghiệm thu](docs/v0.2.0/acceptance/v0.2.0.md).
+> **Bản chạy công khai:** https://20.193.75.48 — HTTPS với chứng chỉ IP Let's Encrypt, certbot tự gia hạn.
+> Hai tài khoản demo quyền thấp là `demo1@ping.dev` và `demo2@ping.dev`; mật khẩu do OWNER gửi riêng,
+> không nằm trong repo. Dữ liệu demo tạo hoàn toàn qua API công khai trên server "Ping Demo", không có dữ
+> liệu người dùng thật ([runbook](docs/runbook/demo-data.md)). Đang chốt `v0.2.0`: bằng chứng từng hạng
+> mục ở [nghiệm thu](docs/v0.2.0/acceptance/v0.2.0.md), tag chờ OWNER duyệt.
 
 ## Tóm tắt trong 60 giây
 
@@ -24,12 +24,16 @@ ngôn ngữ, hai theme.
   **LLM là dependency không tin cậy** (mọi UUID trong câu trả lời phải
   thuộc ngữ cảnh đã hydrate từ Postgres, nếu không thì không phát).
 - **Kiểm bằng gì:** CI gồm 6 check bắt buộc (`verify`, `api-e2e`, `web-e2e-gate`, `visual`, `migrations`,
-  `security`); e2e chạy trên Postgres/Redis thật; 61 endpoint có kịch bản IDOR; 36 baseline visual (6 màn × 2
-  theme × 3 viewport); axe không còn vi phạm nào theo WCAG 2.1 A/AA. Mỗi task có thư mục evidence riêng.
-- **Chi phí:** 0 USD. Không S3, không hạ tầng trả phí, AI chạy free tier và tự tắt khi thiếu key. Trần thiết kế
-  là 20 USD/tháng ([ADR-0038](docs/adr/0038-release-scope-v0.2.0.md)), xem [case 6](docs/v0.2.0/case-studies/cs-06-ops-under-20usd.md).
-- **Chưa có gì:** bản chạy công khai/staging, load test ngoài laptop, quét virus tệp, RPO/RTO thật. Những ô này
-  ghi "chưa đo" ở [nghiệm thu v0.2.0](docs/v0.2.0/acceptance/v0.2.0.md) thay vì điền số ước lượng.
+  `security`); e2e chạy trên Postgres/Redis thật; 61 endpoint có kịch bản IDOR; 36 baseline visual mỗi hệ
+  điều hành (6 màn × 2 theme × 3 viewport); axe không còn vi phạm nào theo WCAG 2.1 A/AA. Mỗi task có thư mục
+  evidence riêng.
+- **Chi phí:** không S3, không Sentry, không domain, AI chạy free tier và tự tắt khi thiếu key; production
+  là một VPS nhỏ dùng hạn mức sẵn có của OWNER. Trần thiết kế là 20 USD/tháng
+  ([ADR-0038](docs/adr/0038-release-scope-v0.2.0.md)), nhưng chưa có bảng giá từng dòng nên chưa tuyên bố
+  "đã vận hành dưới 20 USD" ([case 6](docs/v0.2.0/case-studies/cs-06-ops-under-20usd.md)).
+- **Chưa có / chưa đo:** staging riêng, load test từ máy ngoài (V9), quét virus tệp, PITR. Backup mã hóa
+  ngoài VPS và restore đã diễn tập trên production, nhưng dữ liệu còn nhỏ nên RTO ~4,5 giây không đại diện.
+  Những ô chưa có số ghi đúng "chưa đo" ở [nghiệm thu v0.2.0](docs/v0.2.0/acceptance/v0.2.0.md).
 
 | ![Chat, theme sáng](docs/screens/chat-light-1280.png)                 | ![Chat, theme tối](docs/screens/chat-dark-1280.png)  |
 | --------------------------------------------------------------------- | ---------------------------------------------------- |
@@ -92,6 +96,21 @@ sáng/tối, vi/en.
 Ngoài phạm vi lần này: voice/video, mã hoá đầu cuối, S3, đa server hạ tầng, mobile native
 ([ADR-0038](docs/adr/0038-release-scope-v0.2.0.md)). Trạng thái từng task:
 [docs/v0.2.0/status.md](docs/v0.2.0/status.md).
+
+## Giới hạn đã biết
+
+- **Không có staging riêng.** Production `https://20.193.75.48` là môi trường thật duy nhất; diễn tập
+  rollback/backup/load test đều chạy trên đó, có bước lùi và cửa sổ thời gian cụ thể.
+- **AI, GIF, Sentry và email chưa bật hết trên production.** Không cấu hình khoá LLM thì nút Hỏi trả
+  `AI_UNAVAILABLE`; không có khoá Tenor thì tab GIF trả 503; chưa có project Sentry thật (phần scrub và
+  `requestId` chỉ được chứng minh bằng unit test + mock); không có mailer nên luồng xác minh email không áp dụng
+  ([evidence](docs/v0.2.0/evidence/V2-final/flows-prod.md)).
+- **Cuộn 10.000 tin còn long task > 50 ms** (max/p95 137 ms) do antd Avatar đọc layout mỗi lần mount; ghi là
+  `không đạt` trong nghiệm thu và nợ kỹ thuật P2 ([F14](docs/v0.2.0/evidence/V2-final/F14-scroll.md)).
+- **Chưa có pilot người thật** (H2) và **chưa chạy load test từ máy ngoài** (V9); chưa thử restore với dữ
+  liệu hàng chục GB hay PITR.
+- **Cron backup không dừng API/worker**, nên DB và uploads không phải snapshot nhất quán tuyệt đối
+  ([backup-restore](docs/runbook/backup-restore.md)).
 
 ## Chạy local trong ~15 phút
 

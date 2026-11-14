@@ -151,3 +151,29 @@ PR1 "nền UI bám Discord" và PR2 "skin Pixel" chốt cùng một lượt trê
   `d7b51c9` (truyền thẳng `htmlFor` xuống `<label>`). Run **41404822226** (`d7b51c9`) xanh
   `verify`/`security`/`docker`/`lighthouse`/`web-e2e-gate` (đủ 3 shard)/`visual`; `api-e2e`,
   `drills`, `migrations` skip theo bộ lọc vùng thay đổi. Lint gốc vẫn 0 error / 14 warning cũ.
+
+## Chốt v2 (2026-11-14)
+
+OWNER mở lại phần vận hành; production thật chạy `https://20.193.75.48`, bản `37ae8cb`. Bằng
+chứng từng bước nằm trong [V2-final](evidence/V2-final/):
+
+- **Task 4 — deploy:** image GHCR pin SHA, `/ready` 200 ([deploy.md](evidence/V2-final/deploy.md)).
+- **Task 5 — dữ liệu demo:** tạo hoàn toàn qua API công khai trên server "Ping Demo", 8 user /
+  3 server / 182 tin, có ảnh chụp; lệnh chạy lại ở [demo-data.md](../runbook/demo-data.md).
+- **Task 6 — 9 luồng trên bản thật:** kết quả từng luồng, gồm chỗ không áp dụng (không mailer, AI
+  và GIF chưa có khoá) trong [flows-prod.md](evidence/V2-final/flows-prod.md).
+- **Task 7 — HTTPS + gia hạn:** certbot gia hạn thật 2026-11-12, dry-run xanh 2026-11-14; chưa có
+  cảnh báo hạn chứng chỉ ([V2-tls.md](evidence/V2-final/V2-tls.md)).
+- **Task 8 — rollback/roll-forward theo SHA:** mỗi chiều ~40 giây, dữ liệu ghi ở bản cũ vẫn đọc
+  được ở bản mới ([V4-rollback.md](evidence/V2-final/V4-rollback.md)).
+- **Task 9 — backup mã hóa ngoài VPS + restore:** cron 02:30 UTC, age, retention 14 ngày; restore
+  snapshot vào DB mới khớp số hàng tới mốc chụp, 22/22 hash uploads trùng, RTO ~4,5 giây trên dữ
+  liệu nhỏ ([V5-backup.md](evidence/V2-final/V5-backup.md),
+  [runbook](../runbook/backup-restore.md)).
+- **Task 10 — F14 cuộn 10.000 tin:** **không đạt** (13 long task > 50 ms, max/p95 137 ms), nguyên
+  nhân là antd Avatar đọc layout mỗi lần mount; đã ghi [nợ P2](../tech-debt.md)
+  ([F14-scroll.md](evidence/V2-final/F14-scroll.md)).
+
+Còn mở: V9 load test từ máy OWNER (chờ `INVITE_CODE`/mật khẩu user tải và duyệt tạo 30 user),
+K5/F13 cần CI xanh sau khi bootstrap baseline `linux/`, H2 pilot người thật, H3 OWNER duyệt tag.
+Cổng nghiệm thu và giới hạn: [acceptance/v0.2.0.md](acceptance/v0.2.0.md).
