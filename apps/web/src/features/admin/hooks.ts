@@ -2,6 +2,9 @@
 
 import type { AuditAction } from '@ping/shared';
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslations } from 'use-intl';
+import { pingToast } from '@/components/ui/ping-toast';
+import { useErrorMessage } from '@/lib/error-message';
 import { qk } from '@/lib/query-keys';
 import {
   assignMemberRoles,
@@ -86,13 +89,19 @@ export function useReorderRoles(serverId: string) {
 
 export function useDeleteRole(serverId: string) {
   const queryClient = useQueryClient();
+  const t = useTranslations('admin');
+  const errorMessage = useErrorMessage();
   return useMutation({
     mutationFn: (roleId: string) => deleteRole(roleId),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: qk.roles(serverId) });
       void queryClient.invalidateQueries({ queryKey: qk.server(serverId) });
       void queryClient.invalidateQueries({ queryKey: qk.unreadAll });
+      // Xoá vai trò đang chọn làm RoleForm unmount trước khi mutation kết thúc, và TanStack bỏ
+      // callback truyền ở mutate() khi observer hết listener — nên báo ở tầng mutation.
+      pingToast.success(t('roleDeleted'));
     },
+    onError: (error) => pingToast.error(errorMessage(error)),
   });
 }
 

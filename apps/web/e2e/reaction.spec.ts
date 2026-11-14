@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 import type { MessageDto, ServerDetail } from '@ping/shared';
+import { scan } from './axe';
 import { pacedLogin } from './login-pace';
 
 const API = 'http://localhost:4000/api/v1';
@@ -102,11 +103,7 @@ test('reactions: pick, toggle, reactor list and realtime from another member', a
       const dialog = page.getByRole('dialog');
       await expect(dialog).toContainText('Người đã thả 👍');
       await expect(dialog).toContainText('Alice Nguyen');
-      const { violations } = await new AxeBuilder({ page })
-        .include('[role="dialog"]')
-        .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
-        .analyze();
-      expect(violations).toEqual([]);
+      await scan(page, 'danh sách người đã thả', '[role="dialog"]');
       await page.keyboard.press('Escape');
       await expect(pill).toHaveAttribute('data-me', 'true');
     });

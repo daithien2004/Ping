@@ -141,10 +141,7 @@ function RoleForm({ serverId, role }: { serverId: string; role: RoleDto }) {
   }
 
   function remove() {
-    deleteMutation.mutate(role.id, {
-      onSuccess: () => pingToast.success(t('roleDeleted')),
-      onError: (error) => pingToast.error(errorMessage(error)),
-    });
+    deleteMutation.mutate(role.id);
   }
 
   return (
