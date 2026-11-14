@@ -1,7 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, type Page } from '@playwright/test';
 
-// Dùng chung cho a11y.spec và skin-pop.spec (H4, hướng dẫn 16.8, ADR-0029): một bộ luật axe, một cách
+// Dùng chung cho các spec a11y (H4, hướng dẫn 16.8, ADR-0029): một bộ luật axe, một cách
 // đợi theme/animation. Violation nào cũng làm test đỏ: sửa app/token, đừng nới bộ luật.
 const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];
 

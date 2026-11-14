@@ -2,7 +2,6 @@
 
 import type { CSSProperties } from 'react';
 import { PingAvatar } from '@/components/ui/ping-avatar';
-import { avatarTone } from '@/lib/avatar-tone';
 import { initials } from '@/lib/initials';
 import { profileImageUrl } from '../hooks';
 
@@ -30,7 +29,6 @@ export function UserAvatar({
   return (
     <PingAvatar
       {...titleAttribute}
-      data-tone={avatarTone(name)}
       size={typeof size === 'number' ? size : sizeMap[size]}
       src={profileImageUrl(avatarUrl)}
       alt={name}

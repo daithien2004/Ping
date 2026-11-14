@@ -1,6 +1,9 @@
 # ADR-0084: Skin "Pop" — skin thứ ba, phong cách pop-art, đổi màu theo mode
 
-Status: proposed — chờ OWNER duyệt sau khi xem ảnh chụp thật.
+Status: superseded by [ADR-0089](0089-bo-skin-pixel-va-pop.md) (2026-11-13 — OWNER yêu cầu bỏ hẳn
+skin Pixel và Pop). Nội dung dưới đây giữ nguyên làm lịch sử.
+
+Trước đó: proposed — chờ OWNER duyệt sau khi xem ảnh chụp thật.
 Date: 2026-11-09
 
 ## Context

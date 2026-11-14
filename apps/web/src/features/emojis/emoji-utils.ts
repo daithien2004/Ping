@@ -1,5 +1,5 @@
 import { customEmojiToken, type CustomEmojiDto } from '@ping/shared';
-import { foldVi } from '@/features/emoji/fold-vi';
+import { foldVi } from '@/lib/fold-vi';
 
 /** Regex tách id UUID khỏi token đầy đủ `:ten:<id>` (không dùng bản /g của shared để tránh lastIndex). */
 const FULL_TOKEN_PATTERN =

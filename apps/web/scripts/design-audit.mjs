@@ -216,11 +216,8 @@ const ANT_PAIRS = [
   // antd ghim colorBorder = borderStrong, nên phải đo ranh giới điều khiển thật.
   ['borderStrong', 'card', 3],
 ];
-// Skin Pop đổi màu (ADR-0084) nên đo cả hai skin; Pixel dùng chung bảng màu mặc định.
-for (const [skin, mode] of ['default', 'pop'].flatMap((s) =>
-  ['light', 'dark'].map((m) => [s, m]),
-)) {
-  const colors = semanticColors(mode, skin);
+for (const mode of ['light', 'dark']) {
+  const colors = semanticColors(mode);
   const card = parseColor(colors.card, new Map()).rgb;
   const rgbOf = (name) => {
     const { rgb, alpha } = parseColor(colors[name], new Map());
@@ -230,10 +227,10 @@ for (const [skin, mode] of ['default', 'pop'].flatMap((s) =>
     const value = contrast(rgbOf(fg), rgbOf(bg));
     const kind = min === 4.5 ? 'chữ' : 'phi chữ';
     if (kind === 'chữ' && value < min) {
-      failures.push(`tokens.ts ${skin}/${mode}: ${fg}/${bg} = ${value.toFixed(2)} < ${min}`);
+      failures.push(`tokens.ts ${mode}: ${fg}/${bg} = ${value.toFixed(2)} < ${min}`);
     }
     if (kind === 'phi chữ' && value < min) {
-      notes.push(`tokens.ts ${skin}/${mode}: ${fg}/${bg} = ${value.toFixed(2)} (đường phân cách)`);
+      notes.push(`tokens.ts ${mode}: ${fg}/${bg} = ${value.toFixed(2)} (đường phân cách)`);
     }
     return {
       cặp: `${fg} / ${bg}`,
@@ -243,7 +240,7 @@ for (const [skin, mode] of ['default', 'pop'].flatMap((s) =>
       kết: value >= min ? 'đạt' : kind === 'chữ' ? 'KHÔNG ĐẠT' : 'ghi chú',
     };
   });
-  console.log(`\nTương phản — token antd (tokens.ts), ${skin}/${mode}`);
+  console.log(`\nTương phản — token antd (tokens.ts), ${mode}`);
   console.table(rows);
 }
 

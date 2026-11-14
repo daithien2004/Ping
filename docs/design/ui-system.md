@@ -20,7 +20,7 @@ xuất dưới đây giữ nguyên hướng đó.
 | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Dựng bằng gì             | Next.js 16 + Tailwind 4 cho bố cục, **antd 6 bọc trong 34 file `Ping*`** cho control                                                                                   |
 | Nguồn màu/kích thước     | 1 file TS (`lib/theme/tokens.ts`) sinh `styles/tokens.generated.css`; `globals.css` chỉ nối token vào Tailwind                                                         |
-| Bao nhiêu màn            | 6 màn lớn (login, chat, search, settings, admin, ask) × 2 theme × 3 viewport × 2 skin = **72 ảnh chuẩn**                                                               |
+| Bao nhiêu màn            | 6 màn lớn (login, chat, search, settings, admin, ask) × 2 theme × 3 viewport = **36 ảnh chuẩn**                                                                        |
 | Cái gì máy chặn          | import antd sai chỗ, hex/màu thô ngoài token, tương phản < 4,5:1, ranh giới control < 3:1, chuyển động > 200 ms, thang độ đậm lạ, tầng nền sai thứ tự, axe ≠ 0 vi phạm |
 | Cái gì máy **chưa** chặn | nhịp thị giác tổng thể, chất lượng điểm nhấn — phần "đẹp" vẫn do người quyết                                                                                           |
 
@@ -104,34 +104,16 @@ khớp antd. Đổ bóng chỉ còn hai token cho lớp nổi — `shadow-panel`
 
 ### 3.3 Theme hoạt động thế nào
 
-`ThemeProvider` đọc `theme` (sáng/tối/hệ thống), `density`, `fontSize`, `skin` từ store, theo dõi
-`prefers-color-scheme`, rồi ghi `data-theme`, `data-density`, `data-font`, `data-skin` lên `<html>` và
-bọc antd `ConfigProvider` (locale vi/en, algorithm light/dark, skin, motion 200/120)
+`ThemeProvider` đọc `theme` (sáng/tối/hệ thống), `density`, `fontSize` từ store, theo dõi
+`prefers-color-scheme`, rồi ghi `data-theme`, `data-density`, `data-font` lên `<html>` và
+bọc antd `ConfigProvider` (locale vi/en, algorithm light/dark, motion 200/120)
 ([theme-provider.tsx](../../apps/web/src/providers/theme-provider.tsx):41-60).
 
 Đổi cỡ chữ: `100% = 16px`, `sm = 15px`, `lg = 18px`; density thu gọn đổi padding tin nhắn
 6 → 2 px và line-height 1,5 → 1,3 ([globals.css](../../apps/web/src/app/globals.css):216-233).
 
 Nợ đã biết: ADR-0050 dự định đọc theme từ cookie **trước hydrate**; hiện đọc `localStorage` trong
-client provider nên lần vẽ đầu có thể nháy sáng trước khi vào theme tối. Skin Pixel dùng cùng cơ chế
-(cookie đọc trong client) nên cũng có thể nháy một khung hình khi tải lại bằng skin Pixel.
-
-### 3.4 Skin Pixel (ADR-0076)
-
-Trục `data-skin` độc lập với sáng/tối: `default` (không attr hoặc `data-skin="default"`) là giao diện
-Discord ở trên; `pixel` đổi **hình thức**, không đổi màu/nhịp:
-
-| Thuộc tính    | Mặc định                                | Pixel                                              |
-| ------------- | --------------------------------------- | -------------------------------------------------- |
-| Bo góc        | sm 6 · md 8 · lg 12 · xl 16 · full 9999 | tất cả 0 (avatar và chấm trạng thái thành ô vuông) |
-| Viền Tailwind | 1 px                                    | 2 px (`--ping-border-width`)                       |
-| Bóng          | mềm, alpha 10–60%                       | cứng `3px 3px 0` / `5px 5px 0`, không blur         |
-| Chuyển động   | `cubic-bezier(0.2, 0, 0, 1)`            | `steps(2, end)`                                    |
-
-Giá trị khai trong `skins.pixel` ([tokens.ts](../../apps/web/src/lib/theme/tokens.ts)) và sinh thành
-khối `html[data-skin='pixel']`; antd nhận qua `buildAntdTheme(mode, skin)` (bo 0, `lineWidth` 2, bóng
-cứng). Skin lưu ở cookie `ping-skin` — **theo thiết bị**, không PATCH server, không vào cache
-`localStorage` của cài đặt. Không dùng font pixel: Pixelify Sans thiếu subset tiếng Việt.
+client provider nên lần vẽ đầu có thể nháy sáng trước khi vào theme tối.
 
 ## 4. Lớp component — 34 file
 
@@ -213,7 +195,7 @@ hiệu ứng.
 | ESLint            | cấm `import 'antd'` ngoài lớp UI; cấm 23 bảng màu thô ở mọi `.tsx`; 15 luật jsx-a11y                                                                                                                      | `pnpm --filter web lint`                           |
 | `design-audit`    | 15 cặp chữ ≥ 4,5:1 + 3 cặp UI cứng ≥ 3:1 + `--border` ghi chú (mỗi theme) + 7 cặp antd; lưới 4 px; sàn 12 px; 3 bậc độ đậm; thứ tự 3 tầng nền; motion ≤ 200 ms; cấm hex ngoài allowlist; cấm `!important` | `pnpm --filter web audit:design` (CI job `verify`) |
 | axe (Playwright)  | WCAG 2.1 A/AA, 0 vi phạm trên 6 nhóm màn, sáng + tối                                                                                                                                                      | `pnpm --filter web test:e2e`                       |
-| Visual regression | 72 ảnh/`platform` (36 mặc định + 36 Pixel), `threshold 0.3`, `maxDiffPixelRatio 0.015`                                                                                                                    | `pnpm --filter web test:visual`                    |
+| Visual regression | 36 ảnh/`platform`, `threshold 0.3`, `maxDiffPixelRatio 0.015`                                                                                                                                             | `pnpm --filter web test:visual`                    |
 | Bundle            | JS tải ban đầu ≤ 450 KB gzip (hiện 248,2 KB)                                                                                                                                                              | `pnpm --filter web check:bundle`                   |
 
 Điều này có nghĩa: **đổi màu/bo góc/khoảng cách thì máy sẽ hét nếu sai luật**, còn **đổi bố cục

@@ -13,6 +13,7 @@ import {
 import { useEffect, useEffectEvent } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import type { RealtimeSession } from '@/features/realtime/session';
+import { onServerEvent } from '@/features/realtime/socket';
 import { qk } from '@/lib/query-keys';
 import { ApiError } from '@/lib/api-client';
 import { serverIdFromPath } from '@/lib/channel-url';
@@ -138,13 +139,16 @@ export function useServerEvents(session: RealtimeSession) {
           });
       }
     };
-    session.socket.on(ServerEvents.MemberRemoved, removed);
-    session.socket.on(ServerEvents.PermissionsChanged, permissions);
+    const off = [
+      onServerEvent(session.socket, ServerEvents.MemberRemoved, removed),
+      onServerEvent(session.socket, ServerEvents.PermissionsChanged, permissions),
+    ];
+    // 'connect' là sự kiện gốc của socket.io (vòng đời kết nối), không thuộc `ServerToClientEvents`
+    // nên không qua được `onServerEvent` — vẫn on/off tay.
     session.socket.on('connect', connected);
     return () => {
       listening = false;
-      session.socket.off(ServerEvents.MemberRemoved, removed);
-      session.socket.off(ServerEvents.PermissionsChanged, permissions);
+      off.forEach((stop) => stop());
       session.socket.off('connect', connected);
     };
   }, [session, queryClient]);

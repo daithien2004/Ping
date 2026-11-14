@@ -26,11 +26,6 @@ import { markSignedOut } from './session';
  * trong trình duyệt. staleTime vô hạn: không cần hỏi lại định kỳ — đăng nhập/đăng xuất và
  * phiên hết hạn đều tự cập nhật cache này.
  */
-/**
- * Ví dụ kết quả query:
- * { data: { id: 'u1', username: 'An' }, isLoading: false }
- * Nếu chưa đăng nhập, `data` là `null`.
- */
 export function useMe() {
   return useSuspenseQuery({ queryKey: qk.me, queryFn: getSession, staleTime: Infinity });
 }
@@ -89,8 +84,6 @@ export function useLogout() {
     },
   });
 }
-
-/* TG.8 — vòng đời tài khoản. */
 
 /**
  * POST /auth/verify-email: thành công thì làm tươi `me` — nếu người dùng đang đăng nhập trên

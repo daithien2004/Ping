@@ -1,4 +1,3 @@
-import { readFileSync } from 'node:fs';
 import { ConfigProvider } from 'antd';
 import { createElement as h, type ReactElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -7,8 +6,6 @@ import { PingButton, VARIANTS } from './ping-button';
 import { PingIconButton } from './ping-icon-button';
 
 const SAME_AS_SECONDARY_IN_DEFAULT = ['info', 'success'];
-const NATIVE_LOOK_IN_SKINS = ['text'];
-const pop = readFileSync(new URL('../../styles/skin-pop.css', import.meta.url), 'utf8');
 
 const inLarge = (element: ReactElement) =>
   renderToStaticMarkup(h(ConfigProvider, { componentSize: 'large' }, element));
@@ -33,13 +30,6 @@ describe('PingButton', () => {
       ghost: { type: 'dashed' },
       text: { type: 'text' },
     });
-  });
-
-  it('mỗi biến thể ngoài primary/secondary/text đều có luật ở skin Pop', () => {
-    const exempt = ['primary', 'secondary', ...NATIVE_LOOK_IN_SKINS];
-    for (const name of Object.keys(VARIANTS).filter((v) => !exempt.includes(v))) {
-      expect(pop, name).toContain(`[data-variant='${name}']`);
-    }
   });
 
   it('biến thể trùng ánh xạ với secondary phải nằm trong danh sách chủ ý', () => {

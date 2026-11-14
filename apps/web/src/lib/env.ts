@@ -13,12 +13,6 @@ const envSchema = z.object({
   NEXT_PUBLIC_API_URL: z.url(),
   // Trống = tắt Sentry hoàn toàn (ADR-0031).
   NEXT_PUBLIC_SENTRY_DSN: z.preprocess((value) => value || undefined, z.url().optional()),
-  // Mặc định bật; build với 'false' để ẩn lối chọn skin Pixel (ADR-0076). Là hằng build-time,
-  // không phải cờ runtime.
-  NEXT_PUBLIC_ENABLE_PIXEL_SKIN: z
-    .string()
-    .optional()
-    .transform((value) => value !== 'false'),
 });
 
 export const env = envSchema.parse({
@@ -27,7 +21,6 @@ export const env = envSchema.parse({
     process.env.NEXT_PUBLIC_API_URL ??
     (process.env.NODE_ENV === 'production' ? undefined : 'http://localhost:4000'),
   NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
-  NEXT_PUBLIC_ENABLE_PIXEL_SKIN: process.env.NEXT_PUBLIC_ENABLE_PIXEL_SKIN,
 });
 
 /** Gốc của REST API (prefix /api/v1 cố định phía server). */

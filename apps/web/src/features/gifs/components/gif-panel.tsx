@@ -8,6 +8,7 @@ import { isGifProviderUnavailable } from '../gif-utils';
 import { useInView } from '@/lib/use-in-view';
 import { usePrefersReducedMotion } from '../use-prefers-reduced-motion';
 import { GifPlaceholder } from './gif-placeholder';
+import { gridArrowKeyIndex } from '@/lib/grid-arrow-key-index';
 
 /** Số cột của lưới GIF kiểu Giphy — khớp cột dùng cho điều hướng mũi tên. */
 const GIF_COLUMNS = 3;
@@ -38,26 +39,16 @@ function GifGrid<T extends GifPayload>({
   const reduced = usePrefersReducedMotion();
   const gridRef = useRef<HTMLDivElement>(null);
 
-  // Cùng cơ chế điều hướng bàn phím với lưới sticker (mũi tên, picker TG.22), khác số cột.
   function onGridKeyDown(event: React.KeyboardEvent<HTMLButtonElement>) {
     const buttons = Array.from(
       gridRef.current?.querySelectorAll<HTMLButtonElement>('button') ?? [],
     );
     const index = buttons.indexOf(event.currentTarget);
     if (index < 0) return;
-    const next =
-      event.key === 'ArrowRight'
-        ? index + 1
-        : event.key === 'ArrowLeft'
-          ? index - 1
-          : event.key === 'ArrowDown'
-            ? index + GIF_COLUMNS
-            : event.key === 'ArrowUp'
-              ? index - GIF_COLUMNS
-              : undefined;
-    event.preventDefault();
+    const next = gridArrowKeyIndex(event.key, index, buttons.length, GIF_COLUMNS);
     if (next === undefined) return;
-    if (next >= 0 && next < buttons.length) buttons[next]!.focus();
+    event.preventDefault();
+    buttons[next]!.focus();
   }
 
   return (

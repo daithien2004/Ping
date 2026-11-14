@@ -1,6 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
 import { pacedLogin } from '../e2e/login-pace';
-import { SKIN_COOKIE } from '../src/lib/theme/skin';
 
 const SERVER_ID = process.env.VISUAL_SERVER_ID!;
 const CHANNEL_ID = process.env.VISUAL_CHANNEL_ID!;
@@ -13,9 +12,6 @@ const VIEWPORTS = [
   { name: '1280x800', width: 1280, height: 800 },
 ] as const;
 const SCHEMES = ['light', 'dark'] as const;
-// ADR-0076: mỗi tổ hợp chụp hai lớp skin. Ảnh mặc định giữ nguyên tên cũ (chỉ đổi nội dung do
-// PR1); ảnh Pixel thêm hậu tố `-pixel`. Skin đặt qua cookie trước lần tải trang đầu tiên.
-const SKINS = ['default', 'pixel'] as const;
 
 /**
  * Ổn định ảnh trước khi chụp:
@@ -93,64 +89,51 @@ for (const viewport of VIEWPORTS) {
         colorScheme: scheme,
       });
 
-      for (const skin of SKINS) {
-        const suffix = skin === 'default' ? '' : `-${skin}`;
-        test(`5 màn chính${skin === 'default' ? '' : ' (skin Pixel)'}`, async ({
-          page,
-          baseURL,
-        }) => {
-          test.setTimeout(180_000);
-          // Đặt cookie trước lần tải trang đầu để store đọc đúng skin ngay khi hydrate.
-          await page.context().addCookies([{ name: SKIN_COOKIE, value: skin, url: baseURL! }]);
-          await pacedLogin(page.context().request, 'alice@ping.dev', 'password123');
+      test('5 màn chính', async ({ page }) => {
+        test.setTimeout(180_000);
+        await pacedLogin(page.context().request, 'alice@ping.dev', 'password123');
 
-          await openChat(page);
-          await expect(page.locator('html')).toHaveAttribute('data-skin', skin);
-          await stabilize(page);
-          await expect(page).toHaveScreenshot(`chat-${scheme}-${viewport.name}${suffix}.png`);
+        await openChat(page);
+        await stabilize(page);
+        await expect(page).toHaveScreenshot(`chat-${scheme}-${viewport.name}.png`);
 
-          await page.getByRole('button', { name: 'Tìm trong server' }).click();
-          const input = page.getByTestId('search-input');
-          await expect(input).toBeVisible();
-          await input.fill('Kênh');
-          await expect(page.getByTestId('search-results')).toContainText(
-            'Kênh #dev dành cho thảo luận kỹ thuật nhé.',
-          );
-          await stabilize(page);
-          await expect(page).toHaveScreenshot(`search-${scheme}-${viewport.name}${suffix}.png`);
+        await page.getByRole('button', { name: 'Tìm trong server' }).click();
+        const input = page.getByTestId('search-input');
+        await expect(input).toBeVisible();
+        await input.fill('Kênh');
+        await expect(page.getByTestId('search-results')).toContainText(
+          'Kênh #dev dành cho thảo luận kỹ thuật nhé.',
+        );
+        await stabilize(page);
+        await expect(page).toHaveScreenshot(`search-${scheme}-${viewport.name}.png`);
 
-          await page.goto('/settings/appearance');
-          await expect(page.getByTestId('settings-appearance')).toBeVisible();
-          await expect(page.getByTestId('settings-nav-appearance')).toHaveAttribute(
-            'aria-current',
-            'page',
-          );
-          // Chờ GET /users/me/settings đổ vào segmented, không thì ảnh chụp lúc chưa chọn mục nào.
-          await expect(page.getByRole('radio', { name: 'Hệ thống' })).toBeChecked();
-          // Skin là lựa chọn thiết bị: ảnh Pixel phải cho thấy segmented cũng ở Pixel.
-          const pixelRadio = page.getByRole('radio', { name: 'Pixel' });
-          if (skin === 'pixel') await expect(pixelRadio).toBeChecked();
-          else await expect(pixelRadio).not.toBeChecked();
-          await stabilize(page);
-          await expect(page).toHaveScreenshot(`settings-${scheme}-${viewport.name}${suffix}.png`);
+        await page.goto('/settings/appearance');
+        await expect(page.getByTestId('settings-appearance')).toBeVisible();
+        await expect(page.getByTestId('settings-nav-appearance')).toHaveAttribute(
+          'aria-current',
+          'page',
+        );
+        // Chờ GET /users/me/settings đổ vào segmented, không thì ảnh chụp lúc chưa chọn mục nào.
+        await expect(page.getByRole('radio', { name: 'Hệ thống' })).toBeChecked();
+        await stabilize(page);
+        await expect(page).toHaveScreenshot(`settings-${scheme}-${viewport.name}.png`);
 
-          await page.goto(`/servers/${SERVER_ID}/settings`);
-          await expect(page.getByRole('heading', { name: 'Cài đặt server' })).toBeVisible();
-          await expect(page.getByRole('heading', { name: 'Danh mục' })).toBeVisible();
-          await stabilize(page);
-          await expect(page).toHaveScreenshot(`admin-${scheme}-${viewport.name}${suffix}.png`);
+        await page.goto(`/servers/${SERVER_ID}/settings`);
+        await expect(page.getByRole('heading', { name: 'Cài đặt server' })).toBeVisible();
+        await expect(page.getByRole('heading', { name: 'Danh mục' })).toBeVisible();
+        await stabilize(page);
+        await expect(page).toHaveScreenshot(`admin-${scheme}-${viewport.name}.png`);
 
-          await mockAsk(page);
-          await openChat(page);
-          await page.getByTestId('ask-ai-button').click();
-          await page.getByTestId('ask-input').fill('Họp lúc mấy giờ?');
-          await page.getByTestId('ask-send').click();
-          await expect(page.getByTestId('ask-answer')).toContainText(ASK_ANSWER);
-          await expect(page.getByTestId(`ask-citation-${CITATION_ID}`)).toBeVisible();
-          await stabilize(page);
-          await expect(page).toHaveScreenshot(`ask-${scheme}-${viewport.name}${suffix}.png`);
-        });
-      }
+        await mockAsk(page);
+        await openChat(page);
+        await page.getByTestId('ask-ai-button').click();
+        await page.getByTestId('ask-input').fill('Họp lúc mấy giờ?');
+        await page.getByTestId('ask-send').click();
+        await expect(page.getByTestId('ask-answer')).toContainText(ASK_ANSWER);
+        await expect(page.getByTestId(`ask-citation-${CITATION_ID}`)).toBeVisible();
+        await stabilize(page);
+        await expect(page).toHaveScreenshot(`ask-${scheme}-${viewport.name}.png`);
+      });
     });
   }
 }

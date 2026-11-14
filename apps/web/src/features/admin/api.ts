@@ -32,7 +32,6 @@ export interface CreateRoleInput {
   position?: number;
 }
 
-/** Tạo vai trò mới (T3.3). */
 export const createRole = (serverId: string, input: CreateRoleInput) =>
   api.post<RoleDto>(`/servers/${serverId}/roles`, input);
 
