@@ -1,40 +1,15 @@
 # Ping
 
-Ứng dụng chat realtime kiểu Discord tự dựng: server, channel, tin nhắn, vai trò và quyền, trạng thái online.
-Monorepo pnpm + Turborepo. `v0.2.0` thêm DM, tìm kiếm, tệp đính kèm, Markdown an toàn, hỏi AI và giao diện hai
-ngôn ngữ, hai theme.
+Chat realtime tự dựng kiểu Discord: server, kênh, vai trò, tin nhắn, tệp, tìm kiếm và hỏi AI trên nội
+dung của chính server đó. Chạy thật trên VPS công khai với Postgres/Redis thật, không phải bản demo
+giao diện.
 
 [![CI](https://github.com/daithien2004/Ping/actions/workflows/ci.yml/badge.svg)](https://github.com/daithien2004/Ping/actions/workflows/ci.yml)
 
-> **Bản chạy công khai:** https://20.193.75.48 — HTTPS với chứng chỉ IP Let's Encrypt, certbot tự gia hạn.
-> Hai tài khoản demo quyền thấp là `demo1@ping.dev` và `demo2@ping.dev`; mật khẩu do OWNER gửi riêng,
+> **Bản chạy công khai:** https://20.193.75.48 — HTTPS (chứng chỉ IP Let's Encrypt, certbot tự gia hạn).
+> Hai tài khoản demo quyền thấp: `demo1@ping.dev` và `demo2@ping.dev`; mật khẩu do OWNER gửi riêng,
 > không nằm trong repo. Dữ liệu demo tạo hoàn toàn qua API công khai trên server "Ping Demo", không có dữ
-> liệu người dùng thật ([runbook](docs/runbook/demo-data.md)). Đang chốt `v0.2.0`: bằng chứng từng hạng
-> mục ở [nghiệm thu](docs/v0.2.0/acceptance/v0.2.0.md), tag chờ OWNER duyệt.
-
-## Tóm tắt trong 60 giây
-
-- **Đây là gì:** một sản phẩm chat chạy được, không phải bản demo giao diện — đăng ký, server/kênh, phân quyền
-  theo vai trò, tin nhắn realtime, reply, reaction, ghim, tệp, tìm kiếm, DM, thông báo, kiểm duyệt, hỏi AI trên
-  nội dung server.
-- **Ba chỗ khó được xử lý nghiêm túc:** tin nhắn **không mất và không lặp** khi mất mạng (outbox trong Postgres
-  cùng transaction với tin; client phát hiện khoảng trống khi reconnect và tải bù bằng con trỏ
-  `after=<messageId>`); **quyền không rò rỉ** qua bất kỳ route nào (mọi truy vấn lọc theo membership; server
-  lạ trả 403, id của server lạ hoặc DM của người khác trả 404, body không chứa dữ liệu của chủ sở hữu);
-  **LLM là dependency không tin cậy** (mọi UUID trong câu trả lời phải
-  thuộc ngữ cảnh đã hydrate từ Postgres, nếu không thì không phát).
-- **Kiểm bằng gì:** CI gồm 6 check bắt buộc (`verify`, `api-e2e`, `web-e2e-gate`, `visual`, `migrations`,
-  `security`); e2e chạy trên Postgres/Redis thật; 61 endpoint có kịch bản IDOR; 36 baseline visual mỗi hệ
-  điều hành (6 màn × 2 theme × 3 viewport); axe không còn vi phạm nào theo WCAG 2.1 A/AA. Mỗi task có thư mục
-  evidence riêng.
-- **Chi phí:** không S3, không Sentry, không domain, AI chạy free tier và tự tắt khi thiếu key; production
-  là một VPS nhỏ dùng hạn mức sẵn có của OWNER. Trần thiết kế là 20 USD/tháng
-  ([ADR-0038](docs/adr/0038-release-scope-v0.2.0.md)), nhưng chưa có bảng giá từng dòng nên chưa tuyên bố
-  "đã vận hành dưới 20 USD" ([case 6](docs/v0.2.0/case-studies/cs-06-ops-under-20usd.md)).
-- **Chưa có / chưa đo:** staging riêng, quét virus tệp, PITR. Load test từ máy ngoài đã chạy ở profile
-  nhỏ (10 vòng/giây, 100 socket) nhưng không chứng minh trần VPS. Backup mã hóa
-  ngoài VPS và restore đã diễn tập trên production, nhưng dữ liệu còn nhỏ nên RTO ~4,5 giây không đại diện.
-  Những ô chưa có số ghi đúng "chưa đo" ở [nghiệm thu v0.2.0](docs/v0.2.0/acceptance/v0.2.0.md).
+> liệu người dùng thật ([cách tạo lại](docs/runbook/demo-data.md)).
 
 | ![Chat, theme sáng](docs/screens/chat-light-1280.png)                 | ![Chat, theme tối](docs/screens/chat-dark-1280.png)  |
 | --------------------------------------------------------------------- | ---------------------------------------------------- |
@@ -42,82 +17,67 @@ ngôn ngữ, hai theme.
 | ![Tìm kiếm trên di động](docs/screens/search-mobile-375.png)          | ![Quản trị server](docs/screens/admin-dark-1280.png) |
 | Tìm kiếm 375 px — bộ lọc kênh/người/thời gian                         | Cài đặt server: vai trò, mã mời, danh mục kênh       |
 
-Ảnh lấy từ bộ baseline visual trong CI ([TF.13](docs/v0.2.0/evidence/TF.13/README.md)), dữ liệu seed, không có
-dữ liệu người dùng thật.
+Ảnh lấy từ bộ baseline visual trong CI, dữ liệu seed, không có dữ liệu người dùng thật.
 
-## Kiến trúc trong một hình
+## Thử trong 2 phút
 
-```mermaid
-flowchart LR
-  Browser["Trình duyệt<br/>(Next.js web)"] -- "REST /api/v1<br/>(JWT + cookie refresh)" --> API
-  Browser -- "Socket.IO" --> API
-  subgraph API["API (NestJS, không giữ state)"]
-    REST["Controller → Service"]
-    GW["Gateway realtime"]
-  end
-  Worker["Worker<br/>(tệp, index AI)"] --> PG
-  REST -- "ghi + outbox trong cùng transaction" --> PG[("PostgreSQL")]
-  REST -- "phát sau khi lưu" --> GW
-  GW <-- "adapter pub/sub,<br/>presence, rate limit, cache" --> Redis[("Redis")]
-  REST -. "chỉ khi bật AI" .-> AI["Qdrant + nhà cung cấp LLM"]
-```
+1. Mở https://20.193.75.48, đăng nhập `demo1@ping.dev`, vào server **Ping Demo › #general**.
+2. Mở một cửa sổ ẩn danh với `demo2@ping.dev`, gõ tin ở hai bên — tin hiện ngay, kèm reply và reaction.
+3. `Ctrl/⌘+K` để tìm trong server, đính kèm một ảnh, rồi đổi theme Sáng/Tối và ngôn ngữ vi/en trong Cài
+   đặt cá nhân. Nút **Hỏi** trên bản công khai báo tạm không khả dụng vì chưa cấu hình khoá LLM; chạy
+   local có khoá thì nó trả lời kèm trích dẫn.
 
-Ghi dữ liệu qua REST vào Postgres (kèm outbox trong cùng transaction), rồi mới phát realtime qua gateway. Redis
-chỉ giữ pub/sub, cache quyền 30 giây và bộ đếm giới hạn tốc độ, nên nhiều instance API chạy song song và Redis
-chết thì REST vẫn phục vụ ([ADR-0026](docs/adr/0026-failure-modes-and-graceful-shutdown.md)). Qdrant và LLM là
-thành phần tuỳ chọn: không cấu hình thì nút "Hỏi" trả `AI_UNAVAILABLE`, phần chat không ảnh hưởng. Chi tiết và
-hình đầy đủ: [docs/architecture.md](docs/architecture.md).
+## Làm được gì
 
-## Công nghệ và lý do
+- **Trò chuyện:** tin nhắn realtime, reply, reaction, ghim, sửa/xoá, trạng thái đã đọc đồng bộ nhiều
+  thiết bị, thông báo và mention. Markdown tự viết parser với AST allowlist, không render HTML thô.
+- **Tệp đính kèm:** ảnh/PDF qua pipeline kiểm magic bytes và reencode; URL tệp có chữ ký hạn 24 giờ và
+  vẫn kiểm quyền mỗi lần tải.
+- **Tổ chức:** server, kênh và danh mục kênh, vai trò tuỳ biến theo quyền, kick/ban, audit log, mã mời có
+  hạn dùng và tái tạo được.
+- **Tìm và nhắn riêng:** tìm kiếm full-text trong server theo quyền, lọc theo kênh/người/thời gian; DM
+  1:1 có chặn người dùng.
+- **Hỏi AI:** hỏi trên nội dung server, câu trả lời phải kèm trích dẫn tin có thật — không có trích dẫn
+  hợp lệ thì không phát câu trả lời.
+- **Giao diện:** responsive 375/768/1280, theme sáng/tối, tiếng Việt/tiếng Anh, đổi là áp dụng ngay.
 
-| Phần            | Công nghệ                                                | Vì sao chọn                                                                                                                                                                                                             |
-| --------------- | -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `apps/api`      | NestJS 12 (ESM), Prisma 7, PostgreSQL 17                 | Module hoá theo miền, DI rõ ràng; Prisma giữ migration expand/contract và type của schema                                                                                                                               |
-| Realtime        | Socket.IO 4 + adapter Redis                              | Room theo channel, tự reconnect, chạy nhiều instance sau load balancer                                                                                                                                                  |
-| Quyền           | CASL 7 trong `@ping/shared`                              | Một định nghĩa ability dùng cho cả API (guard) và web (ẩn/hiện nút), không chép lại luật                                                                                                                                |
-| Hàng đợi nội bộ | Bảng outbox + worker claim trong Postgres                | Không thêm broker; giao at-least-once, client idempotent theo `nonce`                                                                                                                                                   |
-| `apps/web`      | Next.js 16.4 (App Router), React 19                      | Route theo đoạn, stream, tách chunk theo màn                                                                                                                                                                            |
-| UI              | antd 6.6 bọc trong 33 component `Ping*`, token một nguồn | API riêng của dự án, đổi ruột một component không phải sửa nơi dùng; lint cấm import `antd` ngoài `components/ui/` ([ADR-0050](docs/adr/0050-antd-via-ping-wrappers.md), [ADR-0051](docs/adr/0051-design-direction.md)) |
-| Trạng thái      | TanStack Query 5 (server) + Zustand 5 (UI)               | Không copy dữ liệu server vào store; cache theo khoá rõ ràng                                                                                                                                                            |
-| i18n            | use-intl 4, vi/en                                        | 668 khoá mỗi ngôn ngữ, parity có unit test; đổi ngôn ngữ không reload                                                                                                                                                   |
-| Hợp đồng        | `@ping/shared`: zod 4, event name, mã lỗi, trần số lượng | API và web không tự định nghĩa lại ([ADR-0002](docs/adr/0002-shared-contracts.md))                                                                                                                                      |
-| Kiểm thử        | Vitest, Playwright 1.63, axe, Lighthouse                 | E2E trên DB thật; visual regression; a11y là cổng chứ không phải phụ lục                                                                                                                                                |
+Ngoài phạm vi v0.2.0: voice/video, mã hoá đầu cuối, S3, đa server hạ tầng, mobile native
+([ADR-0038](docs/adr/0038-release-scope-v0.2.0.md)).
 
-Bản `v0.1.0` dùng shadcn/Radix; từ `v0.2.0` bảng/form quản trị nhiều nên đổi sang antd sau wrapper
-([ADR-0023](docs/adr/0023-web-ui-kit-and-tokens.md) vẫn giữ phần token, xem [case 8](docs/v0.2.0/case-studies/cs-08-frontend-design-system.md)).
+## Ba chỗ khó, và cách xử lý
 
-## v0.2.0 có gì
+- **Không mất, không lặp tin khi mất mạng.** Tin được ghi vào Postgres cùng một outbox trong đúng
+  transaction; client phát hiện khoảng trống lúc reconnect rồi tải bù bằng con trỏ `after=<messageId>`,
+  gửi lại theo `nonce` nên không nhân đôi.
+- **Quyền không rò rỉ qua bất kỳ route nào.** Mọi truy vấn lọc theo membership: server lạ trả 403, id của
+  server lạ hoặc DM của người khác trả 404, body không chứa dữ liệu của chủ sở hữu. 61 route có kịch bản
+  IDOR riêng.
+- **LLM là dependency không tin cậy.** Mọi UUID trong câu trả lời phải thuộc ngữ cảnh đã hydrate từ
+  Postgres; thiếu trích dẫn hợp lệ thì hệ thống từ chối trả lời thay vì bịa.
 
-Chat và quyền: server/kênh/danh mục kênh, vai trò tuỳ biến, kick/ban, audit log, mã mời có hạn dùng. Tin nhắn:
-reply, reaction, ghim, chỉnh sửa/xoá, Markdown tự viết parser với AST allowlist (không `dangerouslySetInnerHTML`),
-tệp đính kèm qua pipeline kiểm magic bytes + reencode. Khác: DM 1:1 có chặn người dùng, tìm kiếm FTS theo quyền,
-thông báo và email, trạng thái đã đọc đa thiết bị, hỏi AI có trích dẫn. Giao diện: responsive 375/768/1280, theme
-sáng/tối, vi/en.
-
-Ngoài phạm vi lần này: voice/video, mã hoá đầu cuối, S3, đa server hạ tầng, mobile native
-([ADR-0038](docs/adr/0038-release-scope-v0.2.0.md)). Trạng thái từng task:
-[docs/v0.2.0/status.md](docs/v0.2.0/status.md).
+Ba điểm này được kiểm bằng e2e trên Postgres/Redis thật, không phải bằng mock — bằng chứng từng hạng
+mục ở [cổng nghiệm thu](docs/v0.2.0/acceptance/v0.2.0.md) và
+[case study](docs/v0.2.0/case-studies/README.md).
 
 ## Giới hạn đã biết
 
-- **Không có staging riêng.** Production `https://20.193.75.48` là môi trường thật duy nhất; diễn tập
-  rollback/backup/load test đều chạy trên đó, có bước lùi và cửa sổ thời gian cụ thể.
-- **AI, GIF, Sentry và email chưa bật hết trên production.** Không cấu hình khoá LLM thì nút Hỏi trả
-  `AI_UNAVAILABLE`; không có khoá Tenor thì tab GIF trả 503; chưa có project Sentry thật (phần scrub và
-  `requestId` chỉ được chứng minh bằng unit test + mock); không có mailer nên luồng xác minh email không áp dụng
-  ([evidence](docs/v0.2.0/evidence/V2-final/flows-prod.md)).
-- **Cuộn 10.000 tin còn long task > 50 ms** (max/p95 137 ms) do antd Avatar đọc layout mỗi lần mount; ghi là
-  `không đạt` trong nghiệm thu và nợ kỹ thuật P2 ([F14](docs/v0.2.0/evidence/V2-final/F14-scroll.md)).
-- **Chưa có pilot người thật** (H2). Load test vào production đã chạy: profile an toàn đo được từ máy
-  OWNER là REST 10 vòng/giây (30 req/s, p95 1,28 s) và 100 socket, không 5xx; chưa chứng minh trần VPS
-  vì máy bắn tải hết chỗ trước ([V9](docs/v0.2.0/evidence/V2-final/V9-load.md),
-  [perf](docs/perf/2026-11-14-vps.md)). Chưa thử restore với dữ liệu hàng chục GB hay PITR.
-- **Cron backup không dừng API/worker**, nên DB và uploads không phải snapshot nhất quán tuyệt đối
+- **Không có staging riêng.** https://20.193.75.48 là môi trường thật duy nhất; rollback, backup và load
+  test đều diễn tập trên đó, có bước lùi và cửa sổ thời gian cụ thể.
+- **AI, GIF, Sentry và email chưa bật hết.** Thiếu khoá LLM thì nút Hỏi trả `AI_UNAVAILABLE`; thiếu khoá
+  Tenor thì tab GIF trả 503; chưa có project Sentry thật; chưa có mailer nên luồng xác minh email không
+  áp dụng ([evidence](docs/v0.2.0/evidence/V2-final/flows-prod.md)).
+- **Cuộn 10.000 tin còn long task > 50 ms** (max/p95 137 ms) do antd Avatar đọc layout mỗi lần mount;
+  ghi `không đạt` trong nghiệm thu và nợ kỹ thuật P2 ([F14](docs/v0.2.0/evidence/V2-final/F14-scroll.md)).
+- **Chưa có pilot người thật.** Load test production mới ở profile nhỏ đo từ máy OWNER: REST 10 vòng/giây
+  (p95 1,28 s) và 100 socket, không 5xx; chưa chứng minh trần VPS vì máy bắn tải hết chỗ trước
+  ([V9](docs/v0.2.0/evidence/V2-final/V9-load.md), [perf](docs/perf/2026-11-14-vps.md)).
+- **Backup chưa phải PITR** và cron không dừng API/worker, nên snapshot không nhất quán tuyệt đối; RTO
+  ~4,5 giây đo trên dữ liệu nhỏ nên không đại diện
   ([backup-restore](docs/runbook/backup-restore.md)).
 
 ## Chạy local trong ~15 phút
 
-Cần: **Node 24.22.0** (xem `.nvmrc`), **pnpm 10.26.0** (`corepack enable`), **Docker** đang chạy.
+Cần **Node 24.22.0** (xem `.nvmrc`), **pnpm 10.26.0** (`corepack enable`) và **Docker** đang chạy.
 
 ```bash
 git clone https://github.com/daithien2004/Ping.git
@@ -126,19 +86,15 @@ pnpm bootstrap     # cài dependency, tạo .env, bật Postgres + Redis, migrat
 pnpm dev           # web http://localhost:3000, API http://localhost:4000
 ```
 
-`pnpm bootstrap` chạy lại bao nhiêu lần cũng được (giữ `.env` đang có). Không dùng `pnpm setup`: đó là lệnh có sẵn
-của pnpm (cấu hình PATH), không phải script của dự án.
+`pnpm bootstrap` chạy lại bao nhiêu lần cũng được, giữ `.env` đang có. Đừng dùng `pnpm setup`: đó là lệnh
+sẵn có của pnpm (cấu hình PATH), không phải script của dự án.
 
-Đăng nhập thử bằng tài khoản seed (mật khẩu `password123`): `alice@ping.dev`, `bob@ping.dev`, `carol@ping.dev` — cả
-ba đã ở trong server "Ping Playground". Mở hai trình duyệt (hoặc một cửa sổ ẩn danh) để thấy tin nhắn realtime.
+Đăng nhập bằng tài khoản seed (mật khẩu `password123`): `alice@ping.dev`, `bob@ping.dev`,
+`carol@ping.dev` — cả ba đã ở trong server "Ping Playground". Mở hai trình duyệt để thấy realtime.
 
-Cần dữ liệu demo nhiều hơn (thử tìm kiếm, phân trang, badge unread): `pnpm seed:demo` — 3 server theo chủ đề
-(qua bàn cà phê / nhóm lập trình / sở thích), 9 kênh, 21.600 tin tiếng Việt, 360 mention cho alice; tài khoản
-`david@ping.dev` đi kèm. Chạy lại bao nhiêu lần cũng cho cùng dữ liệu (id và nội dung cố định).
-
-Trước buổi diễn 5 phút, dùng DB riêng thay vì DB dev đã tích dữ liệu: `pnpm demo:prepare` bật Docker, tạo
-`ping_demo`, migrate + seed và kiểm số liệu; thêm `--fresh` để xoá rồi tạo lại sạch. Ba process phải cùng trỏ
-`DATABASE_URL` của DB đó — lệnh cụ thể ở [kịch bản demo](docs/v0.2.0/demo.md).
+Muốn dữ liệu dày hơn (tìm kiếm, phân trang, badge unread): `pnpm seed:demo` — 3 server, 9 kênh, 21.600
+tin tiếng Việt, 360 mention cho alice, kèm `david@ping.dev`. Trước buổi demo 5 phút thì dùng DB riêng:
+`pnpm demo:prepare` (`--fresh` để xoá và tạo lại) — lệnh cụ thể ở [kịch bản demo](docs/v0.2.0/demo.md).
 
 Hai phần tuỳ chọn, không cần để chat chạy:
 
@@ -161,12 +117,60 @@ Tài liệu API (Swagger) ở http://localhost:4000/docs khi không chạy produ
 | Gửi tệp xong nhưng không gửi được tin       | Worker chưa chạy: `pnpm --filter api dev:worker`                                         |
 | Muốn xóa sạch dữ liệu dev                   | `docker compose down -v` rồi `pnpm bootstrap`                                            |
 
-## Lệnh thường dùng
+## Bên trong
+
+```mermaid
+flowchart LR
+  Browser["Trình duyệt<br/>(Next.js web)"] -- "REST /api/v1<br/>(JWT + cookie refresh)" --> API
+  Browser -- "Socket.IO" --> API
+  subgraph API["API (NestJS, không giữ state)"]
+    REST["Controller → Service"]
+    GW["Gateway realtime"]
+  end
+  Worker["Worker<br/>(tệp, index AI)"] --> PG
+  REST -- "ghi + outbox trong cùng transaction" --> PG[("PostgreSQL")]
+  REST -- "phát sau khi lưu" --> GW
+  GW <-- "adapter pub/sub,<br/>presence, rate limit, cache" --> Redis[("Redis")]
+  REST -. "chỉ khi bật AI" .-> AI["Qdrant + nhà cung cấp LLM"]
+```
+
+Ghi dữ liệu qua REST vào Postgres (kèm outbox trong cùng transaction), rồi mới phát realtime qua
+gateway. Redis chỉ giữ pub/sub, cache quyền 30 giây và bộ đếm giới hạn tốc độ, nên nhiều instance API
+chạy song song và Redis chết thì REST vẫn phục vụ
+([ADR-0026](docs/adr/0026-failure-modes-and-graceful-shutdown.md)). Qdrant và LLM là thành phần tuỳ
+chọn. Chi tiết: [docs/architecture.md](docs/architecture.md).
+
+| Phần            | Công nghệ                                                | Vì sao chọn                                                                                                              |
+| --------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `apps/api`      | NestJS 12 (ESM), Prisma 7, PostgreSQL 17                 | Module hoá theo miền; migration expand/contract và type của schema                                                       |
+| Realtime        | Socket.IO 4 + adapter Redis                              | Room theo channel, tự reconnect, chạy nhiều instance sau load balancer                                                   |
+| Quyền           | CASL 7 trong `@ping/shared`                              | Một định nghĩa ability dùng cho cả API (guard) và web (ẩn/hiện nút)                                                      |
+| Hàng đợi nội bộ | Bảng outbox + worker claim trong Postgres                | Không thêm broker; giao at-least-once, client idempotent theo `nonce`                                                    |
+| `apps/web`      | Next.js 16.4 (App Router), React 19                      | Route theo đoạn, stream, tách chunk theo màn                                                                             |
+| UI              | antd 6.6 bọc trong 33 component `Ping*`, token một nguồn | API riêng của dự án; lint cấm import `antd` ngoài `components/ui/` ([ADR-0050](docs/adr/0050-antd-via-ping-wrappers.md)) |
+| Trạng thái      | TanStack Query 5 (server) + Zustand 5 (UI)               | Không copy dữ liệu server vào store                                                                                      |
+| i18n            | use-intl 4, vi/en                                        | 668 khoá mỗi ngôn ngữ, parity có unit test                                                                               |
+| Hợp đồng        | `@ping/shared`: zod 4, event name, mã lỗi, trần số lượng | API và web không tự định nghĩa lại ([ADR-0002](docs/adr/0002-shared-contracts.md))                                       |
+| Kiểm thử        | Vitest, Playwright 1.63, axe, Lighthouse                 | E2E trên DB thật; visual regression; a11y là cổng chứ không phải phụ lục                                                 |
+
+**Kiểm bằng gì:** CI có 6 check bắt buộc (`verify`, `api-e2e`, `web-e2e-gate`, `visual`, `migrations`,
+`security`); 36 baseline visual mỗi hệ điều hành (6 màn × 2 theme × 3 viewport); axe không còn vi phạm
+nào theo WCAG 2.1 A/AA. Mỗi task có thư mục evidence riêng trong [docs](docs/README.md).
+
+```
+apps/api/            NestJS: src/modules/<miền>/, prisma/ (schema, migration, seed), test/
+apps/web/            Next.js: src/{app, features/<miền>, components, lib}, e2e/, visual/
+packages/shared/     @ping/shared: hợp đồng giữa API và web
+docs/                architecture, adr/ (68 quyết định), runbook/, v0.2.0/ (kế hoạch, bằng chứng, case study)
+ops/                 cấu hình Nginx, quy tắc cảnh báo Prometheus
+tools/loadtest/      kịch bản k6 (xem docs/perf/README.md)
+```
+
+### Lệnh thường dùng
 
 | Việc                 | Lệnh                                                                           |
 | -------------------- | ------------------------------------------------------------------------------ |
 | Chạy dev (web + API) | `pnpm dev` (worker: `pnpm --filter api dev:worker`)                            |
-| Chuẩn bị DB demo     | `pnpm demo:prepare` (`--fresh`: xoá và tạo lại `ping_demo`)                    |
 | Build                | `pnpm build`                                                                   |
 | Lint / typecheck     | `pnpm lint` / `pnpm typecheck`                                                 |
 | Test đơn vị          | `pnpm test`                                                                    |
@@ -177,21 +181,29 @@ Tài liệu API (Swagger) ở http://localhost:4000/docs khi không chạy produ
 | Migration mới        | `pnpm db:migrate` (đọc [runbook/migrations](docs/runbook/migrations.md) trước) |
 | Xem DB               | `pnpm db:studio`                                                               |
 | Ngân sách bundle web | `pnpm --filter web check:bundle` (sau `pnpm build`)                            |
-| Kiểm token/thiết kế  | `pnpm --filter web audit:design` — chạy được không cần build                   |
 
-Lần đầu chạy E2E/visual trên máy mới cần trình duyệt của Playwright:
-`pnpm --filter web exec playwright install chromium`.
+Lần đầu chạy E2E/visual trên máy mới cần trình duyệt Playwright:
+`pnpm --filter web exec playwright install chromium`. Quy trình đầy đủ:
+[CONTRIBUTING.md](CONTRIBUTING.md) và [CLAUDE.md](CLAUDE.md).
 
-## Cấu trúc thư mục
+## Triển khai
 
-```
-apps/api/            NestJS: src/modules/<miền>/{controller,service,module}, prisma/ (schema, migration, seed), test/
-apps/web/            Next.js: src/{app (chỉ định tuyến), features/<miền>, components, lib}, e2e/ (Playwright), visual/
-packages/shared/     @ping/shared: hợp đồng giữa API và web
-docs/                architecture.md, adr/ (68 quyết định), runbook/, v0.2.0/ (kế hoạch, bằng chứng, case study)
-ops/                 cấu hình Nginx, quy tắc cảnh báo Prometheus
-tools/loadtest/      kịch bản k6 (xem docs/perf/README.md)
-```
+Production là **một VPS Azure nhỏ** (2 vCPU, ~4 GB RAM) chạy Docker Compose: Nginx TLS, web, api,
+worker, Postgres 17, Redis 7. Image lên GHCR và pin theo SHA; deploy/rollback bằng workflow
+`workflow_dispatch`, mỗi chiều ~40 giây với smoke test sau đó
+([runbook](docs/runbook/ci-cd-vps.md), [ADR-0083](docs/adr/0083-ghcr-and-github-actions-vps-deployment.md),
+[evidence rollback](docs/v0.2.0/evidence/V2-final/V4-rollback.md)). Chứng chỉ IP Let's Encrypt gia hạn
+tự động bằng certbot, đã kiểm bằng `renew --dry-run`. Backup chạy cron 02:30 UTC, mã hoá `age` trước khi
+rời máy, giữ 14 ngày, restore đã diễn tập
+([V5](docs/v0.2.0/evidence/V2-final/V5-backup.md)). Vẫn **không có staging riêng** — mọi diễn tập chạy
+trên production.
+
+Chi phí: không S3, không Sentry, không domain; AI chạy free tier và tự tắt khi thiếu key. Trần thiết kế
+20 USD/tháng ([ADR-0038](docs/adr/0038-release-scope-v0.2.0.md)); chưa có bảng giá từng dòng nên chưa
+tuyên bố "đã vận hành dưới 20 USD" ([case 6](docs/v0.2.0/case-studies/cs-06-ops-under-20usd.md)).
+
+Đang chốt `v0.2.0`: trạng thái từng hạng mục ở [nghiệm thu](docs/v0.2.0/acceptance/v0.2.0.md), tag chờ
+OWNER duyệt. Tiến độ và phần còn mở: [status.md](docs/v0.2.0/status.md).
 
 ## Tài liệu
 
@@ -200,31 +212,17 @@ tools/loadtest/      kịch bản k6 (xem docs/perf/README.md)
 - **Xem sản phẩm chạy:** [kịch bản demo 5 phút](docs/v0.2.0/demo.md); **hỏi đáp phỏng vấn (45 câu):**
   [interview-qa.md](docs/v0.2.0/interview-qa.md).
 - **Tiến độ phát hành:** [trạng thái v0.2.0](docs/v0.2.0/status.md),
-  [nghiệm thu v0.2.0](docs/v0.2.0/acceptance/v0.2.0.md), [nghiệm thu v0.1.0](docs/acceptance/v0.1.0.md),
-  [nợ kỹ thuật](docs/tech-debt.md), [hướng dẫn tự review](docs/review/reading-guide.md).
-- **Bắt đầu đóng góp:** [CONTRIBUTING.md](CONTRIBUTING.md) — quy trình, kiểm tra trước khi mở PR, quy tắc bắt buộc ([CLAUDE.md](CLAUDE.md)).
+  [nghiệm thu v0.1.0](docs/acceptance/v0.1.0.md), [nợ kỹ thuật](docs/tech-debt.md),
+  [hướng dẫn tự review](docs/review/reading-guide.md).
 - **Kiến trúc:** [docs/architecture.md](docs/architecture.md) và các [ADR](docs/adr/).
 - **Thiết kế:** [hướng thiết kế](docs/design/direction.md), [quy ước trạng thái](docs/design/states.md).
-- **Vận hành:** [docs/runbook/](docs/runbook/README.md) — tra lỗi bằng `requestId`, migration, backup, rollback, sự cố hạ tầng, cảnh báo.
-- **API:** [docs/api-conventions.md](docs/api-conventions.md). **Bảo mật:** [docs/security/threat-model.md](docs/security/threat-model.md).
-- **Hiệu năng:** [docs/perf/](docs/perf/README.md), [đo Web Vitals và bundle theo route](docs/v0.2.0/evidence/TF.15/README.md).
-
-## Triển khai và giới hạn công khai
-
-Có sẵn Dockerfile cho api và web, stack production mẫu (`docker-compose.prod.example.yml`: Nginx, api, web, Postgres,
-Redis, migration chạy riêng), [cấu hình HTTP/HTTPS](ops/nginx/README.md) và CI
-([ADR-0035](docs/adr/0035-nginx-reverse-proxy.md)).
-
-Đã thêm workflow chuẩn bị CI/CD một VPS qua GHCR, SSH restricted command, bootstrap env/backup và rollback theo SHA
-([runbook](docs/runbook/ci-cd-vps.md), [ADR-0083](docs/adr/0083-ghcr-and-github-actions-vps-deployment.md)). Bootstrap và cấp chứng chỉ IP đã chạy trên VPS; deploy app và gia hạn tự động chưa được xác minh end-to-end.
-
-**Chưa có bản chạy công khai.** `v0.1.0` nghiệm thu **local-only**: deploy/backup/restore diễn tập trên Docker
-local ([ADR-0036](docs/adr/0036-local-deployment.md)); `v0.2.0` hoãn hạ tầng trả phí
-([ADR-0059](docs/adr/0059-defer-paid-infrastructure.md)) nên không có link staging. Mọi số hiệu năng là đo lab
-trên một laptop, không phải SLA. Kế hoạch và phần còn thiếu:
-[docs/v0.2.0/plan.md](docs/v0.2.0/plan.md), [trạng thái](docs/v0.2.0/status.md).
+- **Vận hành:** [docs/runbook/](docs/runbook/README.md) — tra lỗi bằng `requestId`, migration, backup,
+  rollback, sự cố hạ tầng, cảnh báo.
+- **Kỹ thuật khác:** [API](docs/api-conventions.md), [bảo mật](docs/security/threat-model.md),
+  [hiệu năng](docs/perf/README.md), [Web Vitals và bundle](docs/v0.2.0/evidence/TF.15/README.md).
 
 ## Phiên bản công cụ
 
-Node và pnpm được ghim theo `package.json` (`engines`, `packageManager`) và `.nvmrc`; mọi dependency ghim phiên bản
-chính xác ([chính sách](docs/adr/0001-dependency-versions.md)). Commit `pnpm-lock.yaml` cùng mọi thay đổi dependency.
+Node và pnpm được ghim theo `package.json` (`engines`, `packageManager`) và `.nvmrc`; mọi dependency ghim
+phiên bản chính xác ([chính sách](docs/adr/0001-dependency-versions.md)). Commit `pnpm-lock.yaml` cùng
+mọi thay đổi dependency.
