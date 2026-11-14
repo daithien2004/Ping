@@ -6,7 +6,8 @@ Tài khoản: `demo1`, `demo2` (thành viên) và owner `owner-demo` — mật k
 không in ra. Hai phiên trình duyệt riêng cho `demo1`/`demo2`; phiên owner chỉ dùng để kick, ghim
 và tạo phiên thứ hai. Dữ liệu server: [demo-data.md](../../../runbook/demo-data.md).
 
-Thời điểm chạy cuối: 1280 lúc 05:30 UTC, 375 lúc 05:35 UTC. Ảnh ở [`screens/`](screens/).
+Thời điểm chạy cuối: 1280 lúc 05:30 UTC, 375 lúc 05:35 UTC; luồng 8 chạy lại theo kịch bản
+chặt (offline 45 giây + 5 tin từ `demo2`) lúc 05:56 UTC. Ảnh ở [`screens/`](screens/).
 
 ## Kết quả
 
@@ -19,13 +20,14 @@ Thời điểm chạy cuối: 1280 lúc 05:30 UTC, 375 lúc 05:35 UTC. Ảnh ở
 | 5   | Chưa đọc / nhắc tên / hai tab              | **Đạt** | **Đạt** | `(1) Ping` ở cả hai tab, badge nhắc tên, vạch "Tin mới", đọc xong về 0. |
 | 6   | Tìm kiếm và nhảy tới tin                   | **Đạt** | **Đạt** | Lọc `# general`; bấm kết quả tới permalink, tin đích được tô sáng.      |
 | 7   | Hỏi AI                                     | **Lỗi** | **Lỗi** | Production thiếu `GROQ_API_KEY` — xem mục lỗi bên dưới.                 |
-| 8   | Mất mạng 40 giây rồi gửi tiếp              | **Đạt** | **Đạt** | "Mất kết nối" → "Gửi thất bại" → có mạng lại, tin gửi đúng 1 lần.       |
+| 8   | Mất mạng 45 giây, 5 tin từ demo2           | **Đạt** | **Đạt** | Đủ 6/6 tin, không trùng, đúng thứ tự; không cần tải lại trang.          |
 | 9   | DM và cài đặt cá nhân                      | **Đạt** | **Đạt** | Chặn/bỏ chặn, đổi tên, sáng/tối, en/vi, thu hồi phiên khác.             |
 
 ## Chi tiết từng luồng
 
 1. **Đăng nhập** — chỉ `demo1` ở cả hai viewport. Vào kênh đích, thấy banner "Email chưa xác minh";
-   luồng xác minh email **không áp dụng** trên môi trường này (không có SMTP).
+   luồng xác minh email **không áp dụng** trên môi trường này — production không có mailer, nên
+   **F7 giữ `một phần`** (đã chạy qua Mailpit local ở TG.8, chưa gửi thư qua nhà cung cấp thật).
    Ảnh: [1280](screens/flows-1280-01-login.png), [375](screens/flows-375-01-login.png).
 2. **Tham gia bằng mã mời** — owner kick `demo1` qua API (dùng member id). `demo1` tải lại: không
    còn server trong rail, trang chủ hiện nút "Nhập mã mời". Nhập mã mời của server, vào lại thấy
@@ -58,12 +60,18 @@ Thời điểm chạy cuối: 1280 lúc 05:30 UTC, 375 lúc 05:35 UTC. Ảnh ở
    `AI_UNAVAILABLE`, UI báo "AI hiện không sẵn sàng. Vui lòng thử lại sau." nên không có câu trả lời
    lẫn chip trích dẫn để kiểm. **Không đạt vì cấu hình**, không phải lỗi UI.
    Ảnh: [1280](screens/flows-1280-07-unavailable.png), [375](screens/flows-375-07-unavailable.png).
-8. **Mất mạng rồi gửi tiếp** — ngắt mạng 40 giây, gửi tin → "Gửi thất bại" và banner "Mất kết nối";
-   có mạng lại, bấm "Thử lại" khi nút xuất hiện; tin xuất hiện đúng **một lần**, đứng trước tin gửi
-   sau khi có mạng.
+8. **Mất mạng rồi gửi tiếp** — tab `demo1` đặt offline **45 giây**, gõ "Tin offline …" rồi Enter
+   (ô nhận chữ, chưa gửi được) và banner "Mất kết nối" hiện. Trong lúc mất mạng, `demo2` gửi **5
+   tin** cách nhau 3 giây qua API công khai. Bật mạng lại, chờ banner biến mất rồi thêm 15 giây,
+   cuộn xuống đáy: cả **6 tin** hiện đúng **một lần**, không cần tải lại trang. Kiểm ngược bằng
+   `GET /messages?limit=100`: server có đúng 6 tin, thứ tự cũ→mới là 5 tin của `demo2` rồi tin
+   offline (flush lúc reconnect).
    Ảnh: [1280 mất mạng](screens/flows-1280-08-offline.png),
    [1280 sau](screens/flows-1280-08-after.png), [375 mất mạng](screens/flows-375-08-offline.png),
    [375 sau](screens/flows-375-08-after.png).
+   **Quan sát thêm (P2):** ngay sau reconnect, nếu người dùng chưa cuộn xuống đáy thì tin mới có
+   thể nằm ngoài cửa sổ ảo hóa (không render dù đã có trong cache) — dữ liệu vẫn đủ, đúng thứ tự.
+   Đã ghi ở `docs/known-issues.md` (ghi chú cục bộ, không commit).
 9. **DM và cài đặt cá nhân** — mở danh sách thành viên, bấm `Demo 2` → hồ sơ → "Nhắn tin", gửi DM;
    chặn (banner chặn hiện) rồi bỏ chặn; đổi tên hiển thị sang "Demo 1 Pilot" rồi trả lại "Demo 1";
    giao diện tối rồi về hệ thống; ngôn ngữ en rồi về vi; trang `/settings` có phiên hiện tại + phiên
