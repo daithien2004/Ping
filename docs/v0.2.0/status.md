@@ -179,7 +179,14 @@ chứng từng bước nằm trong [V2-final](evidence/V2-final/):
   2 s do máy bắn tải hết chỗ chứ CPU VPS chỉ 23% ([V9-load.md](evidence/V2-final/V9-load.md),
   [perf](../perf/2026-11-14-vps.md)).
 
-Còn mở: K5/F13 cần CI xanh sau khi bootstrap baseline `linux/`, H2 pilot người thật, H3 OWNER duyệt
-tag. Dữ liệu test đã dọn trên production (30 user load, 4 tài khoản cũ, server `Dev`/`mk`, 120 tin
+- **Tag:** `v0.2.0` (annotated) gắn trên `d926e27` và đẩy lên remote 2026-11-14. Run CI
+  [43591162867](https://github.com/daithien2004/Ping/actions/runs/43591162867) trên đúng commit đó:
+  `visual` so sánh thật với 36 baseline Linux, 12/12 test, 2 phút 59 giây, không sinh artifact
+  `visual-baselines-linux`; `api-e2e`/`migrations`/`drills` skip theo bộ lọc vì commit chỉ đụng
+  `apps/web`. Workflow Publish and deploy [43592010736](https://github.com/daithien2004/Ping/actions/runs/43592010736)
+  build và deploy đúng SHA ấy, nên production chuyển từ `37ae8cb` sang commit gắn tag.
+
+Còn mở: H2 pilot người thật, chữ ký nghiệm thu cổng cuối (F12, H3), F14 chưa đạt ngưỡng long task.
+Dữ liệu test đã dọn trên production (30 user load, 4 tài khoản cũ, server `Dev`/`mk`, 120 tin
 `LT|`), xem [V9-load](evidence/V2-final/V9-load.md).
 Cổng nghiệm thu và giới hạn: [acceptance/v0.2.0.md](acceptance/v0.2.0.md).

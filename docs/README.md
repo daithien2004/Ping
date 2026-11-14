@@ -1,8 +1,9 @@
 # Tài liệu Ping
 
 v0.2.0: [điểm vào công việc](v0.2.0/plan.md), [trạng thái](v0.2.0/status.md),
-[nghiệm thu](v0.2.0/acceptance/v0.2.0.md). Dự án đang đóng băng ở mức **bản demo local** (OWNER chốt
-2026-11-01, chưa tag `v0.2.0`); xem [Chốt bản demo](v0.2.0/status.md#chốt-bản-demo-2026-11-01).
+[nghiệm thu](v0.2.0/acceptance/v0.2.0.md). Tag `v0.2.0` gắn ngày 2026-11-14 trên `d926e27`;
+production chạy `https://20.193.75.48` đúng commit đó; xem
+[Chốt v2](v0.2.0/status.md#chốt-v2-2026-11-14).
 
 ## Đọc theo nhu cầu
 

@@ -107,6 +107,8 @@ dateTime=…>` — vừa đúng ngữ nghĩa, vừa ẩn được bằng CSS tha
   với 36 ảnh `linux/` trong repo, không bootstrap.
 - Cùng run: `verify`, `security`, `docker`, `lighthouse`, cả 3 shard `web-e2e` và `web-e2e-gate`
   xanh; `api-e2e`, `migrations`, `drills` skip theo bộ lọc đường dẫn.
+- Tag `v0.2.0` (annotated) gắn trên chính `d926e27` và đẩy lên remote 2026-11-14; workflow Publish
+  and deploy `43592010736` sau đó build và deploy đúng SHA này, nên F13 đóng trên commit gắn tag.
 - Trước run này, hai run trước đó (c4c1690, 9c54c65) có job `visual` xanh nhưng cả run đỏ vì flake
   axe đo giữa animation mở hộp thoại và giữa lúc antd đổi bảng màu; đã sửa bằng cách chờ
   animation hữu hạn + chờ `data-theme-mode` (xem commit `9c54c65`, `55a751e`, `d926e27`).
