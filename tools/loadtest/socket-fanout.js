@@ -1,8 +1,4 @@
-// Kịch bản 2 (hướng dẫn 16.3): N client nối socket và join channel; một phần gửi tin với tốc độ cố định
-// qua REST, phần còn lại chỉ nghe. Đo độ trễ từ lúc GỬI đến lúc client NHẬN, tách riêng trường hợp người
-// nhận ở instance KHÁC người gửi (đi qua Redis adapter).
-//   k6 run tools/loadtest/socket-fanout.js -e PORTS=4001,4002,4003 -e LISTENERS=1000 -e SEND_RATE=50 -e DURATION=60s
-// Mục tiêu: phát liên instance p95 < 500 ms; 5xx < 0,1%. Cùng một máy nên đồng hồ gửi/nhận là một.
+// k6 run tools/loadtest/socket-fanout.js -e PORTS=4001,4002,4003 -e LISTENERS=1000 -e SEND_RATE=50 -e DURATION=60s
 import http from 'k6/http';
 import { check } from 'k6';
 import { Counter, Trend } from 'k6/metrics';
@@ -16,7 +12,6 @@ const LISTENERS = Number(__ENV.LISTENERS || 1000);
 const SEND_RATE = Number(__ENV.SEND_RATE || 50);
 const SENDERS = Number(__ENV.SENDERS || 500);
 const DURATION = __ENV.DURATION || '60s';
-// Listener giữ socket đến khi người gửi xong (startTime 20s + DURATION) cộng 10s chờ tin cuối.
 const holdMs = (20 + Number(DURATION.replace(/s$/, '')) + 10) * 1000;
 
 const delivery = new Trend('delivery_latency_ms', true);
@@ -40,7 +35,7 @@ export const options = {
       rate: SEND_RATE,
       timeUnit: '1s',
       duration: DURATION,
-      startTime: '20s', // sau khi các listener đã nối và join
+      startTime: '20s',
       preAllocatedVUs: 50,
       maxVUs: 500,
       exec: 'send',
@@ -83,7 +78,6 @@ export function listen() {
 }
 
 export function send() {
-  // Người gửi lấy từ cuối danh sách để không trùng với listener (đầu danh sách).
   const index = tokens.length - 1 - Math.floor(Math.random() * SENDERS);
   const port = PORTS[Math.floor(Math.random() * PORTS.length)];
   const channelId = meta.channels[Math.floor(Math.random() * meta.channels.length)].id;

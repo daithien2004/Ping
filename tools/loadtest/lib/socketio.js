@@ -1,16 +1,8 @@
-// Khung Socket.IO tối thiểu trên WebSocket của k6 (k6 không có engine Socket.IO sẵn).
-// Giao thức Engine.IO v4 + Socket.IO v5, đủ cho ping:
-//   server → "0{sid,pingInterval,...}"   mở Engine.IO
-//   client → "40{auth}"                  vào namespace mặc định kèm auth { token }
-//   server → "40{sid}"                   đã kết nối  (hoặc "44{message}" bị từ chối)
-//   server → "2"  ⇄ client "3"           ping/pong
-//   "42[event,payload]"                  sự kiện;  "42<id>[...]" cần ack;  "43<id>[result]" là ack
+// Engine.IO v4 + Socket.IO v5 tối thiểu trên WebSocket của k6: "0{...}" mở, "40{auth}" vào namespace,
+// "2"/"3" ping/pong, "42[event,payload]" sự kiện ("42<id>" cần ack, "43<id>" là ack).
 import { WebSocket } from 'k6/websockets';
 
-/**
- * Mở một socket. handlers: { onOpen(client), onEvent(name, payload), onClose(), onError(message) }.
- * client.emit(name, payload, ackCallback?) và client.close().
- */
+/** handlers: { onOpen(client), onEvent(name, payload), onClose(), onError(message) }; client.emit(name, payload, ack?), client.close() */
 export function connect(baseUrl, token, forwardedFor, handlers) {
   const url = `${baseUrl.replace(/^http/, 'ws')}/socket.io/?EIO=4&transport=websocket`;
   const ws = new WebSocket(url, null, { headers: { 'X-Forwarded-For': forwardedFor } });

@@ -1,6 +1,3 @@
-// Chuẩn bị CSDL riêng cho e2e web ở máy dev (ADR-0082): tạo nếu chưa có, migrate, seed.
-// Playwright gọi trước khi bật API; DATABASE_URL do apps/web/playwright.config.ts đặt.
-// Seed idempotent (id cố định + upsert) nên chạy mỗi lần e2e không đổi dữ liệu seed.
 import { execFileSync, execSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -9,13 +6,13 @@ process.chdir(path.resolve(fileURLToPath(new URL('..', import.meta.url))));
 
 const url = new URL(process.env.DATABASE_URL ?? 'postgresql://invalid/');
 const db = url.pathname.slice(1);
-// Chốt chặn: không bao giờ seed/ghi e2e vào CSDL dev `ping` (lý do của ADR-0082).
+// Chốt chặn: không bao giờ seed/ghi e2e vào CSDL dev `ping`.
 if (!/^\w+$/.test(db) || db === 'ping') {
   console.error(`✖ DATABASE_URL phải trỏ CSDL e2e riêng (đang là "${db}").`);
   process.exit(1);
 }
 
-// Docker là .exe: truyền tham số trực tiếp để chuỗi SQL không bị shell tách (như prepare-demo).
+// Docker là .exe: truyền tham số trực tiếp để chuỗi SQL không bị shell tách.
 const psql = (sql) =>
   execFileSync(
     'docker',

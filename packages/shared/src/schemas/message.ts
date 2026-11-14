@@ -10,12 +10,9 @@ export const createMessageSchema = z
     content: z.string().trim().max(Limits.MESSAGE_CONTENT_MAX),
     // The client reuses this nonce when retrying the same message.
     nonce: z.uuid(),
-    // TG.1: reply — tin gốc CÙNG channel (service kiểm); bỏ qua = tin thường.
     replyToId: z.uuid().optional(),
     attachmentIds: z.array(z.uuid()).max(AttachmentLimits.PER_MESSAGE).optional(),
-    // TG.22: gửi sticker — tin `kind='sticker'`, nội dung bắt buộc rỗng, không kèm tệp tin nhắn.
     stickerId: z.uuid().optional(),
-    // TG.25: gửi GIF — tin `kind='gif'`, nội dung bắt buộc rỗng, URL thuộc host allowlist.
     gif: gifPayloadSchema.optional(),
   })
   .refine(
@@ -42,18 +39,15 @@ export const createMessageSchema = z
   });
 export type CreateMessageInput = z.infer<typeof createMessageSchema>;
 
-/** Xem trước tin gốc trong reply (TG.1): đoạn trích 120 ký tự; `deleted` khi tin gốc soft-delete. */
+/** Đoạn trích 120 ký tự; `deleted` khi tin gốc soft-delete. */
 export interface MessageReplyPreview {
   id: string;
   authorName: string;
   content: string;
   deleted: boolean;
-  /**
-   * Loại tin gốc để khối trích dẫn có ngữ cảnh khi `content` rỗng (sticker/GIF).
-   * Thiếu (client/dữ liệu cũ) được coi là tin văn bản.
-   */
+  /** Thiếu (client/dữ liệu cũ) được coi là tin văn bản. */
   kind?: 'text' | 'sticker' | 'gif';
-  /** Số tệp đính kèm còn hiệu lực của tin gốc; chỉ có mặt khi lớn hơn 0. */
+  /** Chỉ có mặt khi lớn hơn 0. */
   attachmentCount?: number;
 }
 
@@ -62,29 +56,20 @@ export const updateMessageSchema = z.object({
 });
 export type UpdateMessageInput = z.infer<typeof updateMessageSchema>;
 
-/** Một loại cảm xúc trên tin (TG.2, ADR-0064): tổng số + người xem đã thả chưa. */
 export interface MessageReactionDto {
   emoji: string;
   count: number;
   me: boolean;
-  /**
-   * Tên emoji tùy chỉnh khi `emoji` là token `c:<id>` (ADR-0081): có cả khi emoji đã bị xóa
-   * (soft-delete) để client hiện `:ten:` thay cho id. Thiếu với emoji Unicode.
-   */
+  /** Có cả khi emoji đã bị xóa; thiếu với emoji Unicode. */
   emojiName?: string;
 }
 
-/** Kết quả thêm/gỡ cảm xúc: toàn bộ nhóm cảm xúc hiện tại của tin (để client hoà giải). */
 export interface MessageReactionSummary {
   messageId: string;
   reactions: MessageReactionDto[];
 }
 
-/**
- * Danh sách người thả một cảm xúc, keyset tăng dần theo id; `total` = tổng số người.
- * `nextCursor` là id hàng cảm xúc cuối trang (không phải id user) — truyền lại qua `after`
- * để lấy trang kế; `null` khi hết.
- */
+/** `nextCursor` là id hàng cảm xúc cuối trang (không phải id user); `null` khi hết. */
 export interface ReactionUsersPage {
   users: MessageAuthor[];
   hasMore: boolean;
@@ -98,47 +83,31 @@ export const reactionUsersQuerySchema = z.object({
 });
 export type ReactionUsersQuery = z.infer<typeof reactionUsersQuerySchema>;
 
-/**
- * Tin nhắn từ API (GET danh sách, POST gửi). Ngày giờ là chuỗi ISO 8601 qua JSON.
- * `kind`/`sticker` (TG.22): tin sticker có `kind='sticker'` kèm preview; tin cũ trước
- * bản deploy không có `kind` — client coi thiếu `kind` là `'text'`.
- */
+/** Tin cũ không có `kind`: client coi thiếu `kind` là text. */
 export interface MessageDto {
   kind?: 'text' | 'sticker' | 'gif';
-  /** Xem trước sticker khi `kind='sticker'`; tin văn bản không có. */
   sticker?: MessageStickerPreview | null;
-  /** TG.25: xem trước GIF khi `kind='gif'`; tin khác không có. */
   gif?: MessageGifPreview | null;
   attachments?: AttachmentDto[];
   id: string;
   content: string;
-  /** Nonce client sinh khi gửi (null với tin không có). Dùng khớp tin optimistic với tin thật. */
   nonce: string | null;
   editedAt: string | null;
   createdAt: string;
   authorId: string;
   author: MessageAuthor;
-  /** TG.1: tin gốc nếu đây là reply; null = tin thường. */
   replyTo: MessageReplyPreview | null;
-  /** TG.2: cảm xúc đã tổng hợp (count + me), sắp theo số người giảm dần. */
   reactions: MessageReactionDto[];
-  /** TG.3: thời điểm ghim; null = chưa ghim (ADR-0066). */
   pinnedAt: string | null;
-  /** TG.3: người ghim gần nhất; null = chưa ghim hoặc tài khoản đã bị xoá. */
   pinnedById: string | null;
 }
 
-/**
- * Một tin trong danh sách ghim của channel (TG.3). `pinnedBy` là người ghim; null khi tài
- * khoản đó đã bị xoá. Danh sách có trần `Limits.PINS_PER_CHANNEL` nên trả mảng, không cursor.
- */
 export interface PinnedMessageDto {
   message: MessageDto;
   pinnedAt: string;
   pinnedBy: MessageAuthor | null;
 }
 
-/** Kết quả ghim/bỏ ghim (idempotent): trạng thái sau thao tác. */
 export interface MessagePinResult {
   messageId: string;
   channelId: string;
@@ -146,11 +115,7 @@ export interface MessagePinResult {
   pinnedById: string | null;
 }
 
-/**
- * GET /channels/:id/messages: mới nhất trước; `hasMore` = còn tin cũ hơn tin cuối trang.
- * `hasNewer` chỉ có ở chế độ `?around=` (TG.5): cửa sổ quanh một tin cũ, còn tin MỚI hơn ở dưới
- * (tải tiếp bằng `after` = tin mới nhất của cửa sổ).
- */
+/** `hasNewer` chỉ có ở chế độ `?around=`: còn tin mới hơn bên dưới cửa sổ. */
 export interface MessagePage {
   messages: MessageDto[];
   hasMore: boolean;

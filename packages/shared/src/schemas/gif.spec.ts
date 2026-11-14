@@ -14,11 +14,10 @@ describe('gif contracts (TG.25, ADR-0069)', () => {
   it('chỉ nhận URL https thuộc host allowlist', () => {
     expect(gifPayloadSchema.safeParse(tenorGif).success).toBe(true);
     expect(GIF_IMAGE_HOSTS).toContain('media.tenor.com');
-    // Host lạ bị chặn ở schema — client không thể nhúng nguồn ngoài danh sách.
     for (const url of [
       'https://media.giphy.com/aaa/ZZZZ.gif',
       'https://evil.example.com/x.gif',
-      'http://media.tenor.com/abcdefghijk/AAAAC/hello.gif', // http thường — không phải https
+      'http://media.tenor.com/abcdefghijk/AAAAC/hello.gif',
       'not-a-url',
     ]) {
       expect(gifPayloadSchema.safeParse({ ...tenorGif, url }).success).toBe(false);

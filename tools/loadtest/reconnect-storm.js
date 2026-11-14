@@ -1,9 +1,4 @@
-// Kịch bản 3 (hướng dẫn 16.3): "bão kết nối lại". N socket nối và join; tới cùng một thời điểm tất cả
-// ĐÓNG rồi nối lại ngay (client thật có backoff ngẫu nhiên: ở đây không backoff, là trường hợp xấu nhất).
-// Đo thời gian từ lúc đóng đến lúc join xong, và số lần nối thất bại.
-//   k6 run tools/loadtest/reconnect-storm.js -e PORTS=4001,4002 -e SOCKETS=1000 -e ROUNDS=3 -e HOLD_S=15
-// Biến thể "restart một instance": đặt ROUNDS=1, HOLD_S=60 và chạy run-instances với --restart-after=20:
-// socket của instance bị restart tự nối lại (thử mỗi 1 giây) và ta đo thời gian phục hồi.
+// k6 run tools/loadtest/reconnect-storm.js -e PORTS=4001,4002 -e SOCKETS=1000 -e ROUNDS=3 -e HOLD_S=15
 import { Counter, Trend } from 'k6/metrics';
 import { SharedArray } from 'k6/data';
 import { connect } from './lib/socketio.js';
@@ -16,9 +11,9 @@ const ROUNDS = Number(__ENV.ROUNDS || 3);
 const HOLD_MS = Number(__ENV.HOLD_S || 15) * 1000;
 
 const recovery = new Trend('reconnect_ms', true);
-const failures = new Counter('reconnect_failures'); // tổng = nối thất bại + join thất bại
-const connectFailed = new Counter('connect_failed'); // socket không mở được (bị từ chối, ngắt, không nối được)
-const joinFailed = new Counter('join_failed'); // mở được nhưng channel.join không trả ok
+const failures = new Counter('reconnect_failures');
+const connectFailed = new Counter('connect_failed');
+const joinFailed = new Counter('join_failed');
 const joined = new Counter('joins_ok');
 
 export const options = {
@@ -43,9 +38,9 @@ export default function () {
   const port = PORTS[index % PORTS.length];
   const channelId = meta.channels[index % meta.channels.length].id;
   let round = 0;
-  let lostAt = 0; // thời điểm mất kết nối (do ta đóng hoặc do server)
+  let lostAt = 0;
   let closing = false;
-  let ending = false; // đóng lần cuối do chính ta: không nối lại
+  let ending = false;
 
   function open() {
     let opened = false;
@@ -61,7 +56,6 @@ export default function () {
           joined.add(1);
           if (lostAt) recovery.add(Date.now() - lostAt);
           lostAt = 0;
-          // Đúng nhịp của cả bầy: giữ HOLD_MS rồi cùng đóng (các VU khởi động gần như cùng lúc).
           setTimeout(() => {
             if (round >= ROUNDS) {
               ending = true;
@@ -78,17 +72,15 @@ export default function () {
       onClose() {
         if (ending) return;
         if (!opened) {
-          failures.add(1); // nối không thành công
+          failures.add(1);
           connectFailed.add(1);
         }
-        if (!lostAt) lostAt = Date.now(); // server tự đóng (restart): tính từ lúc này
-        if (Date.now() - lostAt > 60000) return; // bỏ cuộc sau 60 giây không nối lại được
+        if (!lostAt) lostAt = Date.now();
+        if (Date.now() - lostAt > 60000) return;
         closing = false;
-        setTimeout(open, opened ? 0 : 1000); // đóng chủ động: nối ngay; nối hỏng: thử lại sau 1 giây
+        setTimeout(open, opened ? 0 : 1000);
       },
-      onError() {
-        /* onClose xử lý */
-      },
+      onError() {},
     });
   }
   open();

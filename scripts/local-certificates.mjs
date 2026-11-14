@@ -1,4 +1,3 @@
-// Tạo CA local và chứng chỉ localhost. Không sửa Windows trust store.
 // node scripts/local-certificates.mjs <directory-outside-repo> [--renew]
 import { execFileSync } from 'node:child_process';
 import { createPrivateKey, createPublicKey, randomBytes, X509Certificate } from 'node:crypto';
@@ -13,7 +12,7 @@ function openssl(args) {
   try {
     return execFileSync('openssl', args, { stdio: ['ignore', 'pipe', 'pipe'], timeout: 30_000 });
   } catch {
-    // Không in command/stderr để tránh vô tình lộ nội dung hoặc đường dẫn khóa.
+    // Không in command/stderr để tránh lộ đường dẫn khóa.
     throw new Error(
       'OpenSSL failed. Check that openssl is installed and the output directory is writable.',
     );
@@ -145,7 +144,6 @@ export function createLocalCertificates(outputDirectory, { renew = false } = {})
     checkPair(path.join(work, 'server.pem'), path.join(work, 'server.key'));
     openssl(['verify', '-CAfile', result.caCertificate, path.join(work, 'server.pem')]);
     renameSync(path.join(work, 'server.key'), result.serverKey);
-    // Root CA không cần đưa trong TLS chain; fullchain.pem chứa leaf do CA local ký.
     renameSync(path.join(work, 'server.pem'), result.serverCertificate);
     return result;
   } finally {
