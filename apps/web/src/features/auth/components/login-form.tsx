@@ -20,7 +20,6 @@ import { useMe, useLogin } from '../hooks';
 import { safeRedirectPath } from '../session';
 import { useErrorMessage } from '@/lib/error-message';
 
-/** Tên trường cố định của form (dùng khi xoá lúc trang bị ẩn). */
 const LOGIN_FIELDS = ['email', 'password'] as const;
 
 export function LoginForm() {
@@ -33,10 +32,8 @@ export function LoginForm() {
   const containerRef = useResetOnHide(form, LOGIN_FIELDS);
   const t = useTranslations('auth');
   const errorMessage = useErrorMessage();
-  // Cùng schema với API (packages/shared): lỗi định dạng báo ngay, không tốn một request.
   const rules = zodFormRules(loginSchema, () => form.getFieldsValue());
 
-  // Đã đăng nhập (vừa đăng nhập xong, hoặc mở /login khi phiên còn) → vào app.
   useEffect(() => {
     if (me) {
       router.replace(next);
@@ -81,8 +78,6 @@ export function LoginForm() {
           {t('login')}
         </PingButton>
         <div className="mt-2 flex items-center justify-between text-sm">
-          {/* Màu ở span con: antd tô <a> bằng màu link nó tự sinh (đậm hơn token, 4,01:1 trên
-              card tối) nên class text-* trên Link bị đè. */}
           <Link href="/forgot-password" className="font-medium underline-offset-4 hover:underline">
             <span className="text-link">{t('forgotPassword')}</span>
           </Link>

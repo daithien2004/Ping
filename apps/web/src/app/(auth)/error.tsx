@@ -8,13 +8,7 @@ import { errorReference } from '@/lib/error-reference';
 import { useErrorMessage } from '@/lib/error-message';
 import { reportError } from '@/lib/report-error';
 
-/**
- * Lỗi ở trang chưa đăng nhập (đăng nhập/đăng ký). Không có boundary ở đây thì lỗi mạng lúc
- * kiểm tra phiên (`useMe` là suspense query) làm sập trang: Next rơi xuống global-error —
- * mất trắng toàn bộ, không có cách phục hồi ngoài việc tải lại.
- */
 export default function AuthError({ error, retry }: { error: Error; retry: () => void }) {
-  // useSuspenseQuery giữ lỗi trong cache: phải xóa trạng thái lỗi của query trước, rồi retry()
   // của Next mới thật sự tải lại thay vì ném lại đúng lỗi cũ.
   const { reset } = useQueryErrorResetBoundary();
   const t = useTranslations();

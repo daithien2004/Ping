@@ -24,13 +24,6 @@ interface Props {
   roles: RoleDto[];
 }
 
-/**
- * Trình sửa vai trò (TF.10 + T3.3): bảng vai trò theo thứ tự hiển thị, tạo vai trò mới,
- * chọn một vai trò để sửa tên/quyền, đổi thứ tự bằng nút lên/xuống, xoá có xác nhận.
- *
- * Thứ tự chỉ quyết định cách hiển thị (và màu role); thẩm quyền vẫn theo bit quyền —
- * xem ADR-0004 và ghi chú dưới bảng.
- */
 export function RoleEditor({ serverId, roles }: Props) {
   const t = useTranslations('admin');
   const errorMessage = useErrorMessage();

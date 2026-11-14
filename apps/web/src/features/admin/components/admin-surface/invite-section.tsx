@@ -10,10 +10,6 @@ import { pingToast } from '@/components/ui/ping-toast';
 import { useErrorMessage } from '@/lib/error-message';
 import { useRegenerateInvite } from '../../hooks';
 
-/**
- * Vùng mã mời (T3.6): xem/sao chép mã đang hoạt động và tạo mã mới (vô hiệu mã cũ).
- * `server.inviteCode` là bản sao API đồng bộ lúc regenerate nên hiển thị không cần query riêng.
- */
 export function InviteSection({ server }: { server: ServerDetail }) {
   const t = useTranslations('admin');
   const tc = useTranslations('common');

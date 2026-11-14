@@ -22,18 +22,7 @@ import { ChannelTopicDialog } from './channel-topic-dialog';
 /** `use()` cần một promise ổn định cho trang permalink (không có searchParams). */
 const EMPTY_QUERY: Promise<Record<string, string | string[] | undefined>> = Promise.resolve({});
 
-/**
- * Vùng nội dung của một channel: tiêu đề + danh sách tin + ô soạn tin.
- *
- * Lấy params từ prop của page, KHÔNG dùng useParams(): <Activity> giữ trang channel cũ ở dạng ẩn,
- * và useParams() trong trang ẩn trả params của URL HIỆN TẠI → trang #general ẩn render lại thành
- * #dev, key của MessagePane đổi, nháp + vị trí cuộn mất (đã gặp khi kiểm tra). `params` của page
- * luôn là params của chính trang đó. `searchParams` cũng lấy từ page vì lý do tương tự.
- *
- * Tin cần nhảy tới có hai nguồn: permalink `/channels/:serverId/:channelId/:messageId` (TG.5,
- * ADR-0063, URL ADR-0088 — page truyền `focusId`) và `?m=<messageId>` cũ (chip trích dẫn AI,
- * link đã chia sẻ trước TG.5).
- */
+/** Lấy params từ prop của page, KHÔNG useParams(): <Activity> giữ trang ẩn nên useParams() trả params URL hiện tại. */
 export function ChannelView({
   params,
   searchParams,
@@ -41,7 +30,6 @@ export function ChannelView({
 }: {
   params: Promise<{ serverId: string; channelId: string }>;
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
-  /** Permalink: tin đích lấy từ segment của route thay vì query. */
   focusId?: string | null;
 }) {
   const { serverId, channelId } = use(params);
@@ -68,8 +56,6 @@ export function ChannelView({
     [serverId, pathToMessage],
   );
 
-  // Dưới `lg` panel thành viên là overlay (T6.8) nên không được mặc định mở đè lên tin nhắn:
-  // đóng khi vào màn hẹp hoặc khi cửa sổ thu nhỏ qua mốc lg.
   useEffect(() => {
     const media = window.matchMedia('(max-width: 1023px)');
     const closeOnNarrow = () => {
@@ -92,9 +78,6 @@ export function ChannelView({
   return (
     <div className="relative flex min-h-0 min-w-0 flex-1">
       <section className="flex min-h-0 min-w-0 flex-1 flex-col">
-        {/* Discord: header 49 px, nền trùng nền chat (không viền), tên kênh + chủ đề trên CÙNG
-            một dòng. Hàng icon theo thứ tự Discord (ghim, chuông, thành viên), ô tìm kiếm 244 px
-            nằm cuối; nút "Hỏi Ping" chỉ là icon để không phá nhịp header. */}
         <header
           data-slot="channel-header"
           className="flex h-header shrink-0 items-center gap-2 px-4"
@@ -104,7 +87,6 @@ export function ChannelView({
               #
             </span>
             <h2 className="truncate text-base font-semibold">{channel.name}</h2>
-            {/* TG.10: chủ đề hiển thị ngay sau tên kênh (header), quản lý kênh sửa qua nút bút. */}
             {channel.topic && (
               <div data-slot="topic-inline" className="contents">
                 <span aria-hidden className="h-4 w-px shrink-0 bg-border" />
@@ -117,8 +99,6 @@ export function ChannelView({
               </div>
             )}
           </div>
-          {/* `min-w-0`: cửa sổ hẹp thì ô tìm kiếm co lại (đến 96 px) thay vì đẩy header tràn
-              ra ngoài — trước đây 244 px cố định cộng 5 icon là nguồn tràn ngang của cả trang. */}
           <div data-slot="channel-actions" className="flex min-w-0 items-center gap-1">
             {canManage && (
               <PingIconButton
@@ -135,7 +115,6 @@ export function ChannelView({
               data-testid="pins-toggle"
               onClick={() => setPinsOpen((open) => !open)}
             />
-            {/* TG.12: chuông cài đặt thông báo của kênh (mức + mute), kế thừa mặc định server. */}
             <NotificationBell serverId={serverId} channelId={channel.id} />
             <PingIconButton
               icon={<Users />}
@@ -154,8 +133,6 @@ export function ChannelView({
           </div>
         </header>
         <Suspense fallback={<MessageListSkeleton />}>
-          {/* key: mỗi channel một trạng thái riêng (nháp, vị trí cuộn lần đầu). Tin đích của
-              permalink cũng là một "phiên xem" riêng: mở link khác thì nạp lại cửa sổ mới. */}
           <MessagePane
             key={`${channel.id}:${focusId ?? ''}`}
             scope={scope}
@@ -166,7 +143,6 @@ export function ChannelView({
         </Suspense>
       </section>
       {panelOpen && <MemberPanel serverId={serverId} />}
-      {/* TG.3: panel ghim là sibling của pane tin nhắn (không nằm trong danh sách ảo hoá). */}
       {pinsOpen && <PinnedPanel channelId={channel.id} onOpen={goToMessage} />}
       {topicOpen && (
         <ChannelTopicDialog

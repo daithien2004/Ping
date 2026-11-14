@@ -2,20 +2,9 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { gzipSync } from 'node:zlib';
 
-// Ngân sách JS phía client (H4, ADR-0029; đo lại theo ADR-0058).
-//
-// `rootMainFiles` + `polyfillFiles` trong `build-manifest.json` là những chunk trình duyệt tải
-// ngay khi mở trang, trước khi điều hướng sang route khác — đúng nghĩa "JS tải ban đầu" mà plan
-// (T3.7/TF.15) và checklist phát hành nói tới. Các chunk còn lại chỉ tải khi vào route tương ứng
-// (admin/AI/search, xem ADR-0050 mục 6) nên có trần riêng, không cộng vào tổng ban đầu.
-//
-// Trần lấy từ plan: bundle ban đầu 450 KB gzip (T3.7, T6.10, checklist phát hành), mỗi chunk
-// 100 KB, chunk tải theo yêu cầu 160 KB (ADR-0031 cho Sentry; ADR-0058 áp dụng cho route).
+// Tải ban đầu = `rootMainFiles` + `polyfillFiles`; chunk tải theo yêu cầu có trần riêng, không cộng vào tổng.
 export const LIMITS = { initialKb: 450, chunkKb: 100, routeKb: 160 };
 
-// Chunk tải theo yêu cầu (route hoặc thư viện bật bằng cấu hình như Sentry): tên có tiền tố này
-// trong `sizes` để `evaluate` không cộng vào tổng ban đầu. Nhận thêm bằng chuỗi đặc trưng trong
-// nội dung chunk (ADR-0031) vì Sentry được nạp bằng `import()` có điều kiện.
 export const ROUTE_PREFIX = 'route:';
 export const LAZY_MARKERS = ['sentry.javascript'];
 
@@ -58,11 +47,6 @@ function walk(dir) {
 
 const normalize = (path) => path.replaceAll('\\', '/');
 
-/**
- * Đo mọi chunk JS của client. Chunk nằm trong `rootMainFiles`/`polyfillFiles`/`lowPriorityFiles`
- * (hoặc được đánh dấu lazy) là JS tải ban đầu; phần còn lại là chunk tải theo yêu cầu.
- * Cần chạy `pnpm build` trước — thiếu `build-manifest.json` thì báo lỗi rõ ràng.
- */
 export function measure(nextDir = '.next') {
   const manifestPath = join(nextDir, 'build-manifest.json');
   if (!existsSync(manifestPath)) {

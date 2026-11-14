@@ -7,10 +7,6 @@ import { useCurrentServerId } from '@/features/permissions/context';
 import { channelPath } from '@/features/servers/navigation';
 import { useChannels } from '../hooks';
 
-/**
- * URL `/channels/:id` (ADR-0088) → channel đầu tiên của server. serverId lấy từ provider,
- * không từ useParams() (ADR-0020).
- */
 export function ChannelRedirect() {
   const serverId = useCurrentServerId();
   const router = useRouter();

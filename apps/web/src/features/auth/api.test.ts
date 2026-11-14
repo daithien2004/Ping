@@ -17,7 +17,6 @@ const user = {
   createdAt: '2026-10-20T00:00:00.000Z',
 };
 
-/** Nạp lại cả api-client (token là state cấp module) cho mỗi test. */
 async function load() {
   vi.resetModules();
   const client = await import('@/lib/api-client');
@@ -43,7 +42,6 @@ describe('getSession', () => {
 
     await expect(getSession()).resolves.toBeNull();
     // Refresh 401 được thử lại MỘT lần (ADR-0007: tab thua trong lần xoay vòng đồng thời); vẫn
-    // không gọi /users/me khi cả hai lần đều thất bại.
     expect(fetchMock.mock.calls.map(([url]) => url.split('/api/v1')[1])).toEqual([
       '/auth/refresh',
       '/auth/refresh',

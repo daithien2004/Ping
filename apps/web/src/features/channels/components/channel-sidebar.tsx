@@ -15,12 +15,8 @@ import { channelIdFromPath } from '@/lib/channel-url';
 import { useErrorMessage } from '@/lib/error-message';
 import { ChannelNavigation } from './channel-navigation';
 
-/** Cột giữa: tên server, danh sách channel, thẻ người dùng (Discord) — mã mời và rời server
- *  nằm trong menu của header. */
 export function ChannelSidebar() {
-  // serverId lấy từ provider của layout (đóng băng theo params prop), KHÔNG từ useParams():
-  // rời server sang DM thì <Activity> giữ layout này ẩn và useParams() trả params của URL hiện tại
-  // → GET /servers/undefined 400 (ADR-0020). channelId chỉ để tô sáng nên đọc từ URL công khai.
+  // serverId từ provider, KHÔNG useParams(): <Activity> giữ layout ẩn nên useParams() trả params URL hiện tại.
   const channelId = channelIdFromPath(usePathname()) ?? undefined;
   const router = useRouter();
   const { ability } = useServerAbility();
@@ -31,8 +27,6 @@ export function ChannelSidebar() {
   const t = useTranslations();
   const errorMessage = useErrorMessage();
 
-  // Bề mặt quản trị (TF.10): chỉ hiện lối vào khi người dùng có ít nhất một quyền quản trị
-  // (quản lý vai trò, xem nhật ký hành động hoặc quản lý server).
   const canOpenSettings =
     ability.can('manage', 'Role') ||
     ability.can('view', 'AuditLog') ||
@@ -42,7 +36,6 @@ export function ChannelSidebar() {
     leaveMutation.mutate(serverId, { onSuccess: () => router.replace('/servers') });
   }
 
-  // Sao chép mã mời: hành động ngầm, thành công thì báo bằng toast (quy ước TF.9).
   async function copyInvite() {
     try {
       await navigator.clipboard.writeText(server.inviteCode);
@@ -62,7 +55,6 @@ export function ChannelSidebar() {
           : 'max-md:invisible max-md:-translate-x-full'
       }`}
     >
-      {/* Discord: header 49 px một dòng, tên server mở menu (mã mời + rời server). */}
       <header
         data-slot="sidebar-header"
         className="flex h-header shrink-0 items-center gap-1 border-b border-sidebar-border pl-4 pr-2"
@@ -79,7 +71,6 @@ export function ChannelSidebar() {
                 disabled: true,
                 label: <code className="select-all text-xs">{server.inviteCode}</code>,
               },
-              // Cài đặt server thuộc về server (menu tên server), không nằm ở panel người dùng.
               ...(canOpenSettings
                 ? [
                     {

@@ -5,7 +5,6 @@ import { cn } from '@/lib/utils';
 
 export function PingLabel({ className, htmlFor, ...rest }: ComponentProps<'label'>) {
   return (
-    // htmlFor đặt trực tiếp (không qua spread) để jsx-a11y thấy liên kết với control.
     <label
       htmlFor={htmlFor}
       data-testid="ping-label"

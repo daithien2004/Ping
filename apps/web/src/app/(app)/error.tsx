@@ -16,7 +16,6 @@ import { reportError } from '@/lib/report-error';
  * `(app)`) vẫn hiện để người dùng chuyển sang server khác.
  */
 export default function AppError({ error, retry }: { error: Error; retry: () => void }) {
-  // useSuspenseQuery giữ lỗi trong cache: phải xóa trạng thái lỗi của query trước, rồi retry()
   // của Next mới thật sự tải lại thay vì ném lại đúng lỗi cũ.
   const { reset } = useQueryErrorResetBoundary();
   const t = useTranslations();
@@ -29,7 +28,6 @@ export default function AppError({ error, retry }: { error: Error; retry: () => 
     [ErrorCodes.NOT_FOUND]: t('app.notFound'),
     [ErrorCodes.VALIDATION_ERROR]: t('app.invalidPath'),
   });
-  // Mã lỗi để báo lại: lỗi 5xx và lỗi lạ đã có mã trong câu thông báo, các lỗi còn lại thì thêm dòng riêng.
   const reference = errorReference(error);
 
   return (

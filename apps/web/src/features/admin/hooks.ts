@@ -16,10 +16,6 @@ import {
 } from './api';
 import type { AuditLogFilters, CreateRoleInput } from './api';
 
-/**
- * Nhật ký hành động theo trang cursor. Bộ lọc nằm trong query key nên đổi bộ lọc là
- * một query mới (không trộn hai bộ lọc vào cùng danh sách).
- */
 export function useAuditLog(serverId: string, filters: AuditLogFilters = {}) {
   return useInfiniteQuery({
     queryKey: [...qk.auditLog(serverId), filters.action ?? 'all', filters.actorId ?? 'all'],
@@ -29,7 +25,6 @@ export function useAuditLog(serverId: string, filters: AuditLogFilters = {}) {
   });
 }
 
-/** Vai trò của server. Không suspend: màn quản trị tự hiện trạng thái tải/lỗi/quyền. */
 export function useRoles(serverId: string, enabled = true) {
   return useQuery({
     queryKey: qk.roles(serverId),
@@ -38,14 +33,12 @@ export function useRoles(serverId: string, enabled = true) {
   });
 }
 
-/** Lưu quyền (hoặc tên) của một vai trò. */
 export function useUpdateRole(serverId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ roleId, ...input }: { roleId: string } & Parameters<typeof updateRole>[1]) =>
       updateRole(roleId, input),
     onSuccess: () => {
-      // Quyền của role đổi → cache server (roles, permissions) và danh sách role phải mới.
       void queryClient.invalidateQueries({ queryKey: qk.roles(serverId) });
       void queryClient.invalidateQueries({ queryKey: qk.server(serverId) });
       void queryClient.invalidateQueries({ queryKey: qk.permissions(serverId) });
@@ -53,7 +46,6 @@ export function useUpdateRole(serverId: string) {
   });
 }
 
-/** Tạo vai trò mới; vị trí do người gọi tính từ danh sách hiện tại. */
 export function useCreateRole(serverId: string) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -65,10 +57,6 @@ export function useCreateRole(serverId: string) {
   });
 }
 
-/**
- * Gán vai trò cho thành viên. Đổi role làm đổi quyền hiệu lực nên phải làm mới cả
- * thành viên, vai trò (đếm member) và quyền của server.
- */
 export function useAssignMemberRoles(serverId: string) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -79,16 +67,11 @@ export function useAssignMemberRoles(serverId: string) {
       void queryClient.invalidateQueries({ queryKey: qk.roles(serverId) });
       void queryClient.invalidateQueries({ queryKey: qk.server(serverId) });
       void queryClient.invalidateQueries({ queryKey: qk.permissions(serverId) });
-      // ADR-0077: mention theo role đổi khi gán/gỡ role → phải làm mới unread gộp.
       void queryClient.invalidateQueries({ queryKey: qk.unreadAll });
     },
   });
 }
 
-/**
- * Đổi thứ tự hiển thị: gửi các cập nhật `position` đã tính sẵn. API không có endpoint
- * đổi hàng loạt nên mỗi role một PATCH; danh sách role bị giới hạn bởi `Limits`.
- */
 export function useReorderRoles(serverId: string) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -101,7 +84,6 @@ export function useReorderRoles(serverId: string) {
   });
 }
 
-/** Xoá vai trò (không xoá được @everyone — API trả lỗi rõ ràng). */
 export function useDeleteRole(serverId: string) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -109,16 +91,11 @@ export function useDeleteRole(serverId: string) {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: qk.roles(serverId) });
       void queryClient.invalidateQueries({ queryKey: qk.server(serverId) });
-      // ADR-0077: xóa role gỡ luôn mention theo role của các thành viên.
       void queryClient.invalidateQueries({ queryKey: qk.unreadAll });
     },
   });
 }
 
-/**
- * Kick thành viên. Xoá member làm đổi số thành viên của vai trò và chi tiết server nên phải
- * làm mới cả hai, không chỉ danh sách thành viên.
- */
 export function useKickMember(serverId: string) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -131,10 +108,6 @@ export function useKickMember(serverId: string) {
   });
 }
 
-/**
- * Tạo mã mời mới (T3.6). Mã mời hiển thị ở chi tiết server, danh sách server và bề mặt
- * quản trị nên invalidate cả ba nguồn.
- */
 export function useRegenerateInvite(serverId: string) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -146,14 +119,12 @@ export function useRegenerateInvite(serverId: string) {
   });
 }
 
-/** Xoá server (chỉ chủ server). */
 export function useDeleteServer() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (serverId: string) => deleteServer(serverId),
     onSuccess: (_result, serverId) => {
       void queryClient.removeQueries({ queryKey: qk.server(serverId) });
-      // ADR-0077: server đã xóa không còn trong unread gộp.
       void queryClient.invalidateQueries({ queryKey: qk.unreadAll });
       return queryClient.invalidateQueries({ queryKey: qk.servers, exact: true });
     },

@@ -1,7 +1,4 @@
-// TF.15: đo LCP/CLS/INP (lab, Chromium) trên landing và trang chat, bản build production.
-// Chạy khi API (4000) + web (3000, `next start`) đã lên và DB đã seed:
-//   pnpm --filter web exec node scripts/measure-perf.mjs
-// Số đo là phòng thí nghiệm trên một máy, không thay dữ liệu hiện trường (RUM).
+// Cần API (4000) + web (3000, `next start`) và DB đã seed: pnpm --filter web exec node scripts/measure-perf.mjs
 import { writeFile } from 'node:fs/promises';
 import { chromium } from '@playwright/test';
 
@@ -26,8 +23,7 @@ const OBSERVE = () => {
       }
     }
   }).observe({ type: 'layout-shift', buffered: true });
-  // INP thật là p98 của event duration; ở đây lấy độ trễ lớn nhất trong các tương tác chủ động
-  // (đo trên máy, số mẫu ít) — ghi rõ là xấp xỉ, không thay RUM.
+  // INP ở đây là độ trễ lớn nhất của các tương tác chủ động: xấp xỉ, không thay RUM.
   new PerformanceObserver((list) => {
     for (const entry of list.getEntries()) window.__vitals.events.push(entry.duration);
   }).observe({ type: 'event', buffered: true, durationThreshold: 16 });
@@ -38,8 +34,6 @@ const OBSERVE = () => {
 
 async function readVitals(page) {
   const raw = await page.evaluate(() => {
-    // PerformanceObserver có thể chưa kịp giao entry LCP ở lượt đầu; đọc thẳng buffer của
-    // performance timeline để không ghi nhầm 0 ms.
     const entries = performance.getEntriesByType('largest-contentful-paint');
     const fromTimeline = entries.length ? Math.max(...entries.map((entry) => entry.startTime)) : 0;
     return { ...window.__vitals, lcp: Math.max(window.__vitals.lcp, fromTimeline) };
@@ -62,10 +56,8 @@ async function measureLanding(browser) {
   const page = await context.newPage();
   await page.goto(`${WEB}/`, { waitUntil: 'networkidle' });
   await page.getByRole('heading', { level: 1 }).first().waitFor();
-  // Chờ hydrate xong rồi mới bấm: bấm ngay sau networkidle có lượt không phát sinh event timing.
   await page.waitForTimeout(1000);
-  // Tương tác chủ động để có mẫu INP: bấm CTA nhưng chặn điều hướng ở capture để LCP/CLS
-  // vẫn là của trang landing (sang /login sẽ reset window.performance).
+  // Chặn điều hướng khi bấm CTA để LCP/CLS vẫn là của landing (sang /login reset performance).
   await page.evaluate(() => {
     document.addEventListener(
       'click',
@@ -79,7 +71,6 @@ async function measureLanding(browser) {
   });
   const loginButton = page.getByRole('button', { name: 'Đăng nhập' }).first();
   await loginButton.click();
-  // Lượt chạy nóng đôi khi không phát sinh event timing cho cú bấm đầu; bấm lại và chờ có mẫu.
   const gotEvent = await page
     .waitForFunction(() => window.__vitals.events.length > 0, null, { timeout: 5000 })
     .then(() => true)
@@ -104,7 +95,6 @@ async function measureChat(browser) {
   });
   await page.getByTestId('message-scroll').waitFor();
   await page.getByText('Welcome to Ping! 🏓').waitFor();
-  // Tương tác: gõ vào ô soạn tin (không gửi), mở search (chunk tải lười), mở quick switcher.
   const composer = page.getByTestId('message-composer');
   await composer.fill('Đo hiệu năng gõ phím trên trang chat');
   await composer.fill('');

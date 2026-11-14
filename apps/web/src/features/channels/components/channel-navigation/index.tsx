@@ -15,12 +15,6 @@ import { CreateChannelAction } from '../create-channel-action';
 import { ChannelGroup } from './channel-group';
 import { DEFAULT_GROUP_KEY, useChannelSidebarDnd } from './use-channel-sidebar-dnd';
 
-/**
- * Thanh điều hướng channel nhóm theo category (TG.10): header thu gọn được (lưu localStorage
- * theo user+server), kéo thả channel/category bằng HTML5 DnD thuần (không thêm dependency),
- * và bàn phím — ArrowUp/Down di focus giữa các hàng (roving tabindex), Alt+ArrowUp/Down di
- * chuyển channel/category (gọi cùng API với kéo thả, rankBetween cho hàng xóm sau khi sort).
- */
 export function ChannelNavigation({ serverId, activeId }: { serverId: string; activeId?: string }) {
   const { data: channels } = useChannels(serverId);
   const categories = useCategories(serverId);
@@ -30,7 +24,6 @@ export function ChannelNavigation({ serverId, activeId }: { serverId: string; ac
   const canManage = ability.can('manage', 'Channel');
   const groups = groupChannels(channels, categories, t('defaultGroup'));
 
-  // Trạng thái thu gọn đọc MỘT lần cho cặp (user, server) — đổi server/user thì nạp lại.
   const [collapsed, setCollapsed] = useState<string[]>([]);
   const loadedKey = useRef<string | null>(null);
   useEffect(() => {

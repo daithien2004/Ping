@@ -20,11 +20,6 @@ import {
 import { reorderedCategoryIds, sortCategories } from '@/features/channels/sidebar-model';
 import { useErrorMessage } from '@/lib/error-message';
 
-/**
- * TG.10: quản lý category của server — tạo/đổi tên/xoá và đổi thứ tự bằng nút lên/xuống
- * (cùng API PUT /categories/reorder với kéo thả ngoài sidebar). Xoá category chỉ đưa kênh
- * về vùng mặc định, không xoá kênh nào (mô tả nói rõ để người dùng yên tâm).
- */
 export function CategoryManager({ serverId }: { serverId: string }) {
   const t = useTranslations('admin');
   const tc = useTranslations('common');

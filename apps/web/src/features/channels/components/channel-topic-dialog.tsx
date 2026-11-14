@@ -18,7 +18,6 @@ interface ChannelTopicDialogProps {
   onClose: () => void;
 }
 
-/** TG.10: đặt chủ đề kênh (hiển thị dưới tên ở header); chuỗi rỗng = xoá chủ đề. */
 export function ChannelTopicDialog({
   serverId,
   channelId,

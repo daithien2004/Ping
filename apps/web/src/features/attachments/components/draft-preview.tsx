@@ -1,7 +1,6 @@
 'use client';
 import { useEffect, useRef } from 'react';
 
-/** Local draft only; URLs are released when Activity hides the composer. */
 export function DraftPreview({ file }: { file: File }) {
   const image = useRef<HTMLImageElement>(null);
   useEffect(() => {

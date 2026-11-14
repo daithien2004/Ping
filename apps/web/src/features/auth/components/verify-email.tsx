@@ -12,12 +12,6 @@ import { PingInput } from '@/components/ui/ping-input';
 import { useErrorMessage } from '@/lib/error-message';
 import { useResendVerification, useVerifyEmail } from '../hooks';
 
-/**
- * Trang xác minh email công khai (TG.8): mở từ liên kết trong thư `/verify?token=...`.
- * Token một lần — hết hạn/đã dùng thì hiện nút «Gửi lại thư» mở form email. Trang không cần
- * đăng nhập; nếu người dùng vẫn đang đăng nhập (xác minh ngay sau đăng ký), hook
- * `useVerifyEmail` tự làm tươi `me` để banner chưa xác minh tắt.
- */
 export function VerifyEmailPanel() {
   const t = useTranslations('auth');
   const errorMessage = useErrorMessage();
@@ -26,8 +20,6 @@ export function VerifyEmailPanel() {
   const verify = useVerifyEmail();
   const [showResend, setShowResend] = useState(false);
 
-  // Chạy đúng MỘT lần cho mỗi lần vào trang: StrictMode (dev) gọi effect hai lần và token là
-  // một-lần-dùng — lần gọi thứ hai sẽ báo VERIFY_TOKEN_INVALID đè lên trạng thái thành công.
   const startedRef = useRef(false);
   const { mutate: mutateVerify } = verify;
   useEffect(() => {
@@ -91,7 +83,6 @@ export function VerifyEmailPanel() {
     );
   }
 
-  // Đang gọi API (cả trạng thái chưa kịp gọi): hiện chờ, không có gì bấm được.
   return (
     <div className="flex w-full max-w-sm flex-col items-center gap-3 text-center">
       <h1 className="text-2xl font-semibold">{t('verifyTitle')}</h1>
@@ -102,7 +93,6 @@ export function VerifyEmailPanel() {
   );
 }
 
-/** Nút «Gửi lại thư» hoặc form email đã mở — dùng chung cho trạng thái thiếu/sai token. */
 function ResendSection({ open, onOpen }: { open: boolean; onOpen: () => void }) {
   const t = useTranslations('auth');
   const errorMessage = useErrorMessage();
@@ -161,7 +151,6 @@ function BackToLoginLink() {
   const t = useTranslations('auth');
   return (
     <Link href="/login" className="text-sm font-medium underline-offset-4 hover:underline">
-      {/* Màu ở span con: antd tô <a> bằng màu link tự sinh, đè class text-* trên Link. */}
       <span className="text-link">{t('backToLogin')}</span>
     </Link>
   );

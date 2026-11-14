@@ -9,23 +9,15 @@ import {
 } from '@ping/shared';
 
 export interface PermissionOption {
-  /** Bit quyền trong `@ping/shared`. */
   bit: bigint;
-  /** Khoá i18n của nhãn (namespace `admin.permissions`). */
   labelKey: string;
 }
 
 export interface PermissionGroup {
-  /** Khoá i18n của tên nhóm (namespace `admin.permissionGroups`). */
   labelKey: string;
   options: readonly PermissionOption[];
 }
 
-/**
- * Nhóm quyền hiển thị trong trình sửa quyền của vai trò (TF.10). Thứ tự nhóm là thứ tự
- * hiển thị; bit lấy từ `@ping/shared` nên không lệch với API. `as const` giữ kiểu khoá
- * i18n là chuỗi literal — `useTranslations` kiểm tra khoá lúc biên dịch.
- */
 export const permissionGroups = [
   { labelKey: 'channels', options: [{ bit: Permissions.VIEW_CHANNEL, labelKey: 'viewChannel' }] },
   {
@@ -37,7 +29,6 @@ export const permissionGroups = [
       { bit: Permissions.MENTION_EVERYONE, labelKey: 'mentionEveryone' },
     ],
   },
-  // TG.22: sticker của server — KHÔNG mặc định cho `@everyone` (ADR-0067), nhóm riêng.
   {
     labelKey: 'expressions',
     options: [{ bit: Permissions.MANAGE_EXPRESSIONS, labelKey: 'manageExpressions' }],
@@ -53,7 +44,6 @@ export const permissionGroups = [
   { labelKey: 'admin', options: [{ bit: Permissions.ADMINISTRATOR, labelKey: 'administrator' }] },
 ] as const;
 
-/** Đọc bitmask của vai trò thành danh sách bit được bật. */
 export function permissionsOf(mask: bigint): bigint[] {
   const bits: bigint[] = [];
   for (const group of permissionGroups) {
@@ -64,16 +54,10 @@ export function permissionsOf(mask: bigint): bigint[] {
   return bits;
 }
 
-/** Gom danh sách bit thành bitmask để gửi API. */
 export function maskOf(bits: readonly bigint[]): bigint {
   return bits.reduce((mask, bit) => mask | bit, 0n);
 }
 
-/**
- * Quyền hiệu lực của một thành viên: `@everyone` cộng các role đang gắn. `MemberDto` chỉ
- * mang tên role nên phải đối chiếu sang danh sách role (có bitmask) để biết member mạnh
- * hay yếu hơn người đang thao tác — API kiểm tra lại, UI chỉ ẩn/disable cho khớp.
- */
 export function effectiveMemberPermissions(member: MemberDto, roles: RoleDto[]): bigint {
   const assigned = new Set(member.roles.map(({ role }) => role.id));
   return roles
@@ -81,7 +65,6 @@ export function effectiveMemberPermissions(member: MemberDto, roles: RoleDto[]):
     .reduce((mask, role) => mask | BigInt(role.permissions), 0n);
 }
 
-/** Ngữ cảnh quyền của member đích, dùng chung `canManageMember`/`canManagePermissions` với API. */
 export function memberContext(
   member: MemberDto,
   roles: RoleDto[],
@@ -96,11 +79,6 @@ export function memberContext(
 
 export type KickBlockReason = 'self' | 'owner' | 'stronger';
 
-/**
- * Vì sao không kick được thành viên này (T3.4), hoặc null nếu kick được. Chỉ gọi khi người
- * thao tác đã có `delete Member` (KICK_MEMBERS) — cờ quyền đó do ability/CASL quyết định;
- * hàm này phân loại lý do chặn theo đối tượng, khớp `canKickMember` của API (ADR-0004).
- */
 export function kickBlockReason(
   actor: AbilityContext,
   target: AbilityContext,
@@ -111,7 +89,6 @@ export function kickBlockReason(
   return 'stronger';
 }
 
-/** Gán được role này cho member đích không (không tính `@everyone`). */
 export function isRoleAssignable(
   actor: AbilityContext,
   target: AbilityContext,
@@ -124,7 +101,6 @@ export function isRoleAssignable(
   );
 }
 
-/** Các role hiện trong hộp chọn: bỏ `@everyone` và role vượt quyền người thao tác. */
 export function assignableRoles(
   actor: AbilityContext,
   target: AbilityContext,
@@ -133,21 +109,14 @@ export function assignableRoles(
   return roles.filter((role) => isRoleAssignable(actor, target, role));
 }
 
-/** Vị trí cho role mới: sau role cuối để không nhảy lên đầu danh sách. */
 export function nextPosition(roles: RoleDto[]): number {
   return roles.reduce((max, role) => Math.max(max, role.position), -1) + 1;
 }
 
-/** Thứ tự hiển thị giống API: position tăng dần, cùng position thì theo tên. */
 function byDisplayOrder(a: RoleDto, b: RoleDto): number {
   return a.position - b.position || a.name.localeCompare(b.name);
 }
 
-/**
- * Đổi chỗ một role với role liền kề và đánh lại position 0..n-1. Trả về các cập nhật cần
- * gửi API (chỉ role đổi vị trí), hoặc null khi không đổi được: ở biên, role `@everyone`,
- * hoặc định vượt qua `@everyone`. `@everyone` luôn đứng đầu.
- */
 export function reorderUpdates(
   roles: RoleDto[],
   roleId: string,

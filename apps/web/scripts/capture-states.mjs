@@ -1,13 +1,4 @@
-/**
- * Chụp ảnh các trạng thái UI của Ping (skeleton / empty / error / toast) làm bằng chứng TF.9.
- *
- * Chạy (cần API + web dev server đang bật):
- *   WEB_PORT=3101 node apps/web/scripts/capture-states.mjs
- *
- * Ảnh ghi vào docs/v0.2.0/evidence/TF.9/screens/. Script tự tạo user/server riêng nên không
- * đụng dữ liệu dev. Mỗi ảnh đều được kiểm tra trạng thái ngay trước khi chụp: nếu trạng thái
- * không đúng (ví dụ skeleton chưa kịp hiện) thì ảnh đó bị báo lỗi thay vì tạo ra ảnh sai.
- */
+/** WEB_PORT=3101 node apps/web/scripts/capture-states.mjs  (cần API + web dev server) */
 import { chromium } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
@@ -24,7 +15,6 @@ const REQUEST_ID = '0b7c6e0e-5d4f-4c53-8a3e-6f5d8c1a9e42';
 const suffix = Math.random().toString(36).slice(2, 8);
 const email = `shots-${suffix}@example.test`;
 const password = 'e2e-password';
-// Tên hiển thị của user vừa tạo: dùng để chờ panel thành viên tải xong (trạng thái "đã có dữ liệu").
 const displayName = `shots_${suffix}`;
 
 async function api(pathname, { method = 'POST', body, token } = {}) {
@@ -43,13 +33,8 @@ async function api(pathname, { method = 'POST', body, token } = {}) {
 const captured = [];
 const failed = [];
 
-/** Chờ cho animation của antd (toast, modal) lắng xuống trước khi chụp. */
 const SETTLE_MS = 700;
 
-/**
- * Giữ một request treo tới khi được mở lại — dùng để chụp trạng thái "đang tải" chắc chắn,
- * không phụ thuộc cache của trình duyệt hay độ trễ mạng.
- */
 function gate() {
   let release = () => {};
   let held = false;
@@ -77,7 +62,6 @@ async function shot(page, name, { fullPage = false } = {}) {
 async function capture(page, name, fn, options = {}) {
   try {
     await fn();
-    // Kiểm tra trạng thái ngay trước khi chụp để không tạo ra ảnh sai.
     if (options.verify) await options.verify();
     await shot(page, name, options);
   } catch (error) {
@@ -86,12 +70,10 @@ async function capture(page, name, fn, options = {}) {
   }
 }
 
-/** Báo lỗi nếu điều kiện không đúng — để không chụp nhầm trạng thái. */
 function expectState(condition, message) {
   if (!condition) throw new Error(message);
 }
 
-/** Số phần tử skeleton đang hiện (để phân biệt "đang tải" với "đã tải"). */
 const skeletonCount = (page) => page.locator('[data-slot="skeleton"]').count();
 
 const auth = await api('/auth/register', {
@@ -109,7 +91,6 @@ const emptyChannel = await api(`/servers/${server.id}/channels`, {
 await mkdir(OUT_DIR, { recursive: true });
 const browser = await chromium.launch();
 
-/** Ẩn bảng dev tools của Next để ảnh sạch. */
 const hideDevOverlay = async (page) => {
   await page.addStyleTag({
     content: 'nextjs-portal, [data-nextjs-toast] { display: none !important; }',
@@ -124,8 +105,7 @@ async function newPage(colorScheme) {
   });
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   const page = await context.newPage();
-  // Tắt cache HTTP: nếu không, lần sau trình duyệt lấy lại danh sách thành viên từ cache và
-  // trạng thái "đang tải" không xuất hiện (ảnh skeleton sẽ trùng ảnh đã tải).
+  // Tắt cache HTTP, nếu không trạng thái đang tải không xuất hiện ở lần sau.
   const cdp = await context.newCDPSession(page);
   await cdp.send('Network.setCacheDisabled', { cacheDisabled: true });
   page.on('console', (msg) => {
@@ -150,7 +130,6 @@ await capture(page, '02-auth-error', async () => {
   await hideDevOverlay(page);
 });
 
-// Bỏ chặn mạng rồi đăng nhập thật để chụp các trạng thái trong app.
 await page.unrouteAll({ behavior: 'ignoreErrors' });
 await capture(
   page,
@@ -163,7 +142,6 @@ await capture(
     await page.getByRole('link', { name: '# general' }).waitFor();
     await page.goto(`${BASE}/servers/${server.id}/channels/${emptyChannel.id}`);
     await page.getByRole('button', { name: 'Gửi tin đầu tiên' }).waitFor();
-    // Chờ panel thành viên tải xong để ảnh khác với ảnh skeleton thành viên.
     await page.getByText(displayName).first().waitFor();
     await page.waitForTimeout(SETTLE_MS);
     await hideDevOverlay(page);
@@ -184,7 +162,6 @@ await capture(
 
 const channelUrl = `${BASE}/servers/${server.id}/channels/${emptyChannel.id}`;
 
-// Skeleton tin nhắn: giữ request tin nhắn treo tới khi chụp xong.
 const messagesGate = gate();
 await capture(
   page,
@@ -214,7 +191,6 @@ await capture(
 messagesGate.release();
 await page.unrouteAll({ behavior: 'ignoreErrors' });
 
-// Skeleton thành viên: giữ request thành viên treo tới khi chụp xong.
 const membersGate = gate();
 await capture(
   page,
@@ -291,12 +267,10 @@ await capture(page, '08-channel-empty', async () => {
 await capture(page, '09-toast-copy-invite', async () => {
   await page.goto(channelUrl);
   await page.getByText(displayName).first().waitFor();
-  // Bám Discord: mã mời nằm trong menu của tên server.
   await page.getByRole('button', { name: 'Menu server' }).click();
   await page.getByRole('menuitem', { name: 'Sao chép mã mời' }).click();
   const toast = page.getByText('Đã sao chép mã mời.');
   await toast.waitFor();
-  // Toast của antd trượt xuống từ trên: chờ animation lắng xuống thì mới thấy trong ảnh.
   await page.waitForTimeout(SETTLE_MS);
   const box = await toast.first().boundingBox();
   expectState(box !== null && box.y >= 0, `toast nằm ngoài khung nhìn (y=${box?.y})`);
@@ -305,7 +279,6 @@ await capture(page, '09-toast-copy-invite', async () => {
 
 await capture(page, '10-quick-switcher-empty', async () => {
   await page.goto(channelUrl);
-  // Chờ app hydrate xong thì phím tắt mới được gắn.
   await page.getByRole('button', { name: 'Gửi tin đầu tiên' }).waitFor();
   await page.keyboard.press('Control+k');
   await page.getByTestId('quick-switcher-input').fill('khong-co-gi');
@@ -327,7 +300,6 @@ await capture(
   { fullPage: true },
 );
 
-// Bản sáng của màn chính để thấy trạng thái ở cả hai nền.
 const { context: lightContext, page: lightPage } = await newPage('light');
 await capture(lightPage, '12-chat-light', async () => {
   await lightPage.goto(`${BASE}/login`);

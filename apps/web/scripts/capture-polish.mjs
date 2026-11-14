@@ -1,14 +1,4 @@
-/**
- * Chụp ảnh bằng chứng cho T6.7 (trạng thái màn mới, sáng/tối) và T6.8 (375/768/1280).
- *
- * Chạy khi API + web đang chạy:
- *   WEB_PORT=3000 node apps/web/scripts/capture-polish.mjs
- *
- * Mỗi ảnh được kiểm tra trạng thái ngay trước khi chụp: trạng thái không đúng thì báo lỗi thay
- * vì tạo ảnh sai. Dữ liệu: tài khoản seed (owner), một partner CỐ ĐỊNH (đăng ký lần đầu, các lần
- * sau đăng nhập) và server tạm xóa ở cuối — DM được đánh dấu đã đọc để không để lại badge cho
- * owner (lần chạy đầu từng để `polish_dm_*` chưa đọc làm `dm.spec` đỏ trong full suite).
- */
+/** WEB_PORT=3000 node apps/web/scripts/capture-polish.mjs  (cần API + web đang chạy) */
 import { chromium } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
@@ -25,8 +15,7 @@ const REQUEST_ID = '0b7c6e0e-5d4f-4c53-8a3e-6f5d8c1a9e42';
 const SETTLE_MS = 700;
 
 const suffix = Math.random().toString(36).slice(2, 8);
-// Tài khoản seed (global-setup của web e2e tạo): user mới đăng ký phải xác minh email mới được
-// tạo server, nên dùng tài khoản seed rồi tạo server riêng — không đụng dữ liệu seed.
+// User mới đăng ký phải xác minh email mới tạo được server: dùng tài khoản seed rồi tạo server riêng.
 const owner = {
   email: process.env.CAPTURE_EMAIL ?? 'alice@ping.dev',
   password: process.env.CAPTURE_PASSWORD ?? 'password123',
@@ -77,14 +66,12 @@ const hideDevOverlay = async (page) => {
   });
 };
 
-// ---------- Dữ liệu: owner + partner, server 2 kênh, tin nhắn, DM ----------
 const ownerAuth = await api('/auth/login', { body: owner });
 const partner = {
   email: 'polish-dm@example.test',
   username: 'polish_dm',
   password: 'e2e-password',
 };
-// Register 409 ở lần chạy sau → đăng nhập tài khoản cố định, không sinh user mới mỗi lần chạy.
 const partnerAuth = await api('/auth/register', { body: partner }).catch(() =>
   api('/auth/login', { body: partner }),
 );
@@ -148,7 +135,6 @@ async function newPage(colorScheme) {
   return { context, page };
 }
 
-// ---------- T6.7: trạng thái trên màn mới, dark ----------
 const { context, page } = await newPage('dark');
 
 await capture(
@@ -236,7 +222,6 @@ await capture(
 );
 await page.keyboard.press('Escape');
 
-// Nghỉ một cửa sổ rate limit trước khi mở trang admin (trang này gọi nhiều endpoint cùng lúc).
 await new Promise((resolve) => setTimeout(resolve, 65_000));
 
 await capture(
@@ -244,8 +229,7 @@ await capture(
   OUT_T67,
   '05-admin-settings-dark',
   async () => {
-    // Trang quản trị cuộn trong khung riêng nên fullPage bị cắt + để nền trống; chụp ở khung cao
-    // để thấy các mục thông tin server → danh mục → vai trò trong một ảnh.
+    // Trang quản trị cuộn trong khung riêng nên fullPage bị cắt: chụp ở khung cao.
     await page.setViewportSize({ width: 1280, height: 1600 });
     await page.goto(`${BASE}/servers/${server.id}/settings`);
     await page.getByRole('heading', { name: 'Cài đặt server' }).waitFor();
@@ -271,7 +255,6 @@ await capture(page, OUT_T67, '06-dm-thread-dark', async () => {
   await page.getByText(`Chào bạn, đây là tin nhắn DM ${suffix}.`).waitFor();
 });
 
-// ---------- T6.8: ba mốc bề ngang ----------
 await page.goto(channelUrl);
 await page.getByTestId('message-composer').waitFor();
 
@@ -344,11 +327,9 @@ await capture(page, OUT_T68, '1280-channel', async () => {
 });
 
 await context.close();
-// API giới hạn 100 request/phút/IP: đóng context tối (hết polling), chờ cửa sổ trượt rồi mở
-// context sáng để hai phiên không cộng dồn request.
+// API giới hạn 100 request/phút/IP: đóng context tối, chờ cửa sổ trượt rồi mở context sáng.
 await new Promise((resolve) => setTimeout(resolve, 65_000));
 
-// ---------- T6.7: sáng + lỗi prefs thông báo ----------
 const light = await newPage('light');
 
 await capture(light.page, OUT_T67, '07-channel-light', async () => {
@@ -375,8 +356,6 @@ await capture(
         json: { code: 'INTERNAL_ERROR', message: 'x', requestId: REQUEST_ID },
       }),
     );
-    // prefs đã được nạp thành công trước đó (staleTime 30s): nạp lại trang để cache trống rồi
-    // lần tải này đi vào route lỗi — đúng trạng thái "lỗi ngay lần đầu mở".
     await light.page.goto(channelUrl);
     await light.page.getByTestId('message-composer').waitFor();
     await light.page.getByTestId('notify-bell').click();
@@ -396,8 +375,6 @@ await light.context.close();
 
 await browser.close();
 
-// Dọn trạng thái cho các lần chạy/kiểm chứng sau: DM (cặp cố định, tái dùng) đánh dấu đã đọc
-// tới tin mới nhất, server tạm của lần chạy này xóa hẳn để rail không phình thêm mỗi lần chụp.
 await api(`/channels/${dm.channelId}/read`, {
   method: 'PUT',
   body: { messageId: dmMessage.id },

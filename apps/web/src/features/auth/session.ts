@@ -10,10 +10,8 @@ export function safeRedirectPath(next: string | null): string {
   return next;
 }
 
-// Người dùng vừa TỰ đăng xuất (khác với phiên hết hạn). Chỉ dùng một lần cho lần chuyển trang kế tiếp.
 let signedOutIntentionally = false;
 
-/** Gọi khi người dùng bấm đăng xuất, trước khi đánh dấu `me = null`. */
 export function markSignedOut(): void {
   signedOutIntentionally = true;
 }

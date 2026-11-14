@@ -6,11 +6,9 @@ import type { ComponentProps } from 'react';
 import { POPUP_STYLES } from './popup-styles';
 
 export type PingPopoverProps = ComponentProps<typeof Popover> & {
-  /** Chặn tương tác phần còn lại như một lớp phủ: bấm ra ngoài chỉ đóng popover. */
   scrim?: boolean;
 };
 
-/** Trên antd `zIndexPopupBase + 70` (1070) để phủ mọi bề mặt app nhưng vẫn dưới toast. */
 const POPOVER_Z_INDEX = 1070;
 
 export function PingPopover({
@@ -21,7 +19,6 @@ export function PingPopover({
   zIndex,
   ...props
 }: PingPopoverProps) {
-  // `container` giữ bóng panel dùng chung kể cả khi nơi gọi chỉ muốn đổi padding.
   const mergedStyles =
     typeof styles === 'function'
       ? (info: { props: PingPopoverProps }) => {
@@ -39,7 +36,6 @@ export function PingPopover({
         };
   return (
     <>
-      {/* Portal để lớp chặn nằm trên cả vùng cuộn tin nhắn; trong suốt nên không che nội dung. */}
       {scrim &&
         open &&
         typeof document !== 'undefined' &&

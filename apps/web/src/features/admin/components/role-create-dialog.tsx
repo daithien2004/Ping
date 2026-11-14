@@ -25,10 +25,6 @@ interface Props {
   onClose: () => void;
 }
 
-/**
- * Tạo vai trò mới (T3.3): tên + nhóm quyền dạng checkbox, vị trí nối sau role cuối để
- * danh sách không nhảy lung tung. Quyền mặc định là 0 — người tạo tự bật những gì cần.
- */
 export function RoleCreateDialog({ serverId, roles, open, onClose }: Props) {
   const t = useTranslations('admin');
   const tc = useTranslations('common');

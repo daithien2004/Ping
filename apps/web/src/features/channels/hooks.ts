@@ -45,13 +45,11 @@ export function useChannels(serverId: string) {
   });
 }
 
-/** TG.10: category trả nguyên trong GET /servers/:id (không có GET riêng) — đọc từ cache. */
 export function useCategories(serverId: string): ChannelCategoryDto[] {
   const { data: server } = useServer(serverId);
   return server.categories ?? [];
 }
 
-/** Giữ thứ tự như server trả về (position tăng dần). */
 function upsertChannel(channels: ChannelDto[], channel: ChannelDto): ChannelDto[] {
   const exists = channels.some((item) => item.id === channel.id);
   const next = exists
@@ -60,7 +58,6 @@ function upsertChannel(channels: ChannelDto[], channel: ChannelDto): ChannelDto[
   return next.sort((a, b) => a.position - b.position || a.id.localeCompare(b.id));
 }
 
-/** Ghi danh sách category vào cache chi tiết server (nguồn duy nhất của sidebar). */
 function setCategories(
   queryClient: ReturnType<typeof useQueryClient>,
   serverId: string,
@@ -80,7 +77,6 @@ export function useCreateChannel(serverId: string) {
       queryClient.setQueryData<ChannelDto[]>(qk.channels(serverId), (old) =>
         old ? upsertChannel(old, channel) : old,
       );
-      // ADR-0077: unread gộp cần thêm dòng cho channel mới (mặc định 0).
       void queryClient.invalidateQueries({ queryKey: qk.unreadAll });
     },
   });
@@ -107,18 +103,11 @@ export function useDeleteChannel(serverId: string) {
         old?.filter((channel) => channel.id !== channelId),
       );
       queryClient.removeQueries({ queryKey: qk.messages(channelId), exact: true });
-      // ADR-0077: bỏ dòng của channel đã xóa khỏi unread gộp.
       void queryClient.invalidateQueries({ queryKey: qk.unreadAll });
     },
   });
 }
 
-/**
- * TG.10: kéo thả/bàn phím di chuyển channel. Optimistic: đặt nhóm + positionKey đã tính
- * ngay để sidebar nhảy theo tay kéo; response trả channel với rank thật của server rồi
- * event `channel.reordered` chốt thứ tự cả nhóm. Refetch nền sau cùng để positionKey của
- * CẢ NHÓM khớp server (server có thể rebalance khi cạn khoảng).
- */
 export function useMoveChannel(serverId: string) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -137,10 +126,6 @@ export function useMoveChannel(serverId: string) {
   });
 }
 
-/**
- * TG.10: đổi thứ tự channel trong vùng mặc định (PATCH position từng kênh đổi chỗ) —
- * hợp đồng move không nhận positionKey cho vùng này.
- */
 export function useUpdateChannelPositions(serverId: string) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -165,8 +150,6 @@ export function useSetChannelTopic(serverId: string) {
   return useMutation({
     mutationFn: ({ channelId, topic }: { channelId: string; topic: string }) =>
       setChannelTopic(channelId, { topic }),
-    // API tái dùng event channel.updated (payload có topic) cho tab khác; ở tab này
-    // response đã đủ để cập nhật header ngay.
     onSuccess: (channel) =>
       queryClient.setQueryData<ChannelDto[]>(qk.channels(serverId), (old) =>
         old ? upsertChannel(old, channel) : old,
@@ -179,8 +162,6 @@ export function useCreateCategory(serverId: string) {
   return useMutation({
     mutationFn: (input: { name: string }) => createCategory(serverId, input),
     onSuccess: (category) => {
-      // Response mang position thật (server đã gán) — chèn vào cache theo sort;
-      // event scope 'categories' tới sau chỉ chốt lại thứ tự id.
       setCategories(queryClient, serverId, (categories) =>
         sortCategories([...categories, category]),
       );
@@ -193,7 +174,6 @@ export function useRenameCategory(serverId: string) {
   return useMutation({
     mutationFn: ({ categoryId, name }: { categoryId: string; name: string }) =>
       renameCategory(serverId, categoryId, { name }),
-    // API không phát event cho đổi tên (trường hiển thị) — tab khác thấy qua refetch detail.
     onSuccess: (category) =>
       setCategories(queryClient, serverId, (categories) =>
         categories.map((item) => (item.id === category.id ? category : item)),
@@ -209,7 +189,6 @@ export function useDeleteCategory(serverId: string) {
       setCategories(queryClient, serverId, (categories) =>
         categories.filter((item) => item.id !== categoryId),
       );
-      // Kênh trong category bị xóa trở về vùng mặc định, giữ position Int cũ (khớp API).
       queryClient.setQueryData<ChannelDto[]>(qk.channels(serverId), (old) =>
         old?.map((channel) =>
           channel.categoryId === categoryId
@@ -221,7 +200,6 @@ export function useDeleteCategory(serverId: string) {
   });
 }
 
-/** TG.10: sắp lại thứ tự category — optimistic theo mảng id, response là danh sách mới. */
 export function useReorderCategories(serverId: string) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -240,10 +218,7 @@ export function useReorderCategories(serverId: string) {
   });
 }
 
-/**
- * UPDATE realtime cho danh sách channel. Chỉ ghi cache khi danh sách đã có dữ liệu:
- * event chỉ chở một channel nên không được biến cache thành danh sách thiếu.
- */
+/** Chỉ ghi cache khi danh sách đã có dữ liệu: event chỉ chở một channel. */
 export function useChannelEvents(session: RealtimeSession) {
   const queryClient = useQueryClient();
   const router = useRouter();
@@ -260,18 +235,12 @@ export function useChannelEvents(session: RealtimeSession) {
       old?.filter((channel) => channel.id !== event.id),
     );
     queryClient.removeQueries({ queryKey: qk.messages(event.id), exact: true });
-    // Đang xem đúng channel bị xóa: về trang server để chuyển sang channel còn lại.
     if (serverIdFromPath(pathname) === event.serverId && channelIdFromPath(pathname) === event.id) {
       router.replace(serverPath(event.serverId));
     }
   });
 
-  /**
-   * TG.10: `channel.reordered` — scope 'category' chốt lại thứ tự kênh của MỘT nhóm theo
-   * channelIds; scope 'categories' mang các **categoryId** theo thứ tự mới (cả CREATE/DELETE
-   * category cũng phát scope này). Sau khi vá cache luôn refetch nền: positionKey/position
-   * trong event là thứ tự, không phải rank thật của server.
-   */
+  /** Sau khi vá cache luôn refetch nền: positionKey/position trong event là thứ tự, không phải rank thật. */
   const onReordered = useEffectEvent((payload: ChannelReorderedPayload) => {
     if (payload.scope === 'categories') {
       setCategories(queryClient, payload.serverId, (categories) =>
@@ -282,8 +251,7 @@ export function useChannelEvents(session: RealtimeSession) {
         old ? applyChannelOrder(old, payload.categoryId ?? null, payload.channelIds) : old,
       );
     }
-    // Refetch nền để rank thật của server về cache (event chỉ mang thứ tự); `exact` để
-    // không lôi cả members/roles/unread của server vào mỗi lần kéo thả.
+    // Refetch nền lấy rank thật; `exact` để không kéo cả members/roles/unread.
     void queryClient.invalidateQueries({
       queryKey: qk.channels(payload.serverId),
     });

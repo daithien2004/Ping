@@ -71,7 +71,6 @@ export function MembersSection({
       header: t('memberActions'),
       render: (row) => {
         const name = row.nickname ?? row.user.displayName;
-        // Thứ bậc tính từ quyền hiệu lực (role của server + @everyone), khớp API (ADR-0004).
         const blocked = actor
           ? kickBlockReason(actor, memberContext(row, server.roles, server.ownerId))
           : null;

@@ -6,8 +6,6 @@ import { toAntdSize, type PingSize } from './size';
 
 type AntdButtonProps = ComponentProps<typeof Button>;
 
-// Một biến thể = một vẻ (`danger` và `ghost` không kết hợp). Biến thể không có luật skin hiển thị
-// như `secondary`; `text` (cho PingIconButton) cố ý giữ kiểu gốc. `ping-button.test.ts` nhắc skin.
 export const VARIANTS = {
   primary: { type: 'primary' },
   secondary: { type: 'default' },

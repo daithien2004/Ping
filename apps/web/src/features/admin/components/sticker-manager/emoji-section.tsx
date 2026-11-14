@@ -18,11 +18,6 @@ type EmojiFormValues = {
   name: string;
 };
 
-/**
- * Quản lý emoji tùy chỉnh của server (TG.24, ADR-0068): upload scope `customEmoji`
- * (PNG/WebP ≤ 256 KB — worker xuất WebP ≤ 128×128, trần 50 tĩnh + 50 động), đặt tên
- * `[a-z0-9_]` rồi claim; xóa mềm — tin cũ hiển thị placeholder `:ten:`.
- */
 export function EmojiSection({ serverId }: { serverId: string }) {
   const t = useTranslations('admin');
   const tc = useTranslations('common');
@@ -43,7 +38,6 @@ export function EmojiSection({ serverId }: { serverId: string }) {
     reset: createMutation.reset,
     successMessage: t('emojiCreated'),
   });
-  // Schema trong component để nhắn lỗi qua i18n (`emojiInvalidName`) — cùng luật shared.
   const rules = zodFormRules(
     z.object({
       name: z
@@ -166,7 +160,6 @@ export function EmojiSection({ serverId }: { serverId: string }) {
               data-testid="emoji-item"
               className="flex w-24 flex-col items-center gap-1 rounded-lg border bg-muted/40 p-2"
             >
-              {/* TG.24: dùng url gốc — emoji động giữ chuyển động ngay trong quản trị. */}
               <img
                 src={profileImageUrl(emoji.url)}
                 alt={emoji.name}

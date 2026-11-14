@@ -12,10 +12,6 @@ import { useProfileUpload } from '@/features/profile/hooks';
 import { useUpdateServer } from '@/features/servers/hooks';
 import { useErrorMessage } from '@/lib/error-message';
 
-/**
- * Thông tin server (T3.1 tên, TG.7 icon). Cùng schema zod với API, nên luật 1–100 ký tự
- * chỉ tồn tại ở một nơi. Cache chi tiết + danh sách server được cập nhật ngay khi lưu xong.
- */
 export function ServerNameForm({ server }: { server: ServerDetail }) {
   const t = useTranslations('admin');
   const tc = useTranslations('common');
@@ -26,7 +22,6 @@ export function ServerNameForm({ server }: { server: ServerDetail }) {
   const icon = useProfileUpload('serverIcon', server.id);
   const iconInput = useRef<HTMLInputElement>(null);
 
-  // Ảnh icon đã qua kiểm định (ready) → PATCH server gắn luôn; icon cũ worker tự dọn.
   useEffect(() => {
     if (!icon.attachmentId || mutation.isPending) return;
     const attachmentId = icon.attachmentId;
@@ -44,7 +39,6 @@ export function ServerNameForm({ server }: { server: ServerDetail }) {
   function save(values: { name: string }) {
     mutation.mutate(values, {
       onSuccess: (updated) => {
-        // Đưa form về đúng giá trị đã lưu để nút "Lưu" tắt lại và lần sửa sau bắt đầu từ đây.
         form.setFieldsValue({ name: updated.name });
         pingToast.success(t('serverNameSaved'));
       },

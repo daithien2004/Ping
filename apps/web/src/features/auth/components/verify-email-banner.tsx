@@ -8,12 +8,6 @@ import { useMe, useResendVerification } from '@/features/auth/hooks';
 import { useSettingsModal } from '@/features/settings/modal-store';
 import { useErrorMessage } from '@/lib/error-message';
 
-/**
- * Banner chưa xác minh email (TG.8) ở đầu app shell: hiện khi `me.emailVerified === false`,
- * ẩn khi đã xác minh. Chính sách lightweight phía API chặn tạo server/mã mời
- * (VERIFY_REQUIRED) — banner nói rõ và cho gửi lại thư ngay (rate limit theo email + IP).
- * Cache `me` được `useVerifyEmail` làm tươi sau khi xác minh nên banner tự tắt.
- */
 export function VerifyEmailBanner() {
   const t = useTranslations('auth');
   const errorMessage = useErrorMessage();
@@ -55,7 +49,6 @@ export function VerifyEmailBanner() {
         onClick={() => openSettings('account')}
         className="shrink-0 font-medium underline-offset-4 hover:underline"
       >
-        {/* Màu ở span con để nút kế thừa chữ của banner, chỉ nhãn mang màu link. */}
         <span className="text-link">{t('unverifiedBannerMore')}</span>
       </button>
     </div>

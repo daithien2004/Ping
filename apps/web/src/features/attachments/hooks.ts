@@ -68,7 +68,6 @@ export function useAttachmentDrafts(channelId: string) {
       }
     },
   });
-  // Activity hides a composer without unmounting it: release pending uploads on hide.
   useEffect(() => {
     const entries = active.current;
     return () => {
