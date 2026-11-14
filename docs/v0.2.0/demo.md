@@ -107,8 +107,8 @@ Bấm giờ ở 0:00 khi trang `/login` đã mở sẵn, ô email đã focus.
 | 4:30–5:00 | Cài đặt cá nhân          | Đổi theme Sáng/Tối, đổi ngôn ngữ vi→en→vi; quay lại kênh.                                                       | "Hai ngôn ngữ, hai theme, đồng bộ theo tài khoản; đổi là áp dụng ngay."                                                                    |
 
 Câu chốt (5 giây cuối): "Chạy thật trên VPS công khai với Postgres/Redis thật; CI có 6 check bắt
-buộc, rollback theo SHA và backup mã hóa đã diễn tập. Phần chưa đo — load test từ máy ngoài, RTO
-với dữ liệu lớn — tôi để đúng 'chưa đo' thay vì điền số ước lượng."
+buộc, rollback theo SHA, backup mã hóa và load test profile nhỏ đã diễn tập. Phần chưa đo — trần
+tải của VPS, RTO với dữ liệu lớn — tôi để đúng 'chưa đo' thay vì điền số ước lượng."
 
 ## 3. Số đo app-side (dùng khi bị hỏi "nhanh không?")
 

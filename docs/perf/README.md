@@ -47,6 +47,21 @@ docker exec -i ping-postgres-1 psql -U ping -d ping_load -v hot=$HOT -v cold=$CO
 Biến thể "restart một instance giữa tải": `node tools/loadtest/run-instances.mjs 3 --restart-after=40
 --restart-index=0` rồi chạy `reconnect-storm.js` với `-e ROUNDS=0 -e HOLD_S=60 -e SOCKETS=1500`.
 
+### Chạy vào production
+
+Không có instance local: trỏ `BASE_URL` vào bản thật và lấy token qua API thật thay vì JWT ký cục bộ
+(`tools/loadtest/data/` đã gitignored):
+
+```bash
+PING_URL=https://<host> INVITE_CODE=... LOADTEST_PASSWORD=... node scripts/loadtest-prod-tokens.mjs
+k6 run tools/loadtest/rest-history.js   -e BASE_URL=https://<host> -e RATE=10 -e DURATION=60s
+k6 run tools/loadtest/socket-fanout.js  -e BASE_URL=https://<host> -e LISTENERS=100 \
+  -e SENDERS=3 -e SEND_RATE=2 -e DURATION=30s
+```
+
+Rate limit theo người dùng vẫn bật: mỗi token chỉ có 120 request lịch sử/phút, nên 429 là chính sách
+chứ không phải VPS quá tải. Kết quả 2026-11-14: [2026-11-14-vps.md](2026-11-14-vps.md).
+
 ## Các kịch bản đo gì
 
 | Kịch bản             | Làm gì                                                                                                                                | Chỉ số chính                                                |
