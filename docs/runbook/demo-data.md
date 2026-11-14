@@ -37,7 +37,8 @@ Server id `01a1d82d-3653-7766-9cf0-ea31e55c0092`, DM id `01a1d82e-abbd-706b-8454
 - `GET /api/v1/servers/<id>/audit-log` trả **403** (script seed tự khẳng định).
 - Mở `/servers/<id>/settings`: hiện "Bạn không có quyền quản trị server này.", không có mục "Vai trò"
   — nhóm quyền "Quản trị" không xuất hiện.
-- **Hỏi AI**: bấm được, trả lời kèm trích dẫn nguồn.
+- **Hỏi AI**: mở được, gửi câu hỏi nhưng báo "AI hiện không sẵn sàng. Vui lòng thử lại sau." —
+  production chưa cấu hình `GROQ_API_KEY` (SSE trả `AI_UNAVAILABLE`).
 - **Tab GIF**: mở được từ hộp sticker nhưng báo "Tính năng GIF tạm thời chưa khả dụng. Thử lại sau nhé."
   — API `GET /api/v1/gifs/trending` trả **503** vì production chưa cấu hình khóa Tenor.
 
