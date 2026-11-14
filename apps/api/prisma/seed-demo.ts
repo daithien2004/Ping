@@ -22,7 +22,7 @@ const PASSWORD = 'password123';
 const ID_BASE = '019b0000-0000-7000-8000-';
 const EPOCH_MS = Date.UTC(2026, 8, 1);
 const STEP_MS = 47_000;
-const MESSAGES_PER_CHANNEL = 2_400;
+const MESSAGES_PER_CHANNEL = Number(process.env.DEMO_MESSAGES_PER_CHANNEL ?? 2_400);
 
 function demoId(...parts: Array<string | number>): string {
   const joined = parts.join('');
