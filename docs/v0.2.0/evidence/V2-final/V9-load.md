@@ -80,8 +80,13 @@ vì production chỉ có một instance API — lần đo này **không** kiểm
 
 ## 5. Dọn dẹp
 
-- 30 user `load01…load30@example.com` vẫn còn trong DB production, chờ OWNER duyệt xoá bằng SQL.
-- 120 tin đánh dấu `LT|` nằm trong 3 kênh của "Ping Demo", chờ OWNER quyết định xoá hay giữ.
+OWNER duyệt ngày 2026-11-14 và đã xoá trên production trong một transaction (`DELETE 138` tin,
+`DELETE 34` user, `DELETE 2` server, `1` attachment):
+
+- 30 user `load01…load30@example.com` và 120 tin `LT|` trong 3 kênh của "Ping Demo".
+- 4 tài khoản test cũ của OWNER (`nghiaphan`, `khoikhang25`, `nghia`, `aadfa`) và 2 server `Dev`/`mk`.
+- Giữ `daithien2004@gmail.com`, `owner-demo@ping.dev` (chủ "Ping Demo"), `demo1`, `demo2`; còn 4 user,
+  1 server, 164 tin. Dump an toàn trước khi xoá: `D:\ping-backups\ping-before-cleanup-20261114.dump`.
 - `tools/loadtest/data/tokens.json` và `meta.json` chỉ nằm trên máy OWNER (gitignored).
 
 Báo cáo đầy đủ theo mẫu: [docs/perf/2026-11-14-vps.md](../../../perf/2026-11-14-vps.md).

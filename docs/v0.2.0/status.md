@@ -179,6 +179,7 @@ chứng từng bước nằm trong [V2-final](evidence/V2-final/):
   2 s do máy bắn tải hết chỗ chứ CPU VPS chỉ 23% ([V9-load.md](evidence/V2-final/V9-load.md),
   [perf](../perf/2026-11-14-vps.md)).
 
-Còn mở: dọn 30 user `load01…load30` và 120 tin `LT|` trên "Ping Demo" (chờ OWNER duyệt),
-K5/F13 cần CI xanh sau khi bootstrap baseline `linux/`, H2 pilot người thật, H3 OWNER duyệt tag.
+Còn mở: K5/F13 cần CI xanh sau khi bootstrap baseline `linux/`, H2 pilot người thật, H3 OWNER duyệt
+tag. Dữ liệu test đã dọn trên production (30 user load, 4 tài khoản cũ, server `Dev`/`mk`, 120 tin
+`LT|`), xem [V9-load](evidence/V2-final/V9-load.md).
 Cổng nghiệm thu và giới hạn: [acceptance/v0.2.0.md](acceptance/v0.2.0.md).
