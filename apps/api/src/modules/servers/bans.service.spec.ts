@@ -14,12 +14,11 @@ import { BansService } from './bans.service.js';
 import { ServersService } from './servers.service.js';
 
 const SERVER = '00000000-0000-7000-8000-000000000001';
-const MOD = '00000000-0000-7000-8000-000000000002'; // người ra lệnh ban
-const VICTIM = '00000000-0000-7000-8000-000000000003'; // người bị ban
-const MEMBER_ID = '00000000-0000-7000-8000-000000000004'; // hàng Member của nạn nhân
+const MOD = '00000000-0000-7000-8000-000000000002';
+const VICTIM = '00000000-0000-7000-8000-000000000003';
+const MEMBER_ID = '00000000-0000-7000-8000-000000000004';
 const BAN_ID = '00000000-0000-7000-8000-000000000005';
 
-/** Bối cảnh quyền (AbilityContext) dựng tay — canKickModule thật của shared chạy trên đó. */
 const ctx = (userId: string, permissions: bigint, isOwner = false) => ({
   userId,
   isOwner,
@@ -29,7 +28,6 @@ const ctx = (userId: string, permissions: bigint, isOwner = false) => ({
 const MOD_CTX = ctx(MOD, Permissions.VIEW_CHANNEL | Permissions.KICK_MEMBERS);
 const VICTIM_CTX = ctx(VICTIM, Permissions.VIEW_CHANNEL);
 
-/** Prisma giả đúng những gì BansService/ServersService.join đụng tới; $transaction chạy thẳng callback. */
 function makePrisma() {
   const tx = {
     member: {
@@ -68,7 +66,6 @@ function makePrisma() {
     },
   };
   const prisma = {
-    // Cả hai dạng $transaction của Prisma: callback (ban) và mảng promise (unban).
     $transaction: vi.fn((arg: unknown) =>
       typeof arg === 'function'
         ? (arg as (client: typeof tx) => unknown)(tx)
@@ -122,7 +119,6 @@ describe('BansService.ban (TG.11 — thứ bậc tái dùng canKickMember)', () 
     const { service, tx } = makeBansService({ [MOD]: MOD_CTX });
     tx.member.findUnique.mockResolvedValue(null);
     await expect(service.ban(SERVER, MOD, { userId: VICTIM })).rejects.toThrow(NotFoundException);
-    // Chặn trước khi đụng tới quyền và transaction.
     expect(tx.serverBan.create).not.toHaveBeenCalled();
   });
 
@@ -147,7 +143,6 @@ describe('BansService.ban (TG.11 — thứ bậc tái dùng canKickMember)', () 
     const stronger = '00000000-0000-7000-8000-00000000000a';
     const { service, tx } = makeBansService({
       [MOD]: MOD_CTX,
-      // KICK_MEMBERS + VIEW_AUDIT_LOG: có bit mà moderator không có → canKickMember = false.
       [stronger]: ctx(
         stronger,
         Permissions.VIEW_CHANNEL | Permissions.KICK_MEMBERS | Permissions.VIEW_AUDIT_LOG,
@@ -184,7 +179,6 @@ describe('BansService.ban (TG.11 — thứ bậc tái dùng canKickMember)', () 
       },
       tx,
     );
-    // Realtime: event removal (kick pattern) kèm cờ banned + cập nhật members cho room server.
     expect(abilityFactory.invalidateMember).toHaveBeenCalledWith(SERVER, VICTIM);
     expect(realtime.refreshAccess).toHaveBeenCalledWith(SERVER, [VICTIM], { banned: true });
     expect(realtime.emitToServer).toHaveBeenCalledWith(SERVER, 'member.banned', {
@@ -214,7 +208,6 @@ describe('BansService.ban (TG.11 — thứ bậc tái dùng canKickMember)', () 
 
     await service.ban(SERVER, MOD, { userId: VICTIM, deleteMessages24h: true });
 
-    // Query tin: theo author + các channel của server + chưa xóa + trong cửa sổ 24h.
     const where = tx.message.findMany.mock.calls[0][0].where;
     expect(where.authorId).toBe(VICTIM);
     expect(where.channel.serverId).toBe(SERVER);
@@ -317,7 +310,6 @@ describe('BansService.list (TG.11)', () => {
         bannedBy: { id: MOD, username: 'mod', displayName: 'Mod' },
       },
     ];
-    // limit 1: lấy dư một hàng → hasMore = true, trang chỉ giữ dòng mới nhất.
     tx.serverBan.findMany.mockResolvedValue([...rows, { id: 'ban-1' }]);
 
     const page = await service.list(SERVER, { limit: 1 });
@@ -345,8 +337,8 @@ describe('ServersService.join — chặn người bị ban (TG.11)', () => {
       deps.abilityFactory,
       deps.realtime,
       deps.audit,
-      null as never, // attachments: join không đụng
-      { get: () => undefined } as never, // config: không SMTP_URL → bỏ qua chính sách xác minh
+      null as never,
+      { get: () => undefined } as never,
     );
   }
 

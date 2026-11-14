@@ -9,13 +9,6 @@ import { CategoriesService } from './categories.service.js';
 const SERVER = '00000000-0000-7000-8000-000000000001';
 const ACTOR = '00000000-0000-7000-8000-000000000002';
 
-/**
- * TG.10: unit test CategoriesService với Prisma giả (mẫu của bans.service.spec) — kiểm
- * vị trí lexorank khi tạo, reorder (idempotent + nối tiếp + rebalance) và xóa category
- * (kênh về vùng mặc định, không mất kênh).
- */
-
-/** rankBetween của shared là hàm thật; test rebalance đè tạm để giả lập "cạn khoảng". */
 vi.mock('@ping/shared', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@ping/shared')>();
   return { ...actual, rankBetween: vi.fn(actual.rankBetween) };
@@ -38,7 +31,6 @@ function makePrisma() {
     },
   };
   const prisma = {
-    // Cả hai dạng $transaction của Prisma: callback (create/reorder) và mảng promise (remove).
     $transaction: vi.fn((arg: unknown) =>
       typeof arg === 'function'
         ? (arg as (client: typeof tx) => unknown)(tx)
@@ -89,17 +81,15 @@ describe('CategoriesService.create (TG.10)', () => {
     const { service, tx } = makeService();
     tx.channelCategory.count.mockResolvedValue(Limits.MAX_CATEGORIES_PER_SERVER);
     await expect(service.create(SERVER, 'dư')).rejects.toThrow(BadRequestException);
-    expect(tx.$executeRaw).toHaveBeenCalled(); // đã kịp giữ lock trước khi đếm
+    expect(tx.$executeRaw).toHaveBeenCalled();
     expect(tx.channelCategory.create).not.toHaveBeenCalled();
   });
 
   it('rankBetween cạn khoảng (dữ liệu lệch) → gán lại đều toàn bộ rồi nối category mới cuối', async () => {
     const { service, tx } = makeService();
-    // Chuỗi rỗng là dữ liệu lệch duy nhất khiến after() trả null.
     tx.channelCategory.findFirst.mockResolvedValue({ id: 'c-last', position: '' });
     tx.channelCategory.findMany.mockResolvedValue([{ id: 'c1' }, { id: 'c2' }]);
     const created = await service.create(SERVER, 'Nhóm C');
-    // assignRanks(3) = g,n,t: hai category cũ nhận g/n, category mới nối với t.
     expect(tx.channelCategory.update).toHaveBeenCalledWith(
       expect.objectContaining({ where: { id: 'c1' }, data: { position: 'g' } }),
     );
@@ -156,7 +146,6 @@ describe('CategoriesService.reorder (TG.10)', () => {
       const { service, tx, audit } = makeService();
       tx.channelCategory.findMany.mockResolvedValue(rows);
       const result = await service.reorder(SERVER, ACTOR, { orderedIds: ['b', 'a'] });
-      // assignRanks(2) = i,r — tăng nghiêm ngặt, còn chỗ chèn.
       expect(tx.channelCategory.update).toHaveBeenCalledWith(
         expect.objectContaining({ where: { id: 'b' }, data: { position: 'i' } }),
       );
@@ -193,7 +182,6 @@ describe('CategoriesService.remove + rename (TG.10)', () => {
   it('xóa category: kênh về vùng mặc định (categoryId + positionKey null), không mất kênh', async () => {
     const { service, tx, realtime } = makeService();
     tx.channelCategory.findFirst.mockResolvedValue({ id: 'c1', serverId: SERVER, name: 'A' });
-    // findMany sau transaction trả danh sách category còn lại.
     tx.channelCategory.findMany.mockResolvedValue([{ id: 'c2' }]);
     const result = await service.remove(SERVER, 'c1');
     expect(result).toEqual({ id: 'c1' });

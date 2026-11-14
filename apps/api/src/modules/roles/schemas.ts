@@ -1,9 +1,6 @@
 import { z } from 'zod';
 
-/**
- * JSON không có bigint: client gửi string ("64") hoặc number, `coerce` về bigint
- * vì permissions là bitmask 64-bit — vượt Number.MAX_SAFE_INTEGER sớm muộn.
- */
+// JSON không có bigint: client gửi string hoặc number; permissions là bitmask 64-bit.
 const permissionsSchema = z.coerce.bigint().min(0n);
 
 export const createRoleSchema = z.object({

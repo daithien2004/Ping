@@ -6,9 +6,7 @@ import { ShutdownService } from '../../infra/lifecycle/shutdown.service.js';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
 import { RedisProvider } from '../../infra/redis/redis.module.js';
 
-// Controller ở root (không prefix) để 2 endpoint là siblings:
-//   GET /api/v1/health  và  GET /api/v1/ready
-// (nếu gắn @Controller('health') thì route con sẽ thành /health/ready).
+// Controller ở root (không prefix) để /health và /ready là siblings.
 @Controller()
 export class HealthController {
   constructor(
@@ -19,23 +17,14 @@ export class HealthController {
     private readonly shutdown: ShutdownService,
   ) {}
 
-  /**
-   * Liveness: process còn sống không — KHÔNG check DB/Redis.
-   * Nếu liveness đụng DB mà DB chập chờn, orchestrator sẽ restart
-   * vòng vô tận mà không sửa được gì (lỗi nằm ở DB, không ở process).
-   */
+  // Liveness không check DB/Redis: DB chập chờn sẽ khiến orchestrator restart vô tận.
   @Get('health')
   @SkipThrottle()
   liveness(): { status: string } {
     return { status: 'ok' };
   }
 
-  /**
-   * Readiness: instance có nên nhận traffic không (ADR-0026).
-   * - đang tắt (SIGTERM) hoặc Postgres chết → 503: load balancer loại instance khỏi pool.
-   * - chỉ Redis chết → 200 `degraded`: REST và lưu tin nhắn vẫn chạy (Postgres là nguồn sự thật),
-   *   chỉ realtime giữa các instance suy giảm. Giám sát đọc `status`/`details.redis`.
-   */
+  // 503 khi đang tắt hoặc Postgres chết; chỉ Redis chết → 200 'degraded'.
   @Get('ready')
   @SkipThrottle()
   @HealthCheck()
@@ -46,7 +35,6 @@ export class HealthController {
         message: 'Shutting down',
       });
     }
-    // Throw 503 (body của terminus kèm chi tiết) nếu Postgres chết.
     const result = await this.healthCheck.check([
       () => this.prismaIndicator.pingCheck('database', this.prisma),
     ]);
@@ -64,7 +52,7 @@ export class HealthController {
       return false;
     }
     try {
-      await this.redis.ping(); // commandTimeout cắt nếu Redis treo
+      await this.redis.ping();
       return true;
     } catch {
       return false;

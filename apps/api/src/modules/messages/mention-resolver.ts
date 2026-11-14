@@ -2,20 +2,13 @@ import { hasPermission, Permissions, type AbilityContext } from '@ping/shared';
 import type { Prisma } from '../../generated/prisma/client.js';
 import type { MentionTokens } from './mention-parser.js';
 
-/** Một hàng MessageMention cần ghi (messageId do nơi gọi điền). */
 export type MentionRow =
   | { kind: 'user'; mentionedMemberId: string; roleId?: undefined }
   | { kind: 'role'; roleId: string; mentionedMemberId?: undefined }
   | { kind: 'everyone'; mentionedMemberId?: undefined; roleId?: undefined };
 
-/**
- * Giải nghĩa token mention thành hàng MessageMention (T4.1, ADR-0043).
- *
- * Thứ tự: `@everyone` → username của thành viên server → tên role (role `@everyone` mặc định
- * không tính — nhắc nó đã là `@everyone`). Token trùng cả username lẫn tên role chỉ tính làm
- * mention user. `MENTION_EVERYONE` (owner/ADMINISTRATOR ngầm có) chặn @everyone và @role:
- * thiếu bit thì hai loại này không được ghi, nhưng mention user vẫn nhận.
- */
+// Thứ tự: @everyone → username → tên role (role @everyone mặc định không tính); trùng cả hai chỉ tính user.
+// Thiếu MENTION_EVERYONE thì @everyone/@role không ghi, mention user vẫn nhận.
 export async function resolveMentions(
   db: Prisma.TransactionClient,
   serverId: string,

@@ -12,11 +12,8 @@ import { AuditService } from '../audit/audit.service.js';
 import { RealtimeService } from '../realtime/realtime.service.js';
 import type { CreateRoleInput, UpdateRoleInput } from './schemas.js';
 
-/**
- * Guard chỉ đảm bảo người gọi có MANAGE_ROLES. Service kiểm tra thêm ĐỐI TƯỢNG:
- * không ai cấp, sửa, xóa hay gán được quyền mạnh hơn quyền của chính mình (ADR-0004).
- */
-/** Trạng thái role ghi vào audit: permissions là bigint, JSON chỉ nhận string. */
+// Guard chỉ đảm bảo MANAGE_ROLES; service kiểm thêm: không ai cấp/sửa/xóa/gán quyền mạnh hơn mình.
+// permissions là bigint, JSON chỉ nhận string.
 function snapshot(role: { name: string; permissions: bigint; position: number }) {
   return { name: role.name, permissions: role.permissions.toString(), position: role.position };
 }
@@ -33,7 +30,7 @@ export class RolesService {
   async create(serverId: string, actorId: string, input: CreateRoleInput) {
     const permissions = input.permissions ?? 0n;
     await this.assertCanManage(serverId, actorId, permissions);
-    // Trần mềm: hai request đồng thời có thể vượt vài đơn vị, chấp nhận được cho giới hạn chống phình.
+    // Trần mềm: hai request đồng thời có thể vượt vài đơn vị.
     if ((await this.prisma.role.count({ where: { serverId } })) >= Limits.MAX_ROLES_PER_SERVER) {
       throw limitReached('roles', Limits.MAX_ROLES_PER_SERVER);
     }
@@ -66,13 +63,11 @@ export class RolesService {
 
   async update(roleId: string, actorId: string, input: UpdateRoleInput) {
     const role = await this.getRole(roleId);
-    // Cả quyền hiện có lẫn quyền mới đều phải nằm trong quyền của người sửa.
     await this.assertCanManage(
       role.serverId,
       actorId,
       role.permissions | (input.permissions ?? 0n),
     );
-    // @everyone sửa quyền được (Discord cũng vậy) — chỉ cấm XÓA.
     const updated = await this.prisma.$transaction(async (tx) => {
       const after = await tx.role.update({ where: { id: role.id }, data: input });
       await this.audit.record(
@@ -87,7 +82,6 @@ export class RolesService {
       );
       return after;
     });
-    // Quyền của mọi member có role này đổi → cache ability của cả server phải chết.
     await this.abilityFactory.invalidateServer(role.serverId);
     await this.realtime.refreshAccess(role.serverId);
     return updated;
@@ -128,8 +122,7 @@ export class RolesService {
       throw new BadRequestException('Every role must belong to this server');
     }
 
-    // Không đổi role của người mạnh hơn mình (gỡ role của họ cũng là "đụng" quyền đó),
-    // và không gán role mạnh hơn mình (kể cả cho chính mình).
+    // Không đổi role của người mạnh hơn mình, không gán role mạnh hơn mình (kể cả cho chính mình).
     const actor = await this.abilityFactory.contextFor(serverId, actorId);
     const target = await this.abilityFactory.contextFor(serverId, member.userId);
     const granted = roles.reduce((acc, role) => acc | role.permissions, 0n);
@@ -137,7 +130,7 @@ export class RolesService {
       throw new ForbiddenException('You cannot manage roles above your own permissions');
     }
 
-    // @everyone luôn gắn với mọi member: chỉ thay các role còn lại, giữ nguyên dòng @everyone.
+    // @everyone gắn với mọi member: chỉ thay các role còn lại.
     const assignable = roles.filter((role) => !role.isDefault).map((role) => role.id);
     await this.prisma.$transaction([
       this.prisma.memberRole.deleteMany({ where: { memberId, role: { isDefault: false } } }),
@@ -153,7 +146,6 @@ export class RolesService {
       }),
     ]);
 
-    // Quyền hiệu lực của member vừa đổi — cache Redis cũ không được phép nói dối.
     await this.abilityFactory.invalidateServer(serverId);
     await this.realtime.refreshAccess(serverId, [member.userId]);
 

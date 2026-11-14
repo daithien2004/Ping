@@ -29,7 +29,6 @@ import type {
 const runId = Date.now().toString(36);
 const embedder = new FakeEmbedder(8);
 
-/** LLM giả có thể đếm số lần gọi và giả lập provider chết (T5.7 degrade). */
 class ToggleableLlmClient extends FakeLlmClient {
   calls = 0;
   fail = false;
@@ -197,7 +196,6 @@ describe('Ask (e2e)', () => {
     store.hits = [];
     llm.calls = 0;
     llm.fail = false;
-    // Reset bộ đếm rate limit (register 5/phút/IP) + quota/cache giữa các ca.
     await app.get(RedisProvider).flushdb();
   });
 
@@ -295,7 +293,6 @@ describe('Ask (e2e)', () => {
     const server = await createServer(user.id);
     const messageId = await createMessage(server.channelId, user.id, 'Nội dung quan trọng');
     store.hits = [hit(server.id, server.channelId, messageId)];
-    // Cột Decimal(12,6) tối đa ~1e6; mọi trần ngân sách hợp lệ (<= 1000) đều bị vượt.
     await prisma.aiUsage.create({
       data: {
         userId: user.id,
@@ -313,7 +310,6 @@ describe('Ask (e2e)', () => {
       });
       expect(llm.calls).toBe(0);
     } finally {
-      // Xoá ngay: tổng chi phí là toàn hệ thống, để lại sẽ chặn các test sau.
       await prisma.aiUsage.deleteMany({ where: { userId: user.id } });
     }
   });

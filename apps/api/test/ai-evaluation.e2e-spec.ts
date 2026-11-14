@@ -20,8 +20,6 @@ import {
   scoreAnswer,
 } from './ai/evaluation.js';
 
-// Real DB + authorization + hydration + AskService; fake vector candidates/LLM only.
-// This suite proves application boundaries, not semantic retrieval or LLM resistance.
 describe('AI evaluation seeded pipeline (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;

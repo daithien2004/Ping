@@ -18,7 +18,6 @@ interface TestUser {
 
 type HttpMethod = 'get' | 'post' | 'patch' | 'put' | 'delete';
 
-/** Quy tắc 11: hành động nhạy cảm phải để lại AuditLog, kèm requestId của request gây ra nó. */
 describe('Audit log (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;

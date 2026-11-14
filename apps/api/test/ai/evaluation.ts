@@ -138,7 +138,6 @@ export function contextFor(entry: GoldenCase, injection?: InjectionCase): Retrie
   return messages.map((message) => ({ score: 0.9, messages: [message] }));
 }
 
-/** Oracle context: generation/citation evaluation, not an embedding/retrieval benchmark. */
 export function evaluationAsk(llm: LlmClient, chunks: RetrievedChunk[]): AskService {
   return new AskService(
     { createForUserFresh: async () => ({ can: () => true }) } as unknown as AbilityFactory,
@@ -158,7 +157,6 @@ export function evaluationAsk(llm: LlmClient, chunks: RetrievedChunk[]): AskServ
   );
 }
 
-/** Deliberately simple extractive fake. Does not establish real LLM quality/injection resistance. */
 export class ExtractiveEvalClient implements LlmClient {
   readonly model = 'offline-extractive-fixture';
   readonly prompts: (readonly ChatMessage[])[] = [];

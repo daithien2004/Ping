@@ -19,7 +19,6 @@ import { REFRESH_REUSE_GRACE_MS, REFRESH_TOKEN_TTL_MS } from './auth.constants.j
 import type { AuthenticatedUser } from './current-user.decorator.js';
 import { LoginAttemptsService } from './login-attempts.service.js';
 
-/** Chỉ các trường an toàn với client — passwordHash không bao giờ leave service này. */
 const userPublicSelect = {
   id: true,
   email: true,
@@ -27,7 +26,6 @@ const userPublicSelect = {
   displayName: true,
   avatarUrl: true,
   createdAt: true,
-  // TG.8: web dùng cờ này để nhắc xác minh email (chính sách chặn tạo server/mã mời).
   emailVerified: true,
 } as const;
 
@@ -46,11 +44,7 @@ interface IssuedTokens {
   refreshCookie: RefreshCookieValue;
 }
 
-/**
- * SHA-256 là đủ cho refresh token: nó là chuỗi ngẫu nhiên 384-bit nên không
- * brute-force được (khác mật khẩu người dùng thấp entropy — mới cần argon2id),
- * và hash cố định giúp lookup theo duy nhất một hàng trong Session.
- */
+// SHA-256 đủ cho refresh token (ngẫu nhiên 384-bit, không brute-force được); hash cố định để lookup một hàng.
 function hashToken(rawToken: string): string {
   return createHash('sha256').update(rawToken).digest('hex');
 }
@@ -87,30 +81,22 @@ export class AuthService {
       user = await this.prisma.user.create({
         data: {
           email: input.email,
-          // Username không phân biệt hoa/thường: 'Alice' và 'alice' là một tài khoản.
           username: normalizedUsername,
           displayName: input.displayName ?? input.username,
           passwordHash,
-          // TG.8: user mới luôn chưa xác minh — thư verify gửi ngay dưới đây. RIÊNG e2e
-          // (NODE_ENV=test): ~25 spec cũ đăng ký user rồi tạo server ngay, coi fixture như
-          // đã xác minh (cùng pattern attachment-worker/indexer tự tắt khi test); chính sách
-          // chưa xác minh vẫn luôn chạy và được test riêng trong account-lifecycle.e2e-spec
-          // bằng cách đặt lại cờ qua Prisma.
+          // Riêng NODE_ENV=test: coi user mới đã xác minh (fixture e2e); chính sách chưa xác minh được test riêng
+          // trong account-lifecycle.e2e-spec.
           emailVerified: this.config.get('NODE_ENV', { infer: true }) === 'test',
         },
         select: userPublicSelect,
       });
     } catch (error) {
-      // Hai request đăng ký trùng nhau có thể lọt qua check findFirst ở trên —
-      // unique constraint mới là chốt chặn thật sự.
       if (isUniqueConstraintError(error)) {
         throw new ConflictException('Email or username already taken');
       }
       throw error;
     }
 
-    // Gửi thư xác minh fire-and-forget (TG.8): tạo token + gửi SMTP chạy nền, lỗi chỉ
-    // log — đăng ký không được chặn hay thất bại vì SMTP chậm/hỏng.
     void this.account.issueVerificationEmail(user.id, user.email).catch((error: unknown) => {
       this.logger.warn({ err: error as Error }, 'Không gửi được thư xác minh sau đăng ký');
     });
@@ -127,15 +113,13 @@ export class AuthService {
       select: { ...userPublicSelect, passwordHash: true },
     });
 
-    // Email không tồn tại vẫn phải chạy một lần argon2.verify với hash giả,
-    // để thời gian trả lời không tiết lộ email có trong DB hay không (timing equalization).
+    // Email không tồn tại vẫn chạy argon2.verify với hash giả để cân bằng timing.
     const passwordValid = found
       ? await verifyPassword(found.passwordHash, input.password)
       : await this.burnVerify(input.password);
 
     if (!found || !passwordValid) {
       await this.loginAttempts.recordFailure(input.email, ip);
-      // Một message duy nhất cho mọi kiểu sai — không phân biệt "sai mật khẩu" hay "không có user".
       throw new UnauthorizedException('Invalid email or password');
     }
 
@@ -149,9 +133,7 @@ export class AuthService {
       createdAt: found.createdAt,
       emailVerified: found.emailVerified,
     };
-    // Dọn session đã hết hạn của user mỗi lần đăng nhập — bảng Session không phình mãi
-    // mà không cần job định kỳ. Session revoke nhưng chưa hết hạn được GIỮ lại để
-    // còn phát hiện token bị đánh cắp dùng lại.
+    // Session revoke nhưng chưa hết hạn được GIỮ để phát hiện token bị đánh cắp dùng lại.
     await this.prisma.session.deleteMany({
       where: { userId: found.id, expiresAt: { lt: new Date() } },
     });
@@ -172,9 +154,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid refresh token');
     }
 
-    // Token đã bị xoay vòng (revokedAt có giá trị) mà vẫn xuất hiện = bị đánh cắp.
-    // Không biết kẻ giữ token cũ hay session mới — an toàn nhất là kill cả hai:
-    // revoke MỌI session còn sống của user, chủ thật sẽ đăng nhập lại từ đầu.
+    // Token đã xoay vòng mà vẫn xuất hiện = bị đánh cắp: revoke MỌI session còn sống.
     if (session.revokedAt) {
       if (Date.now() - session.revokedAt.getTime() < REFRESH_REUSE_GRACE_MS) {
         throw new UnauthorizedException('Refresh token already rotated');
@@ -194,9 +174,7 @@ export class AuthService {
       throw new UnauthorizedException('Refresh token expired');
     }
 
-    // Rotation: session cũ đóng lại, token mới mở session mới. Điều kiện revokedAt: null
-    // làm việc đóng là nguyên tử: hai refresh đồng thời thì chỉ một bên thắng. lastUsedAt
-    // (TG.8) cập nhật ở đây — thời điểm session được dùng gần nhất.
+    // Điều kiện revokedAt: null làm việc đóng là nguyên tử: hai refresh đồng thời chỉ một bên thắng.
     const { count } = await this.prisma.session.updateMany({
       where: { id: session.id, revokedAt: null },
       data: { revokedAt: new Date(), lastUsedAt: new Date() },
@@ -208,7 +186,6 @@ export class AuthService {
   }
 
   async logout(rawToken: string | undefined): Promise<void> {
-    // Idempotent: token rác hoặc đã revoked cũng trả 204 — logout không bao giờ fail.
     if (!rawToken) {
       return;
     }
@@ -224,17 +201,12 @@ export class AuthService {
       select: userPublicSelect,
     });
     if (!user) {
-      // Token còn sống nhưng user đã bị xóa giữa chừng.
       throw new NotFoundException('User not found');
     }
     return user;
   }
 
-  /** Dùng chung cho REST guard và (sau này) Socket.IO handshake. */
   async verifyAccessToken(token: string): Promise<AuthenticatedUser> {
-    // sid (TG.8): id hàng Session phát hành token — dùng đánh dấu "phiên hiện tại" trong
-    // danh sách phiên và thu hồi "mọi phiên khác". Claim cũ (triển khai cuốn chiếu) thiếu
-    // sid → sessionId undefined, các endpoint phiên rơi về nhánh an toàn (xóa mọi phiên).
     const payload = await this.jwt.verifyAsync<{ sub: string; username: string; sid?: string }>(
       token,
     );
@@ -256,13 +228,11 @@ export class AuthService {
         userAgent: ctx.userAgent,
         ip: ctx.ip,
         expiresAt,
-        // TG.8: tóm tắt thiết bị tính MỘT lúc tạo để danh sách phiên không phải parse UA.
         device: describeUserAgent(ctx.userAgent),
       },
       select: { id: true },
     });
 
-    // sid = hàng Session vừa tạo: JWT mang theo "phiên hiện tại" đã ký (lý do ở AccountService).
     const accessToken = await this.jwt.signAsync({
       sub: userId,
       username,
@@ -273,7 +243,6 @@ export class AuthService {
 
   private dummyHashPromise?: Promise<string>;
 
-  /** Argon2id hash giả — tốn cùng thời gian với verify thật để cân bằng timing. */
   private burnVerify(password: string): Promise<boolean> {
     this.dummyHashPromise ??= hashPassword(randomBytes(16), { type: argon2id });
     return this.dummyHashPromise.then((dummyHash) => verifyPassword(dummyHash, password));

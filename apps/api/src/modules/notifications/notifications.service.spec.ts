@@ -6,9 +6,8 @@ import { NotificationsService } from './notifications.service.js';
 const ME = '00000000-0000-0000-0000-000000000001';
 const SERVER = '00000000-0000-0000-0000-00000000000a';
 const CHANNEL = '00000000-0000-0000-0000-00000000000b';
-const MUTED = '2026-12-01T07:30:00+07:00'; // ISO có offset — đúng hình dạng zod chấp nhận
+const MUTED = '2026-12-01T07:30:00+07:00';
 
-/** Prisma giả đúng những gì NotificationsService đụng tới. */
 function makePrisma() {
   const prisma = {
     server: { findUnique: vi.fn().mockResolvedValue({ id: SERVER }) },
@@ -16,7 +15,6 @@ function makePrisma() {
     notificationPref: {
       findMany: vi.fn().mockResolvedValue([]),
       upsert: vi.fn().mockImplementation((_args: unknown) => {
-        // Nhúng "bên trong Prisma": trả dòng như DB sẽ có sau upsert.
         const args = _args as {
           where: { userId_scope_targetId: { userId: string; scope: string; targetId: string } };
           create: Record<string, unknown>;
@@ -86,7 +84,6 @@ describe('NotificationsService.setServerPref / setChannelPref (upsert)', () => {
       },
       update: { level: 'mentions', mutedUntil: new Date(MUTED) },
     });
-    // ISO có offset chuẩn hóa về UTC khi serialize.
     expect(dto).toEqual({
       scope: 'server',
       targetId: SERVER,
@@ -147,7 +144,6 @@ describe('NotificationsService.deleteServerPref / deleteChannelPref (idempotent)
     expect(prisma.notificationPref.deleteMany).toHaveBeenCalledWith({
       where: { userId: ME, scope: 'server', targetId: SERVER },
     });
-    // Lần 2: hàng đã mất (count 0) — vẫn không lỗi (idempotent).
     prisma.notificationPref.deleteMany.mockResolvedValue({ count: 0 });
     await expect(service.deleteChannelPref(ME, CHANNEL)).resolves.toBeUndefined();
     expect(prisma.notificationPref.deleteMany).toHaveBeenLastCalledWith({

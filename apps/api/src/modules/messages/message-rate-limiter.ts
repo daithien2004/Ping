@@ -4,16 +4,10 @@ import { RedisProvider } from '../../infra/redis/redis.module.js';
 import { failOpen } from '../../infra/redis/redis-policy.js';
 import { RedisThrottlerStorage } from '../../infra/throttler/redis-throttler.storage.js';
 
-/** Tối đa 10 tin trong 10 giây cho mỗi (user, channel); vượt thì bị chặn nốt phần cửa sổ còn lại. */
 const LIMIT = 10;
 const WINDOW_MS = 10_000;
 
-/**
- * Chống flood tin nhắn theo user + channel (ADR-0027). Giới hạn chung 100 request/phút/IP của
- * throttler toàn cục không đủ: một user có thể chiếm cả channel trong vài giây. Đặt trong service
- * (sau guard xác thực) vì throttler toàn cục chạy TRƯỚC JwtAuthGuard nên không biết userId.
- * Redis chết → cho qua (fail-open, quy tắc 17): thà mất giới hạn còn hơn chặn nhắn tin.
- */
+// Đặt trong service vì throttler toàn cục chạy TRƯỚC JwtAuthGuard nên không biết userId; Redis chết → fail-open.
 @Injectable()
 export class MessageRateLimiter {
   private readonly logger = new Logger(MessageRateLimiter.name);

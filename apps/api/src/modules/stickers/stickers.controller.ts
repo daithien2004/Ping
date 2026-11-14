@@ -15,12 +15,6 @@ import { CurrentUser, type AuthenticatedUser } from '../auth/current-user.decora
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { StickersService } from './stickers.service.js';
 
-/**
- * Sticker của server (TG.22, ADR-0067). Xem danh sách: mọi member (`view Sticker`);
- * tạo cần `create Sticker` (MANAGE_EXPRESSIONS); xóa cần `delete Sticker` — guard tra
- * server qua chính sticker (nhánh `:stickerId` của AbilityGuard), service chặn thêm
- * xóa sticker gói hệ thống và ghi audit.
- */
 @Controller()
 @Throttle({ default: RATE_LIMIT_BUCKETS.writeStructure })
 @UseGuards(JwtAuthGuard, AbilityGuard)

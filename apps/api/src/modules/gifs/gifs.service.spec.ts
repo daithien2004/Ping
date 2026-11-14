@@ -14,7 +14,6 @@ const gif: GifDto = {
   provider: 'tenor',
 };
 
-/** Rate limiter giả: đếm lượt consume, không đụng Redis trong unit test. */
 function stubLimiter() {
   return { consume: vi.fn(async () => undefined) } as unknown as GifRateLimiter;
 }
@@ -32,7 +31,6 @@ describe('GifsService (TG.25, ADR-0069)', () => {
 
     expect(second).toEqual(first);
     expect(provider.search).toHaveBeenCalledTimes(1);
-    // Khác limit là khóa cache khác → vẫn phải gọi provider.
     await service.search('user-1', 'mèo', 10);
     expect(provider.search).toHaveBeenCalledTimes(2);
   });
@@ -72,7 +70,6 @@ describe('GifsService (TG.25, ADR-0069)', () => {
     expect((trendingError as ServiceUnavailableException).getResponse()).toMatchObject({
       code: ErrorCodes.GIF_PROVIDER_UNAVAILABLE,
     });
-    // Lỗi không được cache: lần gọi sau vẫn thử lại provider (vẫn 503).
     const retry = await service.search('user-1', 'mèo', 24).catch((cause) => cause);
     expect(retry).toBeInstanceOf(ServiceUnavailableException);
     expect(provider.search).toHaveBeenCalledTimes(2);

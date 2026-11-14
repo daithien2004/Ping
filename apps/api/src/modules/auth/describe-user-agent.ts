@@ -1,10 +1,5 @@
-/**
- * Tóm tắt User-Agent thành nhãn thiết bị ngắn gọn cho danh sách phiên (TG.8) —
- * hàm thuần, không phụ thuộc thư viện: chỉ cần vài cặp hay gặp, sai sót hiển thị
- * không ảnh hưởng bảo mật. Thứ tự kiểm tra quan trọng (UA chứa tên trình duyệt khác):
- * Edge/Opera có chữ "Chrome", Chrome có chữ "Safari", Android có chữ "Linux",
- * iPhone có chữ "Mac" — nhánh đặc trưng hơn phải đứng trước.
- */
+// Thứ tự kiểm tra quan trọng, nhánh đặc trưng đứng trước: Edge/Opera chứa "Chrome", Chrome chứa "Safari",
+// Android chứa "Linux", iPhone chứa "Mac".
 export function describeUserAgent(ua: string | undefined | null): string {
   if (!ua) {
     return 'Ứng dụng không rõ';

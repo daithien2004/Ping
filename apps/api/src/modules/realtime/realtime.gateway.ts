@@ -27,18 +27,11 @@ import { AbilityFactory } from '../ability/ability.factory.js';
 import { AuthService } from '../auth/auth.service.js';
 import { RealtimeService } from './realtime.service.js';
 
-/** Khoảng tối thiểu giữa hai event typing của một socket. */
 const TYPING_INTERVAL_MS = 1000;
 
-/**
- * Ngân sách event của MỘT socket trong cửa sổ 1 giây (ADR-0027): quá mức mềm thì bỏ qua event,
- * quá mức cứng thì ngắt socket. Client của ta gửi vài event mỗi giây là cùng; ngưỡng rộng hơn hẳn.
- * Bộ đếm nằm trong socket.data vì trạng thái này gắn với một kết nối sống trên đúng một instance.
- */
 const EVENT_WINDOW_MS = 1000;
 const EVENT_SOFT_LIMIT = 20;
 const EVENT_HARD_LIMIT = 60;
-/** Số socket đồng thời tối đa của một user (mọi tab, mọi instance). */
 const MAX_SOCKETS_PER_USER = 10;
 
 type AuthSocket = Socket & {
@@ -50,12 +43,10 @@ type AuthSocket = Socket & {
   };
 };
 
-// CORS được cấu hình trong RedisIoAdapter (lấy từ ConfigService), không ở đây.
 @WebSocketGateway({ namespace: '/', transports: ['websocket'] })
 export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
   // Serialize room commands per socket. Promises must never enter serializable socket.data.
   private readonly roomCommands = new WeakMap<AuthSocket, Promise<unknown>>();
-  // Presence batching (ADR-0039): gộp thay đổi presence theo server trong cửa sổ batch.
   private readonly presencePending = new Map<string, Map<string, 'online' | 'offline'>>();
   private readonly presenceTimers = new Map<string, NodeJS.Timeout>();
   @WebSocketServer()
@@ -99,7 +90,7 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
   }
 
   async handleConnection(@ConnectedSocket() socket: AuthSocket): Promise<void> {
-    this.metrics.socketOpened(); // cặp với socketClosed() ở handleDisconnect: mọi socket đều qua cả hai
+    this.metrics.socketOpened(); // cặp với socketClosed() ở handleDisconnect
     try {
       const token = this.extractToken(socket);
       if (!token) {
@@ -113,8 +104,7 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
         socket.disconnect(true);
         return;
       }
-      // JWT chỉ được kiểm tra lúc handshake: ngắt socket đúng lúc token hết hạn,
-      // client phải refresh rồi kết nối lại với token mới.
+      // JWT chỉ kiểm lúc handshake: ngắt đúng lúc token hết hạn, client refresh rồi nối lại.
       const exp = this.jwt.decode<{ exp?: number } | null>(token)?.exp;
       if (exp !== undefined) {
         const timer = setTimeout(
@@ -124,10 +114,6 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
         socket.once('disconnect', () => clearTimeout(timer));
       }
       await socket.join(`user:${userId}`);
-      // T4.3: vào room `server:<id>` của mọi server mình thuộc ngay từ lúc kết nối — nhận
-      // `channel.activity` (metadata, không nội dung) cho badge unread kể cả khi chưa mở
-      // channel nào. Best-effort như presence: pool cạn thì bỏ qua, badge tự đối soát khi
-      // socket reconnect. Bị kick/rời server thì refreshAccess đã dọn room này.
       try {
         const memberships = await this.prisma.member.findMany({
           where: { userId },
@@ -148,10 +134,7 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
         return;
       }
 
-      // Phát online ở MỌI lần kết nối: idempotent với client, và tránh đua khi hai tab
-      // cùng kết nối (cả hai cùng thấy "đã có 2 socket" thì không ai báo online).
-      // Presence là best-effort (như chiều ngắt ở handleDisconnect): khi pool Postgres cạn lúc nhiều người
-      // nối cùng lúc, truy vấn này quá hạn. Người dùng đã xác thực xong thì không bị ngắt vì thế.
+      // Phát online ở MỌI lần kết nối để tránh đua khi hai tab nối cùng lúc; best-effort, pool Postgres cạn thì bỏ qua.
       try {
         await this.broadcastPresence(userId, 'online');
       } catch (error) {
@@ -162,7 +145,6 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
       }
       this.logger.debug({ sid: socket.id, userId }, 'ws: connected');
     } catch (error) {
-      // Xác thực đã xong ở middleware; tới đây là lỗi thiết lập kết nối (join room, đếm socket).
       this.logger.warn(
         { sid: socket.id, err: (error as Error).message },
         'ws: connect setup failed',
@@ -178,15 +160,12 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
       return;
     }
     try {
-      // Socket đã rời mọi room khi tới đây: còn 0 socket nghĩa là tab cuối vừa đóng.
       if ((await this.realtimeService.countUserSockets(userId)) === 0) {
         await this.broadcastPresence(userId, 'offline');
       }
       this.logger.debug({ sid: socket.id, userId }, 'ws: disconnected');
     } catch (error) {
-      // Nest không await handler này: để lỗi bay ra là unhandled rejection. Redis/Postgres chỉ
-      // đóng SAU Socket.IO (ADR-0026) nên lúc tắt app lỗi này hiếm; còn khi hạ tầng hỏng giữa chừng
-      // thì presence bị bỏ qua chứ không được làm sập tiến trình.
+      // Nest không await handler này: lỗi bay ra là unhandled rejection, presence phải bị bỏ qua chứ không làm sập tiến trình.
       this.logger.warn(
         { sid: socket.id, userId, err: (error as Error).message },
         'ws: presence update skipped',
@@ -222,9 +201,7 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
       return denied;
     }
 
-    // TG.9 (ADR-0070 mục 6): channel DM — kiểm DmParticipant thay vì ability server; join
-    // DUY NHẤT room channel, không join room server. Participant join room lúc mở hội thoại
-    // (client emit channel.join như channel thường); badge đã đi qua room `user:<id>`.
+    // DM: kiểm DmParticipant, chỉ join room channel (không join room server).
     if (channel.type === 'DM') {
       const participant = await this.prisma.dmParticipant.findUnique({
         where: { channelId_userId: { channelId, userId } },
@@ -240,7 +217,6 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
       return { ok: true };
     }
 
-    // Channel server luôn có serverId (chỉ DM mới NULL — ADR-0070); nhánh DM đã return ở trên.
     if (channel.serverId === null) return denied;
     let canView: boolean;
     try {
@@ -250,9 +226,8 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
       if (!(error instanceof ForbiddenException)) {
         throw error;
       }
-      canView = false; // không phải member
+      canView = false;
     }
-    // Same denial for unknown channels and missing access: do not disclose existence.
     if (!canView) {
       await socket.leave(`channel:${channelId}`);
       return denied;
@@ -276,7 +251,6 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
     }
   }
 
-  /** Tính một event vào ngân sách của socket. true = bỏ qua event này (đã ngắt socket nếu quá cứng). */
   private overBudget(socket: AuthSocket): boolean {
     const now = Date.now();
     const window = socket.data.eventWindow;
@@ -296,7 +270,6 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
     return window.count > EVENT_SOFT_LIMIT;
   }
 
-  /** Socket hiện tại đã nằm trong room user nên được đếm. Lỗi đếm (Redis) → cho qua, không chặn nhầm. */
   private async tooManySockets(userId: string): Promise<boolean> {
     try {
       return (await this.realtimeService.countUserSockets(userId)) > MAX_SOCKETS_PER_USER;
@@ -353,7 +326,6 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
   }
 
   private async broadcastPresence(userId: string, status: 'online' | 'offline'): Promise<void> {
-    // Phát presence đến các server mà user tham gia: tìm qua members.
     const memberships = await this.prisma.member.findMany({
       where: { userId },
       select: { serverId: true },

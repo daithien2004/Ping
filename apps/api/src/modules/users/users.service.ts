@@ -12,12 +12,6 @@ import { PrismaService } from '../../infra/prisma/prisma.service.js';
 import { AttachmentsService } from '../attachments/attachments.service.js';
 import { RealtimeService } from '../realtime/realtime.service.js';
 
-/**
- * Hồ sơ cá nhân (TG.7): đổi tên hiển thị và avatar. Avatar gắn bằng attachment
- * `scope=avatar` đã `ready` qua pipeline TG.6; một tệp chỉ gắn một lần và tệp cũ
- * bị thay thế sẽ chuyển `deleting` để worker dọn. TG.13 thêm cài đặt người dùng
- * (GET/PATCH /users/me/settings) — cùng nhánh `me` của người gọi, cùng module.
- */
 @Injectable()
 export class UsersService {
   constructor(
@@ -43,7 +37,6 @@ export class UsersService {
         );
         const link = await this.attachments.profileLink(input.avatarAttachmentId, true);
         avatarUrl = link.url;
-        // Avatar cũ (nếu có) không còn được tham chiếu: worker dọn tệp và giải phóng hạn mức.
         await this.attachments.releaseProfileAttachment(tx, current.avatarUrl);
       }
       return tx.user.update({
@@ -56,7 +49,6 @@ export class UsersService {
       });
     });
 
-    // Mọi server user thuộc về (và chính các tab của họ) nhận hồ sơ mới ngay (TG.7).
     this.realtime.emitToUser(userId, ServerEvents.UserUpdated, updated);
     const memberships = await this.prisma.member.findMany({
       where: { userId },
@@ -67,11 +59,7 @@ export class UsersService {
     return updated;
   }
 
-  /**
-   * TG.9 (ADR-0070): mức nhận DM của chính mình ('server_members' | 'none'). Không phát
-   * UserUpdated: đây là cài đặt RIÊNG TƯ, không phải hồ sơ công khai — payload event hiện có
-   * (id/username/displayName/avatarUrl) cũng không mang cột này, phát đi là lộ cài đặt.
-   */
+  // Không phát UserUpdated: đây là cài đặt riêng tư, payload event công khai không được mang cột này.
   async updatePrivacy(userId: string, input: UpdatePrivacyInput) {
     return this.prisma.user.update({
       where: { id: userId },
@@ -80,7 +68,6 @@ export class UsersService {
     });
   }
 
-  /** GET /users/me/privacy (TG.13): mức `dmAllow` đã lưu của chính người gọi. */
   async getPrivacy(userId: string): Promise<UserPrivacyDto> {
     const row = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -90,22 +77,13 @@ export class UsersService {
     return { dmAllow: row.dmAllow as UserPrivacyDto['dmAllow'] };
   }
 
-  /**
-   * GET /users/me/settings (TG.13) — lazy default: chưa có hàng trả DTO mặc định ở tầng
-   * service mà KHÔNG tạo hàng. PATCH là nơi duy nhất ghi hàng; trả mặc định khi GET tránh
-   * rác hàng cho user không bao giờ đụng settings, và xóa tài khoản không để lại gì dọn.
-   */
+  // Lazy default: GET không tạo hàng; PATCH là nơi duy nhất ghi.
   async getSettings(userId: string): Promise<UserSettingsDto> {
     const row = await this.prisma.userSettings.findUnique({ where: { userId } });
     return row ? this.toSettingsDto(row) : { ...USER_SETTINGS_DEFAULTS };
   }
 
-  /**
-   * PATCH /users/me/settings (TG.13) — upsert: create điền MẶC ĐỊNH cho trường không gửi,
-   * update chỉ mang trường được gửi nên trường không gửi giữ nguyên giá trị cũ (PATCH
-   * semantics; Prisma 7 không nhận `undefined` trong data — spread có điều kiện). Trường lạ
-   * và body rỗng đã bị updateUserSettingsSchema chặn ở pipe → 400 VALIDATION_ERROR.
-   */
+  // Prisma 7 không nhận undefined trong data: spread có điều kiện.
   async updateSettings(userId: string, input: UpdateUserSettingsInput): Promise<UserSettingsDto> {
     const row = await this.prisma.userSettings.upsert({
       where: { userId },
@@ -126,7 +104,6 @@ export class UsersService {
     return this.toSettingsDto(row);
   }
 
-  /** Row (cột String, giá trị do API kiểm) → DTO của hợp đồng shared (TG.13). */
   private toSettingsDto(row: {
     theme: string;
     density: string;

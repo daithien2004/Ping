@@ -7,9 +7,6 @@ import { UsersService } from './users.service.js';
 
 const ME = '00000000-0000-0000-0000-000000000001';
 
-/** Prisma giả đúng những gì cài đặt (TG.13) đụng tới; upsert mô phỏng ngữ nghĩa thật của DB:
- * đã có hàng thì merge `update` lên hàng cũ, chưa có thì trả `create` (một trong hai nhánh,
- * không merge chéo — merge chéo sẽ giấu được bug "update mang nhầm trường"). */
 function makePrisma(existing: Record<string, unknown> | null = null) {
   const prisma = {
     user: {
@@ -28,7 +25,6 @@ function makePrisma(existing: Record<string, unknown> | null = null) {
   return prisma as unknown as PrismaService & typeof prisma;
 }
 
-/** attachments/realtime không nằm trên đường cài đặt — stub rỗng đủ cho constructor. */
 function makeService(prisma: PrismaService) {
   return new UsersService(prisma, {} as AttachmentsService, {} as RealtimeService);
 }
@@ -111,9 +107,7 @@ describe('UsersService.updateSettings (upsert, PATCH semantics)', () => {
     });
     const dto = await makeService(prisma).updateSettings(ME, { theme: 'dark' });
     const call = prisma.userSettings.upsert.mock.calls[0]![0] as { update: object };
-    // Đúng các khóa này, không hơn: trường không gửi không được xuất hiện trong `update`.
     expect(call.update).toEqual({ theme: 'dark' });
-    // Fake merge của DB: các trường không gửi vẫn giá trị cũ.
     expect(dto).toEqual({ theme: 'dark', density: 'compact', fontSize: 'lg', locale: 'en' });
   });
 

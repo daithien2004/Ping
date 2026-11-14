@@ -12,8 +12,6 @@ import { LoginAttemptsService } from './login-attempts.service.js';
 
 @Module({
   imports: [
-    // Global: mọi module (và sau này Socket.IO gateway) inject JwtService
-    // hoặc AuthService được mà không cần import lại module này.
     JwtModule.registerAsync({
       global: true,
       inject: [ConfigService],

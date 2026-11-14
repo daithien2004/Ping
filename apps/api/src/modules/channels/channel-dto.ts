@@ -1,12 +1,5 @@
 import type { ChannelDto } from '@ping/shared';
 
-/**
- * DTO của channel server (dùng chung cho ChannelsService và nơi phát `channel.updated`).
- * `serverId` truyền riêng vì kiểu Prisma của Channel hiện nullable (TG.9: DM có serverId
- * NULL) — các đường tới đây chỉ là channel server đã narrow.
- * TG.10: DTO thêm `categoryId`, `positionKey`, `topic`; `position` Int giữ nguyên hợp đồng
- * (thứ tự vùng mặc định — xem chú thích ChannelDto bên shared).
- */
 export function toChannelDto(
   channel: {
     id: string;

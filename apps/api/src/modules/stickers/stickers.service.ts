@@ -28,7 +28,6 @@ type StickerWithPack = {
   attachment: { id: string; width: number | null; height: number | null };
 };
 
-/** Hàng Sticker + attachment → DTO với cặp URL hồ sơ (động + khung tĩnh). */
 function toStickerDto(row: StickerWithPack, urls: { url: string; previewUrl: string }): StickerDto {
   return {
     id: row.id,
@@ -51,15 +50,7 @@ export class StickersService {
     private readonly realtime: RealtimeService,
   ) {}
 
-  /**
-   * Tạo sticker (TG.22, ADR-0067): claim tệp đã kiểm định + tạo hàng Sticker + giữ trần
-   * `Limits.STICKERS_PER_SERVER` dưới advisory lock theo server — hai instance không cùng
-   * vượt trần (pattern trần ghim TG.3). Gói của server được tạo ngầm ở lần đầu tiên.
-   *
-   * Idempotent theo tệp (quy tắc 12): client retry cùng `attachmentId` sau khi lần đầu đã
-   * commit → tệp đã `boundAt` → trả lại sticker cũ thay vì lỗi; tệp đã gắn vào server khác
-   * thì không trả gì (không lộ).
-   */
+  // Idempotent theo tệp: attachmentId đã boundAt → trả sticker cũ; gắn server khác → không lộ.
   async create(serverId: string, userId: string, input: CreateStickerInput): Promise<StickerDto> {
     try {
       const { sticker } = await this.prisma.$transaction(async (tx) => {
@@ -105,8 +96,6 @@ export class StickersService {
           } satisfies StickerWithPack,
         };
       });
-      // TG.24 (ADR-0068 mục 6): một event `expressions.updated` chung cho cả biểu cảm —
-      // client invalidate qk.stickers + qk.emojis nên hai tab tự đồng bộ.
       this.realtime.emitToServer(serverId, ServerEvents.ExpressionsUpdated, { serverId });
       return toStickerDto(sticker, await this.attachments.stickerUrls(input.attachmentId));
     } catch (error) {
@@ -123,10 +112,6 @@ export class StickersService {
     }
   }
 
-  /**
-   * Danh sách sticker cho picker/quản trị (TG.22): gói hệ thống (serverId null) + gói của
-   * server, sticker đã xóa mềm không trả. Trần 30 → trả mảng gói thẳng, không phân trang.
-   */
   async list(serverId: string): Promise<StickerListResponse> {
     const packs = await this.prisma.stickerPack.findMany({
       where: { OR: [{ serverId: null }, { serverId }] },
@@ -163,11 +148,6 @@ export class StickersService {
     return { packs: mapped };
   }
 
-  /**
-   * Xóa sticker (TG.22): soft-delete để tin cũ render khung "sticker đã bị xóa", phát hành
-   * tệp (worker dọn theo scope) và ghi audit — xóa tài nguyên người khác tạo là hành động
-   * quản trị (quy tắc 11). Gói hệ thống không xóa được.
-   */
   async remove(stickerId: string, userId: string): Promise<{ id: string }> {
     const sticker = await this.prisma.sticker.findUnique({
       where: { id: stickerId },
@@ -188,13 +168,11 @@ export class StickersService {
         },
         tx,
       );
-      // Pattern `releaseProfileAttachment` (TG.7): tệp đã gắn → worker dọn và giải phóng hạn mức.
       await tx.attachment.updateMany({
         where: { id: sticker.attachmentId, boundAt: { not: null } },
         data: { status: 'deleting' },
       });
     });
-    // TG.24: cùng event biểu cảm với emoji — xóa sticker cũng invalidate cache picker/emoji.
     this.realtime.emitToServer(serverId, ServerEvents.ExpressionsUpdated, { serverId });
     return { id: stickerId };
   }

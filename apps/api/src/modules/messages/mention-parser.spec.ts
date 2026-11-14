@@ -66,8 +66,6 @@ describe('extractMentionTokens (T4.1)', () => {
       .concat(['@everyone'])
       .join(' ');
     const result = extractMentionTokens(content);
-    // 20 mention đầu (kể cả nếu trong đó có @everyone) — ở đây 20 token đầu là user,
-    // nên @everyone nằm ngoài trần và bị bỏ.
     expect(result.names).toHaveLength(Limits.MENTIONS_PER_MESSAGE);
     expect(result.everyone).toBe(false);
   });

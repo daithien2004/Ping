@@ -7,8 +7,6 @@ import { UsersController } from './users.controller.js';
 import { UsersService } from './users.service.js';
 
 @Module({
-  // AuthModule export cả AccountService (TG.8: đổi mật khẩu, phiên đăng nhập).
-  // ChannelsModule export ReadStateService cho GET /users/me/unread (ADR-0077).
   imports: [AuthModule, AttachmentsModule, ChannelsModule, RealtimeModule],
   controllers: [UsersController],
   providers: [UsersService],

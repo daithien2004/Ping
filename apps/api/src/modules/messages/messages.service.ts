@@ -37,7 +37,6 @@ import { resolveMentions } from './mention-resolver.js';
 import type { ListMessagesQuery } from './schemas.js';
 import { attachmentSelect, AttachmentsService } from '../attachments/attachments.service.js';
 
-/** Chỉ các trường client cần — không bao giờ trả bản ghi thô (guide 10.3). */
 const messageWithAuthor = {
   id: true,
   content: true,
@@ -48,10 +47,8 @@ const messageWithAuthor = {
   kind: true,
   attachments: { select: attachmentSelect, where: { status: 'ready' as const } },
   author: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
-  // TG.3: trạng thái ghim đi kèm mọi tin để UI hiện chỉ báo và menu Ghim/Bỏ ghim.
   pinnedAt: true,
   pinnedById: true,
-  // TG.22: sticker của tin (null với tin văn bản); preview dựng ở toMessageDto.
   sticker: {
     select: {
       id: true,
@@ -60,14 +57,10 @@ const messageWithAuthor = {
       attachment: { select: { id: true, width: true, height: true } },
     },
   },
-  // TG.25: 4 cột GIF của tin (null với tin khác); preview dựng thẳng ở toMessageDto,
-  // không resolve thêm URL như sticker.
   gifUrl: true,
   gifWidth: true,
   gifHeight: true,
   gifProvider: true,
-  // TG.1: xem trước tin gốc cho khối trích dẫn (kể cả tin đã soft-delete — cờ `deleted`).
-  // `kind`/`_count` cho ngữ cảnh sticker/GIF/tệp khi nội dung rỗng (ADR-0086).
   replyTo: {
     select: {
       id: true,
@@ -80,7 +73,6 @@ const messageWithAuthor = {
   },
 } as const;
 
-/** Đoạn trích 120 ký tự cho preview reply (TG.1). */
 function replyPreview(
   replyTo: {
     id: string;
@@ -104,7 +96,6 @@ function replyPreview(
   };
 }
 
-/** Select `sticker` trong `messageWithAuthor`. */
 type StickerSelect = {
   id: string;
   name: string;
@@ -112,10 +103,6 @@ type StickerSelect = {
   attachment: { id: string; width: number | null; height: number | null };
 };
 
-/**
- * Preview sticker trong tin (TG.22): sticker đã xóa mềm vẫn giữ tên nhưng mất URL —
- * client render khung "sticker đã bị xóa" (pattern `replyTo.deleted` của TG.1).
- */
 function stickerPreview(
   sticker: StickerSelect | null,
   urls: ReadonlyMap<string, { url: string; previewUrl: string }>,
@@ -144,11 +131,6 @@ function stickerPreview(
   };
 }
 
-/**
- * Member cần ping khi reply (ADR-0086) — client Discord luôn ping tác giả tin gốc, không có
- * công tắc. Không ping khi người gửi tự reply chính mình, khi tin gốc đã soft-delete (nội dung
- * bị ẩn, trích dẫn vô nghĩa), hoặc ở DM (không có MessageMention — ADR-0070).
- */
 async function replyPingMember(
   db: Prisma.TransactionClient,
   serverId: string,
@@ -163,14 +145,12 @@ async function replyPingMember(
   return member?.id;
 }
 
-/** `Message.kind` là cột String — chuẩn hóa về ba giá trị DTO biết trước khi phát payload. */
 function messageKind(kind: string | null | undefined): 'text' | 'sticker' | 'gif' {
   if (kind === 'sticker') return 'sticker';
   if (kind === 'gif') return 'gif';
   return 'text';
 }
 
-/** Bốn cột GIF trên Message (TG.25) — select `messageWithAuthor` luôn trả đủ. */
 type GifColumns = {
   gifUrl: string | null;
   gifWidth: number | null;
@@ -178,11 +158,7 @@ type GifColumns = {
   gifProvider: string | null;
 };
 
-/**
- * Preview GIF trong tin (TG.25): dựng thẳng từ cột — URL chốt lúc gửi là nguồn sự thật,
- * không resolve thêm như sticker. `gifProvider` là cột String; API hiện chỉ nhận host
- * allowlist của Tenor nên mọi giá trị khác quy về 'tenor' cho khớp literal DTO.
- */
+// `gifProvider` là cột String; API chỉ nhận host Tenor nên mọi giá trị khác quy về 'tenor' cho khớp literal DTO.
 function gifPreview(row: GifColumns): MessageGifPreview | null {
   if (!row.gifUrl) return null;
   return {
@@ -193,7 +169,6 @@ function gifPreview(row: GifColumns): MessageGifPreview | null {
   };
 }
 
-/** Hàng Prisma (select `messageWithAuthor`) → DTO: `replyTo` preview + cảm xúc đã tổng hợp. */
 function toMessageDto<
   T extends {
     kind: string;
@@ -205,7 +180,6 @@ function toMessageDto<
   reactions: MessageReactionDto[] = [],
   stickerUrls: ReadonlyMap<string, { url: string; previewUrl: string }> = new Map(),
 ) {
-  // Cột GIF thô không được lọt ra response — gói lại thành preview `gif`.
   const { replyTo, sticker, gifUrl, gifWidth, gifHeight, gifProvider, ...rest } = row;
   const gif = gifPreview({ gifUrl, gifWidth, gifHeight, gifProvider });
   return {
@@ -231,10 +205,6 @@ export class MessagesService {
     private readonly attachments: AttachmentsService,
   ) {}
 
-  /**
-   * Cặp URL sticker (TG.22) cho một trang tin: gom distinct attachmentId của các tin
-   * sticker CHƯA xóa rồi ký một lượt — trang 50 tin chỉ thêm một truy vấn.
-   */
   private async stickerUrlsFor(
     rows: Array<{ sticker: StickerSelect | null }>,
   ): Promise<ReadonlyMap<string, { url: string; previewUrl: string }>> {
@@ -248,19 +218,6 @@ export class MessagesService {
     return this.attachments.stickerUrlsMany(ids);
   }
 
-  /**
-   * Phân trang cursor/keyset (guide 10.3): WHERE id < before ORDER BY id DESC.
-   * Nhảy thẳng tới đúng vị trí trong index (channelId, id desc) — không đọc rồi
-   * vứt hàng chục nghìn row như OFFSET. Lấy dư 1 để biết còn trang cũ hơn không.
-   *
-   * `after` (T4.4, ADR-0044): chiều ngược — tin MỚI HƠN cursor, thứ tự tăng dần,
-   * `hasMore` = còn tin mới hơn nữa; dùng để vá khoảng trống khi reconnect.
-   *
-   * `around` (TG.5, ADR-0063): cửa sổ quanh một tin cho permalink — hai truy vấn keyset
-   * (nửa cũ hơn gồm chính tin đích, nửa mới hơn), gộp lại theo thứ tự mới nhất trước như
-   * trang thường. Tin đích phải nằm trong CHÍNH channel và chưa bị xóa mềm, nếu không 404
-   * (không phân biệt "không tồn tại" với "thuộc channel khác" để không lộ id).
-   */
   async list(channelId: string, query: ListMessagesQuery, viewerId: string) {
     if (query.around !== undefined) {
       return this.listAround(channelId, query.around, query.limit, viewerId);
@@ -296,7 +253,6 @@ export class MessagesService {
     const messages = await this.prisma.message.findMany({
       where: {
         channelId,
-        // Tin soft-delete biến mất khỏi lịch sử nhưng vẫn nằm trong DB.
         deletedAt: null,
         ...(query.before ? { id: { lt: query.before } } : {}),
       },
@@ -322,17 +278,12 @@ export class MessagesService {
     };
   }
 
-  /**
-   * Cửa sổ quanh `aroundId` (TG.5): `limit` chia đôi — nửa cũ hơn GỒM tin đích, nửa mới hơn.
-   * Hai truy vấn keyset độc lập dùng index `(channelId, id)` nên chi phí không phụ thuộc số
-   * tin của channel; lấy dư 1 mỗi phía để biết còn tin cũ/mới hơn ngoài cửa sổ.
-   */
   private async listAround(channelId: string, aroundId: string, limit: number, viewerId: string) {
     const target = await this.prisma.message.findUnique({
       where: { id: aroundId },
       select: { id: true, channelId: true, deletedAt: true },
     });
-    // 404 cho cả ba trường hợp: không tồn tại, khác channel, đã xóa mềm.
+    // 404 cho cả ba trường hợp (không tồn tại, khác channel, đã xóa mềm) để không lộ id.
     if (!target || target.channelId !== channelId || target.deletedAt !== null) {
       throw new NotFoundException('Message not found');
     }
@@ -348,7 +299,6 @@ export class MessagesService {
       this.prisma.message.findMany({
         where: { channelId, deletedAt: null, id: { gt: aroundId } },
         orderBy: { id: 'asc' },
-        // +1 để biết còn tin mới hơn nữa; newerLimit = 0 (limit 1) vẫn lấy 1 tin để kiểm.
         take: newerLimit + 1,
         select: messageWithAuthor,
       }),
@@ -356,7 +306,6 @@ export class MessagesService {
     const hasMore = olderRows.length > olderLimit;
     const hasNewer = newerRows.length > newerLimit;
     const older = olderRows.slice(0, olderLimit);
-    // Trang trả về mới nhất trước (như mọi trang khác), nên nửa mới hơn phải đảo lại.
     const newer = newerRows.slice(0, newerLimit).reverse();
     const page = [...newer, ...older];
     const [reactions, stickerUrls] = await Promise.all([
@@ -387,8 +336,6 @@ export class MessagesService {
         (await this.reactionMap([previous.id], authorId)).get(previous.id) ?? [],
         await this.stickerUrlsFor([previous]),
       );
-    // Bối cảnh server để kiểm MENTION_EVERYONE khi parse mention (ADR-0043); guard đã
-    // xác nhận người gửi là thành viên (hoặc participant DM) nên channel luôn tồn tại ở bước này.
     const channel = await this.prisma.channel.findUnique({
       where: { id: channelId },
       select: { serverId: true, type: true },
@@ -396,16 +343,13 @@ export class MessagesService {
     if (!channel) {
       throw new NotFoundException('Channel not found');
     }
-    // TG.9 (ADR-0070 mục 4): channel DM — kiểm UserBlock giữa tác giả và đối tác NGAY LÚC GỬI
-    // (một truy vấn): chặn tin MỚI trong DM có sẵn; tin cũ vẫn đọc được, unblock thì gửi được
-    // lại. Cùng mã `DM_BLOCKED` với "đối phương tắt DM" ở POST /dms để không dò nguyên nhân.
+    // DM: kiểm UserBlock lúc gửi; cùng mã `DM_BLOCKED` với "đối phương tắt DM" để không dò nguyên nhân.
     let dmPartnerId: string | null = null;
     if (channel.type === 'DM') {
       const partner = await this.prisma.dmParticipant.findFirst({
         where: { channelId, userId: { not: authorId } },
         select: { userId: true },
       });
-      // Channel DM luôn có đúng 2 participant; thiếu (lệch dữ liệu) coi như bị chặn — fail closed.
       if (!partner) {
         throw new ForbiddenException({
           code: ErrorCodes.DM_BLOCKED,
@@ -431,7 +375,7 @@ export class MessagesService {
     }
     const actor =
       channel.type === 'DM'
-        ? null // DM không parse mention (MessageMention là Member-scoped — ADR-0070 mục 7).
+        ? null
         : await this.abilityFactory.contextFor(channel.serverId!, authorId);
     try {
       const message = await this.prisma.$transaction(async (tx) => {
@@ -452,11 +396,8 @@ export class MessagesService {
             });
           }
         }
-        // TG.22: tin sticker mang đúng MỘT sticker của server mình thuộc hoặc gói hệ thống
-        // (ADR-0067); sticker đã xóa mềm không gửi được nữa. Schema đã chặn content rỗng.
         if (input.stickerId !== undefined) {
-          // TG.9 (ADR-0070 mục 10): sticker là tài sản server — chặn CẢ gói hệ thống trong DM
-          // (một nhánh sớm, trước khi tra sticker) nên sticker của server khác không lộ tồn tại.
+          // Sticker là tài sản server: chặn CẢ gói hệ thống trong DM trước khi tra sticker để không lộ tồn tại.
           if (channel.type === 'DM') {
             throw new BadRequestException({
               code: ErrorCodes.BAD_REQUEST,
@@ -481,16 +422,8 @@ export class MessagesService {
             });
           }
         }
-        // TG.24: token custom emoji trong nội dung (`:ten:<id>`) — id phải là emoji CÒN SỐNG
-        // thuộc server của channel (IDOR: chỉ dùng emoji server mình thuộc, lỗi 400 không lộ
-        // emoji server khác); token trỏ emoji đã xóa/không tồn tại cho qua (render placeholder
-        // — ADR-0068 mục 3). Số token tự bị chặn bởi trần 4000 ký tự của content nên không
-        // cần trần thêm.
-        // TG.9 (ADR-0070 mục 10): trong DM `channel.serverId` NULL mà emoji sống luôn thuộc
-        // một server nên điều kiện `emoji.serverId !== channel.serverId` LUÔN đúng → mọi token
-        // custom emoji trong DM bị từ chối 400 'Custom emoji unavailable' (lựa chọn đã chốt:
-        // từ chối tường minh, không degrade cho qua). Token trỏ emoji chết vẫn cho qua như
-        // kênh server (placeholder) — an toàn vì không truy cập tài sản nào của server.
+        // Token custom emoji phải là emoji CÒN SỐNG của server channel (IDOR; 400 không lộ emoji server khác); token trỏ emoji
+        // đã xóa cho qua (placeholder). Trong DM serverId NULL nên mọi custom emoji bị từ chối 400.
         const emojiIds = [
           ...new Set([...input.content.matchAll(CUSTOM_EMOJI_TOKEN_PATTERN)].map((m) => m[2])),
         ];
@@ -503,7 +436,6 @@ export class MessagesService {
             });
           }
         }
-        // TG.1: tin gốc phải nằm trong CÙNG channel (chốt IDOR); soft-delete vẫn cho reply.
         let replyToId: string | undefined;
         let replyPingMemberId: string | undefined;
         if (input.replyToId !== undefined) {
@@ -532,9 +464,6 @@ export class MessagesService {
             ...(input.stickerId !== undefined
               ? { kind: 'sticker', stickerId: input.stickerId }
               : {}),
-            // TG.25: tin GIF lưu đúng bốn cột chốt tại thời điểm gửi — URL đã qua host
-            // allowlist ở schema (https + media.tenor.com) nên service không kiểm lại;
-            // provider hiện chỉ có Tenor. Content rỗng và không attachment do schema chặn.
             ...(input.gif
               ? {
                   kind: 'gif',
@@ -548,19 +477,16 @@ export class MessagesService {
           },
           select: messageWithAuthor,
         });
-        // Mention chỉ có ở channel server: DM không ghi MessageMention (Member-scoped,
-        // ADR-0070 mục 7) — mọi tin chưa đọc hiển thị badge đỏ mention-style phía web.
         const mentions =
           actor === null
             ? []
             : await resolveMentions(
                 tx,
-                channel.serverId!, // nhánh server: channel.serverId luôn có (chỉ DM mới NULL)
+                channel.serverId!, // luôn có (chỉ DM mới NULL)
                 actor,
                 extractMentionTokens(input.content),
               );
-        // Reply ping dùng chung bảng MessageMention để unread đếm như mention thường
-        // (Discord cũng tính reply ping vào mention); trùng @tác giả trong nội dung thì bỏ.
+        // Reply ping dùng chung bảng MessageMention để unread đếm như mention; trùng @tác giả trong nội dung thì bỏ.
         if (
           replyPingMemberId &&
           !mentions.some(
@@ -614,10 +540,7 @@ export class MessagesService {
         replyTo: replyPreview(message.replyTo),
         attachments: message.attachments,
       });
-      // T4.3: metadata (không nội dung) tới room server để badge unread của kênh không
-      // đang xem tăng realtime; người xem kênh nhận cả hai event nhưng bỏ qua event này.
-      // TG.9 (ADR-0070 mục 6): DM không thuộc server — badge đi qua room `user:<đối tác>`
-      // tái dùng event ChannelActivity với serverId null.
+      // Metadata (không nội dung) tới room server cho badge unread; DM đi qua room `user:<đối tác>` với serverId null.
       if (dmPartnerId !== null) {
         this.realtime.emitToUser(dmPartnerId, ServerEvents.ChannelActivity, {
           channelId,
@@ -628,14 +551,12 @@ export class MessagesService {
       } else {
         this.realtime.emitToServer(channel.serverId!, ServerEvents.ChannelActivity, {
           channelId,
-          serverId: channel.serverId!, // nhánh server: luôn có serverId (chỉ DM mới NULL)
+          serverId: channel.serverId!, // luôn có (chỉ DM mới NULL)
           messageId: message.id,
           authorId,
         });
       }
-      // Ping riêng người được mention (T4.2): broadcast tới room channel giữ nguyên (ranh
-      // giới quyền), event cá nhân chỉ tới từng người được nhắc. Không chặn response —
-      // tin đã commit, ping lỗi không làm hỏng đường gửi. DM không ghi mention nên bỏ qua.
+      // Ping riêng người được mention: không chặn response, tin đã commit nên ping lỗi không làm hỏng đường gửi.
       if (channel.serverId !== null) {
         void this.notifyMentionedUsers(message.id, channelId, channel.serverId).catch(
           () => undefined,
@@ -643,9 +564,7 @@ export class MessagesService {
       }
       return toMessageDto(message, [], stickerUrls);
     } catch (error) {
-      // Client retry (mạng chập chờn) gửi lại CÙNG nonce → unique
-      // (channelId, authorId, nonce) chặn ghi trùng: trả đúng tin cũ thay vì lỗi.
-      // Không phát event lần hai vì client khác đã nhận tin này từ lần tạo đầu.
+      // Retry cùng nonce → unique (channelId, authorId, nonce) chặn: trả tin cũ, không phát event lần hai.
       if (isUniqueConstraintError(error)) {
         const existing = await this.prisma.message.findUniqueOrThrow({
           where: { channelId_authorId_nonce: { channelId, authorId, nonce: input.nonce } },
@@ -663,22 +582,17 @@ export class MessagesService {
 
   async update(messageId: string, ability: AppAbility, content: string, viewerId: string) {
     const message = await this.getMessage(messageId);
-    // Tier 2 (guide 10.2): rule "update Message WHERE authorId = me" chỉ kiểm
-    // tra được khi đã có đối tượng thật trong tay.
+    // Tier 2: rule `update Message WHERE authorId = me` chỉ kiểm được khi đã có đối tượng thật.
     ForbiddenError.from(ability).throwUnlessCan('update', subject('Message', message));
 
-    // TG.22: tin sticker không có nội dung để sửa — sửa là đổi loại tin, chặn thẳng.
     if (message.kind === 'sticker') {
       throw new BadRequestException('Sticker messages cannot be edited');
     }
 
-    // TG.25: tin GIF cũng vậy — URL chốt lúc gửi, không có nội dung để sửa.
     if (message.kind === 'gif') {
       throw new BadRequestException('Gif messages cannot be edited');
     }
 
-    // Sửa tin = parse lại mention: xoá toàn bộ hàng cũ rồi ghi lại từ nội dung mới
-    // (ADR-0043), trong cùng transaction với cập nhật tin.
     const channel = await this.prisma.channel.findUnique({
       where: { id: message.channelId },
       select: { serverId: true, type: true },
@@ -686,7 +600,6 @@ export class MessagesService {
     if (!channel) {
       throw new NotFoundException('Channel not found');
     }
-    // TG.9: DM không parse mention (MessageMention là Member-scoped) — không cần context server.
     const actor =
       channel.type === 'DM'
         ? null
@@ -698,9 +611,8 @@ export class MessagesService {
         data: { content, editedAt: new Date() },
         select: messageWithAuthor,
       });
-      // Reply ping đã ghi lúc gửi nằm trong MessageMention; sửa nội dung xoá rồi ghi lại
-      // toàn bộ nên phải dựng lại — chỉ khi tin này từng ping tác giả tin gốc. Sửa tin không
-      // phát lại `mention.created`, nên không tự thêm ping cho tin cũ chưa từng có hàng.
+      // Sửa nội dung xoá rồi ghi lại toàn bộ mention nên reply ping phải dựng lại, chỉ khi tin từng ping tác giả gốc;
+      // không phát lại `mention.created`.
       const replyTarget =
         actor === null || message.replyToId === null
           ? null
@@ -722,13 +634,12 @@ export class MessagesService {
           select: { id: true },
         })) !== null;
       await tx.messageMention.deleteMany({ where: { messageId: message.id } });
-      // DM: nội dung mới không sinh mention mới (ADR-0070 mục 7).
       const mentions =
         actor === null
           ? []
           : await resolveMentions(
               tx,
-              channel.serverId!, // nhánh server: channel.serverId luôn có (chỉ DM mới NULL)
+              channel.serverId!, // luôn có (chỉ DM mới NULL)
               actor,
               extractMentionTokens(content),
             );
@@ -775,11 +686,7 @@ export class MessagesService {
     );
   }
 
-  /**
-   * Phát `mention.created` tới từng user được mention (T4.2): user trực tiếp, member của
-   * role được nhắc, hoặc mọi member với @everyone. Chỉ người còn xem được channel nhận
-   * (kiểm ability, có cache) — không ping kẻ không được đọc. Không phát lại khi sửa tin.
-   */
+  // Chỉ người còn xem được channel mới nhận (kiểm ability): không ping kẻ không được đọc.
   private async notifyMentionedUsers(
     messageId: string,
     channelId: string,
@@ -828,25 +735,22 @@ export class MessagesService {
           });
         }
       } catch {
-        // Không còn là member giữa chừng — bỏ qua, không ping.
+        // Không còn là member giữa chừng: bỏ qua.
       }
     }
   }
 
   async remove(messageId: string, actorId: string, ability: AppAbility): Promise<{ id: string }> {
     const message = await this.getMessage(messageId);
-    // Tác giả được xóa tin của mình; ai có MANAGE_MESSAGES xóa được tin người khác.
     ForbiddenError.from(ability).throwUnlessCan('delete', subject('Message', message));
 
-    // Soft delete: moderation cần lịch sử, và client cần event message.deleted
-    // — row phải còn để biết nó từng tồn tại. Outbox ghi cùng transaction để
-    // indexer (T5.3) nhận được cả khi realtime lỗi.
+    // Soft delete: row phải còn để biết nó từng tồn tại; outbox ghi cùng transaction để indexer nhận được cả khi realtime lỗi.
     const deletedPayload = { id: message.id, channelId: message.channelId };
     if (message.authorId === actorId) {
       await this.prisma.$transaction(async (tx) => {
         await tx.message.update({
           where: { id: message.id },
-          // TG.3: tin bị xóa thì bỏ ghim luôn — trần 50 chỉ đếm tin còn sống.
+          // Tin bị xóa thì bỏ ghim: trần 50 chỉ đếm tin còn sống.
           data: { deletedAt: new Date(), pinnedAt: null, pinnedById: null },
         });
         await this.outbox.write(tx, {
@@ -857,13 +761,11 @@ export class MessagesService {
         });
       });
     } else {
-      // Xóa tin của người khác là hành động moderation: phải có AuditLog (quy tắc 11).
       const { serverId } = await this.prisma.channel.findUniqueOrThrow({
         where: { id: message.channelId },
         select: { serverId: true },
       });
-      // Chỉ channel server mới vào được nhánh này (DM không cấp `delete Message` cho người
-      // khác — defineDmAbilityFor); serverId NULL ở đây là lệch dữ liệu → fail-closed 404.
+      // Chỉ channel server vào nhánh này (DM không cấp `delete Message` cho người khác); serverId NULL là lệch dữ liệu → fail-closed 404.
       if (serverId === null) {
         throw new NotFoundException('Channel not found');
       }
@@ -899,11 +801,7 @@ export class MessagesService {
     return { id: message.id };
   }
 
-  /**
-   * Ghim tin (TG.3, ADR-0066). Idempotent như cảm xúc: tin đã ghim trả trạng thái hiện tại,
-   * không ghi audit và không phát event lần hai. Trần `Limits.PINS_PER_CHANNEL` được giữ dưới
-   * advisory lock theo channel để hai instance không cùng vượt trần.
-   */
+  // Trần `Limits.PINS_PER_CHANNEL` giữ dưới advisory lock theo channel để hai instance không cùng vượt trần.
   async pin(messageId: string, actorId: string): Promise<MessagePinResult> {
     const target = await this.pinTarget(messageId);
     const outcome = await this.prisma.$transaction(async (tx) => {
@@ -929,8 +827,7 @@ export class MessagesService {
         where: { id: messageId },
         data: { pinnedAt, pinnedById: actorId },
       });
-      // TG.9: DM không có AuditLog (serverId bắt buộc mà DM không có bối cảnh server —
-      // ADR-0070 mục Context) — ghim trong DM bỏ qua sổ, hành vi ghim giữ nguyên.
+      // DM không có AuditLog (serverId bắt buộc): ghim trong DM bỏ qua sổ.
       if (target.serverId !== null) {
         await this.audit.record(
           {
@@ -962,7 +859,6 @@ export class MessagesService {
     };
   }
 
-  /** Bỏ ghim (TG.3): idempotent — tin chưa ghim trả trạng thái hiện tại, không audit/event. */
   async unpin(messageId: string, actorId: string): Promise<MessagePinResult> {
     const target = await this.pinTarget(messageId);
     const outcome = await this.prisma.$transaction(async (tx) => {
@@ -978,7 +874,6 @@ export class MessagesService {
         where: { id: messageId },
         data: { pinnedAt: null, pinnedById: null },
       });
-      // TG.9: bỏ ghim trong DM không ghi audit (như pin — không có bối cảnh server).
       if (target.serverId !== null) {
         await this.audit.record(
           {
@@ -1003,10 +898,6 @@ export class MessagesService {
     return { messageId, channelId: target.channelId, pinnedAt: null, pinnedById: null };
   }
 
-  /**
-   * Danh sách ghim của channel (TG.3): mới ghim trước, tối đa `Limits.PINS_PER_CHANNEL` nên
-   * trả mảng thẳng (không cursor). Tin đã xóa mềm không bao giờ xuất hiện.
-   */
   async listPins(channelId: string, viewerId: string) {
     const rows = await this.prisma.message.findMany({
       where: { channelId, deletedAt: null, pinnedAt: { not: null } },
@@ -1031,8 +922,6 @@ export class MessagesService {
     }));
   }
 
-  /** Tin phải còn sống; trả channel + server để phát realtime, kiểm trần và ghi audit. TG.9:
-   *  serverId có thể NULL (DM) — audit bỏ qua ở caller, trả đủ để TypeScript bắt chỗ giả định. */
   private async pinTarget(
     messageId: string,
   ): Promise<{ id: string; channelId: string; serverId: string | null }> {
@@ -1046,10 +935,6 @@ export class MessagesService {
     return { id: message.id, channelId: message.channelId, serverId: message.channel.serverId };
   }
 
-  /**
-   * Thêm cảm xúc (TG.2, ADR-0064). Idempotent: thả lại cùng emoji trả về tổng hợp hiện tại,
-   * không tạo hàng mới và không phát event lần hai. Chặn khi tin đã có 20 loại khác nhau.
-   */
   async addReaction(
     messageId: string,
     userId: string,
@@ -1060,10 +945,8 @@ export class MessagesService {
     await this.reactionLimiter.consume(userId, message.channelId);
 
     const result = await this.prisma.$transaction(async (tx) => {
-      // Serialize all reaction writes for this message across API instances. The cap and
-      // resulting count must be computed after the preceding writer has committed.
+      // Serialize reaction writes per message across instances: cap/count must be computed after the previous writer commits.
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${messageId}))`;
-      // TG.24: token custom phải trỏ emoji còn sống của server chứa tin (kiểm trong tx).
       await this.assertCustomReactionEmoji(tx, emoji, message.serverId);
       const existing = await tx.messageReaction.groupBy({ by: ['emoji'], where: { messageId } });
       const isNew = !existing.some((row) => row.emoji === emoji);
@@ -1093,7 +976,6 @@ export class MessagesService {
     return { messageId, reactions: await this.reactionSummary(messageId, userId) };
   }
 
-  /** Gỡ cảm xúc (TG.2): idempotent, chỉ phát event khi thực sự xóa được hàng. */
   async removeReaction(
     messageId: string,
     userId: string,
@@ -1105,10 +987,8 @@ export class MessagesService {
 
     const result = await this.prisma.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${messageId}))`;
-      // TG.24: gỡ cảm xúc token custom vẫn kiểm token thuộc đúng server của tin — token lạ hoặc
-      // của server khác bị chặn thay vì xóa im lặng. Emoji ĐÃ XÓA thì vẫn cho gỡ (ADR-0081): cảm
-      // xúc của emoji đã xóa được giữ lại, nên người đã thả phải có đường gỡ; `deleteMany` dưới
-      // đây giới hạn theo `userId` của người gọi nên không đụng cảm xúc của người khác.
+      // Gỡ token custom vẫn kiểm đúng server; emoji ĐÃ XÓA vẫn cho gỡ (cảm xúc được giữ lại); `deleteMany` giới hạn theo
+      // `userId` của người gọi.
       await this.assertCustomReactionEmoji(tx, emoji, message.serverId, { allowDeleted: true });
       const deleted = await tx.messageReaction.deleteMany({ where: { messageId, userId, emoji } });
       const count = await tx.messageReaction.count({ where: { messageId, emoji } });
@@ -1127,7 +1007,6 @@ export class MessagesService {
     return { messageId, reactions: await this.reactionSummary(messageId, userId) };
   }
 
-  /** Danh sách người thả một emoji, keyset tăng dần theo id + tổng số (TG.2). */
   async reactionUsers(
     messageId: string,
     rawEmoji: string,
@@ -1157,16 +1036,11 @@ export class MessagesService {
       users: page.map((row) => row.user),
       hasMore,
       total,
-      // Keyset theo id hàng cảm xúc (không phải id user) — client phải dùng đúng cursor này.
       nextCursor: hasMore ? (page.at(-1)?.id ?? null) : null,
     };
   }
 
-  /**
-   * Hình thức cảm xúc (TG.2 + TG.24): emoji unicode trong allowlist hoặc token custom
-   * `c:<id>` (38 ký tự — vượt trần 32 của unicode nên schema có nhánh riêng). Kiểm NGỮ
-   * NGHĨA token (emoji còn sống, đúng server) ở caller qua `assertCustomReactionEmoji`.
-   */
+  // `c:<id>` dài 38 ký tự, vượt trần 32 của unicode nên schema có nhánh riêng; ngữ nghĩa kiểm ở caller qua `assertCustomReactionEmoji`.
   private parseReactionEmoji(rawEmoji: string): string {
     const parsed = reactionTokenSchema.safeParse(rawEmoji);
     if (!parsed.success) {
@@ -1178,14 +1052,7 @@ export class MessagesService {
     return parsed.data;
   }
 
-  /**
-   * TG.24: cảm xúc token `c:<id>` phải trỏ tới emoji CÒN SỐNG thuộc server chứa tin (khi THÊM;
-   * khi GỠ chỉ cần thuộc đúng server, xem `allowDeleted` và ADR-0081) —
-   * sai hình thức hay sai server đều trả cùng mã `REACTION_EMOJI_INVALID` (client hiển
-   * thị câu chung, không lộ sự tồn tại của emoji server khác). Token unicode bỏ qua.
-   * TG.9: trong DM `serverId` NULL mà emoji sống luôn thuộc một server → không emoji nào
-   * khớp → token custom trong DM bị chặn với cùng mã (khớp mục 10 của ADR-0070).
-   */
+  // Sai hình thức hay sai server đều trả cùng mã REACTION_EMOJI_INVALID (không lộ emoji server khác); trong DM mọi token custom bị chặn.
   private async assertCustomReactionEmoji(
     tx: Prisma.TransactionClient,
     emoji: string,
@@ -1194,15 +1061,13 @@ export class MessagesService {
   ): Promise<void> {
     const match = CUSTOM_EMOJI_REACTION_TOKEN.exec(emoji);
     if (!match) return;
-    // TG.9: DM (serverId NULL) — không emoji custom nào "thuộc server NULL" nên token bị
-    // chặn với cùng mã, không dò được emoji server nào qua reaction (ADR-0070 mục 10).
     if (serverId === null) {
       throw new BadRequestException({
         code: ErrorCodes.REACTION_EMOJI_INVALID,
         message: 'Emoji is not allowed',
       });
     }
-    // `allowDeleted` (chỉ dùng khi GỠ, ADR-0081): bỏ điều kiện còn sống nhưng vẫn đòi đúng server.
+    // `allowDeleted` (chỉ khi GỠ): bỏ điều kiện còn sống nhưng vẫn đòi đúng server.
     const live = await tx.customEmoji.findFirst({
       where: {
         id: match[1],
@@ -1219,7 +1084,6 @@ export class MessagesService {
     }
   }
 
-  /** Tin phải còn sống; trả channel + server để phát realtime, giới hạn tần suất và kiểm token. */
   private async reactionTarget(
     messageId: string,
   ): Promise<{ id: string; channelId: string; serverId: string | null }> {
@@ -1241,11 +1105,6 @@ export class MessagesService {
     return map.get(messageId) ?? [];
   }
 
-  /**
-   * Tổng hợp cảm xúc cho một trang tin bằng HAI truy vấn (không N+1): groupBy đếm theo
-   * (messageId, emoji) + một truy vấn lấy hàng của người xem cho cờ `me`. Sắp theo số người
-   * giảm dần rồi emoji để thứ tự ổn định giữa các client.
-   */
   private async reactionMap(
     messageIds: string[],
     viewerId: string,
@@ -1271,8 +1130,6 @@ export class MessagesService {
       set.add(row.emoji);
       mineByMessage.set(row.messageId, set);
     }
-    // ADR-0081: tên emoji tùy chỉnh để client hiện `:ten:` khi emoji đã xóa (soft-delete nên tên
-    // còn trong CSDL). Chỉ truy vấn khi trang tin có cảm xúc custom; không lọc `deletedAt`.
     const customIds = new Set<string>();
     for (const row of counts) {
       const match = CUSTOM_EMOJI_REACTION_TOKEN.exec(row.emoji);
@@ -1307,7 +1164,6 @@ export class MessagesService {
   }
 
   private async getMessage(messageId: string) {
-    // Tin đã xóa mềm coi như không còn: không sửa/xóa lại được.
     const message = await this.prisma.message.findFirst({
       where: { id: messageId, deletedAt: null },
     });

@@ -7,10 +7,6 @@ import { GifsService } from './gifs.service.js';
 import { gifSearchQuerySchema, gifTrendingQuerySchema } from './schemas.js';
 import type { GifSearchQuery, GifTrendingQuery } from './schemas.js';
 
-/**
- * Cổng GIF (TG.25, ADR-0069): backend là cổng duy nhất gọi nhà cung cấp. JWT bắt buộc,
- * KHÔNG thêm ability mới — tìm GIF không gắn server nên mọi user đăng nhập đều dùng được.
- */
 @Controller('gifs')
 @UseGuards(JwtAuthGuard)
 export class GifsController {

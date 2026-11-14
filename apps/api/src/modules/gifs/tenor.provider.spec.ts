@@ -9,7 +9,6 @@ function jsonResponse(body: unknown, status = 200): Response {
   });
 }
 
-/** Body Tenor v2 tối giản: hai kết quả, một cái thiếu biến thể `gif` để kiểm nhánh bỏ qua. */
 const tenorBody = {
   results: [
     {
@@ -25,7 +24,7 @@ const tenorBody = {
         gif: { url: 'https://media.tenor.com/def/BBBB/world.gif', dims: [640, 360] },
       },
     },
-    { id: 'broken' }, // thiếu media_formats → bị bỏ, không làm sập trang
+    { id: 'broken' },
   ],
 };
 
