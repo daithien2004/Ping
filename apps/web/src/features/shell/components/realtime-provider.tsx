@@ -29,18 +29,16 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
 function SignedInRealtime({ userId, children }: { userId: string; children: ReactNode }) {
   const [session] = useState(() => new RealtimeSession(createSocket()));
   const pathname = usePathname();
-  // Channel đang xem (nếu có): unread của kênh này do mark-read lo, không tính badge (T4.3).
-  // Kênh server và DM dùng chung `/channels/{serverId|@me}/{channelId}` (ADR-0088) nên đọc một lần.
   const activeChannelId = channelIdFromPath(pathname) ?? undefined;
   useMessageEvents(session);
   useChannelEvents(session);
   useServerEvents(session);
   useMemberPresence(session);
-  useProfileEvents(session); // TG.7: user/member/server.updated cập nhật cache hồ sơ ngay.
-  useEmojiEvents(session); // TG.24: expressions.updated invalidate emoji + sticker của server.
+  useProfileEvents(session);
+  useEmojiEvents(session);
   useUnreadEvents(session, userId, activeChannelId);
-  useDmEvents(session, userId, activeChannelId); // TG.9: badge DM qua `serverId: null`.
-  useNotificationEvents(session, userId); // TG.12: thông báo trình duyệt khi tab ẩn.
+  useDmEvents(session, userId, activeChannelId);
+  useNotificationEvents(session, userId);
   useEffect(() => {
     const typing = (event: TypingStartedPayload) => {
       if (event.userId !== userId) session.store.getState().type(event.channelId, event.userId);

@@ -3,7 +3,6 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { qk } from '@/lib/query-keys';
 import { updateProfile, type ProfileUpdated } from '../api';
 
-/** PATCH /users/me — ghi thẳng vào cache `me` để rail/popover đổi ngay không cần reload. */
 export function useUpdateProfile() {
   const queryClient = useQueryClient();
   return useMutation({

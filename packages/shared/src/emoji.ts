@@ -1,10 +1,6 @@
 import { z } from 'zod';
 
-/**
- * Allowlist emoji reaction (TG.2, ADR-0064). Danh sách sinh từ bộ picker web
- * (apps/web/src/features/emoji/data.ts); test web giữ hai bên không lệch. Chỉ emoji
- * trong danh sách này (hoặc biến thể skin tone của nó) được lưu vào DB.
- */
+/** Sinh từ picker web (apps/web/src/features/emoji/data.ts); test web giữ hai bên đồng bộ. */
 const BASE_EMOJI = new Set([
   '😁',
   '😀',
@@ -286,12 +282,10 @@ const BASE_EMOJI = new Set([
 
 const SKIN_TONES = new Set(['\u{1F3FB}', '\u{1F3FC}', '\u{1F3FD}', '\u{1F3FE}', '\u{1F3FF}']);
 
-/** Emoji có trong allowlist (kể cả một modifier skin tone). */
 export function isAllowedReactionEmoji(value: string): boolean {
   if (BASE_EMOJI.has(value)) return true;
   const chars = [...value];
   const last = chars.at(-1);
-  // Base có thể nhiều codepoint (ZWJ, variation selector); chỉ cho đúng MỘT modifier da ở cuối.
   return (
     chars.length > 1 &&
     last !== undefined &&
@@ -300,18 +294,13 @@ export function isAllowedReactionEmoji(value: string): boolean {
   );
 }
 
-/** Schema tham số đường dẫn `:emoji`: từ chối văn bản thường, HTML, chuỗi quá dài. */
 export const reactionEmojiSchema = z
   .string()
   .min(1)
   .max(32)
   .refine(isAllowedReactionEmoji, { message: 'Emoji is not allowed' });
 
-/**
- * TG.24 (ADR-0068): emoji tùy chỉnh trong reaction lưu token `c:<customEmojiId>` (38 ký tự,
- * vượt trần 32 của unicode — schema riêng cho token này; API kiểm tiếp emoji thuộc server của
- * tin và chưa xóa, schema chỉ chặn HÌNH THỨC).
- */
+/** Token `c:<customEmojiId>` (38 ký tự) vượt trần 32 của unicode; schema chỉ kiểm hình thức. */
 export const CUSTOM_EMOJI_REACTION_TOKEN =
   /^c:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/;
 

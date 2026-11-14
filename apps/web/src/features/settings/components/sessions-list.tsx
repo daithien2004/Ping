@@ -9,11 +9,6 @@ import { pingToast } from '@/components/ui/ping-toast';
 import { useRevokeOtherSessions, useRevokeSession, useSessions } from '@/features/auth/hooks';
 import { useErrorMessage } from '@/lib/error-message';
 
-/**
- * Phiên đăng nhập (TG.8): GET /users/me/sessions — mỗi dòng là một refresh token đang sống
- * (thiết bị tóm tắt từ User-Agent ở server). Dòng của phiên đang mở trang đánh dấu «Phiên này»
- * và không cho thu hồi chính nó. Thu hồi xong hook tự invalidate → danh sách tươi lại ngay.
- */
 export function SessionsList() {
   const t = useTranslations('settings.account');
   const tc = useTranslations('common');

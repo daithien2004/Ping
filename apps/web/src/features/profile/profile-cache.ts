@@ -3,12 +3,6 @@ import type { InfiniteData } from '@tanstack/react-query';
 import type { MemberDto, MemberPage, ServerDetail, ServerSummary } from '@ping/shared';
 import type { MembersCache } from '@/features/members/member-cache';
 
-/**
- * Biến đổi cache thuần cho TG.7 (đi kèm test): profile-cache là hàm thuần, component không
- * gọi queryClient trực tiếp — hooks gọi qua đây.
- */
-
-/** user.updated: cập nhật user lồng trong từng member (panel thành viên, drawer quản trị). */
 export function applyUserUpdatedToMembers(
   cache: MembersCache | undefined,
   user: UserUpdatedPayload,
@@ -38,7 +32,6 @@ export function applyUserUpdatedToMembers(
   return changed ? { ...cache, pages } : cache;
 }
 
-/** member.updated: biệt danh của một thành viên vừa đổi ở server này. */
 export function applyMemberUpdated(
   cache: MembersCache | undefined,
   payload: MemberUpdatedPayload,
@@ -65,7 +58,6 @@ export function applyMemberUpdated(
   return changed ? { ...cache, pages } : cache;
 }
 
-/** server.updated: tên/icon server đổi — cập nhật chi tiết và hàng trong danh sách rail. */
 export function applyServerUpdated(
   detail: ServerDetail | undefined,
   list: ServerSummary[] | undefined,
@@ -82,7 +74,6 @@ export function applyServerUpdated(
   };
 }
 
-/** Đưa thông tin user.updated vào đúng hàng member (dùng khi trả lời event ở ngoài cache members). */
 export function memberWithUser(member: MemberDto, user: UserUpdatedPayload): MemberDto {
   return {
     ...member,
@@ -95,5 +86,4 @@ export function memberWithUser(member: MemberDto, user: UserUpdatedPayload): Mem
   };
 }
 
-/** Kiểu trang members chỉ để tái sử dụng trong map của applyMemberUpdated khi cần dựng trang mới. */
 export type MemberPageRef = InfiniteData<MemberPage, string | undefined>;

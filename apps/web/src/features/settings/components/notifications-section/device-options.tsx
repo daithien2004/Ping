@@ -8,10 +8,9 @@ import {
   writeSoundEnabled,
 } from '@/features/notifications/notify-storage';
 
-/** Hai toggle cài đặt THIẾT BỊ gom từ chuông kênh/popover TG.12 về trang cài đặt. */
 export function DeviceOptions() {
   const t = useTranslations('settings.notifications');
-  // localStorage chỉ đọc ở client — khởi tạo qua lazy initializer (component này chỉ client).
+  // localStorage chỉ đọc ở client: khởi tạo qua lazy initializer.
   const [ignoreEveryone, setIgnoreEveryone] = useState(readIgnoreEveryone);
   const [sound, setSound] = useState(readSoundEnabled);
   return (

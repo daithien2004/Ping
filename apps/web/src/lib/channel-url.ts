@@ -19,11 +19,6 @@ export function messageUrl(owner: string, channelId: string, messageId: string):
   return `${channelUrl(owner, channelId)}/${messageId}`;
 }
 
-/**
- * serverId đang mở. Nhận cả `/channels/:owner/...` (URL công khai) lẫn `/servers/:id/...`
- * (route nội bộ còn sống: trang chủ server, cài đặt server) để rail và quick switcher không mất
- * trạng thái khi người dùng đang ở cài đặt.
- */
 export function serverIdFromPath(pathname: string): string | null {
   const owner = /^\/(?:channels|servers)\/([^/]+)/.exec(pathname)?.[1];
   return owner && owner !== ME_SEGMENT ? owner : null;

@@ -7,9 +7,5 @@ import { api } from '@/lib/api-client';
  */
 export const listAllUnread = () => api.get<ServerUnreadDto[]>('/users/me/unread');
 
-/**
- * PUT /channels/:channelId/read — đánh dấu đã đọc đến `messageId` (T4.2). 204, không body;
- * server chỉ tiến cursor và tự phát `read.updated` tới các tab khác.
- */
 export const markChannelRead = (channelId: string, messageId: string) =>
   api.put<void>(`/channels/${channelId}/read`, { messageId });

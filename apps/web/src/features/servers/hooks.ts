@@ -19,7 +19,6 @@ import { ApiError } from '@/lib/api-client';
 import { serverIdFromPath } from '@/lib/channel-url';
 import { createServer, getServer, joinServer, leaveServer, listServers, updateServer } from './api';
 
-/** Chỉ dùng dưới AuthGate (đã giới hạn trong trình duyệt). */
 export function useServers() {
   return useSuspenseQuery({ queryKey: qk.servers, queryFn: listServers });
 }
@@ -28,10 +27,6 @@ export function useServer(serverId: string) {
   return useSuspenseQuery({ queryKey: qk.server(serverId), queryFn: () => getServer(serverId) });
 }
 
-/**
- * Đổi tên/icon server (T3.1, TG.7). Ghi thẳng tên/icon mới vào cache chi tiết + danh sách
- * server để rail và sidebar đổi ngay, không phải gọi lại API.
- */
 export function useUpdateServer(serverId: string) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -80,7 +75,6 @@ export function useLeaveServer() {
     onSuccess: (_result, serverId) => {
       // Key xếp theo cây: xóa qk.server(id) là xóa luôn channels/members/permissions của nó.
       queryClient.removeQueries({ queryKey: qk.server(serverId) });
-      // ADR-0077: unread gộp phải bỏ server vừa rời.
       void queryClient.invalidateQueries({ queryKey: qk.unreadAll });
       return queryClient.invalidateQueries({ queryKey: qk.servers, exact: true });
     },
@@ -107,7 +101,6 @@ export function useServerEvents(session: RealtimeSession) {
       old?.filter((server) => server.id !== serverId),
     );
     if (serverIdFromPath(pathname) === serverId) router.replace('/servers');
-    // ADR-0077: bị kick khỏi server — unread gộp không được còn server đó.
     void queryClient.invalidateQueries({ queryKey: qk.unreadAll });
     void queryClient.invalidateQueries({ queryKey: qk.servers, exact: true });
   });
@@ -143,8 +136,7 @@ export function useServerEvents(session: RealtimeSession) {
       onServerEvent(session.socket, ServerEvents.MemberRemoved, removed),
       onServerEvent(session.socket, ServerEvents.PermissionsChanged, permissions),
     ];
-    // 'connect' là sự kiện gốc của socket.io (vòng đời kết nối), không thuộc `ServerToClientEvents`
-    // nên không qua được `onServerEvent` — vẫn on/off tay.
+    // 'connect' là sự kiện gốc của socket.io, không qua được `onServerEvent` nên on/off tay.
     session.socket.on('connect', connected);
     return () => {
       listening = false;

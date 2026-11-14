@@ -11,10 +11,6 @@ export interface SearchFiltersInput {
   since?: string;
 }
 
-/**
- * Kết quả tìm kiếm theo trang cursor (T4.6). filters nằm trong query key nên đổi filter là
- * query mới. Không suspense: dialog tự hiện trạng thái tải/rỗng/lỗi.
- */
 export function useSearch(serverId: string, filters: SearchFiltersInput, enabled: boolean) {
   return useInfiniteQuery({
     queryKey: [

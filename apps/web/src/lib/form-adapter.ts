@@ -11,10 +11,8 @@ export interface PingFormRule {
   validator: (rule: unknown, value: unknown) => Promise<void>;
 }
 
-/** Map: tên field → danh sách luật validate. */
 export type PingFormRules = Record<string, PingFormRule[]>;
 
-/** Tên các field của schema `z.object` (rỗng nếu schema không phải object). */
 export function zodFieldNames(schema: z.ZodType): string[] {
   const shape = (schema as { shape?: unknown }).shape;
   return shape && typeof shape === 'object' ? Object.keys(shape) : [];
@@ -49,7 +47,6 @@ export function zodFormRules(
   return rules;
 }
 
-/** Lỗi đầu tiên của một field (dùng khi cần hiển thị ngoài `PingForm`). */
 export function zodFieldErrors(
   schema: z.ZodType,
   values: Record<string, unknown>,

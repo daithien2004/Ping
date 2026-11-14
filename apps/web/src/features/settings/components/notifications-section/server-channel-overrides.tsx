@@ -9,7 +9,6 @@ import { useErrorMessage } from '@/lib/error-message';
 import { useServerChannels } from '../../hooks';
 import { LevelControl } from './level-control';
 
-/** Các dòng ghi đè theo kênh của MỘT server — tên kênh resolve qua cache channels dùng chung. */
 export function ServerChannelOverrides({
   serverId,
   serverName,

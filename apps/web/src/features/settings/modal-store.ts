@@ -3,10 +3,6 @@ import { create } from 'zustand';
 export type SettingsSectionKey =
   'account' | 'appearance' | 'language' | 'notifications' | 'privacy' | 'shortcuts';
 
-/**
- * Cài đặt cá nhân kiểu Discord: mở modal từ panel người dùng, URL đứng yên (không có route
- * /settings/...). Nơi khác chỉ cần gọi `openSettings(section)`.
- */
 export const useSettingsModal = create<{
   open: boolean;
   section: SettingsSectionKey;

@@ -26,7 +26,6 @@ export function SearchModal({ serverId, onClose }: { serverId: string; onClose: 
   const tc = useTranslations('common');
   // Dialog đã mở mới mount ô nhập: đưa con trỏ vào bằng focus() thay vì autoFocus (ADR-0029).
   // Callback ref vì antd mount nội dung modal qua Portal ở commit sau (ref object còn null
-  // lúc effect chạy); hàm ổn định để không nhận lại ref mỗi lần render.
   const focusInput = useCallback((element: PingInputRef | null) => {
     element?.focus();
   }, []);
@@ -35,8 +34,6 @@ export function SearchModal({ serverId, onClose }: { serverId: string; onClose: 
   const [q, setQ] = useState('');
   const [channelId, setChannelId] = useState('');
   const [authorId, setAuthorId] = useState('');
-  // Lựa chọn thời gian: days để hiển thị select, since là ISO tính NGAY trong handler
-  // (event handler được phép gọi Date.now; render thì không — react-hooks/purity).
   const [timeFilter, setTimeFilter] = useState<{ days: string; since?: string }>({ days: '' });
   const onTimeChange = (days: string) =>
     setTimeFilter({

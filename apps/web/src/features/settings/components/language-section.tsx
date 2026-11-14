@@ -9,12 +9,7 @@ import { useErrorMessage } from '@/lib/error-message';
 import { usePatchSettings } from '../hooks';
 import { SettingsSection } from './settings-section';
 
-/**
- * Ngôn ngữ (TG.13): lựa chọn lưu lên server (đồng bộ thiết bị) VÀ ghi cookie hiện có của
- * i18n rồi tải lại trang — Next server components đọc cookie để dịch, không reload thì
- * chữ không đổi. PATCH xong mới reload: lỗi lưu thì giữ nguyên trang, không nhảy ngôn ngữ.
- * Bản dịch hiển thị tên ngôn ngữ bằng chính ngôn ngữ đó (kiểu phổ biến của app chat).
- */
+/** PATCH xong mới reload (lỗi lưu thì giữ trang); reload vì Next server components đọc cookie locale. */
 const NATIVE_NAMES: Record<AppLocale, string> = { vi: 'Tiếng Việt', en: 'English' };
 
 export function LanguageSection() {

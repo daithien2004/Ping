@@ -8,11 +8,6 @@ import { pingToast } from '@/components/ui/ping-toast';
 import { useMe, useResendVerification } from '@/features/auth/hooks';
 import { useErrorMessage } from '@/lib/error-message';
 
-/**
- * Email + trạng thái xác minh (TG.8): badge xanh khi đã xác minh; chưa xác minh thì hiện nút
- * gửi lại thư (POST /auth/verify-email/resend, rate limit theo email + IP ở API). Người dùng
- * chưa xác minh vẫn đăng nhập bình thường, chỉ bị chặn tạo server/mã mời (VERIFY_REQUIRED).
- */
 export function EmailVerificationRow() {
   const t = useTranslations('settings.account');
   const errorMessage = useErrorMessage();

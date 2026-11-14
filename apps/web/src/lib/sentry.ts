@@ -37,7 +37,6 @@ export async function initSentryBrowser(dsn: string | undefined): Promise<boolea
   return true;
 }
 
-/** Gửi lỗi kèm mã tham chiếu (requestId/digest). Không làm gì khi Sentry chưa bật. */
 export function captureBrowserError(error: unknown, context: Record<string, unknown> = {}): void {
   if (!sentry) return;
   const requestId = errorReference(error);

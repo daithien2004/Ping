@@ -12,7 +12,6 @@ import { findPref } from '@/features/notifications/notification-cache';
 import { useErrorMessage } from '@/lib/error-message';
 import { LevelControl } from './level-control';
 
-/** Một dòng mức theo server: chưa có dòng prefs là đang theo mặc định chung (all). */
 export function ServerLevelRow({ server }: { server: ServerSummary }) {
   const t = useTranslations('settings.notifications');
   const errorMessage = useErrorMessage();

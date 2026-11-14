@@ -21,32 +21,21 @@ export const qk = {
   unreadAll: ['unread', 'all'] as const,
   search: (serverId: string) => ['servers', serverId, 'search'] as const,
   messages: (channelId: string) => ['channels', channelId, 'messages'] as const,
-  /** TG.2: danh sách người thả một emoji trên một tin (phân trang keyset). */
   reactionUsers: (messageId: string, emoji: string) =>
     ['messages', messageId, 'reactions', emoji] as const,
-  /** TG.3: danh sách tin đã ghim của một channel (trần 50, không phân trang). */
   pins: (channelId: string) => ['channels', channelId, 'pins'] as const,
-  /** TG.22: gói sticker (hệ thống + của server) cho picker và màn quản trị. */
   stickers: (serverId: string) => ['servers', serverId, 'stickers'] as const,
-  /** TG.24: emoji tùy chỉnh của server — picker, render tin/reaction và màn quản trị dùng chung. */
   emojis: (serverId: string) => ['servers', serverId, 'emojis'] as const,
-  /** TG.25: tìm GIF qua cổng backend (key theo truy vấn đã trim/lowercase, không gọi nhà cung cấp trực tiếp). */
   gifSearch: (query: string) => ['gifs', 'search', query] as const,
-  /** TG.25: GIF thịnh hành cho tab GIF khi chưa gõ gì (cache chung cho mọi channel). */
   gifTrending: ['gifs', 'trending'] as const,
   /**
    * TG.9: danh sách DM của người gọi (GET /dms) — key phẳng vì DM không thuộc server nào.
    * Tin trong DM vẫn dùng `qk.messages(channelId)` như channel thường (ADR-0070 mục 8).
    */
   dms: ['dms'] as const,
-  /** TG.12: prefs thông báo của chính người gọi (một bản cho mọi server/channel, key phẳng). */
   notificationPrefs: ['notification-prefs'] as const,
-  /** TG.13: cài đặt người dùng lưu server (theme/density/fontSize/locale) — key phẳng. */
   settings: ['settings'] as const,
-  /** TG.13: danh sách người tôi đã chặn (GET /users/me/blocks) — key phẳng. */
   blockedUsers: ['blocked-users'] as const,
-  /** TG.13: mức nhận DM của chính người gọi (GET /users/me/privacy) — key phẳng. */
   privacy: ['privacy'] as const,
-  /** TG.8: danh sách phiên đăng nhập của chính người gọi (GET /users/me/sessions) — key phẳng. */
   sessions: ['sessions'] as const,
 };

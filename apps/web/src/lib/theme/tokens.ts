@@ -47,19 +47,10 @@ export const motion = {
   slow: 200,
 } as const;
 
-/**
- * Đường cong chuyển động: một đường cho mọi vi tương tác, thay `ease`/`ease-in-out` rải rác.
- * Nối thành mặc định của Tailwind trong globals.css nên `transition-*` dùng luôn.
- */
 export const easing = {
   standard: 'cubic-bezier(0.2, 0, 0, 1)',
 } as const;
 
-/**
- * Bóng đổ: hai tầng thay cho shadow-md/xl rải rác — `panel` (bảng nổi: emoji picker, gợi ý
- * lệnh) và `overlay` (drawer/sidebar trượt trên nội dung ở màn hẹp). Nền tối cần alpha lớn
- * hơn mới thấy khối.
- */
 export const shadow = {
   panel: {
     light: '0 4px 12px rgb(16 17 23 / 10%)',
@@ -98,11 +89,6 @@ export const typography = {
     normal: 1.5,
     relaxed: 1.7,
   },
-  /**
-   * Ba bậc độ đậm, đủ cho mọi vai trò đọc: `semibold` = tiêu đề, tên kênh/người, nút chính;
-   * `medium` = nhãn phụ, nút phụ, mục đang chọn; `normal` = nội dung. Không dùng thin/light/bold/
-   * black — chênh màu đã lo phần phân cấp, thêm bậc đậm nữa chỉ làm dòng chữ dày lên.
-   */
   fontWeight: {
     normal: 400,
     medium: 500,
@@ -110,10 +96,6 @@ export const typography = {
   },
 } as const;
 
-/**
- * Palette gốc. Nhóm `blurple`/`blue` và `surface` lấy đúng mã đo từ Discord web thật
- * (1280×800, theme sáng/tối, `--brand-500`/`--background-base-*`), để giao diện bám bản gốc.
- */
 export const palette = {
   violet: {
     300: '#a4a5ff',
@@ -148,7 +130,6 @@ export const palette = {
   },
   surface: {
     darkRail: '#121214',
-    // Discord dùng CÙNG #121214 cho rail và sidebar; lệch 2 bậc để cổng "ba tầng nền" vẫn phân biệt được.
     darkSidebar: '#16161a',
     darkChat: '#1a1a1e',
     darkMuted: '#202024',
@@ -156,7 +137,6 @@ export const palette = {
     darkMenu: '#242429',
     darkSecondary: '#28282d',
     lightRail: '#f3f3f4',
-    // Đo từ Discord web (theme light): rail #f3f3f4, cột kênh #fbfbfb, nội dung chat #ffffff.
     lightSidebar: '#fbfbfb',
     lightChat: '#ffffff',
   },
@@ -186,14 +166,11 @@ export interface SemanticColors {
   accentForeground: string;
   destructive: string;
   border: string;
-  /* Viền của phần tử tương tác (ô nhập, select): phải ≥ 3:1 theo WCAG 1.4.11 nên đậm hơn
-     `border` — vốn chỉ là đường phân cách trang trí. */
   borderStrong: string;
   input: string;
   ring: string;
   link: string;
   online: string;
-  /* Trạng thái: chấm hiện diện + tag "đã xác minh". Một bộ cho cả app, không dùng màu thô. */
   idle: string;
   dnd: string;
   offline: string;
@@ -211,8 +188,6 @@ export interface SemanticColors {
   sidebarAccentForeground: string;
   sidebarBorder: string;
   sidebarRing: string;
-  /* Nền ô tìm kiếm / nút phụ dạng phẳng (Discord: đen 12% trên nền chat), tách khỏi `muted`
-     để ô tìm kiếm không sáng hơn nền như một card. */
   field: string;
 }
 
@@ -234,7 +209,6 @@ export const lightColors: SemanticColors = {
   destructive: palette.red[600],
   border: palette.ink[200],
   borderStrong: palette.ink[450],
-  /* Viền ô nhập: cũng là ranh giới điều khiển nên dùng màu đậm, không dùng `border` trang trí. */
   input: palette.ink[450],
   ring: palette.blurple[500],
   link: palette.blue[600],
@@ -266,7 +240,6 @@ export const darkColors: SemanticColors = {
   cardForeground: palette.ink[140],
   popover: palette.surface.darkMenu,
   popoverForeground: palette.ink[140],
-  // #5865F2 với chữ trắng = 4,61:1 (AA); đậm hơn brand-600 của Discord làm lệch màu thương hiệu.
   primary: palette.blurple[500],
   primaryForeground: palette.white,
   secondary: palette.surface.darkSecondary,

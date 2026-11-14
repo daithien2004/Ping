@@ -22,10 +22,8 @@ function makeQueryClient(): QueryClient {
     defaultOptions: {
       queries: {
         // Dữ liệu ít đổi ngoài realtime (server, channel, quyền): dùng lại 30s rồi mới refetch.
-        // Tin nhắn mới đến qua socket và được ghi thẳng vào cache, không chờ refetch.
         staleTime: 30_000,
         // Như Discord: quay lại tab không tải lại gì. Mọi dữ liệu đều có đường cập nhật realtime
-        // hoặc invalidate theo hành động; đứt kết nối thật thì `refetchOnReconnect` lo.
         refetchOnWindowFocus: false,
         retry: shouldRetryRequest,
       },
@@ -50,14 +48,6 @@ export function clearSessionQueries(queryClient: QueryClient) {
 
 let browserQueryClient: QueryClient | undefined;
 
-/**
- * Mẫu từ tài liệu Next 16 (client-side-data-fetching/tanstack-query.md): mỗi lần render
- * trên server tạo client mới (không rò dữ liệu giữa các request), trình duyệt dùng chung một
- * client để cache sống qua các lần render và chuyển trang.
- *
- * Trình duyệt: nạp cache khung đã lưu (query-persist) ngay khi tạo client — F5 là rail/sidebar
- * có dữ liệu trước khi mạng trả lời — rồi bật ghi lại mỗi khi cache khung đổi.
- */
 export function getQueryClient(): QueryClient {
   if (typeof window === 'undefined') {
     return makeQueryClient();
@@ -66,8 +56,6 @@ export function getQueryClient(): QueryClient {
     browserQueryClient = makeQueryClient();
     const signedIn = hydratePersistedQueries(browserQueryClient);
     startPersistingQueries(browserQueryClient);
-    // Cache khung có `me` ⇒ tab này từng đăng nhập nhưng access token đã mất theo lần tải
-    // trang. Khôi phục ngay để các query mount kế tiếp chờ token (xem `restoreSession`).
     // Lỗi mạng/429 để request đi tiếp như cũ — không chặn app vì một lần khôi phục hỏng.
     if (signedIn) void restoreSession().catch(() => undefined);
   }

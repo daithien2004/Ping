@@ -16,18 +16,12 @@ const envSchema = z.object({
 });
 
 export const env = envSchema.parse({
-  // Dev chạy được ngay không cần file .env; bản production thiếu biến này thì parse lỗi.
   NEXT_PUBLIC_API_URL:
     process.env.NEXT_PUBLIC_API_URL ??
     (process.env.NODE_ENV === 'production' ? undefined : 'http://localhost:4000'),
   NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
 });
 
-/** Gốc của REST API (prefix /api/v1 cố định phía server). */
 export const apiBaseUrl = `${env.NEXT_PUBLIC_API_URL}/api/v1`;
 
-/**
- * True khi build production. Next thay sẵn `process.env.NODE_ENV` lúc build nên chỉ có
- * `lib/env.ts` được đọc biến môi trường (lint chặn `process.env` ở nơi khác).
- */
 export const isProduction = process.env.NODE_ENV === 'production';

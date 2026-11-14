@@ -5,7 +5,6 @@ import { createRealtimeStore } from './store';
 import { TYPING_INTERVAL_MS } from './typing-state';
 
 interface Room {
-  /** TG.9: phòng DM không thuộc server — `null` để `revoke`/`rejoin` theo server không đụng tới. */
   serverId: string | null;
   channelId: string;
   synced: () => void;
@@ -16,7 +15,6 @@ interface Room {
   retry?: ReturnType<typeof setTimeout>;
 }
 
-/** One instance per signed-in UI. No message/server data is stored here. */
 export class RealtimeSession {
   readonly store = createRealtimeStore();
   private running = false;
