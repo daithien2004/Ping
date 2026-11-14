@@ -1,9 +1,9 @@
 import { test, expect } from '@playwright/test';
-import AxeBuilder from '@axe-core/playwright';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
 import type { ServerDetail } from '@ping/shared';
+import { scan } from './axe';
 import { pacedLogin } from './login-pace';
 
 const API = 'http://localhost:4000/api/v1';
@@ -88,30 +88,9 @@ test('attachments: select, cancel, reject fake file, send image, preview, realti
       .toBeGreaterThan(0);
     await page.getByRole('button', { name: 'Xem trước demo.png' }).click();
     await expect(page.getByRole('dialog')).toBeVisible();
-    const dialog = page.getByRole('dialog');
-    const container = page.locator('.ant-modal-container');
-    const settle = async (scheme: 'dark' | 'light') => {
-      const before = await container.evaluate((el) => getComputedStyle(el).backgroundColor);
-      // Chế độ 'system' (mặc định) đổi màu qua matchMedia + re-render của antd, không phải
-      // class `dark`; chờ tới khi nền modal thật sự đổi rồi mới đo.
-      await page.emulateMedia({ colorScheme: scheme });
-      await expect
-        .poll(() => container.evaluate((el) => getComputedStyle(el).backgroundColor))
-        .not.toBe(before);
-      // Axe đo giữa animation mở modal thấy màu đã trộn với overlay (opacity < 1) và báo
-      // thiếu tương phản giả; chờ animation hữu hạn chạy xong (bỏ qua pulse vô hạn).
-      await dialog.evaluate(async (el) => {
-        const finite = el
-          .getAnimations({ subtree: true })
-          .filter((a) => a.effect?.getComputedTiming().iterations !== Infinity);
-        await Promise.all(finite.map((a) => a.finished.catch(() => undefined)));
-      });
-    };
     for (const scheme of ['dark', 'light'] as const) {
-      await settle(scheme);
-      expect(
-        (await new AxeBuilder({ page }).include('[role="dialog"]').analyze()).violations,
-      ).toEqual([]);
+      await page.emulateMedia({ colorScheme: scheme });
+      await scan(page, `lightbox ${scheme}`, '[role="dialog"]');
     }
     await page.screenshot({
       path: resolve(__dirname, '../../../docs/v0.2.0/evidence/TG.6/lightbox.png'),

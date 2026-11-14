@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
-import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 import type { MessageDto, ServerDetail } from '@ping/shared';
+import { scan } from './axe';
 import { pacedLogin } from './login-pace';
 
 const API = 'http://localhost:4000/api/v1';
@@ -75,16 +75,7 @@ test('pins: pin from menu, panel, realtime and unpin', async ({ browser }) => {
       await expect(panel).toContainText('tin sẽ được ghim');
       for (const colorScheme of ['light', 'dark'] as const) {
         await page.emulateMedia({ colorScheme });
-        await page.waitForFunction(() =>
-          document
-            .getAnimations()
-            .every((animation) => animation.effect?.getComputedTiming().iterations === Infinity),
-        );
-        const { violations } = await new AxeBuilder({ page })
-          .include('[data-testid="pinned-panel"]')
-          .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
-          .analyze();
-        expect(violations).toEqual([]);
+        await scan(page, `pinned panel ${colorScheme}`, '[data-testid="pinned-panel"]');
       }
     });
 

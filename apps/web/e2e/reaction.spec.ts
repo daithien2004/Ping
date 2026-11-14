@@ -1,6 +1,5 @@
 import { randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
-import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 import type { MessageDto, ServerDetail } from '@ping/shared';
 import { scan } from './axe';
@@ -81,16 +80,11 @@ test('reactions: pick, toggle, reactor list and realtime from another member', a
     await test.step('reaction controls pass axe in light and dark themes', async () => {
       for (const colorScheme of ['light', 'dark'] as const) {
         await page.emulateMedia({ colorScheme });
-        await page.waitForFunction(() =>
-          document
-            .getAnimations()
-            .every((animation) => animation.effect?.getComputedTiming().iterations === Infinity),
+        await scan(
+          page,
+          `reaction controls ${colorScheme}`,
+          `article[data-message-id="${message.id}"]`,
         );
-        const { violations } = await new AxeBuilder({ page })
-          .include(`article[data-message-id="${message.id}"]`)
-          .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
-          .analyze();
-        expect(violations).toEqual([]);
         await page.screenshot({
           path: resolve(`../../docs/v0.2.0/evidence/TG.2/screens/reactions-${colorScheme}.png`),
         });

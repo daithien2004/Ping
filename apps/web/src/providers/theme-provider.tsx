@@ -28,15 +28,18 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     return () => mql.removeEventListener('change', handler);
   }, []);
 
+  const mode: ThemeMode = theme === 'system' ? (osDark ? 'dark' : 'light') : theme;
+  const themeConfig = useMemo(() => buildAntdTheme(mode), [mode]);
+
   useEffect(() => {
     const root = document.documentElement;
     root.setAttribute('data-theme', theme);
     root.setAttribute('data-density', density);
     root.setAttribute('data-font', fontSize);
-  }, [theme, density, fontSize]);
-
-  const mode: ThemeMode = theme === 'system' ? (osDark ? 'dark' : 'light') : theme;
-  const themeConfig = useMemo(() => buildAntdTheme(mode), [mode]);
+    // Chế độ màu đã áp thật (sau khi 'system' đọc prefers-color-scheme): e2e chờ thuộc tính
+    // này trước khi đo màu, tránh quét giữa lúc antd còn đang đổi bảng màu.
+    root.setAttribute('data-theme-mode', mode);
+  }, [theme, density, fontSize, mode]);
 
   return (
     <ConfigProvider theme={themeConfig} locale={locale === 'en' ? enUS : viVN}>

@@ -18,7 +18,15 @@ async function settleAnimations(page: Page) {
 
 /** SSR luôn dựng bảng màu sáng; quét trước khi `<html data-theme>` xuất hiện sẽ báo color-contrast giả. */
 async function settleTheme(page: Page) {
-  await page.waitForFunction(() => document.documentElement.hasAttribute('data-theme'));
+  await page.waitForFunction(() => {
+    const root = document.documentElement;
+    if (!root.hasAttribute('data-theme')) return false;
+    // `emulateMedia` đổi prefers-color-scheme, nhưng antd dựng lại bảng màu ở nhịp React sau
+    // đó; chờ `data-theme-mode` (chế độ đã áp) khớp trước khi đo màu.
+    if (root.getAttribute('data-theme') !== 'system') return true;
+    const mode = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    return root.getAttribute('data-theme-mode') === mode;
+  });
 }
 
 export async function scan(page: Page, what: string, only?: string) {
