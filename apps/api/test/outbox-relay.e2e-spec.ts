@@ -20,10 +20,6 @@ async function waitFor(predicate: () => Promise<boolean>, timeoutMs: number): Pr
   throw new Error(`waitFor timed out after ${timeoutMs}ms`);
 }
 
-/**
- * Relay outbox chạy ở mọi process (API và worker cùng nạp EventsModule). Hai relay không được
- * phát trùng một event, và event đã vượt số lần thử không được phát lại vô hạn.
- */
 describe('Outbox relay (e2e)', () => {
   let first: INestApplication;
   let second: INestApplication;

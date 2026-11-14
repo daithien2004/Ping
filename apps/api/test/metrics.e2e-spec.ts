@@ -8,8 +8,6 @@ import { MetricsService } from '../src/infra/metrics/metrics.service.js';
 import { RedisProvider } from '../src/infra/redis/redis.module.js';
 import { bootApp } from './helpers/boot.js';
 
-// H5 (ADR-0031): GET /metrics ở cổng RIÊNG, nhãn route theo mẫu (không theo URL thật), số kết nối
-// socket, và trạng thái Postgres/Redis lấy lúc scrape.
 async function scrape(app: INestApplication, port: number): Promise<string> {
   void app;
   const res = await fetch(`http://127.0.0.1:${port}/metrics`);
@@ -62,7 +60,7 @@ describe('metrics (e2e)', () => {
       ),
     ).toMatch(/ 2$/);
     expect(text).toContain('route="unmatched"');
-    expect(text).not.toMatch(/route="[^"]*[0-9a-f]{8}-[0-9a-f]{4}-/); // không URL thật trong nhãn
+    expect(text).not.toMatch(/route="[^"]*[0-9a-f]{8}-[0-9a-f]{4}-/);
   });
 
   it('reports open websocket connections and goes back to 0', async () => {
@@ -139,7 +137,7 @@ describe('metrics (e2e)', () => {
     const text = await scrape(app, port);
     expect(line(text, 'dependency_up{name="postgres"}')).toMatch(/ 1$/);
     expect(line(text, 'dependency_up{name="redis"}')).toMatch(/ 1$/);
-    expect(text).toContain('nodejs_eventloop_lag_seconds'); // metrics mặc định của Node
+    expect(text).toContain('nodejs_eventloop_lag_seconds');
   });
 });
 

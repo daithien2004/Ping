@@ -5,10 +5,6 @@ import { pacedLogin } from './login-pace';
 
 const API = 'http://localhost:4000/api/v1';
 
-/**
- * TG.1: reply qua UI — nút "Trả lời" trong cụm thao tác nổi, thanh reply trong composer, khối
- * trích dẫn ở tin trả lời, bấm để nhảy tới tin gốc, hủy reply, và tin gốc bị xóa hiển thị "đã bị xóa".
- */
 test('reply: composer bar, quote block, jump to original, cancel, deleted original', async ({
   browser,
 }) => {
@@ -41,7 +37,6 @@ test('reply: composer bar, quote block, jump to original, cancel, deleted origin
     };
 
     await send('tin gốc để trả lời');
-    // Chờ server xác nhận (id thật thay cho `temp-<nonce>` của tin optimistic).
     await expect
       .poll(async () => articles.last().getAttribute('data-message-id'))
       .not.toMatch(/^temp-/);
@@ -63,7 +58,6 @@ test('reply: composer bar, quote block, jump to original, cancel, deleted origin
       const preview = reply.getByTestId('reply-preview');
       await expect(preview).toBeVisible();
       await expect(preview).toContainText('tin gốc để trả lời');
-      // Server trả preview thật (không chỉ optimistic): tải lại vẫn còn khối trích dẫn.
       await page.reload();
       await expect(articles.last().getByTestId('reply-preview')).toContainText(
         'tin gốc để trả lời',

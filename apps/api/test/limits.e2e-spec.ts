@@ -7,10 +7,6 @@ import { PrismaService } from '../src/infra/prisma/prisma.service.js';
 import { RedisProvider } from '../src/infra/redis/redis.module.js';
 import { bootApp } from './helpers/boot.js';
 
-/**
- * Trần số lượng (ADR-0028). Đưa DB gần sát trần bằng Prisma (200 request qua API sẽ chạm rate
- * limit), rồi kiểm tra ở ranh giới: lần cuối còn được, lần kế tiếp bị từ chối.
- */
 const runId = Date.now().toString(36);
 
 describe('limits (e2e)', () => {
@@ -115,8 +111,6 @@ describe('limits (e2e)', () => {
     await call('post', '/servers', { name: 'the-100th-server' }).expect(201);
     expectLimit(await call('post', '/servers', { name: 'one-too-many' }), 'servers');
 
-    // Tham gia bằng mã mời cũng bị chặn (server của người khác). Join tra mã ở bảng
-    // ServerInvite (T3.6) nên phải tạo luôn bản ghi mã đang hoạt động.
     const other = await prisma.user.findFirstOrThrow({ where: { email: { not: emails[0] } } });
     const foreign = await prisma.server.create({
       data: {

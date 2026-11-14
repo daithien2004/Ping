@@ -15,11 +15,6 @@ interface TestUser {
   token: string;
 }
 
-/**
- * T4.6 (ADR-0045): tìm kiếm FTS + trigram trong server — khớp có dấu/không dấu, con chuỗi,
- * filter channel/author/since, cursor before, không lộ server khác, không trả tin đã xóa,
- * q rỗng/quá dài → 400 SEARCH_QUERY_INVALID. Dùng đúng 4 user (trần register 5/phút/IP).
- */
 describe('Search (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
@@ -70,7 +65,6 @@ describe('Search (e2e)', () => {
     owner = await registerUser();
     otherMember = await registerUser();
     outsider = await registerUser();
-    // serverB của outsider — dùng cho test không lộ chéo server.
     const third = await registerUser();
     outsider = third;
 
@@ -92,24 +86,19 @@ describe('Search (e2e)', () => {
       .expect(201);
     serverB = b.body.id;
 
-    // Từ khóa duy nhất per-run để không dính dữ liệu run khác.
     secretToken = `thư viện ${runId}`;
     const send = (token: string, channelId: string, content: string) =>
       api('post', `/api/v1/channels/${channelId}/messages`, token)
         .send({ content, nonce: randomUUID() })
         .expect(201);
 
-    // owner: 3 tin chứa từ khóa (2 ở kênh 1, 1 ở kênh 2) + 1 tin không liên quan.
     await send(owner.token, channelA1, `Hôm nay mình khai trương ${secretToken} mới`);
     await send(owner.token, channelA1, `Ai cần sách thì qua ${secretToken} nhé`);
     const oldMessage = (await send(owner.token, channelA2, `Báo cáo ${secretToken} đã đủ đầu sách`))
       .body.id;
     await send(owner.token, channelA1, 'Tin không liên quan gì cả');
-    // otherMember: 1 tin chứa từ khóa (đường FTS, tác giả khác).
     await send(otherMember.token, channelA1, `Mình thấy ${secretToken} ổn đấy`);
-    // Tin chứa từ liền không dấu — chỉ khớp qua đường con chuỗi (trigram).
     await send(owner.token, channelA1, `bộ tài liệu tailieu${runId} riêng`);
-    // Server B có tin chứa cùng từ khóa — KHÔNG được lọt vào kết quả của server A.
     await api('post', `/api/v1/channels/${b.body.channels[0].id}/messages`, outsider.token)
       .send({ content: `${secretToken} của server B`, nonce: randomUUID() })
       .expect(201);
@@ -146,7 +135,6 @@ describe('Search (e2e)', () => {
         ),
       ).toBe(true);
     }
-    // Từ khóa liền không dấu khớp qua con chuỗi.
     const substringHit = await api(
       'get',
       `/api/v1/servers/${serverA}/search?q=${encodeURIComponent(`tailieu${runId}`)}`,
@@ -154,7 +142,6 @@ describe('Search (e2e)', () => {
     ).expect(200);
     expect(substringHit.body.results).toHaveLength(1);
 
-    // Từ không tồn tại → rỗng, không lỗi.
     const none = await api(
       'get',
       `/api/v1/servers/${serverA}/search?q=khongtontai${runId}`,
@@ -164,8 +151,6 @@ describe('Search (e2e)', () => {
   });
 
   it('con chuỗi TRONG từ (trigram) — FTS simple tách nguyên token nên không khớp được', async () => {
-    // "ilie" nằm GIỮA từ "tailieu": token độc lập không tồn tại nên FTS trượt, chỉ ILIKE
-    // trigram thấy (các tin khác chứa runId nhưng không chứa "tailieu").
     const res = await api(
       'get',
       `/api/v1/servers/${serverA}/search?q=${encodeURIComponent('ilie')}`,
@@ -192,7 +177,6 @@ describe('Search (e2e)', () => {
     expect(onlyOther.body.results).toHaveLength(1);
     expect(onlyOther.body.results[0].author.id).toBe(otherMember.id);
 
-    // Phân trang cursor: limit 2 → 2 tin mới nhất, before = id cuối trang 1 → 2 tin kế tiếp.
     const page1 = await api(
       'get',
       `/api/v1/servers/${serverA}/search?q=${secretToken}&limit=2`,
@@ -207,15 +191,12 @@ describe('Search (e2e)', () => {
     ).expect(200);
     expect(page2.body.results).toHaveLength(2);
     expect(page2.body.hasMore).toBe(false);
-    // Toàn bộ 4 id phân biệt, không trùng.
     const ids = [...page1.body.results, ...page2.body.results].map((row: { id: string }) => row.id);
     expect(new Set(ids).size).toBe(4);
-    // Thứ tự mới nhất trước: id trang 1 lớn hơn id trang 2.
     expect(page1.body.results[0].id > page2.body.results[0].id).toBe(true);
   });
 
   it('since lọc theo thời gian; tin xóa mềm không trả; IDOR outsider 403', async () => {
-    // since ở tương lai → không còn kết quả.
     const future = await api(
       'get',
       `/api/v1/servers/${serverA}/search?q=${secretToken}&since=${new Date(Date.now() + 60_000).toISOString()}`,
@@ -223,7 +204,6 @@ describe('Search (e2e)', () => {
     ).expect(200);
     expect(future.body.results).toHaveLength(0);
 
-    // Xóa mềm 1 tin chứa từ khóa → kết quả giảm 1.
     const target = await prisma.message.findFirstOrThrow({
       where: { channelId: channelA1, content: { contains: secretToken }, deletedAt: null },
       select: { id: true },
@@ -237,7 +217,6 @@ describe('Search (e2e)', () => {
     expect(afterDelete.body.results).toHaveLength(3);
     expect(afterDelete.body.results.map((row: { id: string }) => row.id)).not.toContain(target.id);
 
-    // Người ngoài (chủ server B) gọi search trên server A → 403; server của mình vẫn 200.
     await api('get', `/api/v1/servers/${serverA}/search?q=${secretToken}`, outsider.token).expect(
       403,
     );
@@ -247,7 +226,6 @@ describe('Search (e2e)', () => {
   });
 
   it('member thiếu VIEW_CHANNEL bị 403 khi search — không đọc nội dung tin (T6.5)', async () => {
-    // @everyone (chỉ member thường chịu ảnh hưởng; owner bypass) mất VIEW_CHANNEL.
     const everyone = await prisma.role.findFirstOrThrow({
       where: { serverId: serverA, isDefault: true },
       select: { id: true },
@@ -261,7 +239,6 @@ describe('Search (e2e)', () => {
       `/api/v1/servers/${serverA}/search?q=${secretToken}`,
       otherMember.token,
     ).expect(403);
-    // Owner vẫn tìm được — quyền owner không phụ thuộc role.
     await api('get', `/api/v1/servers/${serverA}/search?q=${secretToken}`, owner.token).expect(200);
   });
 

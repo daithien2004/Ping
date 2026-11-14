@@ -13,11 +13,8 @@ import { RedisProvider } from '../src/infra/redis/redis.module.js';
 import type { GifProvider } from '../src/modules/gifs/gif-provider.port.js';
 import { GIF_PROVIDER } from '../src/modules/gifs/gif.tokens.js';
 
-// Không phụ thuộc .env của máy: ép thiếu key cho cả file. App còn lại override GIF_PROVIDER
-// bằng fake nên key không liên quan — adapter thật không bao giờ được gọi, không gọi mạng thật.
 process.env.TENOR_API_KEY = '';
 
-/** GIF "từ provider" — URL thuộc host allowlist nên gửi tin được. */
 const fakeGif: GifDto = {
   id: 'tenor-1',
   url: 'https://media.tenor.com/abc/AAAAC/hello.gif',
@@ -26,7 +23,6 @@ const fakeGif: GifDto = {
   provider: 'tenor',
 };
 
-/** Provider giả đếm số lần gọi — dùng kiểm cache của service. */
 class FakeGifProvider implements GifProvider {
   searchCalls = 0;
   trendingCalls = 0;
@@ -45,11 +41,6 @@ class FakeGifProvider implements GifProvider {
 const http = (app: INestApplication) => request(app.getHttpServer());
 const auth = (call: request.Test, bearer: string) => call.set('Authorization', `Bearer ${bearer}`);
 
-/**
- * TG.25 GIF (ADR-0069): API cổng GIF + tin kind='gif'. Không cần worker (GIF không tải tệp).
- * Hai app: một thiếu TENOR_API_KEY (suy giảm 503), một override GIF_PROVIDER bằng fake
- * (pattern ask.e2e-spec) để kiểm search/trending, cache, gửi tin và rate limit.
- */
 describe('TG.25 gifs (e2e)', () => {
   describe('thiếu TENOR_API_KEY — suy giảm 503, không gọi mạng', () => {
     let app: INestApplication;
@@ -91,8 +82,8 @@ describe('TG.25 gifs (e2e)', () => {
     let app: NestExpressApplication;
     let db: PrismaService;
     let provider: FakeGifProvider;
-    let owner = ''; // chủ server (ghim được tin)
-    let member = ''; // member thường (gửi tin, thả cảm xúc)
+    let owner = '';
+    let member = '';
     let serverId = '';
     let channelId = '';
     let gifMessageId = '';
@@ -146,7 +137,6 @@ describe('TG.25 gifs (e2e)', () => {
         select: { id: true },
       });
       const userIds = users.map((user) => user.id);
-      // AuditLog/OutboxEvent không có FK → dọn tay; server cascade channel/message/reaction.
       const touched = [gifMessageId, replyMessageId].filter((id) => id !== '');
       if (touched.length)
         await db.outboxEvent.deleteMany({ where: { aggregateId: { in: touched } } });
@@ -161,7 +151,7 @@ describe('TG.25 gifs (e2e)', () => {
       expect(first.body.gifs).toEqual([fakeGif]);
       const second = await auth(http(app).get('/api/v1/gifs/search?q=meo'), member).expect(200);
       expect(second.body.gifs).toEqual([fakeGif]);
-      expect(provider.searchCalls).toBe(1); // hai lần gọi, provider chỉ chạm một lần
+      expect(provider.searchCalls).toBe(1);
 
       const trending = await auth(http(app).get('/api/v1/gifs/trending'), member).expect(200);
       expect(trending.body.gifs).toEqual([fakeGif]);
@@ -195,13 +185,11 @@ describe('TG.25 gifs (e2e)', () => {
         provider: 'tenor',
       });
 
-      // Retry cùng nonce → đúng tin cũ, không tạo trùng (pattern sticker).
       const retry = await auth(http(app).post(`/api/v1/channels/${channelId}/messages`), member)
         .send({ content: '', nonce, gif })
         .expect(201);
       expect(retry.body.id).toBe(gifMessageId);
 
-      // List: tin GIF về đúng hình dạng DTO.
       const list = await auth(
         http(app).get(`/api/v1/channels/${channelId}/messages`),
         member,
@@ -215,7 +203,6 @@ describe('TG.25 gifs (e2e)', () => {
         provider: 'tenor',
       });
 
-      // Event message.created (payload outbox — nguồn của relay realtime) mang kind + preview.
       const event = await db.outboxEvent.findFirstOrThrow({
         where: { aggregateId: gifMessageId, type: 'message.created' },
       });
@@ -256,33 +243,28 @@ describe('TG.25 gifs (e2e)', () => {
     });
 
     it(`chặn lượt thứ 31 trong một phút (${30 + 1} req) bằng 429`, async () => {
-      // Reset cả rate limit GIF lẫn throttler toàn cục/IP để ca này tất định.
       await app.get(RedisProvider).flushdb();
       for (let i = 0; i < 30; i++) {
         await auth(http(app).get('/api/v1/gifs/search?q=flood'), owner).expect(200);
       }
       const blocked = await auth(http(app).get('/api/v1/gifs/search?q=flood'), owner).expect(429);
       expect(blocked.body.code).toBe(ErrorCodes.TOO_MANY_REQUESTS);
-      // User khác có cửa sổ riêng — không bị kẹt theo.
       await auth(http(app).get('/api/v1/gifs/search?q=flood'), member).expect(200);
     });
 
     it('reaction, reply và pin trên tin GIF hoạt động như tin thường', async () => {
-      // Cảm xúc: member thả 👍 — tổng hợp count/me như tin văn bản.
       const reacted = await auth(
         http(app).put(`/api/v1/messages/${gifMessageId}/reactions/${encodeURIComponent('👍')}`),
         member,
       ).expect(200);
       expect(reacted.body.reactions).toEqual([{ emoji: '👍', count: 1, me: true }]);
 
-      // Reply tới tin GIF: preview trích nội dung rỗng (giống tin sticker — TG.1).
       const reply = await auth(http(app).post(`/api/v1/channels/${channelId}/messages`), member)
         .send({ content: 'đùa quá', nonce: randomUUID(), replyToId: gifMessageId })
         .expect(201);
       replyMessageId = reply.body.id;
       expect(reply.body.replyTo).toMatchObject({ id: gifMessageId, content: '', deleted: false });
 
-      // Ghim: owner có MANAGE_MESSAGES; danh sách ghim trả đủ preview GIF.
       const pinned = await auth(
         http(app).put(`/api/v1/messages/${gifMessageId}/pin`),
         owner,
@@ -297,7 +279,6 @@ describe('TG.25 gifs (e2e)', () => {
       expect(pinRow.message.kind).toBe('gif');
       expect(pinRow.message.gif).toMatchObject({ url: fakeGif.url, provider: 'tenor' });
 
-      // Dọn reply để afterAll chỉ cần xóa theo user.
       await auth(http(app).delete(`/api/v1/messages/${reply.body.id}`), member).expect(200);
     });
   });

@@ -5,17 +5,9 @@ import { pacedLogin } from './login-pace';
 
 const API = 'http://localhost:4000/api/v1';
 
-/** Hộp xác nhận đang mở; antd giữ popup đã đóng trong DOM nên phải lọc theo phần tử đang hiện. */
 const visiblePopconfirm = (page: Page) => page.locator('.ant-popconfirm').filter({ visible: true });
 
-/**
- * TG.10: category + sắp xếp + topic trên UI thật — tạo category trong cài đặt server, kéo bằng
- * BÀN PHÍM (Alt+Arrow — phương án a11y của kéo thả), thu gọn category lưu qua reload, topic
- * hiển thị ở header, đổi tên/xoá category (kênh về vùng mặc định, không mất kênh).
- *
- * Dùng tài khoản seed (owner) vì đăng ký bị giới hạn 5 lượt/phút/IP; mỗi test một server riêng
- * qua API rồi thao tác UI. Server không xoá ở cuối — bộ e2e chung dùng DB dev được flush định kỳ.
- */
+/** Dùng tài khoản seed (owner) vì đăng ký bị giới hạn 5 lượt/phút/IP; không xoá server cuối test. */
 test('categories: create, keyboard move, collapse persistence, topic header, rename/delete', async ({
   browser,
 }) => {
@@ -77,8 +69,7 @@ test('categories: create, keyboard move, collapse persistence, topic header, ren
     await test.step('Alt+ArrowUp trên kênh đưa kênh vào CUỐI category phía trên', async () => {
       await page.goto(`/servers/${server.id}`);
       const link = page.getByRole('link', { name: `# ${channel.name}` });
-      // Bấm lại trong poll: phím rơi vào lúc trang chưa hydrate thì không có listener;
-      // sau khi kênh đã vào category, Alt+ArrowUp chỉ là no-op ở biên.
+      // Bấm lại trong poll: phím rơi lúc trang chưa hydrate thì không có listener.
       await expect
         .poll(
           async () => {
@@ -111,8 +102,6 @@ test('categories: create, keyboard move, collapse persistence, topic header, ren
     });
 
     await test.step('topic: đặt trong header → hiển thị dưới tên kênh và API lưu', async () => {
-      // Mở thẳng URL kênh (tải document mới): điều hướng client trong dev có lúc tồn tại hai
-      // cây ChannelView (kênh cũ + kênh mới), click rơi vào node sắp bị gỡ nên modal mất state.
       await page.goto(`/channels/${server.id}/${channel.id}`);
       const topic = 'Chủ đề bằng UI';
       const edit = page.getByTestId('channel-topic-edit');
@@ -148,7 +137,6 @@ test('categories: create, keyboard move, collapse persistence, topic header, ren
         .poll(async () => channelOf(await detail()).categoryId, { timeout: 10_000 })
         .toBeNull();
       await expect.poll(async () => ((await detail()).categories ?? []).length).toBe(0);
-      // Kênh KHÔNG bị xoá; về lại vùng mặc định.
       await page.goto(`/servers/${server.id}`);
       await expect(page.getByRole('link', { name: `# ${channel.name}` })).toBeVisible();
       expect(channelOf(await detail()).topic).toBe('Chủ đề bằng UI');

@@ -6,21 +6,11 @@ import type { ChannelDto, MessageDto, MessagePage, ServerDetail } from '@ping/sh
 import { pacedLogin } from './login-pace';
 
 const API = 'http://localhost:4000/api/v1';
-// apps/web là CommonJS (Playwright biên dịch sang CJS) nên dùng __dirname như global-setup.
 const repoRoot = path.resolve(__dirname, '../../..');
-/** Channel đủ lớn để chứng minh cửa sổ `?around=` không phụ thuộc độ dài lịch sử. */
 const COUNT = 10_000;
-/**
- * Ngưỡng "nhảy tới tin cũ" (TG.5). Số tuyệt đối phụ thuộc máy: cùng một bản production, máy dev
- * 1,7 s còn runner CI 4,5 s (boot Next.js + hydrate trên 2 core). Vì vậy tiêu chí là **tương đối**:
- * mở permalink tin cũ không được chậm hơn hẳn việc mở chính channel đó ở trang mới nhất — đo ngay
- * trong cùng lượt chạy, cùng máy, cùng phiên browser. Trần tuyệt đối chỉ để bắt thoái hóa.
- */
+/** Ngưỡng tương đối, không tuyệt đối: thời gian phụ thuộc máy (dev 1,7 s, runner CI 4,5 s). */
 const COLD_OPEN_CEILING_MS = process.env.E2E_PRODUCTION === '1' ? 8_000 : 12_000;
-/** Chênh lệch cho phép so với mở channel bình thường (một vòng `?around=` + cuộn + tô sáng). */
-// Runner CI 41213735251 đo 2393 ms (máy dev 880 ms khi dev server mới); dev server sống lâu
-// qua nhiều lượt chạy đo 3302 ms. Ngưỡng chừa biên theo môi trường nhưng vẫn bắt thoái hóa:
-// tải cả lịch sử thay vì cửa sổ `?around=` sẽ vượt xa (và test API ở trên đã so O(limit)).
+// Ngưỡng chừa biên theo môi trường nhưng vẫn bắt thoái hóa tải cả lịch sử.
 const PERMALINK_OVERHEAD_MS = process.env.E2E_PRODUCTION === '1' ? 3_000 : 4_000;
 
 interface SeedIds {
@@ -29,7 +19,7 @@ interface SeedIds {
   last: string;
 }
 
-/** Ghi thẳng DB (không qua API: 10k request sẽ chạm rate limit) và đọc id đầu/giữa/cuối. */
+/** Ghi thẳng DB: 10k request sẽ chạm rate limit. */
 function seedMessages(channelId: string, authorId: string, count: number): SeedIds {
   process.loadEnvFile(path.join(repoRoot, '.env'));
   const seeded = spawnSync(
@@ -44,18 +34,6 @@ function seedMessages(channelId: string, authorId: string, count: number): SeedI
   return JSON.parse(line.slice('SEED_IDS '.length)) as SeedIds;
 }
 
-/**
- * TG.5 (ADR-0063): permalink + `GET messages?around=`.
- *
- * Kịch bản trên channel 10.000 tin:
- *  - API `?around=` trả cửa sổ quanh tin đích, không quét cả lịch sử (so trung vị với channel 200
- *    tin: chênh lệch không đáng kể, vì truy vấn là keyset O(limit));
- *  - mở permalink tin GIỮA channel → tô sáng đúng tin trong ngưỡng thời gian, không tải tới tin
- *    mới nhất, có nút "Tải tin mới hơn";
- *  - "Sao chép liên kết" chép đúng URL permalink;
- *  - bấm khối trích dẫn của reply tới tin chưa tải → điều hướng permalink và tô sáng;
- *  - `?m=` cũ vẫn hoạt động; tin bị xóa / tin của channel khác → báo "không tìm thấy".
- */
 test('permalink: around window on a 10k channel, highlight, copy link, reply jump, legacy alias', async ({
   browser,
 }) => {
@@ -63,7 +41,6 @@ test('permalink: around window on a 10k channel, highlight, copy link, reply jum
   const ownerContext = await browser.newContext({
     permissions: ['clipboard-read', 'clipboard-write'],
   });
-  // Kênh phụ tạo trong lúc đo (200 tin) — dọn trước kênh 10k để giảm khối lượng cascade.
   const extraChannelIds: string[] = [];
   try {
     const auth = await pacedLogin(ownerContext.request, 'alice@ping.dev', 'password123');
@@ -78,7 +55,7 @@ test('permalink: around window on a 10k channel, highlight, copy link, reply jum
     const channelId = server.channels[0]!.id;
 
     const ids = seedMessages(channelId, auth.user.id, COUNT);
-    // Seed chạm DB trực tiếp; chờ API sẵn sàng lại (nest watch có thể restart) trước khi đo.
+    // Seed chạm DB trực tiếp; chờ API sẵn sàng lại (nest watch có thể restart).
     await expect
       .poll(
         async () => ((await ownerContext.request.get(`${API}/health`)).ok() ? 'ok' : 'not-ready'),
@@ -86,12 +63,11 @@ test('permalink: around window on a 10k channel, highlight, copy link, reply jum
       )
       .toBe('ok');
 
-    // URL công khai kiểu Discord (ADR-0088): `/channels/:owner/:channelId[/:messageId]`.
     const permalink = `/channels/${server.id}/${channelId}/${ids.middle}`;
     const channelPath = `/channels/${server.id}/${channelId}`;
 
     await test.step('API around: cửa sổ 50 tin quanh tin giữa, nhanh và đúng cờ', async () => {
-      // Một lần làm nóng (connection pool + plan cache sau khi seed 10k dòng) không tính điểm.
+      // Một lần làm nóng (connection pool + plan cache) không tính điểm.
       await ownerContext.request.get(
         `${API}/channels/${channelId}/messages?around=${ids.middle}&limit=50`,
         { headers },
@@ -113,9 +89,7 @@ test('permalink: around window on a 10k channel, highlight, copy link, reply jum
       expect(windowPage?.hasMore).toBe(true);
       expect(windowPage?.hasNewer).toBe(true);
 
-      // Cửa sổ phải là O(limit) chứ không O(lịch sử): so với cùng truy vấn trên một channel nhỏ.
-      // Đo tuyệt đối không ổn định (máy dev bật indexer AI làm mỗi request chậm thêm ~0,5 s vì
-      // XREADGROUP BLOCK dùng chung kết nối Redis), nên so sánh tương đối mới là bằng chứng.
+      // So tương đối: đo tuyệt đối không ổn định (indexer AI làm mỗi request chậm thêm ~0,5 s).
       const smallChannel = (await (
         await ownerContext.request.post(`${API}/servers/${server.id}/channels`, {
           headers,
@@ -138,10 +112,7 @@ test('permalink: around window on a 10k channel, highlight, copy link, reply jum
         smallTimings.push(Date.now() - started);
         expect(response.ok()).toBeTruthy();
       }
-      // Runner CI thỉnh thoảng nhiễu HỆ THỐNG trong cả cửa sổ đo (lần 263e88c: cả 5 mẫu 10k
-      // đều 503-1203 ms, minSmall=9) — min một lượt cũng vỡ. Đo lại TỐI ĐA 2 lượt nữa và giữ
-      // lượt tốt nhất: assertion vẫn nghiêm (phải tồn tại một lượt đo đạt), chỉ đỡ trúng trọn
-      // một cửa sổ nhiễu.
+      // Đo lại tối đa 2 lượt và giữ lượt tốt nhất: runner CI thỉnh thoảng nhiễu hệ thống cả cửa sổ đo.
       let min10k = Math.min(...timings);
       let minSmall = Math.min(...smallTimings);
       let allTimings = timings;
@@ -178,14 +149,10 @@ test('permalink: around window on a 10k channel, highlight, copy link, reply jum
         `around min: 10k=${min10k} ms, 200=${minSmall} ms ` +
           `(10k: ${timingsOut.join(', ')} | 200: ${smallOut.join(', ')})`,
       );
-      // 10k tin không được chậm hơn hẳn channel nhỏ. Dùng MIN thay vì median: runner CI chung
-      // bị nhiễu I/O hai mode (cùng một truy vấn lần lượt 518 rồi 1205 ms), median 5 mẫu vẫn
-      // trúng mode chậm và đỏ oan hai lần liên tiếp trên main (603/503 ms chênh); min là chi
-      // phí thật không chứa contention — hai lần CI đỏ đều đạt thoải mái nếu tính min.
+      // Dùng MIN thay median: runner CI nhiễu I/O hai mode, median vẫn trúng mode chậm.
       expect(min10k - minSmall).toBeLessThan(150);
       expect(min10k).toBeLessThan(1_500);
 
-      // Tin đầu channel: không còn tin cũ hơn, vẫn còn tin mới hơn.
       const first = await ownerContext.request.get(
         `${API}/channels/${channelId}/messages?around=${ids.first}&limit=50`,
         { headers },
@@ -202,14 +169,11 @@ test('permalink: around window on a 10k channel, highlight, copy link, reply jum
       });
       expect(new URL(page.url()).pathname).toBe(permalink);
     });
-    // Làm nóng route (next dev biên dịch theo route): đo ở lần mở thứ hai mới phản ánh chi phí dữ liệu.
     await page.goto(permalink, { waitUntil: 'domcontentloaded' });
     const target = page.locator(`article[data-message-id="${ids.middle}"]`);
     await expect(target).toBeVisible({ timeout: 60_000 });
 
-    // Mốc so sánh: mở chính channel đó ở trang mới nhất — cùng máy, cùng phiên browser, cùng
-    // chi phí boot/hydrate. Đo 3 lượt lấy min: dev server sống lâu có lượt chậm bất thường
-    // (11,1 s so với 3,9 s cho cùng route), lượt min là chi phí thật không dính contention.
+    // Đo 3 lượt lấy min: dev server sống lâu có lượt chậm bất thường.
     const channelTimes: number[] = [];
     for (let attempt = 0; attempt < 3; attempt += 1) {
       const channelStarted = Date.now();
@@ -223,9 +187,6 @@ test('permalink: around window on a 10k channel, highlight, copy link, reply jum
     console.log(`open channel (ms): ${channelTimes.join(', ')} — dùng ${channelMs}`);
 
     await test.step('mở permalink: tô sáng tin đích dưới ngưỡng, không kéo tới tin mới nhất', async () => {
-      // Runner CI dùng chung có cửa sổ nhiễu I/O (lần 41213735251: overhead 2393 ms trong khi
-      // máy dev 880 ms) — cùng lý do đã retry phép đo API ở trên. Đo tối đa 3 lượt và giữ lượt
-      // nhanh nhất: chi phí THẬT của permalink là lượt không dính contention.
       let bestElapsed = Number.POSITIVE_INFINITY;
       let bestOverhead = Number.POSITIVE_INFINITY;
       const attempts: string[] = [];
@@ -256,11 +217,9 @@ test('permalink: around window on a 10k channel, highlight, copy link, reply jum
       expect(bestElapsed).toBeLessThan(COLD_OPEN_CEILING_MS);
       expect(bestOverhead).toBeLessThan(PERMALINK_OVERHEAD_MS);
 
-      // Cửa sổ quanh tin đích: tin cuối channel KHÔNG được tải (nếu tải cả lịch sử sẽ có).
       await expect(page.locator(`article[data-message-id="${ids.last}"]`)).toHaveCount(0);
       await expect(page.getByTestId('focus-loading')).toHaveCount(0);
       expect(new URL(page.url()).pathname).toBe(permalink);
-      // Còn tin mới hơn → có nút tải thêm thay vì tự nối cả 10k tin.
       await expect(page.getByTestId('load-newer')).toBeVisible();
     });
 
@@ -333,9 +292,7 @@ test('permalink: around window on a 10k channel, highlight, copy link, reply jum
       await expect(page.getByText(`tin channel khác ${suffix}`)).toHaveCount(0);
     });
 
-    // Dọn dẹp theo từng bước để cascade nhỏ dần. Xóa server 10k tin bằng MỘT câu DELETE có thể
-    // vượt `PG_QUERY_TIMEOUT_MS` (5 s) → API trả 500 (giới hạn đã biết, xem docs/known-issues.md).
-    // Dọn dẹp không phải đối tượng kiểm thử nên chỉ cảnh báo, không làm đỏ test.
+    // Dọn từng bước: một DELETE server 10k tin có thể vượt PG_QUERY_TIMEOUT_MS (5 s) → 500; chỉ cảnh báo.
     for (const id of [...extraChannelIds, channelId]) {
       const removed = await ownerContext.request.delete(`${API}/channels/${id}`, {
         headers,

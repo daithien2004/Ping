@@ -6,7 +6,6 @@ import type { Env } from '../src/config/env.schema.js';
 import { PrismaService } from '../src/infra/prisma/prisma.service.js';
 import { RedisProvider } from '../src/infra/redis/redis.module.js';
 
-// Cấu hình giả lập: chỉ các khóa mà hai provider đọc.
 function configWith(overrides: Partial<Record<keyof Env, unknown>>) {
   const values = { ...process.env, ...overrides } as Record<string, unknown>;
   return {
@@ -33,7 +32,6 @@ describe('timeouts on infrastructure calls (ADR-0026)', () => {
     const error = await prisma.$queryRaw`select pg_sleep(5)`.catch((e: unknown) => e);
     expect(Date.now() - started).toBeLessThan(2000);
     expect(isDatabaseUnavailable(error)).toBe(true);
-    // Sau khi bị cắt, kết nối vẫn dùng lại được.
     await expect(prisma.$queryRaw`select 1 as ok`).resolves.toEqual([{ ok: 1 }]);
   });
 

@@ -7,14 +7,11 @@ import { pacedLogin } from './login-pace';
 import { openServerSettings } from './open-server-settings';
 
 const API = 'http://localhost:4000/api/v1';
-// PNG fixture được sinh cục bộ, không dùng tài nguyên ngoài (như attachment.spec).
 const png = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAACgAAAAeCAIAAADRv8uKAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAN0lEQVRIie3VwQkAQAgDwe2/6VwZ3mPAvyAx0+pksjinnnDlnVIgU5lBIiyGxbA4LIbFsLivWHw+nauNqku18gAAAABJRU5ErkJggg==',
   'base64',
 );
 
-// Upload sticker đi qua pipeline thật (reserve → PUT → complete → worker kiểm định, TG.6):
-// phải có worker chạy, giống attachment.spec.
 let worker: ChildProcess;
 test.beforeAll(() => {
   worker = spawn(process.execPath, ['dist/worker.js'], {
@@ -28,14 +25,11 @@ test.afterAll(() => {
   worker?.kill('SIGTERM');
 });
 
-/** Hộp xác nhận đang mở: antd giữ popup đã đóng trong DOM nên lọc theo phần tử đang hiện. */
 const visiblePopconfirm = (page: Page) => page.locator('.ant-popconfirm').filter({ visible: true });
 
-/** Vùng danh sách tin của channel: <Activity> giữ trang cũ ẩn trong DOM nên lọc :visible. */
 const paneOf = (page: Page, channel: string) =>
   page.locator(`[aria-label="Tin nhắn trong #${channel}"]:visible`);
 
-/** Mở sticker picker (dynamic import lần đầu có thể chậm) rồi trả về locator của nó. */
 async function openStickerPicker(page: Page) {
   await page.getByTestId('sticker-button').click();
   const picker = page.getByTestId('sticker-picker');
@@ -43,7 +37,6 @@ async function openStickerPicker(page: Page) {
   return picker;
 }
 
-// TG.22a+b: gửi sticker hệ thống qua picker (realtime sang context thứ hai) và tìm không dấu.
 test('sticker picker: tabs, gửi realtime, tìm không dấu "cuoi"', async ({ browser }) => {
   test.setTimeout(240_000);
   const alice = await browser.newContext();
@@ -60,7 +53,6 @@ test('sticker picker: tabs, gửi realtime, tìm không dấu "cuoi"', async ({ 
       await alice.request.get(`${API}/servers/${seed!.id}`, { headers })
     ).json()) as ServerDetail;
     const general = detail.channels.find((channel) => channel.name === 'general')!;
-    // bob là member của server seed → cùng channel, nhận realtime.
     await pacedLogin(bob.request, 'bob@ping.dev', 'password123');
 
     const page = await alice.newPage();
@@ -81,7 +73,7 @@ test('sticker picker: tabs, gửi realtime, tìm không dấu "cuoi"', async ({ 
       const picker = page.getByTestId('sticker-picker');
       await picker.getByRole('tab', { name: 'Hệ thống' }).click();
       await picker.getByRole('gridcell', { name: 'Gửi sticker Cười', exact: true }).click();
-      await expect(picker).toHaveCount(0); // chọn xong picker đóng
+      await expect(picker).toHaveCount(0);
       const image = paneOf(page, 'general').locator('article').last().getByTestId('sticker-image');
       await expect(image).toBeVisible({ timeout: 15_000 });
       await expect
@@ -101,9 +93,7 @@ test('sticker picker: tabs, gửi realtime, tìm không dấu "cuoi"', async ({ 
       const first = picker.getByTestId('sticker-option').first();
       await expect(first).toBeVisible({ timeout: 15_000 });
       await expect(first).toHaveAttribute('aria-label', /Cười/);
-      // Sticker không khớp truy vấn phải bị lọc ra khỏi grid.
       await expect(picker.getByRole('gridcell', { name: 'Gửi sticker Tên lửa' })).toHaveCount(0);
-      // Bấm góc trên trái (ngoài panel, panel luôn cách mép ≥8 px) — bấm giữa scrim dễ trúng panel.
       await page.getByTestId('ping-popover-scrim').click({ position: { x: 4, y: 4 } });
     });
   } finally {
@@ -112,8 +102,6 @@ test('sticker picker: tabs, gửi realtime, tìm không dấu "cuoi"', async ({ 
   }
 });
 
-// TG.22c: upload qua quản trị (pipeline thật), gửi từ picker tab "Của server", xóa có
-// Popconfirm → tin cũ trong pane đổi thành khung "sticker đã bị xóa" sau invalidate/refetch.
 test('sticker quản trị: upload, gửi, xóa → tin cũ thành "đã xóa"', async ({ browser }) => {
   test.setTimeout(240_000);
   const alice = await browser.newContext();
@@ -122,7 +110,6 @@ test('sticker quản trị: upload, gửi, xóa → tin cũ thành "đã xóa"',
     const headers = { Authorization: `Bearer ${auth.accessToken}` };
     const suffix = randomUUID().slice(0, 8);
     const stickerName = `stkr${suffix}`;
-    // Server riêng cho test, xóa ở cuối — không đụng dữ liệu seed.
     const server = (await (
       await alice.request.post(`${API}/servers`, {
         headers,
@@ -144,11 +131,9 @@ test('sticker quản trị: upload, gửi, xóa → tin cũ thành "đã xóa"',
         mimeType: 'image/png',
         buffer: png,
       });
-      // Form chỉ hiện khi attachment ready (worker kiểm định xong) — như attachment.spec
-      // chờ "Sẵn sàng gửi" với trần 60s, ở đây chờ form với trần thoáng hơn.
       const nameInput = section.getByTestId('sticker-name-input');
       await expect(nameInput).toBeVisible({ timeout: 90_000 });
-      await expect(nameInput).toHaveValue(stickerName); // tên gợi ý từ tên tệp
+      await expect(nameInput).toHaveValue(stickerName);
     });
 
     await test.step('submit tạo sticker → item mới trong danh sách quản trị', async () => {
@@ -166,9 +151,7 @@ test('sticker quản trị: upload, gửi, xóa → tin cũ thành "đã xóa"',
       await picker.getByRole('tab', { name: 'Của server' }).click();
       const option = picker.getByRole('gridcell', { name: `Gửi sticker ${stickerName}` });
       await expect(option).toBeVisible({ timeout: 15_000 });
-      // Đợi POST tin sticker trả 2xx (tin đã được lưu) trước khi sang bước xóa: nếu xóa
-      // trong khi POST còn xử lý, server từ chối tin ("Sticker unavailable") vì đọc thấy
-      // sticker đã xóa — tin không bao giờ tồn tại để đổi thành khung "đã xóa".
+      // Đợi POST tin sticker 2xx trước khi xóa: xóa giữa lúc POST thì server từ chối tin (Sticker unavailable).
       const sent = page.waitForResponse(
         (response) =>
           response.request().method() === 'POST' &&
@@ -188,10 +171,7 @@ test('sticker quản trị: upload, gửi, xóa → tin cũ thành "đã xóa"',
       await expect(item).toBeVisible({ timeout: 15_000 });
       await item.getByTestId('sticker-delete-button').click();
       await visiblePopconfirm(page).getByRole('button', { name: 'Xoá', exact: true }).click();
-      // invalidate stickers → item biến mất khỏi danh sách quản trị.
       await expect(item).toHaveCount(0, { timeout: 15_000 });
-      // Về lại channel: cache tin nhắn bị invalidate ['channels'] → refetch → tin cũ render
-      // khung "sticker đã bị xóa" thay vì ảnh.
       await page.getByRole('link', { name: '# general', exact: true }).click();
       const pane = paneOf(page, 'general');
       await expect(pane.getByTestId('sticker-image')).toHaveCount(0, { timeout: 15_000 });
@@ -205,9 +185,7 @@ test('sticker quản trị: upload, gửi, xóa → tin cũ thành "đã xóa"',
   }
 });
 
-// TG.22d: prefers-reduced-motion: reduce → tin sticker dùng khung preview tĩnh của server
-// (URL có &thumbnail=1) thay vì ảnh động. Context tự tạo qua browser.newContext() không nhận
-// test.use nên truyền reducedMotion thẳng vào context.
+// Context tự tạo bằng browser.newContext() không nhận test.use: truyền reducedMotion thẳng.
 test('sticker reduced motion: render qua preview server (thumbnail=1)', async ({ browser }) => {
   test.setTimeout(240_000);
   const alice = await browser.newContext({ reducedMotion: 'reduce' });
@@ -215,7 +193,6 @@ test('sticker reduced motion: render qua preview server (thumbnail=1)', async ({
     const auth = await pacedLogin(alice.request, 'alice@ping.dev', 'password123');
     const headers = { Authorization: `Bearer ${auth.accessToken}` };
     const suffix = randomUUID().slice(0, 8);
-    // Server riêng cho test, xóa ở cuối — không đụng dữ liệu seed.
     const server = (await (
       await alice.request.post(`${API}/servers`, {
         headers,
@@ -223,9 +200,7 @@ test('sticker reduced motion: render qua preview server (thumbnail=1)', async ({
       })
     ).json()) as ServerDetail;
     const channelId = server.channels[0]!.id;
-    // Sticker hệ thống của seed chỉ có tệp .ready (không .thumb) nên previewUrl của nó trả
-    // 503 — với reduce tin đó rơi về khung "đã xóa". Tạo sticker qua pipeline thật ở đây:
-    // worker sinh .thumb khi kiểm định → reduce có khung preview để render.
+    // Sticker hệ thống của seed không có .thumb (previewUrl 503): tạo sticker qua pipeline thật.
     const uploadId = (
       (await (
         await alice.request.post(`${API}/uploads`, {
@@ -246,7 +221,6 @@ test('sticker reduced motion: render qua preview server (thumbnail=1)', async ({
     expect(
       (await alice.request.post(`${API}/uploads/${uploadId}/complete`, { headers })).ok(),
     ).toBeTruthy();
-    // Đợi worker kiểm định xong (attachment ready) — pipeline thật, không bỏ qua.
     await expect
       .poll(
         async () => {
@@ -265,7 +239,6 @@ test('sticker reduced motion: render qua preview server (thumbnail=1)', async ({
       })
     ).json()) as StickerDto;
 
-    // Gửi tin sticker qua API rồi xem ở chế độ reduce.
     expect(
       (
         await alice.request.post(`${API}/channels/${channelId}/messages`, {

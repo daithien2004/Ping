@@ -7,14 +7,6 @@ import { PrismaService } from '../src/infra/prisma/prisma.service.js';
 import { RedisProvider } from '../src/infra/redis/redis.module.js';
 import { bootApp } from './helpers/boot.js';
 
-/**
- * TG.13: cài đặt người dùng (GET/PATCH /users/me/settings) + danh sách chặn
- * (GET /users/me/blocks — liệt kê UserBlock của TG.9, unblock tái dùng DELETE cũ).
- * Phủ: GET lazy trả mặc định KHÔNG tạo hàng, PATCH upsert giữ nguyên trường không gửi,
- * body rỗng/field lạ/giá trị lệch enum → 400 VALIDATION_ERROR, block/unblock vòng trọn,
- * 401 chưa đăng nhập, và cách ly giữa người dùng (user-scoped, userId từ JWT — không có id
- * trên path nên không vào bảng tấn công idor.e2e-spec, xem ghi chú ID_ROUTES ở đó).
- */
 describe('TG.13 user settings + blocks (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
@@ -24,7 +16,7 @@ describe('TG.13 user settings + blocks (e2e)', () => {
   let aliceId = '';
   let bobToken = '';
   let bobId = '';
-  let carolId = ''; // Carol chỉ là mục tiêu bị chặn — không cần token của cô ấy.
+  let carolId = '';
 
   const http = () => request(app.getHttpServer());
   const auth = (call: request.Test, bearer: string) =>
@@ -69,7 +61,6 @@ describe('TG.13 user settings + blocks (e2e)', () => {
 
   afterAll(async () => {
     if (!app) return;
-    // UserSettings + UserBlock cascade theo user; spec không tạo server/message nào.
     await prisma.user.deleteMany({
       where: { id: { in: [aliceId, bobId, carolId].filter(Boolean) } },
     });
@@ -79,7 +70,6 @@ describe('TG.13 user settings + blocks (e2e)', () => {
   it('(a) GET ban đầu → DTO mặc định và KHÔNG tạo hàng trong DB (lazy)', async () => {
     const res = await auth(http().get(SETTINGS), aliceToken).expect(200);
     expect(res.body).toEqual(DEFAULT_SETTINGS);
-    // Chứng minh lazy: GET không ghi — hàng chỉ xuất hiện khi PATCH (mục b).
     expect(await prisma.userSettings.count({ where: { userId: aliceId } })).toBe(0);
   });
 
@@ -92,7 +82,6 @@ describe('TG.13 user settings + blocks (e2e)', () => {
     const fetched = await auth(http().get(SETTINGS), aliceToken).expect(200);
     expect(fetched.body).toEqual({ ...DEFAULT_SETTINGS, theme: 'dark' });
 
-    // Nguồn sự thật: đúng một hàng được tạo bởi PATCH, các cột còn lại là DEFAULT của DB.
     const rows = await prisma.userSettings.findMany({ where: { userId: aliceId } });
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({
@@ -115,13 +104,12 @@ describe('TG.13 user settings + blocks (e2e)', () => {
     });
 
     const rows = await prisma.userSettings.findMany({ where: { userId: aliceId } });
-    expect(rows).toHaveLength(1); // upsert không nhân dòng
+    expect(rows).toHaveLength(1);
   });
 
   it('(d) body rỗng / field lạ → 400 VALIDATION_ERROR, không tạo hàng', async () => {
     const empty = await auth(http().patch(SETTINGS), aliceToken).send({}).expect(400);
     expect(empty.body.code).toBe('VALIDATION_ERROR');
-    // zod object strip key lạ → còn {} → refine "nothing to update" chặn.
     const unknown = await auth(http().patch(SETTINGS), aliceToken).send({ foo: 'bar' }).expect(400);
     expect(unknown.body.code).toBe('VALIDATION_ERROR');
     expect(await prisma.userSettings.count({ where: { userId: aliceId } })).toBe(1);
@@ -144,7 +132,6 @@ describe('TG.13 user settings + blocks (e2e)', () => {
 
     const after = await auth(http().get('/api/v1/users/me/privacy'), aliceToken).expect(200);
     expect(after.body).toEqual({ dmAllow: 'none' });
-    // Người khác không bị ảnh hưởng (user-scoped, khóa theo JWT).
     const bob = await auth(http().get('/api/v1/users/me/privacy'), bobToken).expect(200);
     expect(bob.body).toEqual({ dmAllow: 'server_members' });
 
@@ -154,18 +141,15 @@ describe('TG.13 user settings + blocks (e2e)', () => {
   });
 
   it('(g) blocks: rỗng ban đầu → block 2 người (mới nhất trước) → unblock dần về rỗng', async () => {
-    // Ban đầu rỗng.
     const initial = await auth(http().get(BLOCKS), aliceToken).expect(200);
     expect(initial.body).toEqual({ blocked: [] });
 
-    // Block qua POST /users/:id/block của TG.9 (204 không body), Carol trước Bob sau.
     await auth(http().post(`/api/v1/users/${carolId}/block`), aliceToken).expect(204);
     await auth(http().post(`/api/v1/users/${bobId}/block`), aliceToken).expect(204);
 
     const afterBlock = await auth(http().get(BLOCKS), aliceToken).expect(200);
     const blocked = afterBlock.body.blocked as BlockedUserDto[];
     expect(blocked).toHaveLength(2);
-    // Mới nhất trước: bob (chặn sau) đứng đầu; đủ shape hợp đồng, không lộ gì thêm.
     expect(blocked.map((row) => row.userId)).toEqual([bobId, carolId]);
     for (const row of blocked) {
       expect(Object.keys(row).sort()).toEqual([
@@ -180,7 +164,6 @@ describe('TG.13 user settings + blocks (e2e)', () => {
     expect(blocked[0]).toMatchObject({ userId: bobId });
     expect(blocked[1]).toMatchObject({ userId: carolId });
 
-    // Unblock tái dùng DELETE /users/:userId/block của TG.9 — gỡ dần về rỗng.
     await auth(http().delete(`/api/v1/users/${bobId}/block`), aliceToken).expect(204);
     const afterOne = await auth(http().get(BLOCKS), aliceToken).expect(200);
     expect((afterOne.body.blocked as BlockedUserDto[]).map((row) => row.userId)).toEqual([carolId]);
@@ -188,7 +171,6 @@ describe('TG.13 user settings + blocks (e2e)', () => {
     await auth(http().delete(`/api/v1/users/${carolId}/block`), aliceToken).expect(204);
     const final = await auth(http().get(BLOCKS), aliceToken).expect(200);
     expect(final.body).toEqual({ blocked: [] });
-    // Nguồn sự thật: UserBlock đã dọn sạch theo cả hai chiều blocker.
     expect(await prisma.userBlock.count({ where: { blockerId: aliceId } })).toBe(0);
   });
 
@@ -200,21 +182,18 @@ describe('TG.13 user settings + blocks (e2e)', () => {
   });
 
   it('cách ly giữa người dùng: bob chỉ thấy/cài được settings và blocks của chính bob', async () => {
-    // Bob chưa đụng gì → mặc định; Alice đã có hàng (theme dark…).
     const bobSettings = await auth(http().get(SETTINGS), bobToken).expect(200);
     expect(bobSettings.body).toEqual(DEFAULT_SETTINGS);
 
-    // Bob block chính Carol của mình rồi chỉnh settings — không đụng được dữ liệu của Alice.
     await auth(http().patch(SETTINGS), bobToken).send({ fontSize: 'sm' }).expect(200);
     await auth(http().post(`/api/v1/users/${carolId}/block`), bobToken).expect(204);
 
     const aliceRow = await prisma.userSettings.findUniqueOrThrow({ where: { userId: aliceId } });
-    expect(aliceRow).toMatchObject({ fontSize: 'md', theme: 'dark' }); // nguyên vẹn
+    expect(aliceRow).toMatchObject({ fontSize: 'md', theme: 'dark' });
     const bobBlocks = await auth(http().get(BLOCKS), bobToken).expect(200);
     expect((bobBlocks.body.blocked as BlockedUserDto[]).map((row) => row.userId)).toEqual([
       carolId,
     ]);
-    // Alice vẫn không thấy block nào của mình (Carol do BOB chặn, không phải Alice).
     const aliceBlocks = await auth(http().get(BLOCKS), aliceToken).expect(200);
     expect(aliceBlocks.body).toEqual({ blocked: [] });
 

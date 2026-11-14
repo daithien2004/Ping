@@ -5,11 +5,6 @@ import { pacedLogin } from './login-pace';
 
 const API = 'http://localhost:4000/api/v1';
 
-/**
- * T4.6: UI tìm kiếm — mở dialog từ header kênh, tìm (FTS không dấu), lọc kênh, bấm kết quả
- * nhảy tới permalink của tin `/…/messages/:id` (TG.5: highlight + cửa sổ quanh tin). Dùng tài
- * khoản seed.
- */
 test('search ui: find messages, filter by channel, jump to message', async ({ browser }) => {
   test.setTimeout(240_000);
   const ownerContext = await browser.newContext();
@@ -81,7 +76,6 @@ test('search ui: find messages, filter by channel, jump to message', async ({ br
       await expect(page).toHaveURL(new RegExp(`/channels/${server.id}/${second}/[0-9a-f-]{36}$`), {
         timeout: 15_000,
       });
-      // Tin đích hiện trong kênh đích.
       await expect(
         page.getByText(`biên bản họp ${suffix} đã được lưu vào kho tài liệu`),
       ).toBeVisible({ timeout: 15_000 });

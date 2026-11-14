@@ -8,10 +8,7 @@ const API = 'http://localhost:4000/api/v1';
 const CITATION_ID = '0190a8f2-3c4d-7e8f-9a0b-1c2d3e4f5a6b';
 const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];
 
-/**
- * Quét axe trên đúng ngăn kéo (antd đặt aria-hidden lên phần trang phía sau, không quét cả trang).
- * Đợi hết chuyển động mở drawer/alert trước khi quét để màu đã ổn định.
- */
+/** Quét axe trên đúng drawer (antd đặt aria-hidden lên phần còn lại); đợi hết chuyển động mở trước khi quét. */
 async function scanDrawer(page: Page, what: string) {
   await page.waitForFunction(
     () =>
@@ -43,11 +40,6 @@ function sse(events: Array<{ type: string; data: unknown }>): string {
     .join('');
 }
 
-/**
- * TF.11: ngăn kéo "Hỏi Ping" — văn bản stream, chip trích dẫn, skeleton chờ, aria-live và lỗi
- * theo mã. Chặn đúng route ask để không gọi LLM thật: nội dung SSE do test quyết định, phần
- * còn lại (auth, quyền, kênh) vẫn chạy trên API thật.
- */
 async function interceptAsk(
   page: Page,
   handler: (method: string) => Promise<{ status: number; body?: string }>,
@@ -76,7 +68,7 @@ async function interceptAsk(
         body: result.body,
       });
     } catch {
-      // Client đã hủy request (nút Hủy) — không còn gì để trả.
+      /* bỏ qua */
     }
   });
 }
@@ -118,12 +110,10 @@ test('ask ui: stream answer, citation chip, skeleton and aria-live', async ({ br
     await page.getByTestId('ask-input').fill('Họp lúc mấy giờ?');
     await page.getByTestId('ask-send').click();
 
-    // Trong lúc stream: trạng thái + skeleton giữ chỗ (ẩn với trình đọc màn hình).
     await expect(page.getByText('Đang hỏi…')).toBeVisible();
     await expect(page.getByTestId('ask-skeleton')).toBeVisible();
     await expect(page.getByTestId('ask-cancel')).toBeVisible();
 
-    // Xong: câu trả lời nằm trong vùng aria-live, chip trích dẫn hiện đúng ID.
     const live = page.getByTestId('ask-live');
     await expect(live).toContainText(answer, { timeout: 15_000 });
     await expect(page.getByTestId('ask-answer')).toContainText('Câu trả lời');
@@ -183,7 +173,6 @@ test('ask ui: per-error code message and cancel stops the skeleton', async ({ br
     await page.getByTestId('ask-input').fill('Còn lượt hỏi không?');
     await page.getByTestId('ask-send').click();
 
-    // Mã lỗi AI_QUOTA_EXCEEDED có câu riêng, nằm trong role=alert.
     await expect(page.getByTestId('ask-error')).toContainText(
       'Bạn đã dùng hết số lượt hỏi AI hôm nay',
     );
@@ -195,7 +184,6 @@ test('ask ui: per-error code message and cancel stops the skeleton', async ({ br
     }
     await page.emulateMedia({ colorScheme: 'light' });
 
-    // Hủy giữa chừng: skeleton biến mất, không hiện câu trả lời/ lỗi.
     mode = 'slow';
     await page.getByTestId('ask-close').click();
     await expect(page.getByTestId('ask-input')).toBeHidden();

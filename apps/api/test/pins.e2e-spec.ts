@@ -21,10 +21,6 @@ interface TestUser {
 
 type HttpMethod = 'get' | 'post' | 'patch' | 'put' | 'delete';
 
-/**
- * TG.3 (ADR-0066): ghim tin — idempotent, trần 50/channel (kể cả hai request đồng thời), quyền
- * MANAGE_MESSAGES, audit MESSAGE_PIN/MESSAGE_UNPIN, event realtime và tương tác với xóa mềm.
- */
 describe('Pinned messages (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
@@ -73,7 +69,6 @@ describe('Pinned messages (e2e)', () => {
     return res.body.id;
   }
 
-  /** Tin đã ghim thẳng trong DB — nhanh hơn gọi API 49 lần khi kiểm trần. */
   async function seedPinned(count: number): Promise<void> {
     const base = Date.now() - count * 1000;
     await prisma.message.createMany({
@@ -176,7 +171,6 @@ describe('Pinned messages (e2e)', () => {
     });
     expect(typeof pinned.body.pinnedAt).toBe('string');
 
-    // Thành viên thường: không có MANAGE_MESSAGES → 403, nhưng đọc danh sách vẫn được.
     await api('put', pinUrl(messageId), member.token).expect(403);
     const list = await api('get', pinsUrl(), member.token).expect(200);
     expect(list.body).toHaveLength(1);
@@ -264,7 +258,6 @@ describe('Pinned messages (e2e)', () => {
     const messageId = await postMessage(owner.token, 'die then pin');
     await api('put', pinUrl(messageId), owner.token).expect(200);
 
-    // Tác giả xóa tin của mình → ghim phải bị gỡ trong cùng transaction.
     await api('delete', `/api/v1/messages/${messageId}`, owner.token).expect(200);
     expect((await api('get', pinsUrl(), owner.token).expect(200)).body).toHaveLength(0);
 
@@ -289,7 +282,6 @@ describe('Pinned messages (e2e)', () => {
     const extra = await postMessage(owner.token, 'chỗ trống sau xóa');
     await api('put', pinUrl(extra), owner.token).expect(200);
 
-    // Xóa mềm một tin đã ghim → còn 49, ghim thêm được.
     const somePin = await prisma.message.findFirstOrThrow({
       where: { channelId, pinnedAt: { not: null } },
       select: { id: true },

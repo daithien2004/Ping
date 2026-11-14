@@ -21,10 +21,6 @@ interface TestUser {
 
 type HttpMethod = 'get' | 'post' | 'patch' | 'put' | 'delete';
 
-/**
- * TG.2 (ADR-0064): cảm xúc trên tin — idempotent, tổng hợp count/me, giới hạn 20 loại,
- * allowlist emoji, quyền ADD_REACTIONS, danh sách người thả phân trang và event realtime.
- */
 describe('Message reactions (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
@@ -244,11 +240,9 @@ describe('Message reactions (e2e)', () => {
       reactions: [{ emoji: '👍', count: 1, me: true }],
     });
 
-    // Thả lại cùng emoji: không tạo hàng thứ hai.
     const again = await api('put', reactionUrl(messageId, '👍'), reactor.token).expect(200);
     expect(again.body.reactions).toEqual([{ emoji: '👍', count: 1, me: true }]);
 
-    // Người khác thấy count 2 nhưng me = false.
     const seenByOther = await messagesOf(messageId, author.token);
     expect(seenByOther.reactions).toEqual([{ emoji: '👍', count: 1, me: false }]);
     await api('put', reactionUrl(messageId, '👍'), reactor2.token).expect(200);
@@ -259,7 +253,6 @@ describe('Message reactions (e2e)', () => {
       { emoji: '👍', count: 2, me: true },
     ]);
 
-    // Gỡ idempotent: lần hai vẫn 200 và không đổi trạng thái.
     await api('delete', reactionUrl(messageId, '👍'), reactor.token).expect(200);
     const removedAgain = await api('delete', reactionUrl(messageId, '👍'), reactor.token).expect(
       200,
@@ -310,7 +303,6 @@ describe('Message reactions (e2e)', () => {
     const overflow = await api('put', reactionUrl(messageId, '🔥'), reactor2.token).expect(400);
     expect(overflow.body.code).toBe('REACTION_LIMIT_REACHED');
 
-    // Thả lại một emoji đã có vẫn được (không phải loại mới).
     await api('put', reactionUrl(messageId, '😀'), reactor2.token).expect(200);
 
     const invalid = await api('put', reactionUrl(messageId, 'hello'), reactor.token).expect(400);
@@ -389,7 +381,7 @@ describe('Message reactions (e2e)', () => {
       count: 1,
     });
 
-    // Idempotent PUT không phát event lần hai: chờ 500 ms, không nhận gì.
+    // Chờ 500 ms: PUT idempotent không được phát event lần hai.
     let extra = 0;
     const countExtra = () => {
       extra += 1;

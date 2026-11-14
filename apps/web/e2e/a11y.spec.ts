@@ -6,10 +6,7 @@ import { paceLogin, pacedLogin } from './login-pace';
 
 const API = 'http://localhost:4000/api/v1';
 
-// H4 (hướng dẫn 16.8, ADR-0029): quét accessibility tự động bằng axe (WCAG 2.0/2.1 A và AA) trên các
-// màn hình chính, ở cả nền sáng lẫn nền tối. Violation nào cũng làm test đỏ: sửa app (hoặc token màu
-// trong globals.css), đừng nới bộ luật. Đăng nhập bị giới hạn 5 lần/phút/IP nên mỗi file chỉ đăng nhập
-// một lần và đổi nền sáng/tối bằng emulateMedia.
+// Đăng nhập giới hạn 5 lần/phút/IP: mỗi file đăng nhập một lần, đổi nền sáng/tối bằng emulateMedia.
 
 async function signIn(page: Page) {
   await paceLogin();
@@ -52,7 +49,6 @@ test('app shell with a channel, the message menu and the create-server dialog, l
   await page.goto(`/channels/${process.env.E2E_SERVER_ID}/${process.env.E2E_CHANNEL_ID}`);
   await expect(page.getByRole('textbox', { name: 'Nhắn #long' })).toBeVisible();
 
-  // T6.9: hai vùng aria-live được khai báo cho trình đọc màn hình (tin mới + nhắc ngoài kênh).
   await expect(page.getByTestId('message-announcer')).toHaveAttribute('aria-live', 'polite');
   await expect(page.getByTestId('mention-announcer')).toHaveAttribute('aria-live', 'polite');
 
@@ -74,7 +70,6 @@ test('app shell with a channel, the message menu and the create-server dialog, l
     await expect(page.getByRole('dialog')).toHaveCount(0);
   }
 
-  // T6.9: chuyển nhanh (combobox + listbox) — quét hộp thoại khi mở.
   for (const colorScheme of SCHEMES) {
     await page.emulateMedia({ colorScheme });
     await page.keyboard.press('Control+k');
@@ -86,7 +81,6 @@ test('app shell with a channel, the message menu and the create-server dialog, l
     await expect(switcher).toHaveCount(0);
   }
 
-  // T6.9: bề mặt quản trị server (owner của server e2e).
   for (const colorScheme of SCHEMES) {
     await page.emulateMedia({ colorScheme });
     await page.goto(`/servers/${process.env.E2E_SERVER_ID}/settings`);
@@ -94,7 +88,6 @@ test('app shell with a channel, the message menu and the create-server dialog, l
     await scan(page, `admin settings ${colorScheme}`);
   }
 
-  // T6.8/T6.9: drawer chung ở 375 (rail + sidebar trong một drawer) và sidebar tĩnh ở 768.
   await page.goto(`/channels/${process.env.E2E_SERVER_ID}/${process.env.E2E_CHANNEL_ID}`);
   await expect(page.getByRole('textbox', { name: 'Nhắn #long' })).toBeVisible();
   await page.setViewportSize({ width: 375, height: 812 });
@@ -109,8 +102,7 @@ test('app shell with a channel, the message menu and the create-server dialog, l
     await expect(toggle).toHaveAttribute('aria-expanded', 'false');
   }
   await page.setViewportSize({ width: 768, height: 900 });
-  // Chuột còn ở chỗ nút drawer (góc trên trái) = trên nút DM của rail ở 768 → tooltip mở trễ sau
-  // settleAnimations và axe đo nó giữa lúc fade-in (3,7:1, đỏ lúc có lúc không). Dời chuột khỏi rail.
+  // Dời chuột khỏi rail: tooltip mở trễ làm axe đo giữa lúc fade-in (đỏ lúc có lúc không).
   await page.mouse.move(700, 450);
   await expect(page.getByRole('tooltip')).toHaveCount(0);
   for (const colorScheme of SCHEMES) {
@@ -119,7 +111,6 @@ test('app shell with a channel, the message menu and the create-server dialog, l
   }
   await page.setViewportSize({ width: 1280, height: 900 });
 
-  // T6.9: hội thoại DM (tạo thật qua API: partner mới join server rồi get-or-create).
   const auth = await pacedLogin(request, process.env.E2E_EMAIL!, process.env.E2E_PASSWORD!);
   const suffix = randomUUID().slice(0, 8);
   const partner = (await (

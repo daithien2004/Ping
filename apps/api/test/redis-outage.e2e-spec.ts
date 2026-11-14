@@ -8,10 +8,6 @@ import { bootApp } from './helpers/boot.js';
 
 const runId = Date.now().toString(36);
 
-/**
- * Chính sách khi Redis chết (ADR-0026): đọc/ghi dữ liệu vẫn chạy (fail-open), còn thao tác mà
- * Redis là nơi duy nhất bảo vệ (đăng nhập/đăng ký, Idempotency-Key) thì từ chối bằng 503.
- */
 describe('Redis outage (e2e)', () => {
   let healthy: INestApplication;
   let down: INestApplication;
@@ -28,7 +24,6 @@ describe('Redis outage (e2e)', () => {
     healthy = await bootApp();
     down = await bootApp({ deadRedis: true });
 
-    // Chuẩn bị dữ liệu bằng instance khỏe; JWT là stateless nên instance "chết Redis" nhận được.
     const registered = await request(healthy.getHttpServer())
       .post('/api/v1/auth/register')
       .send({ email, username: `out${runId}`.slice(0, 32), password: 'password123' })
@@ -67,7 +62,6 @@ describe('Redis outage (e2e)', () => {
   async function timed<T>(run: () => Promise<T>): Promise<T> {
     const started = Date.now();
     const result = await run();
-    // Không chờ hết timeout của từng lệnh Redis: instance biết Redis chưa sẵn sàng và bỏ qua ngay.
     expect(Date.now() - started).toBeLessThan(1500);
     return result;
   }

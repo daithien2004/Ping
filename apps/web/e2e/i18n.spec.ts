@@ -7,16 +7,13 @@ test('đổi ngôn ngữ: lưu vào cookie, đổi tại chỗ không tải lạ
   await expect(page.getByRole('heading', { name: 'Đăng nhập' })).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('lang', 'vi');
 
-  // Biến JS mất khi reload — còn sau khi đổi ngôn ngữ nghĩa là trang không tải lại.
   await page.evaluate(() => Reflect.set(window, '__pingNoReload', true));
 
-  // Công tắc VI | EN là nhóm radio gốc ẩn về mặt thị giác: bấm vào nhãn (force) rồi kiểm trạng thái.
   await page.getByRole('radio', { name: 'English' }).check({ force: true });
   await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
   await expect(page.getByLabel('Password').filter({ visible: true })).toBeVisible();
 
-  // Lỗi validate của zod cũng theo ngôn ngữ đang chọn.
   await page.getByRole('button', { name: 'Sign in' }).click();
   await expect(page.getByText(/Invalid/i).first()).toBeVisible();
 

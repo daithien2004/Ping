@@ -11,10 +11,6 @@ import { pacedLogin } from './login-pace';
 
 const API = 'http://localhost:4000/api/v1';
 
-/**
- * T3.3: tạo vai trò, đổi thứ tự hiển thị, gán vai trò cho thành viên.
- * Server riêng cho test này để không đụng dữ liệu của các spec khác; xoá ở cuối.
- */
 test('admin roles: create, reorder, assign, realtime permissions and hierarchy guard', async ({
   browser,
 }) => {
@@ -146,7 +142,6 @@ test('admin roles: create, reorder, assign, realtime permissions and hierarchy g
         })
         .toEqual([auditName, orderName]);
 
-      // @everyone luôn đứng đầu: không có nút đưa lên.
       await expect(rolesRegion.getByRole('button', { name: 'Đưa @everyone lên' })).toBeDisabled();
     });
 
@@ -167,7 +162,6 @@ test('admin roles: create, reorder, assign, realtime permissions and hierarchy g
       await drawer.getByRole('button', { name: 'Lưu' }).click();
       await expect(ownerPage.getByText('Đã cập nhật vai trò thành viên.')).toBeVisible();
 
-      // Không reload: event `permissions.changed` làm mới quyền của member.
       await expect(memberPage.getByRole('region', { name: 'Nhật ký hành động' })).toBeVisible({
         timeout: 15_000,
       });

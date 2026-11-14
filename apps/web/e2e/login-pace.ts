@@ -1,6 +1,4 @@
-// POST /auth/login tối đa 10 lần/phút/IP (cố ý, chống dò mật khẩu). Bộ e2e chạy nối tiếp trong một
-// process nên đếm ở đây được: chờ khi đã dùng đủ 6 lần trong 60 giây (chừa chỗ cho global-setup và
-// các spec đăng nhập bằng API).
+// POST /auth/login tối đa 10 lần/phút/IP: chờ khi đã dùng 6 lần trong 60 giây (chừa chỗ cho global-setup và spec đăng nhập bằng API).
 import type { APIRequestContext } from '@playwright/test';
 import type { AuthResponse } from '@ping/shared';
 
@@ -20,11 +18,7 @@ export async function paceLogin() {
 
 const API_BASE = 'http://localhost:4000/api/v1';
 
-/**
- * Đăng nhập qua API có pacing — MỌI spec phải dùng helper này thay vì gọi /auth/login trực
- * tiếp: cụm spec cuối bộ e2e dồn nhiều login trong một cửa sổ 60 giây sẽ 429 (đã gặp trên
- * CI: 4 spec cuối đỏ vì login không pacing).
- */
+/** Mọi spec phải dùng helper này thay vì gọi /auth/login trực tiếp, không thì 429 ở cuối bộ. */
 export async function pacedLogin(
   request: APIRequestContext,
   email: string,

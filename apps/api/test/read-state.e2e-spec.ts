@@ -18,11 +18,6 @@ interface TestUser {
   token: string;
 }
 
-/**
- * T4.2: PUT /channels/:id/read (chỉ tiến), GET /servers/:id/unread (đếm có trần, không tính
- * tin đã xóa mềm/tin của chính mình, mention theo user/role/everyone), `read.updated` đồng bộ
- * hai tab và `mention.created` chỉ tới người được nhắc.
- */
 describe('Read state & unread (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
@@ -34,8 +29,8 @@ describe('Read state & unread (e2e)', () => {
   let other: TestUser;
   let outsider: TestUser;
   let serverId: string;
-  let ch1: string; // diễn ra mọi tin của test
-  let ch2: string; // chỉ dùng cho trần 100
+  let ch1: string;
+  let ch2: string;
   let readerUsername = '';
 
   const uniqueSuffix = () => Math.random().toString(36).slice(2, 8);
@@ -79,7 +74,6 @@ describe('Read state & unread (e2e)', () => {
     return row!;
   }
 
-  /** ADR-0077: unread mọi server người gọi là thành viên trong một request. */
   async function unreadAllOf(token: string) {
     const res = await api('get', '/api/v1/users/me/unread', token).expect(200);
     return res.body as Array<{
@@ -157,9 +151,8 @@ describe('Read state & unread (e2e)', () => {
       .expect(201);
     ch2 = second.body.id;
 
-    // reader mang role `mods` để test mention theo role.
     const role = await api('post', `/api/v1/servers/${serverId}/roles`, owner.token)
-      .send({ name: 'mods', permissions: '3' }) // VIEW_CHANNEL | SEND_MESSAGES
+      .send({ name: 'mods', permissions: '3' })
       .expect(201);
     const members = await api('get', `/api/v1/servers/${serverId}/members`, owner.token).expect(
       200,
@@ -171,7 +164,6 @@ describe('Read state & unread (e2e)', () => {
         .expect(201);
     }
     const readerMember = memberRows.find((row) => row.userId === reader.id);
-    // memberRows lấy TRƯỚC khi join — lấy lại id member của reader.
     const afterJoin = await api('get', `/api/v1/servers/${serverId}/members`, owner.token).expect(
       200,
     );
@@ -182,7 +174,7 @@ describe('Read state & unread (e2e)', () => {
     await api('put', `/api/v1/servers/${serverId}/members/${readerRow!.id}/roles`, owner.token)
       .send({ roleIds: [role.body.id] })
       .expect(200);
-    expect(readerMember).toBeUndefined(); // sanity: trước join không có
+    expect(readerMember).toBeUndefined();
 
     const user = await prisma.user.findUniqueOrThrow({
       where: { id: reader.id },
@@ -217,7 +209,6 @@ describe('Read state & unread (e2e)', () => {
   });
 
   it('GET /users/me/unread gộp mọi server và khớp endpoint per-server (ADR-0077)', async () => {
-    // Server riêng của reader để chắc ràng buộc "mọi server" không chỉ server của test.
     const own = await api('post', '/api/v1/servers', reader.token)
       .send({ name: 'Reader Own' })
       .expect(201);
@@ -225,18 +216,15 @@ describe('Read state & unread (e2e)', () => {
     const all = await unreadAllOf(reader.token);
     const grouped = all.find((entry) => entry.serverId === serverId);
     expect(grouped).toBeDefined();
-    // Cùng số với endpoint per-server (nguồn sự thật cũ) — gộp không đổi ngữ nghĩa đếm.
     const perServer = await api('get', `/api/v1/servers/${serverId}/unread`, reader.token).expect(
       200,
     );
     expect(grouped!.channels).toEqual(perServer.body);
     expect(grouped!.channels.map((item) => item.channelId)).toEqual([ch1, ch2]);
-    // Server mới của chính reader có mặt (channel mặc định, 0/0).
     const ownRows = all.find((entry) => entry.serverId === own.body.id);
     expect(ownRows).toBeDefined();
     expect(ownRows!.channels.length).toBeGreaterThan(0);
 
-    // Người ngoài chỉ thấy server của chính họ, không thấy server của test; chưa đăng nhập 401.
     const outsiderAll = await unreadAllOf(outsider.token);
     expect(outsiderAll.some((entry) => entry.serverId === serverId)).toBe(false);
     await api('get', '/api/v1/users/me/unread').expect(401);
@@ -248,10 +236,7 @@ describe('Read state & unread (e2e)', () => {
     await send(owner.token, ch1, '@everyone thông báo');
 
     const row = await unreadOf(reader.token, ch1);
-    // 5 tin đầu + 3 tin mention, không tính tin của reader.
     expect(row).toMatchObject({ unreadCount: 8, mentionCount: 3 });
-    // Với `other`: 9 tin chưa đọc (tin của reader cũng là unread với người khác), chỉ bị
-    // @everyone nhắc (không mang role mods, không được nhắc trực tiếp).
     const otherRow = await unreadOf(other.token, ch1);
     expect(otherRow).toMatchObject({ unreadCount: 9, mentionCount: 1 });
   });
@@ -262,7 +247,6 @@ describe('Read state & unread (e2e)', () => {
       orderBy: { id: 'asc' },
       select: { id: true, authorId: true },
     });
-    // Mốc = tin thứ 5 của owner (5 tin đầu) → còn 3 tin mention chưa đọc.
     const fifth = messages.filter((row) => row.authorId === owner.id)[4]!;
 
     await api('put', `/api/v1/channels/${ch1}/read`, reader.token)
@@ -270,14 +254,12 @@ describe('Read state & unread (e2e)', () => {
       .expect(204);
     expect(await unreadOf(reader.token, ch1)).toMatchObject({ unreadCount: 3, mentionCount: 3 });
 
-    // Cursor cũ hơn (tin thứ 3) không được làm lùi mốc.
     const third = messages.filter((row) => row.authorId === owner.id)[2]!;
     await api('put', `/api/v1/channels/${ch1}/read`, reader.token)
       .send({ messageId: third.id })
       .expect(204);
     expect(await unreadOf(reader.token, ch1)).toMatchObject({ unreadCount: 3, mentionCount: 3 });
 
-    // MessageId không thuộc channel này → 404, không đổi mốc.
     await api('put', `/api/v1/channels/${ch1}/read`, reader.token)
       .send({ messageId: randomUUID() })
       .expect(404);
@@ -316,7 +298,6 @@ describe('Read state & unread (e2e)', () => {
       select: { id: true },
     });
     const newest = messages[0]!;
-    // Gắn listener TRƯỚC khi PUT — event phát trong lúc xử lý request.
     const waitA = waitEvent<{
       channelId: string;
       lastReadMessageId: string;

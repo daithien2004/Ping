@@ -24,8 +24,6 @@ test('two isolated sessions: messages, typing, missed events, edits, deletes and
   async function setOffline(value: boolean) {
     offline = value;
     await b.setOffline(value);
-    // Chromium offline emulation can leave established WebSockets alive.
-    // Close the real server bridges as well so this is a deterministic outage.
     if (value) {
       await Promise.all([...sockets].map((socket) => socket.close().catch(() => {})));
       sockets.clear();
@@ -99,7 +97,6 @@ test('two isolated sessions: messages, typing, missed events, edits, deletes and
     await expect(composerA).toBeVisible();
     await expect(composerB).toBeVisible();
 
-    // Typing also proves both joins have completed, without an arbitrary sleep.
     await expect(async () => {
       await composerA.fill(`typing ${Date.now()}`);
       await expect(pb.getByText('Có người đang gõ…', { exact: true })).toBeVisible({
@@ -117,7 +114,6 @@ test('two isolated sessions: messages, typing, missed events, edits, deletes and
     await expect(pb.locator('article:visible', { hasText: content })).toHaveCount(1);
     await expect(pa.locator('article:visible', { hasText: content })).toHaveCount(1);
 
-    // Trình đọc màn hình: tin của người khác được đọc qua vùng aria-live, tin của chính mình thì không.
     await expect(pb.locator('[aria-live="polite"]').filter({ hasText: content })).toHaveCount(1);
     await expect(pa.locator('[aria-live="polite"]').filter({ hasText: content })).toHaveCount(0);
 
@@ -155,7 +151,6 @@ test('two isolated sessions: messages, typing, missed events, edits, deletes and
     expect((await a.request.delete(`${API}/messages/${id}`, { headers: auth })).ok()).toBeTruthy();
     await expect(pb.getByText(`edited ${suffix}`, { exact: true })).toHaveCount(0);
 
-    // Changing channel leaves the old room; reactivation catches up from REST.
     await composerB.fill('saved draft');
     await pb.getByRole('link', { name: '# general', exact: true }).click();
     await expect(pb.getByRole('textbox', { name: 'Nhắn #general' })).toBeVisible();
@@ -172,7 +167,6 @@ test('two isolated sessions: messages, typing, missed events, edits, deletes and
     await expect(composerB).toHaveValue('saved draft');
     await expect(pb.getByText(hidden, { exact: true }).filter({ visible: true })).toBeVisible();
 
-    // Offline also exercises Socket.IO's transport failure and automatic reconnection.
     await setOffline(true);
     await expect(pb.getByText('Mất kết nối. Đang thử kết nối lại…', { exact: true })).toBeVisible({
       timeout: 45000,
@@ -188,7 +182,6 @@ test('two isolated sessions: messages, typing, missed events, edits, deletes and
     ).toBeTruthy();
     await setOffline(false);
     await expect(pb.getByText(missed, { exact: true }).filter({ visible: true })).toBeVisible({
-      // Routed WebSockets make the first reconnect after the outage slow; see the kick assertions.
       timeout: 45_000,
     });
     await expect(pb.getByText('Mất kết nối. Đang thử kết nối lại…', { exact: true })).toHaveCount(
@@ -225,9 +218,7 @@ test('two isolated sessions: messages, typing, missed events, edits, deletes and
         await a.request.delete(`${API}/servers/${serverId}/members/${memberId}`, { headers: auth })
       ).status(),
     ).toBe(204);
-    // Routed WebSockets make Socket.IO reconnect slowly after an outage (the in-flight handshake
-    // only fails after the browser's own timeout), so reconciliation gets the same budget as the
-    // disconnect banner instead of the 10s default.
+    // Routed WebSockets make Socket.IO reconnect slowly after an outage, so reconciliation gets the same budget as the disconnect banner.
     const reconciled = { timeout: 45_000 } as const;
     await expect(pb.getByRole('textbox', { name: `Nhắn #${channel.name}` })).toHaveCount(
       0,
@@ -242,7 +233,6 @@ test('two isolated sessions: messages, typing, missed events, edits, deletes and
       reconciled,
     );
 
-    // A kick while offline has no delivered personal event; reconnect must check REST.
     expect(
       (
         await b.request.post(`${API}/servers/join`, {
@@ -275,7 +265,6 @@ test('two isolated sessions: messages, typing, missed events, edits, deletes and
     );
     await expect(pb.getByText(missed, { exact: true })).toHaveCount(0, reconciled);
 
-    // Rejected refresh clears the signed-in UI and sends the user back to login.
     refreshes = 0;
     rejectRefresh = true;
     await pb.reload();

@@ -7,11 +7,6 @@ import { pacedLogin } from './login-pace';
 
 const API = 'http://localhost:4000/api/v1';
 
-/**
- * TG.2 (ADR-0064): cảm xúc qua UI — hộp chọn emoji, viên thuốc tách đôi (emoji = thả/gỡ,
- * số = danh sách người thả), optimistic + response chuẩn, giữ sau reload, và realtime khi
- * người khác thả/gỡ.
- */
 test('reactions: pick, toggle, reactor list and realtime from another member', async ({
   browser,
 }) => {
@@ -37,7 +32,6 @@ test('reactions: pick, toggle, reactor list and realtime from another member', a
     expect(created.ok()).toBeTruthy();
     const message = (await created.json()) as MessageDto;
 
-    // bob là thành viên server (nhận ADD_REACTIONS mặc định của @everyone).
     const bob = await pacedLogin(otherContext.request, 'bob@ping.dev', 'password123');
     const bobHeaders = { Authorization: `Bearer ${bob.accessToken}` };
     const joined = await otherContext.request.post(`${API}/servers/join`, {
@@ -55,10 +49,7 @@ test('reactions: pick, toggle, reactor list and realtime from another member', a
     const bobArticle = bobPage.locator(`article[data-message-id="${message.id}"]`);
     await expect(bobArticle).toBeVisible({ timeout: 45_000 });
 
-    // CI từng đỏ vì cảm xúc phát đi trước khi socket của bob vào room channel. `message.created`
-    // cũng chỉ tới room đó, nên gửi một tin đánh dấu rồi chờ nó hiện ở tab bob là bằng chứng bob
-    // đã join: trang bob đã tải xong danh sách tin trước đó, nên tin này chỉ đến được qua socket
-    // (hoặc sau một lần nối lại — khi đó client cũng join room trước khi vá khoảng trống).
+    // CI từng đỏ vì cảm xúc phát trước khi socket của bob vào room: gửi tin đánh dấu rồi chờ nó hiện ở tab bob.
     const warmup = await ownerContext.request.post(`${API}/channels/${channelId}/messages`, {
       headers,
       data: { content: `warmup ${suffix}`, nonce: randomUUID() },
@@ -125,7 +116,6 @@ test('reactions: pick, toggle, reactor list and realtime from another member', a
       await bobPill.getByRole('button').nth(0).click();
       const pill = article.getByTestId('reaction-👍');
       await expect(pill.getByRole('button').nth(1)).toHaveText('2', { timeout: 15_000 });
-      // Cờ "của mình" không bị event của người khác làm sai.
       await expect(pill).toHaveAttribute('data-me', 'true');
 
       await expect(bobPill.getByRole('button').nth(0)).toBeEnabled();

@@ -1,4 +1,3 @@
-/** Dùng chung cho các drill (diễn tập thật): chạy API đã build, gọi HTTP, bật/tắt container. */
 import { execFileSync, spawn, type ChildProcess } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
@@ -86,7 +85,6 @@ export function startApi(): RunningApi {
   return { child, logs: () => logs, exited: () => exited };
 }
 
-/** Đăng ký user + server + channel; trả về dữ liệu để gửi tin. */
 export async function seedChat() {
   const suffix = Date.now().toString(36);
   const email = `drill-${suffix}@ping.dev`;
@@ -105,7 +103,6 @@ export async function seedChat() {
   return { email, token, channelId, send };
 }
 
-/** In tổng kết và thoát với mã 0 nếu mọi bước đạt. */
 export function finish(): never {
   const failed = results.filter((result) => !result.ok);
   console.log(`\n${results.length - failed.length}/${results.length} bước đạt`);

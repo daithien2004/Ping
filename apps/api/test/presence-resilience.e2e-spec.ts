@@ -8,8 +8,6 @@ import { PrismaService } from '../src/infra/prisma/prisma.service.js';
 import { RedisProvider } from '../src/infra/redis/redis.module.js';
 import { bootApp } from './helpers/boot.js';
 
-// H7 (docs/perf/2026-10-20-baseline.md, điểm nghẽn 1): presence là best-effort. Lúc nhiều người nối cùng lúc,
-// pool Postgres cạn và truy vấn phát presence quá hạn; người dùng ĐÃ xác thực xong không được bị ngắt vì thế.
 describe('presence failure on connect (e2e)', () => {
   let app: INestApplication;
   let port: number;
@@ -19,7 +17,7 @@ describe('presence failure on connect (e2e)', () => {
 
   beforeAll(async () => {
     app = await bootApp({ websocket: true });
-    await app.get(RedisProvider).flushdb(); // bộ đếm rate limit của spec khác
+    await app.get(RedisProvider).flushdb();
     const address = app.getHttpServer().address();
     port = typeof address === 'object' && address !== null ? address.port : 0;
 
@@ -52,7 +50,6 @@ describe('presence failure on connect (e2e)', () => {
 
   it('keeps the connection (and channel.join works) when the presence query times out', async () => {
     const prisma = app.get(PrismaService);
-    // Đúng lỗi quan sát được dưới tải: pool cạn, chờ lấy kết nối quá hạn.
     const failing = vi
       .spyOn(prisma.member, 'findMany')
       .mockRejectedValue(new Error('timeout exceeded when trying to connect'));
@@ -72,9 +69,9 @@ describe('presence failure on connect (e2e)', () => {
         socket.once('connect_error', reject);
       });
 
-      // `connect` tới client trước khi handleConnection chạy xong: đợi hết khung 1 giây rồi mới kết luận.
+      // Đợi hết khung 1 giây: `connect` tới client trước khi handleConnection chạy xong.
       expect(await dropped).toBe(false);
-      expect(failing).toHaveBeenCalled(); // đã thực sự đi qua đường phát presence
+      expect(failing).toHaveBeenCalled();
       expect(socket.connected).toBe(true);
       const joined = (await socket
         .timeout(3000)

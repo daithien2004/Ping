@@ -20,14 +20,6 @@ interface TestUser {
   token: string;
 }
 
-/**
- * Bước 9 (guide 11.5): test tích hợp chạy HAI instance NestJS dùng chung một
- * Redis — chứng minh Redis adapter hoạt động thật: REST trên instance A phải
- * phát event tới client đang nối instance B, và typing/hiện diện đi hai chiều.
- *
- * Mỗi app là một DI container độc lập (Prisma, Redis, Gateway riêng) — đúng
- * như hai process riêng cùng chống một Redis trong production.
- */
 describe('Realtime across two instances (e2e)', () => {
   let appA: INestApplication;
   let appB: INestApplication;
@@ -40,9 +32,7 @@ describe('Realtime across two instances (e2e)', () => {
   let owner: TestUser;
   let member: TestUser;
   let outsider: TestUser;
-  /** Member nhưng CHƯA BAO GIỜ mở socket — dùng cho test presence (lần kết nối đầu tiên). */
   let bystander: TestUser;
-  /** Member chỉ có @everyone — dùng cho test mất quyền xem và rời server. */
   let restricted: TestUser;
   let serverId: string;
   let channelId: string;
@@ -50,7 +40,6 @@ describe('Realtime across two instances (e2e)', () => {
 
   const uniqueSuffix = () => Math.random().toString(36).slice(2, 8);
 
-  /** Chờ client nhận đúng một event, có timeout để test treo rõ ràng thay vì im lặng. */
   function waitEvent<T>(socket: Socket, event: string, timeoutMs = 3000): Promise<T> {
     return new Promise<T>((resolve, reject) => {
       const timer = setTimeout(() => {
@@ -65,7 +54,6 @@ describe('Realtime across two instances (e2e)', () => {
     });
   }
 
-  /** Đảm bảo event KHÔNG đến trong khoảng chờ — dùng cho case không có quyền. */
   async function assertNoEvent(socket: Socket, event: string, waitMs = 800): Promise<void> {
     const seen = await Promise.race([
       new Promise<boolean>((resolve) => socket.once(event, () => resolve(true))),
@@ -87,14 +75,13 @@ describe('Realtime across two instances (e2e)', () => {
     });
   }
 
-  /** Gateway xử lý channel.join bất đồng bộ (query DB) — đợi nhẹ để room kịp gắn. */
+  /** Gateway xử lý channel.join bất đồng bộ (query DB): đợi nhẹ để room kịp gắn. */
   const settle = (ms = 250) => new Promise((resolve) => setTimeout(resolve, ms));
 
   async function bootInstance(): Promise<{ app: INestApplication; port: number }> {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
     const app = moduleRef.createNestApplication();
-    // main.ts không chạy trong e2e: tự lắp như thật — cookie-parser, prefix,
-    // và RedisIoAdapter để Socket.IO share HTTP server + pub/sub qua Redis.
+    // main.ts không chạy trong e2e: tự lắp cookie-parser, prefix và RedisIoAdapter.
     app.use(cookieParser());
     app.setGlobalPrefix('api/v1');
     const redis = app.get(RedisProvider);
@@ -126,7 +113,6 @@ describe('Realtime across two instances (e2e)', () => {
     portA = a.port;
     portB = b.port;
 
-    // Dọn presence/ability cache của các spec khác trước khi test bắt đầu.
     await appA.get(RedisProvider).flushdb();
 
     owner = await registerUser(appA);
@@ -165,7 +151,6 @@ describe('Realtime across two instances (e2e)', () => {
     }
   }, 30000);
 
-  /** Socket bị server ngắt trong khoảng chờ. */
   function waitDisconnect(socket: Socket, timeoutMs: number): Promise<void> {
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => reject(new Error('Socket vẫn còn kết nối')), timeoutMs);
@@ -219,7 +204,6 @@ describe('Realtime across two instances (e2e)', () => {
     for (const socket of sockets) {
       socket.disconnect();
     }
-    // Cleanup: xóa server (cascade channel/role/member/message).
     if (appA && serverId) {
       await appA
         .get(PrismaService)
@@ -231,7 +215,6 @@ describe('Realtime across two instances (e2e)', () => {
   });
 
   it('từ chối kết nối socket không có access token', async () => {
-    // Authentication now rejects before the namespace emits connect.
     const socket = io(`http://127.0.0.1:${portB}`, {
       transports: ['websocket'],
       reconnection: false,
@@ -271,7 +254,6 @@ describe('Realtime across two instances (e2e)', () => {
       author: { id: string; username: string };
     }>(clientB, 'message.created');
 
-    // Tạo tin nhắn qua REST của instance A — client đang ở instance B.
     const nonce = randomUUID();
     const res = await request(appA.getHttpServer())
       .post(`/api/v1/channels/${channelId}/messages`)
@@ -284,7 +266,6 @@ describe('Realtime across two instances (e2e)', () => {
     expect(payload.content).toBe('hello from A');
     expect(payload.authorId).toBe(member.id);
     expect(payload.channelId).toBe(channelId);
-    // Client gửi khớp tin optimistic theo nonce; client khác hiện tác giả không cần gọi thêm API.
     expect(payload.nonce).toBe(nonce);
     expect(payload.author).toMatchObject({ id: member.id, username: res.body.author.username });
     clientB.disconnect();
@@ -327,7 +308,6 @@ describe('Realtime across two instances (e2e)', () => {
     expect(payload.channelId).toBe(channelId);
     expect(payload.userId).toBe(member.id);
 
-    // Gõ dồn dập: event thứ hai ngay sau đó bị nuốt (giới hạn tần suất theo socket).
     clientB.emit('typing.start', { channelId });
     await assertNoEvent(clientA, 'typing.started', 500);
     clientA.disconnect();
@@ -372,7 +352,6 @@ describe('Realtime across two instances (e2e)', () => {
     watcher.emit('channel.join', { channelId });
     await settle();
 
-    // Người ngoài room vẫn gửi được REST, nhưng event không tới tay outsider.
     await request(appA.getHttpServer())
       .post(`/api/v1/channels/${channelId}/messages`)
       .set('Authorization', `Bearer ${member.token}`)
@@ -385,15 +364,11 @@ describe('Realtime across two instances (e2e)', () => {
   });
 
   it('presence online phát sang instance khác khi user mới kết nối', async () => {
-    // Owner đang ở instance B (đã join server room qua channel.join).
     const watcherB = await connectClient(portB, owner.token);
     watcherB.emit('channel.join', { channelId });
     await settle();
 
-    // Bystander là member nhưng chưa từng mở socket → counter 0 → 1 → broadcast.
-    // (Dùng user chưa kết nối bao giờ để không phụ thuộc thứ tự test trước.)
-    // Cửa sổ gộp presence (T1.2, 1 giây) có thể đang mang event presence của user khác
-    // (các socket kết nối trước đó) — chờ đúng event của bystander, bỏ qua event khác.
+    // Chờ đúng event của bystander: cửa sổ gộp presence 1 giây có thể mang event của user khác.
     const received = (async () => {
       const deadline = Date.now() + 10_000;
       for (;;) {
@@ -412,7 +387,6 @@ describe('Realtime across two instances (e2e)', () => {
     expect(payload.userId).toBe(bystander.id);
     expect(payload.status).toBe('online');
 
-    // Tab thứ hai ở instance khác: đóng một tab không được báo offline.
     const secondTabOnline = waitEvent<{ userId: string; status: string }>(
       watcherB,
       'presence.updated',
@@ -420,8 +394,7 @@ describe('Realtime across two instances (e2e)', () => {
     const secondTab = await connectClient(portB, bystander.token);
     expect(await secondTabOnline).toEqual({ userId: bystander.id, status: 'online' });
     bystanderSocket.disconnect();
-    // Wait for the actual online event before asserting its absence; a fixed sleep both
-    // races slow machines and wastes the test budget when PRESENCE_BATCH_MS=0 in e2e.
+    // Wait for the actual online event before asserting its absence; a fixed sleep races slow machines.
     await assertNoEvent(watcherB, 'presence.updated', 1500);
 
     const lastTabClosed = waitEvent<{ userId: string; status: string }>(
@@ -555,7 +528,6 @@ describe('Realtime across two instances (e2e)', () => {
     socket.disconnect();
   });
 
-  // LUÔN để cuối: xóa server mà các test trên dùng chung.
   it('member.removed: server bị xóa → mọi member nhận event riêng', async () => {
     const socket = await connectClient(portA, member.token);
     await settle();
@@ -568,8 +540,7 @@ describe('Realtime across two instances (e2e)', () => {
 
     expect(await received).toEqual({ serverId });
     socket.disconnect();
-    // Cho các request chéo instance của handleDisconnect chạy xong trước khi afterAll tắt app.
-    // (Từ ADR-0026 Redis đóng sau Socket.IO nên không còn bắt buộc, giữ lại cho test ổn định.)
+    // Cho request chéo instance của handleDisconnect chạy xong trước khi afterAll tắt app.
     await settle();
   });
 });

@@ -6,14 +6,7 @@ import { pacedLogin } from './login-pace';
 const API = 'http://localhost:4000/api/v1';
 const SEED_PASSWORD = 'password123';
 
-/**
- * T4.4 (ADR-0044): ngắt mạng, client khác gửi 100 tin (+ xóa 1), nối lại → đủ 99 tin còn lại,
- * đúng thứ tự, không trùng, tin đã xóa biến mất — nhờ `?after=` vá khoảng trống thay vì
- * refetch toàn bộ.
- *
- * Nhịp gửi 400 ms/lần và chia 3 tài khoản seed để không chạm hai lớp rate limit:
- * 10 tin/10 s/(user, channel) và 100 req/phút/IP.
- */
+/** Nhịp gửi 400 ms/lần, chia 3 tài khoản seed: không chạm 10 tin/10 s/(user, channel) và 100 req/phút/IP. */
 test('gap recovery: 100 messages sent while offline are patched in order after reconnect', async ({
   browser,
 }) => {
@@ -47,7 +40,6 @@ test('gap recovery: 100 messages sent while offline are patched in order after r
       })
     ).json()) as ServerDetail;
     const channelId = server.channels[0]!.id;
-    // senders[0] (alice) là người tạo server — chỉ join bob và carol.
     for (const sender of senders.slice(1)) {
       const joined = await senderContext.request.post(`${API}/servers/join`, {
         headers: sender,
@@ -56,7 +48,6 @@ test('gap recovery: 100 messages sent while offline are patched in order after r
       expect(joined.ok()).toBeTruthy();
     }
 
-    // Viewer tham gia server rồi mở kênh, chờ trạng thái rỗng hiện (cache có tail làm cursor).
     const viewerJoined = await viewerContext.request.post(`${API}/servers/join`, {
       headers: viewerHeaders,
       data: { inviteCode: server.inviteCode },
@@ -68,7 +59,6 @@ test('gap recovery: 100 messages sent while offline are patched in order after r
       timeout: 15_000,
     });
 
-    // Ngắt mạng thật sự: offline emulation + đóng bridge WebSocket (Chromium giữ WS cũ).
     let offline = false;
     const bridges = new Set<{ close: () => Promise<void> }>();
     await page.routeWebSocket(/\/socket\.io\//, (socket) => {
@@ -88,8 +78,6 @@ test('gap recovery: 100 messages sent while offline are patched in order after r
       }
     }
 
-    // Hai tin lúc CÒN online để cache có tail — reconnect mới đi đường vá `?after=`
-    // (kênh trống thì tail không có, sẽ rơi về nhánh refetch trang đầu).
     for (const content of [`gap pre-1 ${suffix}`, `gap pre-2 ${suffix}`]) {
       const res = await senderContext.request.post(`${API}/channels/${channelId}/messages`, {
         headers: senders[0]!,
@@ -106,11 +94,9 @@ test('gap recovery: 100 messages sent while offline are patched in order after r
       timeout: 45_000,
     });
 
-    // 100 tin khi viewer offline (chia đều 3 người gửi), đánh số để kiểm thứ tự.
     const TOTAL = 100;
     const sentIds: string[] = [];
-    // Vòng 100 request có thể văng lỗi mạng nhất thời (API watch restart giữa chừng):
-    // thử lại TỪNG request tối đa 2 lần — cùng nonce nên an toàn idempotent.
+    // Thử lại từng request tối đa 2 lần (API watch restart): cùng nonce nên idempotent.
     const postWithRetry = async (i: number) => {
       for (let attempt = 0; ; attempt += 1) {
         try {
@@ -129,10 +115,8 @@ test('gap recovery: 100 messages sent while offline are patched in order after r
       const res = await postWithRetry(i);
       expect(res.ok()).toBeTruthy();
       sentIds.push(((await res.json()) as { id: string }).id);
-      // 400 ms/lần: mỗi người ~10 tin/12 s, IP ~85 req/phút — dưới hai trần rate limit.
       await page.waitForTimeout(400);
     }
-    // Xóa 1 tin lúc offline (không phải tin đầu/cuối) — sau reconnect phải biến mất.
     const deletedIndex = 50;
     const deleted = await senderContext.request.delete(`${API}/messages/${sentIds[deletedIndex]}`, {
       headers: senders[0]!,
@@ -141,13 +125,10 @@ test('gap recovery: 100 messages sent while offline are patched in order after r
 
     await setOffline(false);
 
-    // Danh sách ảo hóa chỉ render hàng trong viewport nên kiểm theo mẫu: cuộn dần từ đáy
-    // lên, mỗi mẫu phải xuất hiện đúng một lần; hàng cuối (mới nhất) phải tự hiện vì
-    // followOnAppend giữ viewer ở đáy. Thứ tự đầy đủ đã được patchGap unit test chứng minh.
+    // Danh sách ảo chỉ render hàng trong viewport nên kiểm theo mẫu.
     const scroller = page.getByLabel(`Tin nhắn trong #general`);
     const textOf = (i: number) => `gap ${String(i).padStart(3, '0')} ${suffix}`;
 
-    // Hàng cuối cùng hiện trong viewport đáy, đúng một bản.
     await expect(page.getByText(textOf(99), { exact: true }).filter({ visible: true })).toHaveCount(
       1,
       { timeout: 60_000 },
@@ -173,10 +154,8 @@ test('gap recovery: 100 messages sent while offline are patched in order after r
     for (const sample of [0, 10, 30, 70, 98]) {
       expect(await scrollToFind(textOf(sample))).toBe(true);
     }
-    // Tin bị xóa lúc offline: cuộn qua vùng của nó mà không thấy.
     expect(await scrollToFind(textOf(deletedIndex))).toBe(false);
 
-    // Server do alice (senders[0]) tạo — chỉ chủ mới xóa được.
     const cleanup = await senderContext.request.delete(`${API}/servers/${server.id}`, {
       headers: senders[0]!,
     });

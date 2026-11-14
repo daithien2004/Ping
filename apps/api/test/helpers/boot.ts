@@ -9,21 +9,14 @@ import { ShutdownService } from '../../src/infra/lifecycle/shutdown.service.js';
 import { RedisProvider } from '../../src/infra/redis/redis.module.js';
 import { RedisIoAdapter } from '../../src/infra/socket/redis-io.adapter.js';
 
-// Cổng 1 hầu như chắc chắn không có ai nghe và trả ECONNREFUSED ngay. Tránh dùng cổng
-// dev phổ biến (ví dụ 6390) vì một container khác trên máy có thể chiếm, làm test
-// "Redis chết" lại kết nối được vào Redis thật.
+// Cổng 1 hầu như chắc chắn không ai nghe (ECONNREFUSED ngay); tránh cổng dev phổ biến vì container khác có thể chiếm.
 export const DEAD_REDIS = 'redis://127.0.0.1:1';
 
-/**
- * Dựng app thật (Postgres thật). `deadRedis` thay RedisProvider bằng một provider cùng class, cùng
- * tùy chọn timeout, trỏ vào cổng không có ai nghe: đúng đường chạy của một Redis đã chết.
- * (Đổi process.env không đủ: ConfigModule chụp cấu hình lúc import AppModule.)
- */
+/** Đổi process.env không đủ: ConfigModule chụp cấu hình lúc import AppModule. */
 export async function bootApp(
   options: {
     deadRedis?: boolean;
     shutdown?: { graceMs: number; timeoutMs: number };
-    /** Gắn RedisIoAdapter như main.ts và lắng nghe cổng ngẫu nhiên để test socket thật. */
     websocket?: boolean;
   } = {},
 ): Promise<INestApplication> {

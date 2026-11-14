@@ -8,19 +8,10 @@ import { PrismaService } from '../src/infra/prisma/prisma.service.js';
 import { RedisProvider } from '../src/infra/redis/redis.module.js';
 import { bootApp } from './helpers/boot.js';
 
-/**
- * Bộ test IDOR (hướng dẫn 16.5, quy tắc 16): mọi endpoint nhận ID phải từ chối người không có
- * quyền DÙ ID ĐÚNG. 19 endpoint x các kiểu kẻ tấn công:
- *  - outsider: user không thuộc server nào;
- *  - rival: chủ của một server KHÁC (dùng ID của server A, hoặc trộn ID chéo server);
- *  - member: thành viên thường của server A (chỉ có @everyone), gọi thao tác cần quyền cao hơn.
- * Mỗi lần tấn công kiểm ba điều: status 403/404, body không lộ dữ liệu của server A, và DB không đổi.
- */
 const runId = Date.now().toString(36);
 
 type Verb = 'get' | 'post' | 'patch' | 'put' | 'delete';
 
-/** Mọi endpoint nhận ID (path đã chuẩn hóa: `:id` thay cho `:serverId`, `:channelId`…). Nguồn của test 401 và test phủ route. */
 const ID_ROUTES: Array<[Verb, string]> = [
   ['get', '/servers/:id'],
   ['patch', '/servers/:id'],
@@ -29,8 +20,6 @@ const ID_ROUTES: Array<[Verb, string]> = [
   ['patch', '/servers/:id/members/me'],
   ['post', '/servers/:id/leave'],
   ['delete', '/servers/:id/members/:id'],
-  // TG.11: ban/unban — :userId trên path ban là id NGƯỜI BỊ BAN (không phải id người gọi):
-  // quyền do @CheckAbility(['create/delete/view', 'ServerBan']) + thứ bậc ở service kiểm.
   ['post', '/servers/:id/bans'],
   ['get', '/servers/:id/bans'],
   ['delete', '/servers/:id/bans/:id'],
@@ -39,8 +28,6 @@ const ID_ROUTES: Array<[Verb, string]> = [
   ['post', '/servers/:id/channels'],
   ['patch', '/channels/:id'],
   ['delete', '/channels/:id'],
-  // TG.10: category + move channel + topic — quyền do @CheckAbility(['manage', 'Channel'])
-  // kiểm; category đích của server khác bị service từ chối (404 che tồn tại).
   ['post', '/servers/:id/categories'],
   ['patch', '/servers/:id/categories/:id'],
   ['delete', '/servers/:id/categories/:id'],
@@ -74,35 +61,22 @@ const ID_ROUTES: Array<[Verb, string]> = [
   ['delete', '/uploads/:id'],
   ['get', '/attachments/:id/download'],
   ['get', '/attachments/:id/file'],
-  // TG.22: sticker — tạo/xem theo server, xóa theo chính sticker.
   ['post', '/servers/:id/stickers'],
   ['get', '/servers/:id/stickers'],
   ['delete', '/stickers/:id'],
-  // TG.24: emoji tùy chỉnh — tạo/xem theo server, xóa theo chính emoji.
   ['post', '/servers/:id/emojis'],
   ['get', '/servers/:id/emojis'],
   ['delete', '/emojis/:id'],
-  // TG.8: thu hồi một phiên của CHÍNH người gọi — service tra theo cả userId (JWT), phiên
-  // của người khác là 404. Dòng tấn công bên dưới phủ IDOR của route này.
   ['delete', '/users/me/sessions/:id'],
-  // TG.9 (ADR-0070): block/unblock user — bối cảnh là CHÍNH người gọi, quyền do service kiểm
-  // (không có ability server). POST/GET /dms KHÔNG nằm ở đây: route không có id trong path
-  // nên test phủ route (chỉ quét route `:id`) không bắt — IDOR của DM phủ ở test/dms.e2e-spec.ts
-  // (người thứ ba → 404 mọi route /channels/:id/*, không join được room).
+  // POST/GET /dms không nằm ở đây: route không có id trong path nên test phủ route không bắt; IDOR của DM phủ ở dms.e2e-spec.
   ['post', '/users/:id/block'],
   ['delete', '/users/:id/block'],
-  // TG.12: prefs thông báo theo server/channel — PUT/DELETE có id target trên path. Dữ liệu
-  // user-scoped (userId từ JWT, không bao giờ từ path; không kiểm quyền member vì đặt prefs
-  // cho target mình không thuộc là vô hại — lý do ở NotificationsService). Không có gì của
-  // người khác để đọc/sửa nên không vào bảng tấn công: cách ly giữa người dùng phủ ở
-  // test/notification-prefs.e2e-spec.ts (user khác GET/DELETE không đụng được dòng của nhau).
   ['put', '/users/me/notification-prefs/server/:id'],
   ['put', '/users/me/notification-prefs/channel/:id'],
   ['delete', '/users/me/notification-prefs/server/:id'],
   ['delete', '/users/me/notification-prefs/channel/:id'],
 ];
 
-/** Quét controller của app qua metadata của Nest: các route có tham số `:...Id`, dạng `verb /path/:id`, đã sắp xếp. */
 function discoverIdRoutes(app: INestApplication): string[] {
   const found: string[] = [];
   for (const module of app.get(ModulesContainer).values()) {
@@ -116,8 +90,6 @@ function discoverIdRoutes(app: INestApplication): string[] {
         const method = Reflect.getMetadata(METHOD_METADATA, handler) as RequestMethod | undefined;
         if (method === undefined) continue;
         const path = Reflect.getMetadata(PATH_METADATA, handler) as string | string[] | undefined;
-        // `@Get()` không tham số cho path mặc định `'/'`: gộp lại và bỏ dấu `/` cuối để
-        // `/servers/:id/audit-log/` và `/servers/:id/audit-log` là một route.
         const full = `/${[base, path].flat().filter(Boolean).join('/')}`
           .replace(/\/+/g, '/')
           .replace(/\/$/, '');
@@ -142,10 +114,10 @@ describe('IDOR (e2e)', () => {
   let prisma: PrismaService;
   const emails: string[] = [];
 
-  let alice: Actor; // chủ server A
-  let carol: Actor; // thành viên thường của A
-  let bob: Actor; // chủ server B (đối thủ)
-  let dan: Actor; // người ngoài
+  let alice: Actor;
+  let carol: Actor;
+  let bob: Actor;
+  let dan: Actor;
   let serverA = '';
   let serverB = '';
   let channelA = '';
@@ -156,13 +128,13 @@ describe('IDOR (e2e)', () => {
   let aliceMessage = '';
   let carolMessage = '';
   let uploadId = '';
-  let aliceSession = ''; // phiên đăng nhập của alice (TG.8) cho bảng tấn công
-  let stickerA = ''; // sticker của server A (TG.22) cho bảng tấn công
+  let aliceSession = '';
+  let stickerA = '';
   let stickerPackA = '';
-  let emojiA = ''; // emoji của server A (TG.24) cho bảng tấn công
-  let categoryA = ''; // category của server A (TG.10) cho bảng tấn công
+  let emojiA = '';
+  let categoryA = '';
 
-  const SECRET = `secret-${runId}`; // xuất hiện trong dữ liệu của server A; không được rò ra
+  const SECRET = `secret-${runId}`;
   const http = () => request(app.getHttpServer());
 
   async function register(label: string): Promise<Actor> {
@@ -183,7 +155,6 @@ describe('IDOR (e2e)', () => {
     return actor ? call.set('Authorization', `Bearer ${actor.token}`) : call;
   };
 
-  /** Ảnh chụp DB phần thuộc server A: nếu cuộc tấn công làm đổi gì thì so sánh sẽ lệch. */
   async function snapshotA() {
     const [
       server,
@@ -210,7 +181,6 @@ describe('IDOR (e2e)', () => {
       }),
       prisma.member.count({ where: { userId: bob.id } }),
       prisma.customEmoji.findMany({ where: { serverId: serverA }, orderBy: { id: 'asc' } }),
-      // TG.10: category của server A cũng thuộc diện "không được đổi khi bị tấn công".
       prisma.channelCategory.findMany({ where: { serverId: serverA }, orderBy: { id: 'asc' } }),
     ]);
     return JSON.parse(
@@ -234,15 +204,13 @@ describe('IDOR (e2e)', () => {
   beforeAll(async () => {
     app = await bootApp();
     prisma = app.get(PrismaService);
-    await app.get(RedisProvider).flushdb(); // reset rate limit giữa các lần chạy (Redis DB riêng của e2e)
+    await app.get(RedisProvider).flushdb();
     [alice, carol, bob, dan] = await Promise.all([
       register('a'),
       register('c'),
       register('b'),
       register('d'),
     ]);
-    // TG.8: register tạo một hàng Session cho alice — mục tiêu của dòng tấn công
-    // DELETE /users/me/sessions/:id (kẻ khác không được thu hồi phiên của người khác).
     aliceSession = (await prisma.session.findFirst({
       where: { userId: alice.id },
       select: { id: true },
@@ -287,8 +255,6 @@ describe('IDOR (e2e)', () => {
         .expect(201)
     ).body.id;
 
-    // TG.22: một sticker của server A cho bảng tấn công — chèn thẳng DB để không cần
-    // pipeline upload; rawRemoved sẵn + server tồn tại để worker quét không đụng hàng này.
     const packA = await prisma.stickerPack.create({
       data: { serverId: serverA, name: `pack-${runId}` },
     });
@@ -322,7 +288,6 @@ describe('IDOR (e2e)', () => {
       })
     ).id;
 
-    // TG.24: một emoji của server A cho bảng tấn công — chèn thẳng DB như sticker trên.
     const emojiAttA = await prisma.attachment.create({
       data: {
         uploaderId: alice.id,
@@ -352,7 +317,6 @@ describe('IDOR (e2e)', () => {
       })
     ).id;
 
-    // TG.10: một category của server A cho bảng tấn công (tạo bằng API thật của alice).
     categoryA = (
       await as(alice, 'post', `/servers/${serverA}/categories`)
         .send({ name: `cat-${SECRET}` })
@@ -361,12 +325,10 @@ describe('IDOR (e2e)', () => {
   });
 
   afterAll(async () => {
-    // TG.22: sticker khóa attachment (Restrict) — dọn sticker + gói trước attachment.
     if (stickerPackA) {
       await prisma.sticker.deleteMany({ where: { packId: stickerPackA } });
       await prisma.stickerPack.deleteMany({ where: { id: stickerPackA } });
     }
-    // TG.24: emoji cũng khóa attachment (Restrict) — xóa emoji trước attachment.
     if (serverA) await prisma.customEmoji.deleteMany({ where: { serverId: serverA } });
     await prisma.attachment.deleteMany({ where: { serverId: serverA } });
     const users = await prisma.user.findMany({
@@ -386,11 +348,9 @@ describe('IDOR (e2e)', () => {
     verb: Verb;
     url: () => string;
     body?: () => unknown;
-    /** Status chấp nhận là "bị từ chối". Mặc định 403/404; 400 chỉ cho ca ID chéo bị validate. */
     accept: number[];
   }
 
-  /** Các lần tấn công vào tài nguyên server A. Chạy theo bảng để thêm endpoint thì thêm một dòng. */
   const attacks = (): Attack[] => {
     const out: Attack[] = [];
     const add = (
@@ -401,7 +361,7 @@ describe('IDOR (e2e)', () => {
       body?: () => unknown,
       accept: number[] = [403, 404],
     ) => who.forEach((by) => out.push({ name, by, verb, url, body, accept }));
-    const outsider = [() => dan, () => bob]; // người ngoài + chủ server khác
+    const outsider = [() => dan, () => bob];
     for (const [verb, suffix] of [
       ['get', ''],
       ['delete', ''],
@@ -428,7 +388,7 @@ describe('IDOR (e2e)', () => {
       outsider,
       () => ({ channelId: channelA, filename: 'secret.pdf', sizeBytes: 10, nonce: randomUUID() }),
     );
-    const lowPriv = [() => dan, () => bob, () => carol]; // + thành viên thiếu quyền
+    const lowPriv = [() => dan, () => bob, () => carol];
 
     add('GET /servers/:serverId', 'get', () => `/servers/${serverA}`, outsider);
     add(
@@ -504,7 +464,6 @@ describe('IDOR (e2e)', () => {
       () => `/channels/${channelA}/messages`,
       outsider,
     );
-    // TG.5: permalink đọc quanh một tin — người ngoài không được dùng `around` để dò id.
     add(
       'GET /channels/:channelId/messages?around=<tin của A>',
       'get',
@@ -558,7 +517,6 @@ describe('IDOR (e2e)', () => {
       () => `/messages/${carolMessage}`,
       outsider,
     );
-    // TG.2: người ngoài không đọc/ghi được cảm xúc của tin thuộc server A.
     add(
       'GET /messages/:messageId/reactions/:emoji (tin của A)',
       'get',
@@ -577,7 +535,6 @@ describe('IDOR (e2e)', () => {
       () => `/messages/${aliceMessage}/reactions/${encodeURIComponent('👍')}`,
       outsider,
     );
-    // TG.3: danh sách ghim đọc theo channel của A; ghim/bỏ ghim cần MANAGE_MESSAGES.
     add(
       'GET /channels/:channelId/pins (channel của A)',
       'get',
@@ -597,7 +554,6 @@ describe('IDOR (e2e)', () => {
       lowPriv,
     );
 
-    // Trộn ID chéo server: bob là chủ B, dùng serverId của MÌNH nhưng ID tài nguyên của server A.
     add(
       'chéo: DELETE /servers/B/members/<member của A>',
       'delete',
@@ -617,7 +573,7 @@ describe('IDOR (e2e)', () => {
       () => `/servers/${serverB}/members/${bobMemberB}/roles`,
       [() => bob],
       () => ({ roleIds: [roleA] }),
-      [400, 403, 404], // role của A không thuộc server B: bị validate là 400, vẫn là từ chối
+      [400, 403, 404],
     );
     add(
       'chéo: PATCH /roles/<role của A> bởi chủ B',
@@ -640,8 +596,6 @@ describe('IDOR (e2e)', () => {
       () => ({ content: 'from B', nonce: randomUUID() }),
     );
 
-    // TG.22: sticker của server A — kẻ ngoài không xem được picker, member thường thiếu
-    // MANAGE_EXPRESSIONS (ADR-0067), và chủ server khác không xóa được sticker của A.
     add('GET /servers/:serverId/stickers', 'get', () => `/servers/${serverA}/stickers`, outsider);
     add(
       'POST /servers/:serverId/stickers',
@@ -651,11 +605,7 @@ describe('IDOR (e2e)', () => {
       () => ({ attachmentId: randomUUID(), name: 'x' }),
     );
     add('DELETE /stickers/<sticker của A>', 'delete', () => `/stickers/${stickerA}`, outsider);
-    // TG.24: emoji của server A — kẻ ngoài không xóa được emoji của server người khác, member
-    // thường thiếu MANAGE_EXPRESSIONS (ADR-0068 tái dùng bit sticker TG.22) nên không tạo được.
     add('DELETE /emojis/<emoji của A>', 'delete', () => `/emojis/${emojiA}`, outsider);
-    // TG.10: category của server A — member thường thiếu MANAGE_CHANNELS (guard), kẻ ngoài
-    // không với tới server A; orderedIds dùng đúng category thật để chạm tận service.
     add(
       'POST /servers/:serverId/categories',
       'post',
@@ -697,7 +647,6 @@ describe('IDOR (e2e)', () => {
       lowPriv,
       () => ({ topic: 'hacked' }),
     );
-    // Trộn ID chéo server: category của A gắn vào URL server B của bob — 404 che tồn tại.
     add(
       'chéo: PATCH /servers/B/categories/<category của A>',
       'patch',
@@ -705,7 +654,6 @@ describe('IDOR (e2e)', () => {
       [() => bob],
       () => ({ name: 'evil' }),
     );
-    // TG.8: kẻ khác không được thu hồi phiên của alice — 404 vì service tra theo (id, userId).
     add(
       'DELETE /users/me/sessions/<phiên của alice>',
       'delete',
@@ -719,8 +667,6 @@ describe('IDOR (e2e)', () => {
       lowPriv,
       () => ({ attachmentId: randomUUID(), name: 'nope' }),
     );
-    // TG.11: ban/unban — member thường thiếu KICK_MEMBERS (guard), kẻ ngoài không với tới
-    // server A; target trên body/path là user thật (dan) để chạm tận service, không phải zod.
     add('GET /servers/:serverId/bans', 'get', () => `/servers/${serverA}/bans`, lowPriv);
     add(
       'POST /servers/:serverId/bans',
@@ -755,13 +701,11 @@ describe('IDOR (e2e)', () => {
   });
 
   it('a plain member cannot read what they were never granted (controls: allowed paths still work)', async () => {
-    // Đối chứng: chính các endpoint này CHO PHÉP thành viên hợp lệ, để test trên không "xanh vì hỏng hết".
     await as(carol, 'get', `/servers/${serverA}`).expect(200);
     await as(carol, 'get', `/channels/${channelA}/messages`).expect(200);
     await as(carol, 'patch', `/messages/${carolMessage}`)
       .send({ content: 'carol edits her own' })
       .expect(200);
-    // TG.2: thành viên có ADD_REACTIONS vẫn thả được cảm xúc (đối chứng cho bảng tấn công).
     await as(
       carol,
       'put',
@@ -776,7 +720,6 @@ describe('IDOR (e2e)', () => {
     for (const [verb, template] of ID_ROUTES) {
       const url = template.replaceAll(':id', uuid);
       const res = await as(undefined, verb, url).send({});
-      // File capabilities use signed query authentication; missing credentials fail validation.
       expect(res.status, `${verb.toUpperCase()} ${url}`).toBe(
         template.endsWith('/file') ? 400 : 401,
       );

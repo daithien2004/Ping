@@ -1,10 +1,4 @@
-/**
- * DRILL (diễn tập thật): tắt Postgres THẬT bằng docker compose (ADR-0026). Chạy như redis-outage:
- *
- *   docker compose up -d && pnpm --filter api build && pnpm --filter api drill:postgres
- *
- * Dừng container postgres vài giây: dev server và e2e đang chạy sẽ lỗi tạm thời.
- */
+/** Dừng container postgres vài giây: dev server và e2e đang chạy sẽ lỗi tạm thời. */
 import { call, compose, finish, record, seedChat, startApi, waitFor } from './lib.js';
 
 const api = startApi();
@@ -67,7 +61,7 @@ try {
   try {
     compose('start', 'postgres');
   } catch {
-    // best effort
+    // Dọn dẹp tốt nhất có thể: container có thể đã chạy lại.
   }
 } finally {
   api.child.kill();

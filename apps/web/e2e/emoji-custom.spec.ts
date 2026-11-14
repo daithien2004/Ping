@@ -21,11 +21,8 @@ import { pacedLogin } from './login-pace';
 import { openServerSettings } from './open-server-settings';
 
 const API = 'http://localhost:4000/api/v1';
-// Tên emoji dùng chung cả 3 test; afterAll xóa mọi emoji này khỏi server seed.
 const EMOJI_NAME = 'test_emoji';
 
-// PNG tĩnh 64×64 sinh thuần Node (zlib + CRC32), không thêm dependency. Worker kiểm định
-// emoji tĩnh ≤128×128 (ảnh tĩnh 200×200 bị từ chối) nên 64×64 đi qua pipeline thật.
 function crc32(buf: Buffer): number {
   let c = ~0;
   for (let i = 0; i < buf.length; i++) {
@@ -49,12 +46,12 @@ function png64(): Buffer {
   const ihdr = Buffer.alloc(13);
   ihdr.writeUInt32BE(size, 0);
   ihdr.writeUInt32BE(size, 4);
-  ihdr[8] = 8; // bit depth
-  ihdr[9] = 2; // color type RGB
+  ihdr[8] = 8;
+  ihdr[9] = 2;
   const raw = Buffer.alloc(size * (1 + size * 3));
   for (let y = 0; y < size; y++) {
     const row = y * (1 + size * 3);
-    raw[row] = 0; // filter none
+    raw[row] = 0;
     for (let x = 0; x < size; x++) {
       const px = row + 1 + x * 3;
       raw[px] = (x * 4) % 256;
@@ -70,8 +67,6 @@ function png64(): Buffer {
   ]);
 }
 
-// Upload emoji đi qua pipeline thật (reserve → PUT → complete → worker kiểm định, TG.6):
-// phải có worker chạy, như sticker.spec.
 let worker: ChildProcess;
 test.beforeAll(() => {
   worker = spawn(process.execPath, ['dist/worker.js'], {
@@ -84,9 +79,8 @@ test.beforeAll(() => {
 
 test.afterAll(async () => {
   worker?.kill('SIGTERM');
-  // PHẢI xóa emoji đã tạo trên server seed (Ping Playground) để lần chạy sau không bẩn;
-  // test c có thể đã xóa qua UI rồi — chỉ xóa những cái còn sống, đúng tên của spec này.
-  // Login trong hook cũng phải qua pacedLogin: gọi thẳng /auth/login ở đây từng làm cả bộ 429.
+  // Phải xóa emoji đã tạo trên server seed để lần chạy sau không bẩn.
+  // Login trong hook cũng phải qua pacedLogin: gọi thẳng /auth/login từng làm cả bộ 429.
   const requestContext = await playwrightRequest.newContext();
   try {
     const auth = await pacedLogin(requestContext, 'alice@ping.dev', 'password123');
@@ -107,14 +101,11 @@ test.afterAll(async () => {
   }
 });
 
-/** Hộp xác nhận đang mở: antd giữ popup đã đóng trong DOM nên lọc theo phần tử đang hiện. */
 const visiblePopconfirm = (page: Page) => page.locator('.ant-popconfirm').filter({ visible: true });
 
-/** Vùng danh sách tin của channel: <Activity> giữ trang cũ ẩn trong DOM nên lọc :visible. */
 const paneOf = (page: Page, channel: string) =>
   page.locator(`[aria-label="Tin nhắn trong #${channel}"]:visible`);
 
-/** Đợi ảnh <img> tải xong thật sự (không chỉ có trong DOM). */
 async function expectImageLoaded(image: ReturnType<Page['locator']>) {
   await expect(image).toBeVisible({ timeout: 15_000 });
   await expect
@@ -127,7 +118,6 @@ async function openChannel(page: Page, serverId: string, channelId: string) {
   await expect(page.getByTestId('message-composer')).toBeVisible({ timeout: 45_000 });
 }
 
-/** Server seed + channel #general (alice là owner nên đủ quyền quản trị biểu cảm). */
 async function seedServerOf(request: APIRequestContext, headers: Record<string, string>) {
   const servers = (await (
     await request.get(`${API}/servers`, { headers })
@@ -142,10 +132,6 @@ async function seedServerOf(request: APIRequestContext, headers: Record<string, 
   return { serverId: seed!.id, channelId: general!.id };
 }
 
-/**
- * Đảm bảo emoji ${EMOJI_NAME} tồn tại trên server seed — thiếu (test trước hỏng sớm) thì tạo
- * qua pipeline API thật (reserve → PUT → complete → chờ worker kiểm định → claim).
- */
 async function ensureSeedEmoji(
   request: APIRequestContext,
   headers: Record<string, string>,
@@ -193,7 +179,6 @@ async function ensureSeedEmoji(
   return (await created.json()) as CustomEmojiDto;
 }
 
-/** Mở Cài đặt → trả về khối quản trị emoji (con của sticker-section). */
 async function openSettingsEmojiSection(page: Page) {
   await openServerSettings(page);
   const section = page.getByTestId('sticker-section');
@@ -203,8 +188,6 @@ async function openSettingsEmojiSection(page: Page) {
   return emojiSection;
 }
 
-// TG.24a: upload qua quản trị (pipeline thật) → picker tab "Của server" có ảnh → chèn token
-// `:ten:<id>` vào composer (chưa gửi) → Enter gửi → render ảnh; bob nhận realtime không reload.
 test('emoji tùy chỉnh: upload, picker "Của server", chèn token, render và realtime', async ({
   browser,
 }) => {
@@ -215,7 +198,6 @@ test('emoji tùy chỉnh: upload, picker "Của server", chèn token, render và
     const aliceAuth = await pacedLogin(alice.request, 'alice@ping.dev', 'password123');
     const headers = { Authorization: `Bearer ${aliceAuth.accessToken}` };
     const { serverId, channelId } = await seedServerOf(alice.request, headers);
-    // bob là member của server seed → cùng channel, nhận realtime.
     await pacedLogin(bob.request, 'bob@ping.dev', 'password123');
 
     const page = await alice.newPage();
@@ -230,11 +212,10 @@ test('emoji tùy chỉnh: upload, picker "Của server", chèn token, render và
         mimeType: 'image/png',
         buffer: png64(),
       });
-      // Form chỉ hiện khi attachment ready (worker kiểm định xong) — chờ trần thoáng như sticker.
       const nameInput = emojiSection.getByTestId('emoji-name-input');
       await expect(nameInput).toBeVisible({ timeout: 90_000 });
-      await expect(nameInput).toHaveValue(EMOJI_NAME); // prefill từ tên tệp
-      await nameInput.fill(EMOJI_NAME); // tự sửa nếu prefill lệch chuẩn [a-z0-9_]
+      await expect(nameInput).toHaveValue(EMOJI_NAME);
+      await nameInput.fill(EMOJI_NAME);
     });
 
     await test.step('submit → emoji-item xuất hiện trong danh sách quản trị', async () => {
@@ -253,7 +234,6 @@ test('emoji tùy chỉnh: upload, picker "Của server", chèn token, render và
       const option = picker.getByRole('gridcell', { name: `Chèn emoji ${EMOJI_NAME}` });
       await expect(option).toBeVisible({ timeout: 15_000 });
       await expectImageLoaded(option.locator('img'));
-      // Bấm góc trên trái (ngoài panel, panel luôn cách mép ≥8 px) — bấm giữa scrim dễ trúng panel.
       await bobPage.getByTestId('ping-popover-scrim').click({ position: { x: 4, y: 4 } });
     });
 
@@ -267,7 +247,7 @@ test('emoji tùy chỉnh: upload, picker "Của server", chèn token, render và
       const option = picker.getByRole('gridcell', { name: `Chèn emoji ${EMOJI_NAME}` });
       await expect(option).toBeVisible({ timeout: 15_000 });
       await expectImageLoaded(option.locator('img'));
-      await option.click(); // chèn token vào composer, KHÔNG gửi ngay
+      await option.click();
       await expect(picker).toHaveCount(0);
     });
 
@@ -305,8 +285,6 @@ test('emoji tùy chỉnh: upload, picker "Của server", chèn token, render và
   }
 });
 
-// TG.24b: gợi ý `:test` gộp emoji server (mục có ảnh) → ArrowDown/Enter chèn token → gửi;
-// thả reaction custom qua picker tab "Của server" → pill có img với token `c:<id>`.
 test('emoji tùy chỉnh: gợi ý :ten: và reaction pill token c:<id>', async ({ browser }) => {
   test.setTimeout(240_000);
   const context = await browser.newContext();
@@ -323,22 +301,21 @@ test('emoji tùy chỉnh: gợi ý :ten: và reaction pill token c:<id>', async 
     await test.step('gõ ":test" → listbox gợi ý có mục custom kèm ảnh nhỏ', async () => {
       await composer.fill(':test');
       const suggestions = page.getByTestId('emoji-suggestions');
-      await expect(suggestions).toBeVisible({ timeout: 15_000 }); // dataset tải động lần đầu gõ ':'
+      await expect(suggestions).toBeVisible({ timeout: 15_000 });
       const custom = suggestions.getByRole('option').filter({ hasText: `:${EMOJI_NAME}:` });
       await expect(custom).toHaveCount(1);
-      await expect(custom.locator('img')).toBeVisible(); // mục custom có ảnh nhỏ
+      await expect(custom.locator('img')).toBeVisible();
     });
 
     let messageId = '';
     await test.step('ArrowDown tới mục custom → Enter chèn token → Enter gửi', async () => {
       const suggestions = page.getByTestId('emoji-suggestions');
       const custom = suggestions.getByRole('option').filter({ hasText: `:${EMOJI_NAME}:` });
-      // Hệ thống (🧪 test_tube) đứng trước mục custom — di chọn tới đúng mục rồi Enter.
       for (let i = 0; i < 12 && (await custom.getAttribute('aria-selected')) !== 'true'; i++) {
         await composer.press('ArrowDown');
       }
       await expect(custom).toHaveAttribute('aria-selected', 'true');
-      await composer.press('Enter'); // chấp nhận gợi ý → chèn token, chưa gửi
+      await composer.press('Enter');
       await expect(suggestions).toHaveCount(0);
       await expect(composer).toHaveValue(new RegExp(`:${EMOJI_NAME}:[0-9a-f]{8}-[0-9a-f]{4}`));
       const sent = page.waitForResponse(
@@ -365,11 +342,10 @@ test('emoji tùy chỉnh: gợi ý :ten: và reaction pill token c:<id>', async 
       const article = paneOf(page, 'general').locator(`article[data-message-id="${messageId}"]`);
       await article.hover();
       await article.getByTestId('add-reaction').click();
-      const picker = page.getByTestId('emoji-picker'); // trong dialog chọn cảm xúc
-      await expect(picker).toBeVisible({ timeout: 15_000 }); // dynamic import lần đầu
+      const picker = page.getByTestId('emoji-picker');
+      await expect(picker).toBeVisible({ timeout: 15_000 });
       await picker.getByRole('tab', { name: 'Của server' }).click();
       await picker.getByRole('gridcell', { name: `Chèn emoji ${EMOJI_NAME}` }).click();
-      // Reaction lưu token gọn `c:<id>`; pill render ảnh h-4 w-4 qua cache server.
       const pill = article.getByTestId(`reaction-c:${emoji.id}`);
       await expect(pill).toBeVisible({ timeout: 15_000 });
       await expect(pill).toHaveAttribute('data-me', 'true');
@@ -380,8 +356,6 @@ test('emoji tùy chỉnh: gợi ý :ten: và reaction pill token c:<id>', async 
   }
 });
 
-// TG.24c: xóa emoji qua quản trị (Popconfirm) → tab còn lại trong channel đổi tin cũ thành
-// placeholder `:ten:` và pill degrade — qua event expressions.updated, KHÔNG reload.
 test('emoji tùy chỉnh: xóa → placeholder + pill degrade, đồng bộ hai tab qua event', async ({
   browser,
 }) => {
@@ -395,7 +369,6 @@ test('emoji tùy chỉnh: xóa → placeholder + pill degrade, đồng bộ hai 
     const emoji = await ensureSeedEmoji(alice.request, headers, serverId);
     await pacedLogin(bob.request, 'bob@ping.dev', 'password123');
 
-    // Tin cũ chứa token + pill reaction tạo qua API cho tất định (nhanh, không đụng UI).
     const created = await alice.request.post(`${API}/channels/${channelId}/messages`, {
       headers,
       data: { content: `:${EMOJI_NAME}:${emoji.id}`, nonce: randomUUID() },
@@ -425,7 +398,6 @@ test('emoji tùy chỉnh: xóa → placeholder + pill degrade, đồng bộ hai 
 
     await test.step('trước khi xóa: tin render ảnh và pill có img ở cả hai tab', async () => {
       for (const article of [aliceArticle, bobArticle]) {
-        // Ảnh inline của tin là img "attachments" đầu tiên (pill reaction có img riêng phía sau).
         await expectImageLoaded(article.locator('img[src*="attachments"]').first());
         await expect(article.getByTestId(`reaction-c:${emoji.id}`).locator('img')).toBeVisible();
       }
@@ -437,11 +409,10 @@ test('emoji tùy chỉnh: xóa → placeholder + pill degrade, đồng bộ hai 
       await expect(item).toBeVisible({ timeout: 15_000 });
       await item.getByTestId('emoji-delete-button').click();
       await visiblePopconfirm(page).getByRole('button', { name: 'Xoá', exact: true }).click();
-      await expect(item).toHaveCount(0, { timeout: 15_000 }); // invalidate → mất khỏi danh sách
+      await expect(item).toHaveCount(0, { timeout: 15_000 });
     });
 
     await test.step('tab bob (không reload): tin cũ thành placeholder ":test_emoji:"', async () => {
-      // Event expressions.updated → invalidate emoji map → node customEmoji rơi về chip văn bản.
       await expect(bobArticle.getByTestId('custom-emoji-placeholder')).toHaveText(
         `:${EMOJI_NAME}:`,
         { timeout: 20_000 },
@@ -453,10 +424,9 @@ test('emoji tùy chỉnh: xóa → placeholder + pill degrade, đồng bộ hai 
       const pill = bobArticle.getByTestId(`reaction-c:${emoji.id}`);
       await expect(pill).toBeVisible();
       await expect(pill.locator('img')).toHaveCount(0);
-      // ADR-0081: API trả `emojiName` nên pill hiện `:ten:` thay cho id; tuyệt đối không lộ UUID.
       await expect(pill.getByTestId('reaction-deleted-emoji')).toHaveText(`:${EMOJI_NAME}:`);
       await expect(pill).not.toContainText(emoji.id.slice(-8));
-      await expect(bobPage.getByTestId('message-composer')).toBeVisible(); // trang vẫn dùng được
+      await expect(bobPage.getByTestId('message-composer')).toBeVisible();
     });
 
     await test.step('tab alice quay lại channel: tin cũ cũng thành placeholder', async () => {

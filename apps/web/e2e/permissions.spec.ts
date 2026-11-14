@@ -5,7 +5,6 @@ import type { AuthResponse, ChannelDto, RoleDto, ServerDetail } from '@ping/shar
 
 const API = 'http://localhost:4000/api/v1';
 
-// F6: quyền ở UI. Hai phiên riêng: chủ server (A) và thành viên thường (B, chỉ có @everyone).
 test('permissions in the UI: menus follow ownership, edit and delete, live permission loss', async ({
   browser,
 }) => {
@@ -38,7 +37,6 @@ test('permissions in the UI: menus follow ownership, edit and delete, live permi
         })
       ).ok(),
     ).toBeTruthy();
-    // Channel riêng cho test này: không lẫn với tin của các spec khác.
     const channel = (await (
       await a.request.post(`${API}/servers/${serverId}/channels`, {
         headers: ownerAuth,
@@ -68,11 +66,6 @@ test('permissions in the UI: menus follow ownership, edit and delete, live permi
       page.locator('article:visible', { hasText: text });
     const menu = (page: typeof pa, text: string) =>
       row(page, text).getByRole('button', { name: 'Thao tác tin nhắn' });
-    /**
-     * Mở menu thao tác của một tin. Thanh thao tác ẩn có `pointer-events-none`, chỉ mở khi
-     * article đang hover — click thẳng sẽ bị article chặn. Rê chuột vào đúng nút (như người
-     * dùng thật) rồi mới click; cuộn nút vào khung nhìn trước để vị trí chuột chính xác.
-     */
     const openMenu = async (page: typeof pa, text: string) => {
       const button = menu(page, text);
       await button.scrollIntoViewIfNeeded();
@@ -84,7 +77,6 @@ test('permissions in the UI: menus follow ownership, edit and delete, live permi
     await test.step('menu thao tác theo quyền: member chỉ sửa/xóa tin của mình, owner mọi tin; ai gửi được thì trả lời được', async () => {
       await expect(row(pb, `owner says ${suffix}`)).toBeVisible();
       await expect(menu(pb, `member says ${suffix}`)).toHaveCount(1);
-      // TG.1: reply là nút riêng trong cụm thao tác (không còn trong menu) khi còn quyền gửi.
       await expect(
         row(pb, `owner says ${suffix}`).getByRole('button', { name: 'Trả lời' }),
       ).toBeVisible();
@@ -150,14 +142,13 @@ test('permissions in the UI: menus follow ownership, edit and delete, live permi
       const everyone = roles.find((role) => role.isDefault)!;
       const revoke = await a.request.patch(`${API}/roles/${everyone.id}`, {
         headers: ownerAuth,
-        data: { permissions: '1' }, // chỉ VIEW_CHANNEL
+        data: { permissions: '1' },
       });
       expect(revoke.ok()).toBeTruthy();
       await expect(
         pb.getByText('Bạn không có quyền gửi tin nhắn trong channel này.'),
       ).toBeVisible();
       await expect(composer(pb, channel.name)).toHaveCount(0);
-      // Khôi phục cho các spec sau (VIEW_CHANNEL | SEND_MESSAGES).
       expect(
         (
           await a.request.patch(`${API}/roles/${everyone.id}`, {

@@ -1,13 +1,4 @@
-/**
- * Drill T5.3: metric `consumer_lag` có mặt trên /metrics và > 0 khi stream còn event.
- *
- * Chạy sau `pnpm --filter api build` với Postgres/Redis/Qdrant local:
- *   pnpm --filter api drill:consumer-lag
- *
- * Script khởi động API thật ở cổng riêng, đẩy 40 event `message.created` (trỏ tới
- * tin có thật) vào stream, rồi scrape `/metrics` trong lúc consumer còn xử lý.
- * Không tạo/xoá dữ liệu nghiệp vụ; chỉ đọc id tin và upsert lại vector idempotent.
- */
+/** Chạy sau `pnpm --filter api build` với Postgres/Redis/Qdrant local: pnpm --filter api drill:consumer-lag */
 import { PrismaPg } from '@prisma/adapter-pg';
 import { config } from 'dotenv';
 import { Redis } from 'ioredis';
@@ -93,7 +84,6 @@ try {
     const value = metricValue((await scrape()) ?? '', 'consumer_lag');
     if (value !== undefined) samples.push(value);
     if (value !== undefined && value > 0) positiveSeenAt ??= Date.now();
-    // Giữ scrape thêm 2 giây sau lần đầu thấy lag để bằng chứng có dãy giảm dần.
     if (positiveSeenAt !== undefined && Date.now() - positiveSeenAt > 2_000) break;
     await sleep(100);
   }

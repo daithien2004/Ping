@@ -6,7 +6,6 @@ import { pacedLogin } from './login-pace';
 const API = 'http://localhost:4000/api/v1';
 const SEED_PASSWORD = 'password123';
 
-/** Notification ghi lại của test — app bắn qua `new Notification` nên mỗi entry là object trả về. */
 interface RecordedNotification {
   title: string;
   tag: string | null;
@@ -18,11 +17,6 @@ interface NotifyWindow {
   __setHidden: (hidden: boolean) => void;
 }
 
-/**
- * Bọc window.Notification ghi vào `window.__notifications` (không dùng Notification của OS —
- * headless không kiểm được) và đè `document.hidden` qua defineProperty để test xoay imagined
- * focus/hidden: tiêu chí TG.12 là KHÔNG bắn khi document.hidden === false.
- */
 const NOTIFY_INIT = `
   window.__notifications = [];
   window.__setHidden = (hidden) => {
@@ -55,20 +49,9 @@ const countFor = (page: Page, tag: string) =>
     [tag] as const,
   );
 
-/** <Activity> giữ trang channel cũ ẩn trong DOM → chuông/popover phải lọc :visible (ADR-0020). */
 const visibleBell = (page: Page) => page.getByTestId('notify-bell').filter({ visible: true });
 const visiblePopover = (page: Page) => page.getByTestId('notify-popover').filter({ visible: true });
 
-/**
- * TG.12 — thông báo. Một luồng nối tiếp qua step (pacedLogin 2 tài khoản, workers=1):
- * - (a) chuông kênh #notify: mức 'mentions' + mute 15 phút qua UI → GET API thật xác nhận row;
- * - (b) mention khi tab ẩn trên kênh #ping (chưa mute) → Notification gom theo tag kênh,
- *       body trích dẫn, click handler điều hướng tới permalink;
- * - (c) kênh vừa mute → tin mới KHÔNG sinh entry; kênh mức 'all' khi tab focus → KHÔNG sinh
- *       entry (tiêu chí nghiệm thu), tab ẩn lại thì bắn;
- * - (d) title badge: tổng unread tăng khi có tin chưa đọc, về 'Ping' khi đã đọc.
- * #notify bị mute nên mọi notification thật diễn ra trên #ping/#loud.
- */
 test('tg12 notifications: bell prefs, browser notification, mute/focus gates, title badge', async ({
   browser,
 }) => {
@@ -83,10 +66,8 @@ test('tg12 notifications: bell prefs, browser notification, mute/focus gates, ti
     );
     const bobAuth = await pacedLogin(bobContext.request, 'bob@ping.dev', SEED_PASSWORD);
     const bob = { headers: { Authorization: `Bearer ${bobAuth.accessToken}` } };
-    // Notification API của Chromium cần cấp quyền theo context (app tự kiểm permission trước khi bắn).
     await aliceContext.grantPermissions(['notifications']);
 
-    // Server riêng: #general (kênh đầu), #notify (mute), #ping (mentions), #loud (mặc định all).
     const server = (await (
       await aliceContext.request.post(`${API}/servers`, {
         headers: { Authorization: `Bearer ${alice.accessToken}` },
@@ -121,7 +102,6 @@ test('tg12 notifications: bell prefs, browser notification, mute/focus gates, ti
     await alicePage.goto('/');
     await expect(alicePage.getByRole('button', { name: 'Tham gia server' })).toBeVisible();
 
-    /** Mở popover chuông của kênh đang xem + chờ PUT prefs (mutation qua UI). */
     const putChannelPref = () =>
       alicePage.waitForResponse(
         (res) =>
@@ -141,24 +121,20 @@ test('tg12 notifications: bell prefs, browser notification, mute/focus gates, ti
       await bell.click();
       const popover = visiblePopover(alicePage);
       await expect(popover).toBeVisible();
-      // Chưa cấu hình gì: mức hiệu dụng là mặc định chung, có nhãn giải thích.
       await expect(popover.getByTestId('notify-default-hint')).toHaveText(
         'Đang theo mặc định chung',
       );
 
-      // Đặt mức 'mentions' rồi mute 15 phút — chờ từng PUT để hai mutation không chèn nhau.
+      // Chờ từng PUT để hai mutation không chèn nhau.
       let done = putChannelPref();
       await popover.getByTestId('notify-level-mentions').click();
       await done;
       done = putChannelPref();
-      // Thời lượng mute nằm trong khối mở rộng — mở bằng nút "Tắt tiếng" trước.
       await popover.getByTestId('notify-mute-toggle').click();
       await popover.getByTestId('notify-mute-15m').click();
       await done;
-      // remaining làm tròn LÊN nên 15 phút + độ trễ hiển thị 16 — chỉ cần dòng trạng thái hiện ra.
       await expect(popover.getByTestId('notify-muted-status')).toContainText('tắt tiếng');
 
-      // GET API thật: row channel đúng id, đúng mức, mute còn ~15 phút.
       const prefs = (await (
         await aliceContext.request.get(`${API}/users/me/notification-prefs`, {
           headers: { Authorization: `Bearer ${alice.accessToken}` },
@@ -185,7 +161,6 @@ test('tg12 notifications: bell prefs, browser notification, mute/focus gates, ti
       const done = putChannelPref();
       await popover.getByTestId('notify-level-mentions').click();
       await done;
-      // Không mute — popover không được hiện dòng "đang tắt tiếng".
       await expect(popover.getByTestId('notify-muted-status')).toHaveCount(0);
     });
 
@@ -195,11 +170,9 @@ test('tg12 notifications: bell prefs, browser notification, mute/focus gates, ti
       ).json()) as MessageDto;
       await expect.poll(() => countFor(alicePage, pingChannel.id), { timeout: 15_000 }).toBe(1);
       const entry = (await notifyWindow(alicePage)).find((item) => item.tag === pingChannel.id);
-      // title `#kênh · server`, body "tác giả: trích dẫn".
       expect(entry!.title).toBe(`#ping · ${server.name}`);
       expect(entry!.body).toContain('chào bạn');
 
-      // Click handler của app: focus + điều hướng tới permalink `…/messages/:id` (TG.5).
       await alicePage.evaluate(
         ([id]) => {
           const target = (window as unknown as NotifyWindow).__notifications
@@ -209,7 +182,6 @@ test('tg12 notifications: bell prefs, browser notification, mute/focus gates, ti
         },
         [pingChannel.id] as const,
       );
-      // ADR-0088: permalink công khai là `/channels/:serverId/:channelId/:messageId`.
       await expect(alicePage).toHaveURL(
         new RegExp(`channels/${server.id}/${pingChannel.id}/${mention.id}`),
         { timeout: 15_000 },
@@ -230,24 +202,16 @@ test('tg12 notifications: bell prefs, browser notification, mute/focus gates, ti
       await alicePage.waitForTimeout(2_000);
       expect(await countFor(alicePage, loudChannel.id)).toBe(0);
 
-      // Tab ẩn lại: cùng kênh, tin tiếp theo (không mention) vẫn phải tới — gate đúng là hidden.
       await alicePage.evaluate(() => (window as unknown as NotifyWindow).__setHidden(true));
       expect((await send(loudChannel.id, 'tin khi tab ẩn')).ok()).toBeTruthy();
       await expect.poll(() => countFor(alicePage, loudChannel.id), { timeout: 15_000 }).toBe(1);
     });
 
     await test.step('title badge: tổng unread tăng khi có tin chưa đọc, về Ping khi đã đọc', async () => {
-      // Đang có unread: #notify 1 (tin trong lúc mute) + #loud 2 → đọc sạch từng kênh.
-      // Số tuyệt đối có thể dao động trong lúc mark-read/refetch đối soát (unread là ước lượng
-      // tối thiểu — unread-cache.ts), nên tiêu chí (d) kiểm "badge hiện && về 0 khi đọc".
       const unreadTitle = /^\(\d+\) Ping$/;
-      // Đọc sạch MỌI kênh có tin của spec này: #loud (mặc định all), #ping (mention step b),
-      // #notify (mute step c). Mở bằng goto trực tiếp — click sidebar đã phủ ở unread-ui;
-      // ở đây chỉ cần semantic "mở kênh → mark-read" (bài học CI 5a897bb: click link flaky
-      // khi badge re-render churn, nợ điều tra vòng re-render).
+      // Mở bằng goto trực tiếp: click link sidebar flaky khi badge re-render.
       for (const channelId of [loudChannel.id, pingChannel.id, notifyChannel.id]) {
-        // Chờ đúng PUT đánh dấu đã đọc trước khi đi tiếp: goto kênh kế tiếp hủy request
-        // đang bay, nếu bỏ qua thì unread của kênh vừa mở còn nguyên ở server.
+        // Chờ PUT mark-read: goto kênh kế tiếp hủy request đang bay.
         const marked = alicePage.waitForResponse(
           (res) =>
             res.url().includes(`/channels/${channelId}/read`) &&
@@ -261,9 +225,7 @@ test('tg12 notifications: bell prefs, browser notification, mute/focus gates, ti
         });
         await marked;
       }
-      // Đi tuyến nhanh qua 3 kênh: mark-read phía client có debounce — khẳng định GIÁ TRỊ
-      // TUYỆT ĐỐI 'Ping' ở đây flaky giữa nhiều lần chạy. Truth là server unread; "badge về 0
-      // khi đọc" đã phủ trọn ở unread-ui (titleFor(0)).
+      // mark-read phía client có debounce: khẳng định giá trị tuyệt đối "Ping" flaky, lấy unread của server làm truth.
       await expect
         .poll(
           async () => {
@@ -276,19 +238,14 @@ test('tg12 notifications: bell prefs, browser notification, mute/focus gates, ti
           { timeout: 20_000, intervals: [1_000] },
         )
         .toBe(0);
-      // Badge vẫn render được (không crash): sau khi đọc sạch có thể là 'Ping' hoặc
-      // '(N) Ping' với N là unread còn lại ở server khác — số tuyệt đối không khẳng định.
       const anyTitle = /^(Ping|\(\d+\) Ping)$/;
       await expect.poll(() => alicePage.title(), { timeout: 15_000 }).toMatch(anyTitle);
 
-      // Rời #notify rồi bob gửi tin mới: title tăng lại theo unread (kể cả kênh mức mentions —
-      // mức thông báo không chặn badge unread của T4.3).
       await alicePage.getByRole('link', { name: '# loud' }).click();
       await expect(alicePage).toHaveURL(new RegExp(loudChannel.id), { timeout: 15_000 });
       expect((await send(notifyChannel.id, 'tin cho title badge')).ok()).toBeTruthy();
       await expect.poll(() => alicePage.title(), { timeout: 15_000 }).toMatch(unreadTitle);
 
-      // Mở kênh → mark-read → title về 'Ping' (favicon cũng khôi phục).
       await alicePage.getByRole('link', { name: '# notify' }).click();
       await expect(alicePage).toHaveURL(new RegExp(notifyChannel.id), { timeout: 15_000 });
       await expect.poll(() => alicePage.title(), { timeout: 15_000 }).toBe('Ping');

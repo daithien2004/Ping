@@ -1,10 +1,3 @@
-/**
- * Worker indexer tối giản cho drill crash (T5.3).
- *
- * Chạy thật `IndexerRunner` + `MessageIndexerCore` trên Redis/Postgres/Qdrant,
- * nhưng dùng FakeEmbedder để không tải model. Bao store bằng một lớp trễ sau
- * upsert để drill có thể kill đúng lúc point đã ghi nhưng entry chưa XACK.
- */
 import { PrismaPg } from '@prisma/adapter-pg';
 import { config } from 'dotenv';
 import { Redis } from 'ioredis';

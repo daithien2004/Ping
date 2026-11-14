@@ -15,7 +15,6 @@ interface TestUser {
   token: string;
 }
 
-/** GET /servers/:serverId/me/permissions — frontend dựng ability từ đây (hướng dẫn 12.5.1). */
 describe('My permissions in a server (e2e)', () => {
   let app: INestApplication;
   const emails: string[] = [];

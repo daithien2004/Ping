@@ -19,10 +19,6 @@ interface TestUser {
 
 type HttpMethod = 'get' | 'post' | 'patch' | 'put' | 'delete';
 
-/**
- * Bộ test API tin nhắn (guide 10.3/10.5): tác giả - moderator - người lạ,
- * phân trang cursor, soft delete và idempotency theo nonce.
- */
 describe('Messages (e2e)', () => {
   let app: INestApplication;
   const emails: string[] = [];
@@ -35,7 +31,6 @@ describe('Messages (e2e)', () => {
   let channelId: string;
   let inviteCode = '';
 
-  /** Tin của author theo thứ tự cũ → mới; uuid(7) tăng theo thời gian nên id cũng vậy. */
   const messageIds: string[] = [];
   const nonces: string[] = [];
   let otherMessageId = '';
@@ -91,7 +86,6 @@ describe('Messages (e2e)', () => {
     moderator = await registerUser();
     outsider = await registerUser();
 
-    // author làm owner: tạo server (đã tự có #general) rồi mời other + moderator.
     const server = await api('post', '/api/v1/servers', author.token)
       .send({ name: 'Messages Test' })
       .expect(201);
@@ -102,7 +96,6 @@ describe('Messages (e2e)', () => {
     await api('post', '/api/v1/servers/join', other.token).send({ inviteCode }).expect(201);
     await api('post', '/api/v1/servers/join', moderator.token).send({ inviteCode }).expect(201);
 
-    // Moderator chỉ hơn member thường đúng bit MANAGE_MESSAGES.
     const role = await api('post', `/api/v1/servers/${serverId}/roles`, author.token)
       .send({
         name: 'mod',
@@ -147,15 +140,12 @@ describe('Messages (e2e)', () => {
       messageIds.push(res.body.id);
     }
 
-    // Cùng (channel, author, nonce) → client retry, không phải tin mới.
     const retry = await api('post', `/api/v1/channels/${channelId}/messages`, author.token)
       .send({ content: 'noi dung khac han', nonce: nonces[0] })
       .expect(201);
     expect(retry.body.id).toBe(messageIds[0]);
     expect(retry.body.content).toBe('tin so 0');
 
-    // T4.5 (hỗn loạn): HAI request cùng nonce ĐỒNG THỜI — một request kịp ghi, request kia
-    // văng unique constraint và đi nhánh "trả lại tin cũ": cả hai cùng id, DB chỉ một hàng.
     const concurrentNonce = randomUUID();
     const [a, b] = await Promise.all([
       api('post', `/api/v1/channels/${channelId}/messages`, author.token).send({
@@ -174,7 +164,6 @@ describe('Messages (e2e)', () => {
       where: { channelId: channelId, nonce: concurrentNonce },
     });
     expect(count).toBe(1);
-    // Dọn tin của test này (xóa mềm) để không lệch đếm của các test phía sau.
     await api('delete', `/api/v1/messages/${a.body.id}`, author.token).expect(200);
   });
 
@@ -223,19 +212,16 @@ describe('Messages (e2e)', () => {
   });
 
   it('PATCH — member thường không sửa được tin người khác (403); tác giả sửa được tin mình; owner toàn quyền', async () => {
-    // other là member thường: không phải tác giả và không có MANAGE_MESSAGES → 403.
     await api('patch', `/api/v1/messages/${messageIds[1]}`, other.token)
       .send({ content: 'sua len' })
       .expect(403);
 
-    // Chính tác giả sửa tin mình thì được, và editedAt được đánh dấu.
     const own = await api('patch', `/api/v1/messages/${messageIds[1]}`, author.token)
       .send({ content: 'da sua' })
       .expect(200);
     expect(own.body.content).toBe('da sua');
     expect(own.body.editedAt).not.toBeNull();
 
-    // Owner có `manage all` trong defineAbilityFor → sửa được cả tin của other.
     const byOwner = await api('patch', `/api/v1/messages/${otherMessageId}`, author.token)
       .send({ content: 'owner sua' })
       .expect(200);
@@ -254,7 +240,7 @@ describe('Messages (e2e)', () => {
     expect(list.body.messages.map((message: { id: string }) => message.id)).not.toContain(
       messageIds[0],
     );
-    expect(list.body.messages).toHaveLength(5); // 5 gốc + 1 của other − 1 đã xóa
+    expect(list.body.messages).toHaveLength(5);
   });
 
   it('moderator có MANAGE_MESSAGES xóa được tin của người khác', async () => {
@@ -315,7 +301,7 @@ describe('Messages (e2e)', () => {
   });
 
   it('reply (TG.1): preview tin gốc, khác channel → 400, tin gốc xóa → deleted:true, nonce retry giữ replyTo', async () => {
-    // Channel riêng: rate limit 10 tin/10s/(user,channel) — không đẩy các test sau vượt hạn mức.
+    // Channel riêng: rate limit 10 tin/10s/(user, channel).
     const replyChannel = await api('post', `/api/v1/servers/${serverId}/channels`, author.token)
       .send({ name: 'reply-tg1' })
       .expect(201);
@@ -343,7 +329,6 @@ describe('Messages (e2e)', () => {
       kind: 'text',
     });
 
-    // Retry cùng nonce (mạng chập chờn): trả đúng tin cũ, replyTo không mất.
     const retried = await api(
       'post',
       `/api/v1/channels/${replyChannel.body.id}/messages`,
@@ -354,7 +339,6 @@ describe('Messages (e2e)', () => {
     expect(retried.body.id).toBe(reply.body.id);
     expect(retried.body.replyTo.id).toBe(original.body.id);
 
-    // Tin gốc ở channel khác → 400 (chốt IDOR reply).
     const otherChannel = await api('post', `/api/v1/servers/${serverId}/channels`, author.token)
       .send({ name: 'khac-channel' })
       .expect(201);
@@ -362,7 +346,6 @@ describe('Messages (e2e)', () => {
       .send({ content: 'trả lời chéo', nonce: randomUUID(), replyToId: original.body.id })
       .expect(400);
 
-    // Tin gốc xóa mềm → vẫn reply được nhưng preview.deleted = true, content rỗng.
     await api('delete', `/api/v1/messages/${original.body.id}`, author.token).expect(200);
     const replyToDeleted = await api(
       'post',
@@ -377,7 +360,6 @@ describe('Messages (e2e)', () => {
       content: '',
     });
 
-    // replyToId không tồn tại → 400.
     await api('post', `/api/v1/channels/${replyChannel.body.id}/messages`, author.token)
       .send({ content: 'reply vào hư không', nonce: randomUUID(), replyToId: randomUUID() })
       .expect(400);
@@ -401,7 +383,6 @@ describe('Messages (e2e)', () => {
     }
   });
   it('GET messages?after — gap recovery (T4.4): tin mới hơn cursor, thứ tự tăng dần, hasMore còn mới hơn; bỏ tin đã xóa; before+after → 400', async () => {
-    // Hai tin mới riêng cho test này (không đụng messageIds của các test khác).
     const sent1 = await api('post', `/api/v1/channels/${channelId}/messages`, author.token)
       .send({ content: 'gap 1', nonce: randomUUID() })
       .expect(201);
@@ -427,7 +408,6 @@ describe('Messages (e2e)', () => {
     ]);
     expect(rest.body.hasMore).toBe(false);
 
-    // Tin bị xóa mềm không nằm trong khoảng trả về.
     await api('delete', `/api/v1/messages/${sent1.body.id}`, author.token).expect(200);
     const afterDelete = await api(
       'get',
@@ -438,7 +418,6 @@ describe('Messages (e2e)', () => {
       sent1.body.id,
     );
 
-    // Hai chiều cursor cùng lúc bị từ chối.
     await api(
       'get',
       `/api/v1/channels/${channelId}/messages?after=${messageIds[1]}&before=${messageIds[4]}`,
@@ -459,7 +438,6 @@ describe('Messages (e2e)', () => {
       ids.push(sent.body.id);
     }
 
-    // limit 4 = 2 cũ hơn (gồm tin đích) + 2 mới hơn; trang vẫn xếp mới nhất trước.
     const middle = await api(
       'get',
       `/api/v1/channels/${channel}/messages?limit=4&around=${ids[3]}`,
@@ -474,7 +452,6 @@ describe('Messages (e2e)', () => {
     expect(middle.body.hasMore).toBe(true);
     expect(middle.body.hasNewer).toBe(true);
 
-    // Tin đầu channel: không còn tin cũ hơn, vẫn còn tin mới hơn.
     const first = await api(
       'get',
       `/api/v1/channels/${channel}/messages?limit=4&around=${ids[0]}`,
@@ -488,7 +465,6 @@ describe('Messages (e2e)', () => {
     expect(first.body.hasMore).toBe(false);
     expect(first.body.hasNewer).toBe(true);
 
-    // Tin cuối channel: hết tin mới hơn.
     const last = await api(
       'get',
       `/api/v1/channels/${channel}/messages?limit=4&around=${ids[6]}`,
@@ -500,7 +476,6 @@ describe('Messages (e2e)', () => {
     ]);
     expect(last.body.hasNewer).toBe(false);
 
-    // limit 1: chỉ đúng tin đích.
     const single = await api(
       'get',
       `/api/v1/channels/${channel}/messages?limit=1&around=${ids[3]}`,
@@ -510,7 +485,6 @@ describe('Messages (e2e)', () => {
     expect(single.body.hasMore).toBe(true);
     expect(single.body.hasNewer).toBe(true);
 
-    // Tin đích của channel khác / không tồn tại / đã xóa mềm → 404 (không lộ id).
     await api(
       'get',
       `/api/v1/channels/${channel}/messages?around=${messageIds[0]}`,
@@ -526,7 +500,6 @@ describe('Messages (e2e)', () => {
       404,
     );
 
-    // around không dùng chung với before/after.
     await api(
       'get',
       `/api/v1/channels/${channel}/messages?around=${ids[3]}&before=${ids[4]}`,

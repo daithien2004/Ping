@@ -1,17 +1,4 @@
-/**
- * Drill T5.3: kill consumer giữa chừng, không sót/trùng point.
- *
- * Cách chạy (Postgres dev đã migrate, Qdrant + Redis đang chạy):
- *   pnpm --filter api drill:indexer
- *
- * Kịch bản:
- *  1. Tạo user/server/channel + 40 tin trong Postgres.
- *  2. XADD 40 event `message.created` vào stream:outbox.
- *  3. Chạy worker thật (FakeEmbedder) có trễ sau upsert, kill khi mới ghi ~6 point.
- *  4. Chạy lại worker; entry đã upsert nhưng chưa XACK nằm trong pending và được
- *     XAUTOCLAIM xử lý lại. Upsert theo message id nên không sinh point trùng.
- *  5. So tập id point với tập id tin: thiếu = 0, trùng = 0.
- */
+/** Chạy khi Postgres dev đã migrate, Qdrant + Redis đang chạy: pnpm --filter api drill:indexer */
 import { PrismaPg } from '@prisma/adapter-pg';
 import { config } from 'dotenv';
 import { Redis } from 'ioredis';

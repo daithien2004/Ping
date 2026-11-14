@@ -3,11 +3,7 @@ import { paceLogin } from './login-pace';
 
 const field = (page: Page, label: string) => page.getByLabel(label).filter({ visible: true });
 
-/**
- * Hồi quy cho ADR-0018: đăng xuất không được để request cũ (token đã bị xóa) ghi lỗi 401 vào
- * cache, rồi phiên đăng nhập sau ném lỗi đó qua Suspense thành `global-error`. Login lần hai
- * được làm chậm để request cũ có thời gian thất bại trước khi phiên mới được đặt.
- */
+/** Login lần hai bị làm chậm để request cũ kịp thất bại trước khi phiên mới được đặt. */
 test('signing out and back in does not inherit the previous session query cache', async ({
   page,
 }) => {
