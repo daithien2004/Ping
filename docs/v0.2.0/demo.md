@@ -140,7 +140,9 @@ với dữ liệu lớn — tôi để đúng 'chưa đo' thay vì điền số 
 
 - Có bản chạy công khai https://20.193.75.48, nhưng **không có staging riêng**: mọi diễn tập chạy
   trên production ([ADR-0059](../adr/0059-defer-paid-infrastructure.md)).
-- Load test từ máy ngoài chưa chạy (V9); con số 500 socket là T0.6 trên một máy.
+- Load test production chỉ đo được profile nhỏ từ máy OWNER: REST 10 vòng/giây (p95 1,28 giây) và
+  100 socket; CPU VPS còn trống nên **không** biết trần. Con số 500 socket là T0.6 trên một máy
+  ([V9](evidence/V2-final/V9-load.md)).
 - Chưa quét virus tệp. Backup mã hóa và restore đã diễn tập trên production nhưng với dữ liệu nhỏ
   (122 KB DB, 86 KB uploads), nên RTO ~4,5 giây **không đại diện**; chưa có PITR.
 - AI/GIF chưa cấu hình khoá trên production; Hỏi AI và tab GIF chỉ báo không khả dụng.

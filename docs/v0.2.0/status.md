@@ -173,7 +173,12 @@ chứng từng bước nằm trong [V2-final](evidence/V2-final/):
 - **Task 10 — F14 cuộn 10.000 tin:** **không đạt** (13 long task > 50 ms, max/p95 137 ms), nguyên
   nhân là antd Avatar đọc layout mỗi lần mount; đã ghi [nợ P2](../tech-debt.md)
   ([F14-scroll.md](evidence/V2-final/F14-scroll.md)).
+- **Task 11 — load test vào production:** 30 user tạo qua API thật, REST 10/25/50 vòng/giây và
+  socket 30/100 listener trên `37ae8cb`. Profile an toàn: REST 10 vòng/giây (30 req/s, p95 1,28 s,
+  0 lỗi) + 100 socket (0 lỗi join/gửi); nấc 25 chạm hạn mức 120 req/phút/user, nấc 50 vượt p95
+  2 s do máy bắn tải hết chỗ chứ CPU VPS chỉ 23% ([V9-load.md](evidence/V2-final/V9-load.md),
+  [perf](../perf/2026-11-14-vps.md)).
 
-Còn mở: V9 load test từ máy OWNER (chờ `INVITE_CODE`/mật khẩu user tải và duyệt tạo 30 user),
+Còn mở: dọn 30 user `load01…load30` và 120 tin `LT|` trên "Ping Demo" (chờ OWNER duyệt),
 K5/F13 cần CI xanh sau khi bootstrap baseline `linux/`, H2 pilot người thật, H3 OWNER duyệt tag.
 Cổng nghiệm thu và giới hạn: [acceptance/v0.2.0.md](acceptance/v0.2.0.md).

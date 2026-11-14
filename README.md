@@ -31,7 +31,8 @@ ngôn ngữ, hai theme.
   là một VPS nhỏ dùng hạn mức sẵn có của OWNER. Trần thiết kế là 20 USD/tháng
   ([ADR-0038](docs/adr/0038-release-scope-v0.2.0.md)), nhưng chưa có bảng giá từng dòng nên chưa tuyên bố
   "đã vận hành dưới 20 USD" ([case 6](docs/v0.2.0/case-studies/cs-06-ops-under-20usd.md)).
-- **Chưa có / chưa đo:** staging riêng, load test từ máy ngoài (V9), quét virus tệp, PITR. Backup mã hóa
+- **Chưa có / chưa đo:** staging riêng, quét virus tệp, PITR. Load test từ máy ngoài đã chạy ở profile
+  nhỏ (10 vòng/giây, 100 socket) nhưng không chứng minh trần VPS. Backup mã hóa
   ngoài VPS và restore đã diễn tập trên production, nhưng dữ liệu còn nhỏ nên RTO ~4,5 giây không đại diện.
   Những ô chưa có số ghi đúng "chưa đo" ở [nghiệm thu v0.2.0](docs/v0.2.0/acceptance/v0.2.0.md).
 
@@ -107,8 +108,10 @@ Ngoài phạm vi lần này: voice/video, mã hoá đầu cuối, S3, đa server
   ([evidence](docs/v0.2.0/evidence/V2-final/flows-prod.md)).
 - **Cuộn 10.000 tin còn long task > 50 ms** (max/p95 137 ms) do antd Avatar đọc layout mỗi lần mount; ghi là
   `không đạt` trong nghiệm thu và nợ kỹ thuật P2 ([F14](docs/v0.2.0/evidence/V2-final/F14-scroll.md)).
-- **Chưa có pilot người thật** (H2) và **chưa chạy load test từ máy ngoài** (V9); chưa thử restore với dữ
-  liệu hàng chục GB hay PITR.
+- **Chưa có pilot người thật** (H2). Load test vào production đã chạy: profile an toàn đo được từ máy
+  OWNER là REST 10 vòng/giây (30 req/s, p95 1,28 s) và 100 socket, không 5xx; chưa chứng minh trần VPS
+  vì máy bắn tải hết chỗ trước ([V9](docs/v0.2.0/evidence/V2-final/V9-load.md),
+  [perf](docs/perf/2026-11-14-vps.md)). Chưa thử restore với dữ liệu hàng chục GB hay PITR.
 - **Cron backup không dừng API/worker**, nên DB và uploads không phải snapshot nhất quán tuyệt đối
   ([backup-restore](docs/runbook/backup-restore.md)).
 

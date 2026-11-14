@@ -6,7 +6,8 @@ môi trường dùng chung; agent không thể tự tạo hai điều kiện đ�
 [§6](#6-bảng-kết-quả) rồi cập nhật mục H2 của [cổng nghiệm thu](v0.2.0.md).
 
 Mục tiêu: tìm lỗi **chặn luồng chính** và chỗ người mới bị kẹt, không thu thập dữ liệu thật và
-không đánh giá gu thẩm mỹ. Pilot không thay nghiệm thu staging: các mục V1–V9 vẫn chờ hạ tầng.
+không đánh giá gu thẩm mỹ. Pilot không thay nghiệm thu staging: V1, V2, V3, V5–V8 vẫn chờ hạ tầng;
+V9 chỉ đo được profile nhỏ trên production, không phải trần tải.
 
 ## 1. Phạm vi luồng chính
 

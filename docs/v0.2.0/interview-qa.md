@@ -40,8 +40,8 @@ này tạo thành một sản phẩm chat dùng được; search, AI, sticker, e
 
 Phần tính năng đã đóng; thứ bị cắt là những mảng cần hạ tầng hoặc người thật: voice/video, mã hoá
 đầu cuối, S3, đa server, mobile native ([ADR-0038](../adr/0038-release-scope-v0.2.0.md)), cộng pilot
-5–10 người và load test từ máy ngoài. Phần vận hành cơ bản (VPS công khai, HTTPS, backup mã hoá,
-rollback) đã chạy thật trên production; ô nào chưa đo vẫn để "chưa đo" trong
+5–10 người. Phần vận hành cơ bản (VPS công khai, HTTPS, backup mã hoá,
+rollback, load test profile nhỏ) đã chạy thật trên production; ô nào chưa đo vẫn để "chưa đo" trong
 [nghiệm thu](acceptance/v0.2.0.md) thay vì điền số ước lượng.
 
 ## Case 1 — Bão presence
@@ -309,9 +309,12 @@ ký nên chia sẻ cho người khác vẫn bị chặn ở bước kiểm quy�
 **45. Nếu được hỏi "hệ thống này chịu được bao nhiêu người"?**
 
 Tôi chỉ có số trên một laptop: 500 socket (3 instance) với 919.318 thông điệp/71,2 giây, p95
-reconnect 3,14 giây; và 2.000 socket một instance ở v0.1.0 cho thấy điểm gãy. Bộ k6 đã sẵn sàng bắn
-vào production qua Nginx (`BASE_URL`, token lấy qua API thật), nhưng **chưa chạy nấc tải nào**, nên
-tôi không đưa ra con số người dùng.
+reconnect 3,14 giây; và 2.000 socket một instance ở v0.1.0 cho thấy điểm gãy. Trên production
+(2026-11-14, `37ae8cb`, cùng mạng nhà với VPS) tôi đo được profile nhỏ: REST 10 vòng/giây
+(30 request/giây, p95 1,28 giây, 0 lỗi) và 100 socket (0 lỗi join/gửi). Nấc 25 vòng/giây chạm
+hạn mức 120 request/phút mỗi người; nấc 50 vòng/giây vượt p95 2 giây dù CPU VPS chỉ 23% — máy
+bắn tải hết chỗ trước, nên tôi **không** tuyên bố trần của VPS hay SLA
+([V9](evidence/V2-final/V9-load.md)).
 
 ## Điều tôi sẽ làm khác đi
 
