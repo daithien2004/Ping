@@ -8,6 +8,11 @@ Các lệnh dưới đây **đã được chạy thật** trên CSDL dev (561 us
 CSDL mới cho ra số hàng giống hệt (kể cả `_prisma_migrations`). Tên container là của compose dev (`ping-postgres-1`); với
 stack khác thay bằng tên container tương ứng (`docker compose ps`).
 
+Trên production `pingprod`, quy trình đã chạy thật ngày 2026-11-14 với snapshot nhỏ (8 user, 179 tin):
+số hàng và hash uploads khớp nguồn, API `/ready` 200 sau 3,2 giây; RTO đo **~4,5 giây** cho dữ liệu
+122 KB, không đại diện cho dữ liệu lớn. Số liệu và lệnh chi tiết ở
+[V5-backup](../v0.2.0/evidence/V2-final/V5-backup.md).
+
 ## Sao lưu
 
 ```bash
@@ -19,6 +24,17 @@ docker exec ping-postgres-1 pg_dump -U ping -Fc ping > ping-$(date +%Y%m%d-%H%M)
 - Postgres managed (Cloud SQL, RDS…) có sao lưu tự động và khôi phục về thời điểm bất kỳ (PITR): bật nó, và vẫn thử
   khôi phục định kỳ.
 - Trước mỗi lần migrate trên dữ liệu thật, sao lưu thủ công một bản.
+
+### Production: cron, age và kéo về máy
+
+- `/etc/cron.d/ping-backup` chạy `deploy/backup.sh` hằng ngày **02:30 UTC** bằng user `deploy`,
+  giữ **14 ngày** tại `/opt/ping/backups`. Script dump Postgres `-Fc`, tar volume
+  `pingprod_uploads`, rồi mã hóa cả hai bằng `age -R /opt/ping/backup-recipient.txt`.
+  Recipient chỉ chứa khóa công khai; khóa riêng do OWNER giữ ngoài VPS.
+- Chỉ bản `.age` rời VPS. `scripts/pull-backup.ps1` tải các bản `.age` về `D:\ping-backups`
+  (bỏ qua tệp đã có, giữ 7 bản mới nhất).
+- Giải mã trên máy OWNER: `age -d -i <age-key.txt> -o <file> <file>.age`. Không đưa khóa riêng
+  vào repo, biến môi trường dùng chung hay lịch sử shell.
 
 ## Khôi phục (vào CSDL mới, không ghi đè)
 
@@ -41,8 +57,23 @@ for db in ping ping_restore; do
 done
 ```
 
-Hai dòng phải giống nhau (nếu gốc đang nhận ghi thì lệch một chút là bình thường). Sau đó, chạy API trỏ vào CSDL
-khôi phục và gọi `/api/v1/ready` (phải 200). Dọn bản thử: `DROP DATABASE ping_restore`.
+Hai dòng phải giống nhau; nếu nguồn đang nhận ghi, lệch đúng bằng số bản ghi tạo sau mốc backup là
+bình thường (kiểm bằng `select count(*) from "Message" where "createdAt" > '<mốc dump>'`). Sau đó,
+chạy API trỏ vào CSDL khôi phục và gọi `/api/v1/ready` (phải 200). Dọn bản thử:
+`DROP DATABASE ping_restore`.
+
+Với uploads, giải nén bản tar vào thư mục mới và so từng tệp với volume nguồn (đọc read-only):
+
+```bash
+tar -xzf uploads-<stamp>.tar.gz -C restore-uploads
+sudo docker run --rm -v pingprod_uploads:/u:ro alpine:3.22 \
+  sh -c 'find /u -type f -exec sha256sum {} \; | sed "s#/u/##" | sort'
+find restore-uploads -type f -exec sha256sum {} \; | sed 's#restore-uploads/##' | sort
+```
+
+Hai danh sách phải trùng tên và hash. Lần diễn tập 2026-11-14: 22 tệp, 86.008 byte, hash trùng;
+giải nén 101 ms, Postgres restore 1.121 ms, API sẵn sàng 3.233 ms. Tổng RTO tuần tự ~4,5 giây trên
+dữ liệu nhỏ; ghi lại số đo mỗi lần diễn tập thay vì dùng lại con số này cho dữ liệu lớn.
 
 ## Sau khi khôi phục
 
@@ -52,7 +83,7 @@ khôi phục và gọi `/api/v1/ready` (phải 200). Dọn bản thử: `DROP DA
   khóa đã lộ, thu hồi mọi phiên: `UPDATE "Session" SET "revokedAt" = now() WHERE "revokedAt" IS NULL`.
 - Ghi lại sự cố: mất dữ liệu trong khoảng giữa bản sao lưu và thời điểm hỏng (RPO) là bao nhiêu.
 
-## Chưa làm
+## Giới hạn còn lại
 
 ### Tệp đính kèm v0.2.0 (TG.6)
 
@@ -70,13 +101,20 @@ khởi động worker, xác nhận queue tiếp tục và tệp đã xóa không
 Docker copy dùng được khi container API đã dừng: `docker cp <api-container>:/app/uploads <backup-dir>`;
 dump dùng `docker exec <postgres-container> pg_dump -U ping -Fc -f /tmp/attachments.dump ping`
 rồi `docker cp` file dump ra đích. Không redirect nhị phân qua Windows PowerShell 5 vì có thể
-đổi encoding. Ghi lại thời gian dừng và kết quả restore; chưa có số đo restore staging TG.6.
+đổi encoding.
 
-Chưa có lịch sao lưu tự động cho staging, retention hay bản sao ngoài máy đã được kiểm chứng.
-Các việc này thuộc v0.2.0 ([ADR-0037](../adr/0037-release-scope-v0.1.0.md)); runbook staging và
-chính sách backup riêng sẽ được chốt theo môi trường thực tế. Mục tiêu đã duyệt là RPO ≤ 24 giờ,
-RTO ≤ 60 phút, backup mã hóa ngoài máy và một lần restore có đối chiếu; đây chưa phải số đo đạt.
+Đã diễn tập ngày 2026-11-14 trên snapshot production thật: restore Postgres + uploads vào đích
+local mới, 22 tệp/86.008 byte với hash trùng volume nguồn, API `/ready` 200
+([V5-backup](../v0.2.0/evidence/V2-final/V5-backup.md)). Chưa chạy trên staging, chưa thử tải
+ảnh/PDF qua API trên bản khôi phục, chưa khởi động worker/queue trên volume khôi phục.
 
-Đã diễn tập thêm trên stack production chạy local `pingprod`: so số hàng và fingerprint 10 bảng,
-xem [ADR-0036](../adr/0036-local-deployment.md) và [runbook local](deploy.md). Bằng chứng đó không
-thay thế lần restore trên staging. Chưa thử khôi phục trên bản dữ liệu hàng chục GB.
+Production đã có cron 02:30 UTC, retention 14 ngày, mã hóa age và bản kéo ngoài máy; mục tiêu
+RPO ≤ 24 giờ dựa vào lịch này, chưa có PITR. Một lần restore có đối chiếu đã đạt với dữ liệu nhỏ;
+chưa có số đo staging hay dữ liệu hàng chục GB. Cron hiện **không dừng API/worker** khi tar volume,
+nên DB và uploads không phải snapshot nhất quán tuyệt đối; khi cần RPO/RTO nghiêm ngặt phải tạm
+chặn ghi, dừng API/worker, rồi mới dump và tar như mô tả ở trên.
+
+Bản diễn tập trên stack luyện tập chạy local (cùng tên project `pingprod` trên Docker Desktop,
+[ADR-0036](../adr/0036-local-deployment.md)) chỉ so số hàng và fingerprint 10 bảng; lần diễn tập
+2026-11-14 ở trên thay nó bằng restore thật từ snapshot production. Vẫn chưa thử khôi phục trên
+bản dữ liệu hàng chục GB.

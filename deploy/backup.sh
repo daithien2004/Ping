@@ -26,5 +26,14 @@ docker run --rm \
   -e BACKUP_UID="$(id -u)" -e BACKUP_GID="$(id -g)" \
   alpine:3.22 sh -c "umask 077; tar -czf '/backup/uploads-$stamp.tar.gz.part' -C /data .; chown \$BACKUP_UID:\$BACKUP_GID '/backup/uploads-$stamp.tar.gz.part'"
 mv "$uploads_file.part" "$uploads_file"
-find "$backup_dir" -type f \( -name 'postgres-*.dump' -o -name 'uploads-*.tar.gz' \) -mtime +14 -delete
+# Bản .age là bản duy nhất rời khỏi VPS; bản chưa mã hóa giữ tại chỗ để khôi phục nhanh.
+recipient="$APP_DIR/backup-recipient.txt"
+if [ -f "$recipient" ]; then
+  command -v age >/dev/null 2>&1 || { echo 'age must be installed to encrypt backups' >&2; exit 1; }
+  for plain in "$db_file" "$uploads_file"; do
+    age -R "$recipient" -o "$plain.age" "$plain"
+    chmod 600 "$plain.age"
+  done
+fi
+find "$backup_dir" -type f \( -name 'postgres-*.dump' -o -name 'uploads-*.tar.gz' -o -name '*.age' \) -mtime +14 -delete
 echo "backup complete: $stamp"
