@@ -1,17 +1,10 @@
 import { ErrorCodes, type GifPayload } from '@ping/shared';
 import { ApiError } from '@/lib/api-client';
 
-/** Số GIF tối đa lưu trong "Gần đây" của tab GIF — như sticker gần đây (TG.22) và emoji (TG.23). */
 export const GIF_RECENT_MAX = 24;
 
-/**
- * Mục "Gần đây" của GIF (TG.25, ADR-0069): đúng hình dạng payload gửi đi — đủ để render lại lưới
- * và gửi lại mà không cần hỏi server (GIF không phải entity của server). Provider luôn 'tenor'
- * ở v0.2.0 nên không lưu.
- */
 export type RecentGif = GifPayload;
 
-/** Khóa localStorage THEO USER: danh sách GIF gần đây là dữ liệu riêng của từng người xem. */
 export function recentGifsKey(userId: string): string {
   return `ping.gif-recent.${userId}`;
 }
@@ -47,7 +40,6 @@ export function loadRecentGifs(userId: string): RecentGif[] {
   }
 }
 
-/** Ghim một GIF vào đầu danh sách gần đây (một bản duy nhất theo id), trần {@link GIF_RECENT_MAX}. */
 export function pushRecentGif(recent: RecentGif[], gif: RecentGif): RecentGif[] {
   return [gif, ...recent.filter((item) => item.id !== gif.id)].slice(0, GIF_RECENT_MAX);
 }
@@ -56,14 +48,10 @@ export function saveRecentGifs(userId: string, list: RecentGif[]): void {
   try {
     localStorage.setItem(recentGifsKey(userId), JSON.stringify(list.slice(0, GIF_RECENT_MAX)));
   } catch {
-    // localStorage đầy/bị chặn: bỏ qua — tính năng gần đây là tiện ích, không phải dữ liệu.
+    // localStorage đầy/bị chặn: bỏ qua.
   }
 }
 
-/**
- * 503 `GIF_PROVIDER_UNAVAILABLE` (thiếu key/quota nhà cung cấp): picker hiện empty state riêng
- * "chưa khả dụng" thay vì câu lỗi chung, chat vẫn gửi/nhận bình thường (ADR-0069).
- */
 export function isGifProviderUnavailable(error: unknown): boolean {
   return error instanceof ApiError && error.code === ErrorCodes.GIF_PROVIDER_UNAVAILABLE;
 }

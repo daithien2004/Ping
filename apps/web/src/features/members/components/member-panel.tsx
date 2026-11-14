@@ -29,7 +29,6 @@ function MemberRow({
   const [open, setOpen] = useState(false);
   return (
     <li data-slot="member-row" className="flex items-center rounded-md px-2 py-1.5">
-      {/* TG.7: bấm thành viên mở thẻ hồ sơ (modal — avatar/role/ngày tham gia; riêng mình có đổi biệt danh). */}
       <button
         type="button"
         data-testid="member-row"
@@ -58,7 +57,6 @@ function MemberRow({
         footer={null}
         destroyOnHidden
       >
-        {/* TG.9: bấm "Nhắn tin"/điều hướng DM xong thì đóng modal (onDone). */}
         <MemberProfileCard
           member={member}
           serverId={serverId}
@@ -101,7 +99,6 @@ function Group({
   );
 }
 
-/** Danh sách thành viên của server, online trước. Hiện bên phải khung chat (ẩn/hiện bằng nút ở tiêu đề). */
 export function MemberPanel({ serverId }: { serverId: string }) {
   const t = useTranslations('members');
   const ta = useTranslations('app');

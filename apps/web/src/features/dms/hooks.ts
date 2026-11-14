@@ -32,10 +32,6 @@ export function useDms() {
   });
 }
 
-/**
- * POST /dms — get-or-create idempotent (cặp đã có trả channel cũ, luôn 200). Người gọi tự
- * điều hướng vào `channelId` khi xong; danh sách DM được invalidate để mục trên rail hiện ra.
- */
 export function useCreateDm() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -46,10 +42,6 @@ export function useCreateDm() {
   });
 }
 
-/**
- * Chặn/bỏ chặn (TG.9): ghi nhận vào store UI để banner + composer phản hồi ngay; TG.13 làm
- * tươi thêm danh sách chặn ở trang cài đặt. Toggle có ở profile card, header DM và cài đặt.
- */
 export function useToggleBlock() {
   const queryClient = useQueryClient();
   const setBlocked = useDmBlockStore((state) => state.setBlocked);
@@ -58,18 +50,15 @@ export function useToggleBlock() {
       block ? blockUser(userId) : unblockUser(userId),
     onSuccess: (_result, { userId, block }) => {
       setBlocked(userId, block);
-      // TG.13: danh sách chặn liệt kê ở trang cài đặt — chặn/bỏ chặn ở đây cũng phải tươi.
       void queryClient.invalidateQueries({ queryKey: qk.blockedUsers });
     },
   });
 }
 
-/** GET /users/me/privacy (TG.13) — trang cài đặt cần giá trị đã lưu để switch không sai. */
 export function usePrivacy() {
   return useQuery({ queryKey: qk.privacy, queryFn: getPrivacy, staleTime: Infinity });
 }
 
-/** PATCH /users/me/privacy — mức `dmAllow` của chính mình (màn cài đặt TG.13). */
 export function useUpdatePrivacy() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -77,7 +66,6 @@ export function useUpdatePrivacy() {
     onMutate: async (input) => {
       await queryClient.cancelQueries({ queryKey: qk.privacy });
       const previous = queryClient.getQueryData<UserPrivacyDto>(qk.privacy);
-      // PATCH trả 204 — áp giá trị vừa gửi ngay để switch không nhảy về giá trị cũ trong lúc chờ.
       queryClient.setQueryData<UserPrivacyDto>(qk.privacy, { dmAllow: input.dmAllow });
       return { previous };
     },
@@ -101,9 +89,9 @@ export function useDmEvents(session: RealtimeSession, userId: string, activeChan
 
   useEffect(() => {
     const activity = (event: ChannelActivityPayload) => {
-      if (event.serverId !== null) return; // channel server: unread của server tự lo
-      if (event.authorId === userId) return; // tin của chính mình (tab khác) không tính chưa đọc
-      if (event.channelId === activeChannelId) return; // đang xem: mark-read lo phần còn lại
+      if (event.serverId !== null) return;
+      if (event.authorId === userId) return;
+      if (event.channelId === activeChannelId) return;
       queryClient.setQueryData<DmListResponse>(qk.dms, (old) =>
         old ? { dms: applyDmActivity(old.dms, event.channelId) } : old,
       );
@@ -113,7 +101,6 @@ export function useDmEvents(session: RealtimeSession, userId: string, activeChan
         old ? { dms: applyDmRead(old.dms, event.channelId, event.lastReadMessageId) } : old,
       );
     };
-    // Reconnect: event badge là best-effort — đối soát bằng GET /dms (mục Consequences của ADR).
     const connected = () => {
       void queryClient.invalidateQueries({ queryKey: qk.dms, exact: true });
     };

@@ -24,7 +24,6 @@ export function useChannelSync(channelId: string) {
   };
 }
 
-/** Tải lại phần tin nhắn quanh mốc đang xem để giữ nguyên cửa sổ lịch sử trong cache. */
 export async function reloadWindow(queryClient: QueryClient, channelId: string, aroundId: string) {
   const key = qk.messages(channelId);
   try {

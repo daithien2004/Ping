@@ -53,7 +53,6 @@ export function MessagePane({
   const [selection, setSelection] = useState<MessageSelection | null>(null);
   const [replyTo, setReplyTo] = useState<ClientMessage | null>(null);
   const composerRef = useRef<PingTextAreaRef>(null);
-  // Tăng mỗi lần người dùng xin focus ô soạn; composer tự chờ quyền sẵn sàng rồi focus.
   const [focusRequest, setFocusRequest] = useState(0);
 
   const announcement = useNewMessageAnnouncement(messages, me?.id);
@@ -82,8 +81,6 @@ export function MessagePane({
   useMarkReadTail({ channelId, tailId: messages.at(-1)?.id ?? null, hasNewer });
   const dividerId = useUnreadDivider({ scope, channelId, messages });
 
-  // Nút "Tin mới": chỉ hiện khi đang đọc phía trên và một tin mới vừa rơi vào cuối danh sách.
-  // `seenTail` nhớ tin cuối đã thấy lúc còn ở đáy; khôi phục vị trí cuộn không làm nút bật.
   const tailId = messages.at(-1)?.id ?? null;
   const seenTail = useRef<string | null>(null);
   const [hasNew, setHasNew] = useState(false);
@@ -101,7 +98,6 @@ export function MessagePane({
     virtualizer,
     messagePath: scope.messagePath,
   });
-  // Gom callback dùng bởi từng tin thành một object; memo hóa để giữ object ổn định giữa các lần render.
   const itemHandlers = useMemo(
     () => ({
       onRetry: retry,
@@ -118,13 +114,10 @@ export function MessagePane({
     <div className="flex min-h-0 flex-1 flex-col">
       <FocusBanner missing={focusMissing} pending={focusPending} />
       <div className="relative flex min-h-0 flex-1 flex-col">
-        {/* Ref này nối vùng cuộn với virtualizer.getScrollElement để virtualizer biết cần cuộn phần tử nào. */}
         <div
           ref={scrollRef}
           data-testid="message-scroll"
           data-slot="message-pane"
-          // Vùng cuộn phải vào được bằng Tab để đọc/ cuộn bằng bàn phím (axe
-          // scrollable-region-focusable); nội dung ảo hóa nên không thể dựa vào phần tử con.
           // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- focus vùng cuộn là yêu cầu a11y
           tabIndex={0}
           className="min-h-0 flex-1 overflow-y-auto"
@@ -144,7 +137,6 @@ export function MessagePane({
             {messages.length === 0 && !hasNextPage && (
               <EmptyState onCompose={() => setFocusRequest((request) => request + 1)} />
             )}
-            {/* Chỉ dựng các tin đang gần vùng nhìn thấy, đặt chúng đúng vị trí và truyền trạng thái xuống MessageItem. */}
             {virtualizer.getVirtualItems().map((item) => {
               const row = rows[item.index];
               if (!row) return null;
@@ -189,10 +181,8 @@ export function MessagePane({
         )}
       </div>
 
-      {/* Chỉ hiện nút khi cửa sổ lịch sử còn tin mới hơn; bấm sẽ tải chúng và loadingNewer khóa nút lúc chờ. */}
       {hasNewer && <LoadNewerBar loading={loadingNewer} onLoad={loadMoreNewer} />}
 
-      {/* Hiện số người đang gõ trong channel này; không có ai gõ thì vùng trạng thái để trống. */}
       <TypingIndicator channelId={channelId} />
       <div
         aria-live="polite"
@@ -202,7 +192,6 @@ export function MessagePane({
       >
         {announcement}
       </div>
-      {/* Ô soạn tin cho channel này: nhận reply hiện tại, gửi qua sendOwn và cho phép focus textarea. */}
       <MessageComposer
         scope={scope}
         channelId={channelId}
@@ -213,7 +202,6 @@ export function MessagePane({
         textareaRef={composerRef}
         focusRequest={focusRequest}
       />
-      {/* Mở hộp sửa/xóa theo selection; truyền tin tương ứng và xóa selection khi đóng dialog. */}
       <MessageDialogs
         selection={selection}
         message={messages.find((message) => message.id === selection?.messageId)}

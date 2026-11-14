@@ -10,13 +10,11 @@ import { ComposerIconButton } from './composer-icon-button';
 
 export type Picker = 'emoji' | 'sticker' | null;
 
-/** Panel picker đã có padding riêng — bỏ padding mặc định của popover để picker lấp đầy khung. */
 const PICKER_POPOVER_STYLES = {
   container: { padding: 0 },
   content: { padding: 0 },
 };
 
-/** Nội dung popover của từng nút — nút là anchor, panel không chiếm chỗ trong khung soạn. */
 type PanelRenderer = () => ReactNode;
 
 export function ComposerActions({
@@ -31,7 +29,6 @@ export function ComposerActions({
 }: {
   picker: Picker;
   onPickerChange: (next: Picker) => void;
-  /** Nội dung popover của từng nút — nút là anchor, panel không chiếm chỗ trong khung soạn. */
   emojiPicker: PanelRenderer;
   stickerPicker: PanelRenderer;
   showSticker: boolean;
@@ -43,7 +40,6 @@ export function ComposerActions({
   const te = useTranslations('emoji');
   const ts = useTranslations('stickers');
 
-  // Cụm icon sát nhau ở mép phải như thanh soạn tin Discord; mỗi nút vẫn là một ô 32 px.
   return (
     <div className="flex items-end gap-0.5">
       <PingPopover

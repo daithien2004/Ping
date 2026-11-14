@@ -7,17 +7,8 @@ import type {
 } from '@ping/shared';
 import { NOTIFY_DEFAULT_LEVEL } from '@ping/shared';
 
-/**
- * Logic chọn prefs hiệu dụng của TG.12 — hàm thuần, có test riêng (quy tắc FE: biến đổi
- * cache nằm ở *-cache.ts, hook chỉ ghi cache). Quyết định BẮN thông báo là `shouldNotify`
- * của packages/shared — hàm này chỉ chuẩn bị dữ liệu vào cho nó.
- *
- * Ngữ nghĩa "override": dòng channel thay THỂ TRỌN VẸN dòng server (level + mutedUntil cùng
- * lúc) — đặt riêng một kênh không bị mute của server ám lại, đúng comment của
- * NotificationPrefDto trong shared ("override server").
- */
+/** Dòng channel thay THẾ TRỌN VẸN dòng server (level + mutedUntil cùng lúc). */
 
-/** Dòng prefs của một target, hoặc undefined khi chưa cấu hình. */
 export function findPref(
   prefs: NotificationPrefDto[],
   scope: 'server' | 'channel',
@@ -26,10 +17,6 @@ export function findPref(
   return prefs.find((row) => row.scope === scope && row.targetId === targetId);
 }
 
-/**
- * Mức hiệu dụng của một channel: dòng channel → dòng server (null với DM) → mặc định chung.
- * DM không thuộc server nào nên bỏ qua bước dòng server.
- */
 export function effectiveLevel(
   prefs: NotificationPrefDto[],
   serverId: string | null,
@@ -42,7 +29,6 @@ export function effectiveLevel(
   );
 }
 
-/** Mute hiệu dụng cùng nguồn với `effectiveLevel`: channel override server, mốc quá khứ coi như không mute. */
 export function effectiveMutedUntil(
   prefs: NotificationPrefDto[],
   serverId: string | null,
@@ -61,12 +47,7 @@ export function remainingMuteMinutes(mutedUntil: string | null, now: number): nu
   return remaining <= 0 ? 0 : Math.ceil(remaining / 60_000);
 }
 
-/**
- * Cờ mention cho `shouldNotify` (TG.12): event `mention.created` (chỉ tới người được nhắc,
- * đã kiểm quyền phía server) là nguồn sự thật của "mình bị nhắc"; @everyone nhận biết từ
- * nội dung. `ignoreEveryone` chỉ được che luôn cả cờ mention NẾU tin đó ping vì @everyone —
- * nhắc thẳng tên mình thì vẫn tính là mention.
- */
+/** `ignoreEveryone` chỉ che cờ mention NẾU tin ping vì @everyone; nhắc thẳng tên mình vẫn là mention. */
 export function mentionFlags(
   gotMentionEvent: boolean,
   contentHasEveryone: boolean,
@@ -79,18 +60,13 @@ export function mentionFlags(
   };
 }
 
-/**
- * @everyone/@here trong nội dung tin — cùng ranh giới từ với mention-parser của API
- * (`@` sau ranh giới từ, token trọn vẹn) để không dính email `a@b` hay `@@everyone`.
- * `@here` không phải ping thật của API hiện tại nhưng gồm theo plan TG.12 ("@everyone/@here").
- */
+/** Cùng ranh giới từ với mention-parser của API: không dính email `a@b` hay `@@everyone`. */
 const EVERYONE_TOKEN = /(?<![A-Za-z0-9_@])@(?:everyone|here)(?![A-Za-z0-9_.-])/;
 
 export function hasEveryoneToken(content: string): boolean {
   return EVERYONE_TOKEN.test(content);
 }
 
-/** Upsert một dòng prefs vào cache sau PUT — giữ mảng ổn định cho TanStack so sánh. */
 export function upsertPref(
   response: NotificationPrefsResponse | undefined,
   row: NotificationPrefDto,
@@ -105,7 +81,6 @@ export function upsertPref(
   return { prefs: next };
 }
 
-/** Gỡ một dòng prefs khỏi cache sau DELETE reset (idempotent: không có vẫn trả nguyên). */
 export function removePref(
   response: NotificationPrefsResponse | undefined,
   scope: 'server' | 'channel',
@@ -117,10 +92,6 @@ export function removePref(
   };
 }
 
-/**
- * Tổng badge cho tiêu đề/favicon (TG.12): tổng unread mọi server + unread DM — thay ngữ nghĩa
- * cũ "chỉ tổng mention" (T4.3) vì mức thông báo 'all' giờ cũng đáng chú ý như mention.
- */
 export function badgeTotal(
   serverUnread: ChannelUnreadDto[][],
   dms: DmListResponse | undefined,

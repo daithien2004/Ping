@@ -20,9 +20,7 @@ describe('dm-cache (TG.9, ADR-0070)', () => {
     const next = applyDmActivity(dms, 'a');
     expect(next[0]!.unreadCount).toBe(100);
     expect(next[0]!.lastMessageAt).not.toBe(old);
-    // Hội thoại chưa có trong cache: giữ nguyên, đợi lần fetch sau.
     expect(applyDmActivity(dms, 'khong-ton-tai')).toEqual(dms);
-    // Trần 100 không vượt.
     expect(applyDmActivity([dm({ channelId: 'a', unreadCount: 100 })], 'a')[0]!.unreadCount).toBe(
       100,
     );

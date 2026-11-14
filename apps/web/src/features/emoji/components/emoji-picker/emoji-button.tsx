@@ -2,7 +2,6 @@ import type { KeyboardEvent } from 'react';
 import { useTranslations } from 'use-intl';
 import type { EmojiEntry } from '../../data';
 
-/** Một ô emoji hệ thống trong lưới (kết quả tìm kiếm hoặc theo mục) — hình do font hệ thống. */
 export function EmojiButton({
   entry,
   onPick,

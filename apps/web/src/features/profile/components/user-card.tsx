@@ -11,12 +11,6 @@ import { useSettingsModal } from '@/features/settings/modal-store';
 import { SelfProfileCard } from './profile-popover';
 import { UserAvatar } from './user-avatar';
 
-/**
- * Panel người dùng của app (Discord): render một lần ở AppShell nên có mặt ở server, DM và cài
- * đặt — không thuộc sidebar cụ thể nào. Là thẻ nổi (bo góc, cách mép, có bóng) thay vì thanh dán
- * đáy cột; khung/nền nằm trong component để mọi skin đều nổi, skin chỉ đổi màu sắc và viền.
- * Avatar mở thẻ hồ sơ; bánh răng mở cài đặt CÁ NHÂN (cài đặt server nằm trong menu tên server).
- */
 export function UserCard() {
   const { data: me } = useMe();
   const [profileOpen, setProfileOpen] = useState(false);

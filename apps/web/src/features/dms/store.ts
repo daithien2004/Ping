@@ -9,7 +9,6 @@ import { create } from 'zustand';
  * Reload trang làm mất ghi nhận — cạnh đó đối soát bằng response lỗi của server.
  */
 interface DmBlockState {
-  /** partner userId → đang chặn (theo một trong hai chiều, client không phân biệt được). */
   blocked: Record<string, true>;
   setBlocked: (userId: string, blocked: boolean) => void;
 }
@@ -26,6 +25,5 @@ export const useDmBlockStore = create<DmBlockState>((set) => ({
     }),
 }));
 
-/** Selector: biết là đang chặn (theo một trong hai chiều) với partner này không. */
 export const selectDmBlocked = (userId: string) => (state: DmBlockState) =>
   Boolean(state.blocked[userId]);

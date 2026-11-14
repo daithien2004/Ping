@@ -7,7 +7,6 @@ import { useServerAbility } from '@/features/permissions/context';
 
 export const HEADER_HEIGHT = 48;
 
-/** Hiện cảnh báo “không có quyền” trong vùng tin nhắn khi server từ chối vào channel. */
 export function RoomDenied() {
   const errors = useTranslations('errors');
   return (
@@ -17,10 +16,6 @@ export function RoomDenied() {
   );
 }
 
-/**
- * Nhận trạng thái tìm tin đích và hiện thông báo tương ứng; không hiện gì khi đã tìm thấy.
- * Ví dụ: `pending = true` → hiện “đang tải”; `missing = true` → hiện “không tìm thấy”.
- */
 export function FocusBanner({ missing, pending }: { missing: boolean; pending: boolean }) {
   const t = useTranslations('messages');
   if (missing) {
@@ -74,11 +69,6 @@ export function ListHeader({
   );
 }
 
-/**
- * Nhận `onCompose` và hiện lời nhắn khi channel chưa có tin nào; nếu có quyền gửi,
- * hiện nút soạn tin gọi `onCompose` khi bấm.
- * Ví dụ: channel rỗng → hiện “Chưa có tin nhắn” và nút mở ô soạn tin.
- */
 export function EmptyState({ onCompose }: { onCompose: () => void }) {
   const t = useTranslations('messages');
   const { ability } = useServerAbility();

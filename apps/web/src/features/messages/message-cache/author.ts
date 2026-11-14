@@ -1,7 +1,6 @@
 import type { UserUpdatedPayload } from '@ping/shared';
 import type { MessagesCache } from './types';
 
-/** user.updated: cập nhật tác giả trong mọi trang tin nhắn (tên + avatar đổi ngay). */
 export function applyAuthorUpdated(
   cache: MessagesCache | undefined,
   user: UserUpdatedPayload,

@@ -17,11 +17,6 @@ import { useErrorMessage } from '@/lib/error-message';
 import { useUpdateNickname } from '../../hooks';
 import { UserAvatar } from '../user-avatar';
 
-/**
- * Thẻ hồ sơ của một thành viên (TG.7): avatar, tên, biệt danh, vai trò, ngày tham gia. TG.9
- * bật nút "Nhắn tin" (POST /dms get-or-create → điều hướng vào DM) và thêm chặn/bỏ chặn —
- * đây là entry chính để tạo DM ở v0.2. Riêng mình có thêm ô đổi biệt danh.
- */
 export function MemberProfileCard({
   member,
   serverId,
@@ -31,7 +26,6 @@ export function MemberProfileCard({
   member: MemberDto;
   serverId: string;
   self: boolean;
-  /** Chạy sau khi điều hướng xong (đóng modal chứa thẻ) — nơi gọi quyết định. */
   onDone?: () => void;
 }) {
   const t = useTranslations('profile');
@@ -50,7 +44,6 @@ export function MemberProfileCard({
     new Date(member.joinedAt),
   );
 
-  /** POST /dms luôn 200 với cặp đã có (get-or-create) nên chỉ điều hướng khi thành công. */
   function sendMessage() {
     createDm.mutate(member.user.id, {
       onSuccess: ({ channelId }) => {
@@ -61,7 +54,6 @@ export function MemberProfileCard({
     });
   }
 
-  /** Chặn/bỏ chặn hai chiều — báo toast để người dùng biết trạng thái mới đã lưu. */
   function setBlocked(block: boolean) {
     toggleBlock.mutate(
       { userId: member.user.id, block },
@@ -145,8 +137,6 @@ export function MemberProfileCard({
           </div>
         </>
       ) : null}
-      {/* TG.9: entry chính tạo DM — bấm là get-or-create rồi vào thẳng hội thoại. Lỗi
-          DM_BLOCKED (đối tác chặn hoặc tắt DM) báo toast qua đúng mã, không đoán chiều. */}
       {!self && (
         <div className="flex gap-2">
           <PingButton
@@ -160,7 +150,6 @@ export function MemberProfileCard({
             <Send /> {t('sendMessage')}
           </PingButton>
           {blocked ? (
-            // Bỏ chặn: xác nhận nhẹ, hành động mở lại tin nhắn cho cả hai chiều.
             <PingPopconfirm
               title={td('unblockConfirm', { name })}
               onConfirm={() => setBlocked(false)}
@@ -172,7 +161,6 @@ export function MemberProfileCard({
               </PingButton>
             </PingPopconfirm>
           ) : (
-            // Chặn: ảnh hưởng hai chiều (không DM được nhau) — luôn hỏi lại.
             <PingPopconfirm
               title={td('blockConfirm', { name })}
               description={td('blockHint')}

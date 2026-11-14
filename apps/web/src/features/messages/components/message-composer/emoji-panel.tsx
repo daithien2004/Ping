@@ -7,7 +7,6 @@ const EmojiPicker = dynamic(
   { ssr: false },
 );
 
-/** Nội dung popover emoji của ô soạn tin (bề mặt do popover cung cấp). */
 export function EmojiPanel({
   serverId,
   onInsert,

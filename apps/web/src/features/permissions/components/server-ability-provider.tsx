@@ -51,7 +51,6 @@ function AbilityScope({ serverId, children }: { serverId: string; children: Reac
   );
 }
 
-/** Read access and action readiness differ: a background refresh locks actions, preserving drafts. */
 export function ServerViewBoundary({ children }: { children: ReactNode }) {
   const { ability } = useServerAbility();
   const t = useTranslations('errors');

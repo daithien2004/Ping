@@ -7,17 +7,9 @@ import { qk } from '@/lib/query-keys';
 import { drawFaviconBadge } from './favicon';
 import { badgeTotal } from './notification-cache';
 
-/**
- * Badge tiêu đề + favicon (TG.12): tổng unread mọi server (cache gộp `qk.unreadAll`, ADR-0077)
- * + tổng unread DM (cache `qk.dms`) → `(N) Ping`. Thay ngữ nghĩa cũ của `useUnreadTitle` (chỉ
- * tổng mention, T4.3) vì từ TG.12 mức 'all' cũng là thứ đáng kéo người dùng về tab. Favicon
- * được vẽ thêm chấm đỏ bằng canvas; n = 0 thì khôi phục icon gốc.
- */
 export function useNotifyBadge(appName: string) {
   const queryClient = useQueryClient();
   useEffect(() => {
-    // Cache đổi rất thường xuyên (mỗi event realtime, mỗi lần ghi tin); title + canvas chỉ
-    // được đụng tới khi TỔNG thật sự đổi — vẽ lại favicon mỗi event là việc thừa trên main thread.
     let lastTotal: number | null = null;
     const update = () => {
       const servers = queryClient.getQueryData<ServerUnreadDto[]>(qk.unreadAll) ?? [];
@@ -30,7 +22,6 @@ export function useNotifyBadge(appName: string) {
       drawFaviconBadge(total);
     };
     update();
-    // TanStack trả về hàm unsubscribe trực tiếp (cùng mẫu với useUnreadTitle cũ).
     return queryClient.getQueryCache().subscribe(update);
   }, [appName, queryClient]);
 }

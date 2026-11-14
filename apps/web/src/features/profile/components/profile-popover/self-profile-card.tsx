@@ -10,10 +10,6 @@ import { useErrorMessage } from '@/lib/error-message';
 import { useProfileUpload, useUpdateProfile } from '../../hooks';
 import { UserAvatar } from '../user-avatar';
 
-/**
- * Thẻ hồ sơ của chính mình (TG.7): đổi ảnh đại diện (pipeline TG.6) và tên hiển thị.
- * Dùng ở thẻ user dưới rail; đặt trong PingPopover ở nơi gọi.
- */
 export function SelfProfileCard() {
   const t = useTranslations('profile');
   const errorMessage = useErrorMessage();
@@ -23,12 +19,10 @@ export function SelfProfileCard() {
   const inputRef = useRef<HTMLInputElement>(null);
   const upload = useProfileUpload('avatar');
   const saved = useRef(false);
-  // Rã phần tử ổn định cho deps của effect dưới: nguyên object `upload`/`save` đổi identity
-  // mỗi render — thêm thẳng vào deps sẽ nổ mutation lặp khi lỗi (saved.current=false + render).
+  // Rã phần tử ổn định cho deps: nguyên object `upload`/`save` đổi identity mỗi render, đưa vào deps sẽ lặp mutation khi lỗi.
   const { attachmentId, reset: resetUpload } = upload;
   const { mutate: saveMutate } = save;
 
-  // Ảnh đã ready → gắn vào hồ sơ ngay (một tệp chỉ dùng một lần); side-effect đồng bộ với server.
   useEffect(() => {
     if (!attachmentId || saved.current) return;
     saved.current = true;

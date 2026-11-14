@@ -19,7 +19,6 @@ export function useServerAbility() {
   return { ...context, ability };
 }
 
-/** Id server hiện tại, cho component chỉ sống trong vùng của một server (không dùng được ở DM). */
 export function useCurrentServerId(): string {
   const { serverId } = useServerAbility();
   if (serverId === null) throw new Error('useCurrentServerId chỉ dùng trong vùng server');

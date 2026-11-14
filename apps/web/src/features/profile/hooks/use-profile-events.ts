@@ -21,10 +21,6 @@ import {
   applyUserUpdatedToMembers,
 } from '../profile-cache';
 
-/**
- * user.updated / member.updated / server.updated (TG.7): hồ sơ và server đổi ở tab khác hoặc
- * do thành viên khác đổi — cập nhật cache me/members/servers ngay không reload.
- */
 export function useProfileEvents(session: RealtimeSession) {
   const queryClient = useQueryClient();
   useEffect(() => {

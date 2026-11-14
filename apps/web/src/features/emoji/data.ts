@@ -1,16 +1,7 @@
-/**
- * Dữ liệu emoji cho picker (TG.23, ADR-0057): hình do font hệ thống render — dataset chỉ là
- * chuỗi (unicode + shortcode + tên/từ khóa vi-en + nhóm), lazy-load cùng component picker nên
- * không đụng bundle ban đầu.
- *
- * `shortcode` PHẢI khớp map trong features/messages/markdown.ts (nguồn dữ liệu của render);
- * test dữ liệu bắt hai bên không lệch. Skin tone: emoji có `tone: true` hỗ trợ 5 biến thể
- * Fitzpatrick bằng modifier Unicode (kết thúc chuỗi modifiers).
- */
+/** `shortcode` PHẢI khớp map trong features/messages/markdown.ts (data.test.ts bắt lệch). */
 export interface EmojiEntry {
   unicode: string;
   shortcode: string;
-  /** Tên hiển thị (aria-label) + từ khóa tìm kiếm, vi và en gộp chung. */
   keywords: string[];
   group: EmojiGroup;
   tone?: boolean;
@@ -46,7 +37,6 @@ const e = (
 ): EmojiEntry => ({ unicode, shortcode, group, keywords, tone });
 
 export const EMOJI_DATA: EmojiEntry[] = [
-  // ── smileys ────────────────────────────────────────────────────────────
   e('😁', 'grin', 'smileys', ['cười hở răng', 'beaming', 'grin']),
   e('😀', 'grinning', 'smileys', ['cười tươi', 'grinning', 'happy']),
   e('😄', 'smile', 'smileys', ['cười', 'vui vẻ', 'smile', 'happy', 'laugh']),
@@ -115,7 +105,6 @@ export const EMOJI_DATA: EmojiEntry[] = [
   e('🤗', 'hug', 'smileys', ['ôm', 'hug']),
   e('🫠', 'melting', 'smileys', ['tan chảy', 'melting']),
   e('😷', 'mask', 'smileys', ['khẩu trang', 'mask', 'sick']),
-  // ── gestures ───────────────────────────────────────────────────────────
   e('👍', 'thumbsup', 'gestures', ['thích', 'đồng ý', 'thumbs up', 'like', 'ok'], true),
   e('👎', 'thumbsdown', 'gestures', ['không thích', 'thumbs down', 'dislike'], true),
   e('👌', 'ok_hand', 'gestures', ['ổn', 'ok hand', 'perfect'], true),
@@ -146,7 +135,6 @@ export const EMOJI_DATA: EmojiEntry[] = [
   e('🤜', 'right_fist', 'gestures', ['nắm tay phải', 'right fist', 'punch'], true),
   e('✊', 'fist', 'gestures', ['nắm tay', 'fist', 'solidarity'], true),
   e('🫰', 'finger_heart', 'gestures', ['tim ngón', 'finger heart', 'korean heart'], true),
-  // ── people ─────────────────────────────────────────────────────────────
   e('❤️', 'heart', 'people', ['tim đỏ', 'yêu', 'heart', 'love', 'red heart']),
   e('🧡', 'orange_heart', 'people', ['tim cam', 'orange heart']),
   e('💛', 'yellow_heart', 'people', ['tim vàng', 'yellow heart']),
@@ -178,7 +166,6 @@ export const EMOJI_DATA: EmojiEntry[] = [
   e('🧑‍⚕️', 'health_worker', 'people', ['bác sĩ', 'y tá', 'health worker', 'doctor']),
   e('🦸', 'superhero', 'people', ['siêu anh hùng', 'superhero'], true),
   e('🧙', 'mage', 'people', ['phù thủy', 'mage', 'wizard'], true),
-  // ── animals ────────────────────────────────────────────────────────────
   e('🐶', 'dog', 'animals', ['chó', 'cún', 'dog', 'puppy']),
   e('🐱', 'cat', 'animals', ['mèo', 'cat', 'kitten']),
   e('🐭', 'mouse', 'animals', ['chuột', 'mouse']),
@@ -211,7 +198,6 @@ export const EMOJI_DATA: EmojiEntry[] = [
   e('🐢', 'turtle', 'animals', ['rùa', 'turtle']),
   e('🐍', 'snake', 'animals', ['rắn', 'snake']),
   e('🐲', 'dragon', 'animals', ['rồng', 'dragon']),
-  // ── food ───────────────────────────────────────────────────────────────
   e('☕', 'coffee', 'food', ['cà phê', 'coffee', 'cafe']),
   e('🍵', 'tea', 'food', ['trà', 'trà xanh', 'tea', 'green tea']),
   e('🥤', 'cup_straw', 'food', ['nước ngọt', 'cup with straw', 'soda']),
@@ -246,7 +232,6 @@ export const EMOJI_DATA: EmojiEntry[] = [
   e('🥚', 'egg', 'food', ['trứng', 'egg']),
   e('🍗', 'chicken_leg', 'food', ['đùi gà', 'chicken leg', 'poultry']),
   e('🥘', 'paella', 'food', ['nồi ăn', 'paella', 'cooking']),
-  // ── activities ─────────────────────────────────────────────────────────
   e('⚽', 'soccer', 'activities', ['bóng đá', 'soccer', 'football']),
   e('🏀', 'basketball', 'activities', ['bóng rổ', 'basketball']),
   e('🏐', 'volleyball', 'activities', ['bóng chuyền', 'volleyball']),
@@ -267,7 +252,6 @@ export const EMOJI_DATA: EmojiEntry[] = [
   e('🏃', 'running', 'activities', ['chạy bộ', 'running'], true),
   e('🏋️', 'weightlifting', 'activities', ['gym', 'tạ', 'weightlifting'], true),
   e('🧗', 'climbing', 'activities', ['leo núi', 'climbing'], true),
-  // ── travel ─────────────────────────────────────────────────────────────
   e('🚗', 'car', 'travel', ['ô tô', 'xe hơi', 'car']),
   e('🚕', 'taxi', 'travel', ['taxi']),
   e('🚌', 'bus', 'travel', ['xe buýt', 'bus']),
@@ -298,7 +282,6 @@ export const EMOJI_DATA: EmojiEntry[] = [
   e('🌙', 'moon', 'travel', ['mặt trăng', 'đêm', 'moon', 'night']),
   e('⭐', 'star', 'travel', ['ngôi sao', 'star']),
   e('🔥', 'fire', 'travel', ['lửa', 'cháy', 'fire', 'flame', 'lit']),
-  // ── objects ────────────────────────────────────────────────────────────
   e('💻', 'computer', 'objects', ['máy tính', 'laptop', 'computer']),
   e('🖥️', 'desktop', 'objects', ['máy tính bàn', 'desktop', 'monitor']),
   e('📱', 'phone', 'objects', ['điện thoại', 'phone', 'mobile']),
@@ -338,5 +321,4 @@ export const EMOJI_DATA: EmojiEntry[] = [
   e('♾️', 'infinity', 'objects', ['vô cực', 'infinity']),
 ];
 
-/** Lookup shortcode → unicode — re-export từ map.ts (nguồn duy nhất, xem ADR-0057). */
 export { SHORTCODE_TO_UNICODE } from './map';

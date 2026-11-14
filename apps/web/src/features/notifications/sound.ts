@@ -1,8 +1,4 @@
-/**
- * Beep WebAudio khi bắn thông báo trình duyệt (TG.12): ngắn, một nốt — không dùng tệp âm thanh
- * để khỏi thêm asset + tải mạng. AudioContext dùng chung một instance (trình duyệt giới hạn số
- * context); tab ẩn có thể đánh dấu context suspended — thử resume, không thành cũng bỏ qua.
- */
+/** AudioContext dùng chung một instance (giới hạn số context); tab ẩn có thể suspended — thử resume, không thành thì bỏ qua. */
 let context: AudioContext | null = null;
 
 export function playNotifyBeep(): void {
@@ -30,6 +26,6 @@ export function playNotifyBeep(): void {
       gain.disconnect();
     };
   } catch {
-    // Âm thanh là phụ: mọi lỗi (hết bộ nhớ, chính sách autoplay…) không được làm hỏng luồng thông báo.
+    // Autoplay/AudioContext lỗi: bỏ qua, âm thanh chỉ là phụ.
   }
 }

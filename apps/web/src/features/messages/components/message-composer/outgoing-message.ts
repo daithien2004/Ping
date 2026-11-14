@@ -8,7 +8,6 @@ export type OutgoingMessage = { replyToId?: string } & (
   | { kind: 'gif'; gif: GifPayload }
 );
 
-/** `attachments` là DTO upload đã `ready` — vừa là id gửi API, vừa là preview cho tin tạm. */
 export function textMessage(
   draft: string,
   attachments: AttachmentDto[],

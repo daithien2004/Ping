@@ -43,7 +43,6 @@ export function createMessageEventHandlers({
     void queryClient.invalidateQueries({ queryKey: qk.pins(channelId) });
   const reacted = (event: ReactionChangedPayload, active: boolean) =>
     apply(event.channelId, (old) => {
-      // Báo cho phản hồi HTTP đang chờ biết event cùng emoji đã tới: count trong event là bản chuẩn.
       noteReactionEvent(event.messageId, event.emoji);
       return applyReaction(old, event.messageId, {
         emoji: event.emoji,

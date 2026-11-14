@@ -15,10 +15,8 @@ import { useNotificationPrefs, useSetNotificationPref } from '../hooks';
 import { findPref, remainingMuteMinutes } from '../notification-cache';
 import { readIgnoreEveryone, writeIgnoreEveryone } from '../notify-storage';
 
-/** mutedUntil = bây giờ + thời lượng (gọi trong event handler, không trong render). */
 const muteUntilFromNow = (minutes: number) => new Date(Date.now() + minutes * 60_000).toISOString();
 
-/** Nhóm thời lượng mute: mutedUntil = now + duration, gửi kèm mức hiện hành (TG.12). */
 const MUTE_OPTIONS = [
   { minutes: 15, key: 'mute15m', testId: 'notify-mute-15m' },
   { minutes: 60, key: 'mute1h', testId: 'notify-mute-1h' },
@@ -27,19 +25,12 @@ const MUTE_OPTIONS = [
   { minutes: 1440, key: 'mute24h', testId: 'notify-mute-24h' },
 ] as const;
 
-/** Ba mức kèm một dòng giải thích: đọc hiểu ngay, không phải suy từ nhãn ngắn. */
 const LEVELS = [
   { value: 'all', key: 'levelAll', hintKey: 'levelAllHint' },
   { value: 'mentions', key: 'levelMentions', hintKey: 'levelMentionsHint' },
   { value: 'none', key: 'levelNone', hintKey: 'levelNoneHint' },
 ] as const satisfies ReadonlyArray<{ value: NotifyLevel; key: string; hintKey: string }>;
 
-/**
- * Chuông cài đặt thông báo của MỘT channel (TG.12), đặt ở header channel/DM: mức
- * (all/mentions/none) + mute có hạn + tùy chọn toàn cục "Bỏ qua @everyone" (localStorage —
- * cài đặt thiết bị; trang cài đặt đầy đủ thuộc TG.13). Chưa có dòng channel thì hiển thị mức
- * hiệu dụng (dòng server nếu có, rồi mặc định chung) kèm nhãn giải thích.
- */
 export function NotificationBell({
   serverId,
   channelId,
@@ -57,7 +48,6 @@ export function NotificationBell({
   const prefs = data?.prefs ?? [];
   const setPref = useSetNotificationPref('channel');
   const [open, setOpen] = useState(false);
-  // Popover chỉ dựng nội dung sau lần mở đầu tiên nên đọc localStorage lúc này là an toàn (client).
   const [ignoreEveryone, setIgnoreEveryone] = useState(() => readIgnoreEveryone());
   const onError = (error: unknown) => pingToast.error(errorMessage(error));
 
@@ -65,21 +55,17 @@ export function NotificationBell({
   const serverRow = serverId === null ? undefined : findPref(prefs, 'server', serverId);
   const level = row?.level ?? serverRow?.level ?? NOTIFY_DEFAULT_LEVEL;
   const mutedUntil = row?.mutedUntil ?? serverRow?.mutedUntil ?? null;
-  // "Bây giờ" chỉ chốt khi MỞ popover (event handler, không phải render) — render phải thuần;
-  // dòng "còn X phút" đứng yên trong phiên mở là đủ, mở lại sẽ cập nhật.
+  // "Bây giờ" chỉ chốt khi MỞ popover (event handler): render phải thuần.
   const [openedAt, setOpenedAt] = useState<number | null>(null);
   const remaining = openedAt === null ? 0 : remainingMuteMinutes(mutedUntil, openedAt);
-  // Danh sách thời lượng mute mở theo nhu cầu: 5 nút luôn hiện chiếm gần nửa popover.
   const [muteOpen, setMuteOpen] = useState(false);
 
-  /** Đổi mức: giữ mute của CHÍNH kênh (nếu có), không kế thừa mute server vào dòng override. */
   function changeLevel(next: NotifyLevel) {
     setPref.mutate(
       { targetId: channelId, level: next, mutedUntil: row?.mutedUntil ?? null },
       { onError },
     );
   }
-  /** Mute: gửi kèm mức hiện hành để dòng prefs luôn tự đủ, không phụ thuộc thay đổi song song. */
   function muteFor(minutes: number) {
     setPref.mutate(
       { targetId: channelId, level, mutedUntil: muteUntilFromNow(minutes) },
@@ -204,7 +190,6 @@ export function NotificationBell({
               </div>
             )}
           </div>
-          {/* Tùy chọn toàn cục người dùng: áp dụng cho mọi kênh, lưu thiết bị này (localStorage). */}
           <div className="mt-2 flex items-start justify-between gap-2 border-t px-2 pt-2">
             <span className="flex min-w-0 flex-col">
               <span id="notify-ignore-everyone-label" className="text-sm font-medium">

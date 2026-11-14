@@ -43,7 +43,6 @@ export function retryVariables(message: ClientMessage): RetryPlan | null {
         ...reply,
         ...(attachmentIds?.length ? { attachmentIds } : {}),
       },
-      // Dựng lại tin tạm (cùng nonce) khi gửi lại — ảnh đính kèm phải còn trên hàng đó.
       ...(message.attachments?.length ? { preview: { attachments: message.attachments } } : {}),
     },
   };

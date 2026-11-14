@@ -97,7 +97,6 @@ export function DmSidebar() {
   );
 }
 
-/** Một hội thoại: avatar đối tác (TG.7), tên, badge đỏ unread. Hàng = link, aria đủ thông tin. */
 function DmRow({
   channelId,
   name,

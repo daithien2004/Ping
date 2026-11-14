@@ -2,8 +2,6 @@
 
 import type { ButtonHTMLAttributes } from 'react';
 
-// Một khung 32×32 cho cả ba biến thể — trước đây mỗi biến thể tự đặt padding nên ba nút ba cỡ
-// (plus 22 px, emoji/send 36 px) và hàng nút so le.
 const BASE =
   'focus-ring grid size-8 shrink-0 place-items-center transition-colors disabled:opacity-50';
 

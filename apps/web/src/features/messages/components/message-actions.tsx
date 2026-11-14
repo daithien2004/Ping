@@ -33,7 +33,6 @@ export interface MessageSelection {
   messageId: string;
 }
 
-/** Ba cảm xúc nhanh như Discord; thay bằng emoji dùng gần đây khi đã có lịch sử. */
 const QUICK_FALLBACK = ['👍', '❤️', '😂'];
 const QUICK_COUNT = 3;
 
@@ -50,7 +49,6 @@ export function MessageActions({
   permalink: string;
   onAction: (selection: MessageSelection) => void;
   onReply: (message: ClientMessage) => void;
-  /** Menu/picker của row mở → row giữ thanh công cụ hiện dù scrim chắn hover. */
   onOverlayOpenChange: (open: boolean) => void;
 }) {
   const { ability, ready, serverId: scopeServerId } = useServerAbility();
@@ -61,7 +59,6 @@ export function MessageActions({
   const [pickerOpen, setPickerOpenState] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
-  // Scrim của overlay chặn hover của row — row cần biết để giữ thanh công cụ hiện.
   function reportOverlay(picker: boolean, menu: boolean) {
     onOverlayOpenChange(picker || menu);
   }

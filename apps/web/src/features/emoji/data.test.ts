@@ -43,7 +43,6 @@ describe('emoji dataset (TG.23, ADR-0057)', () => {
     for (const shortcode of ['smile', 'joy', 'laughing', 'blush']) {
       expect(matches('cười')).toContain(shortcode);
     }
-    // Từ khóa tiếng Anh cũng tìm được.
     expect(matches('fire')).toContain('fire');
   });
 
@@ -58,8 +57,6 @@ describe('emoji dataset (TG.23, ADR-0057)', () => {
   });
 
   it('allowlist cảm xúc của @ping/shared phủ đúng dataset picker (TG.2)', () => {
-    // API chỉ nhận emoji trong allowlist; lệch một entry là người dùng thấy emoji trong picker
-    // nhưng thả xuống bị 400. Test giữ hai nguồn sinh ra từ cùng bộ dữ liệu.
     for (const entry of EMOJI_DATA) {
       expect(isAllowedReactionEmoji(entry.unicode), entry.unicode).toBe(true);
       if (entry.tone) {
@@ -68,7 +65,6 @@ describe('emoji dataset (TG.23, ADR-0057)', () => {
         }
       }
     }
-    // Văn bản/chuỗi lạ không lọt qua allowlist.
     expect(isAllowedReactionEmoji('ping')).toBe(false);
     expect(isAllowedReactionEmoji('<b>')).toBe(false);
   });

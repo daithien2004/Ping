@@ -1,7 +1,6 @@
 import type { UpdateNicknameInput, UpdateProfileInput } from '@ping/shared';
 import { api } from '@/lib/api-client';
 
-/** PATCH /users/me trả về hồ sơ mới (đủ để ghi vào cache `me`). */
 export interface ProfileUpdated {
   id: string;
   username: string;
