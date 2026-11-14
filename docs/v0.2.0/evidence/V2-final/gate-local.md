@@ -19,7 +19,7 @@ Log đầy đủ nằm ở thư mục nháp của phiên (không commit); bảng
 push (ngày 2026-11-14) vì bộ này mất khoảng 25–35 phút ở máy local. CI có `web-e2e-gate` và `visual`
 là check bắt buộc, và workflow **Publish and deploy** chỉ chạy khi CI xanh (`workflow_run` + `conclusion
 == success`), nên bản lỗi không tự lên production. Kết quả thật của hai bước này được ghi ở
-[deploy.md](deploy.md) sau khi CI chạy.
+`deploy.md` (cùng thư mục) sau khi CI chạy.
 
 ## Ghi chú
 
