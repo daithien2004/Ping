@@ -118,7 +118,7 @@
 
 ## Việc chưa làm / bước tiếp theo
 
-- Baseline `linux/` cho CI: job `visual` tự bootstrap ở lần chạy đầu rồi upload artifact để commit
-  theo ADR-0074; bộ `win32` đã sinh và xác nhận.
+- ~~Baseline `linux/` cho CI~~ — đã xong 2026-11-14: run bootstrap `43574872728` sinh 36 ảnh,
+  commit `3eda1a2`; lần so sánh thật chờ run CI kế tiếp. Bộ `win32` đã sinh và xác nhận từ trước.
 - PR2 (skin "Pixel", [ADR-0076](../../../adr/0076-skin-pixel-truc-hinh-thuc-thiet-bi.md)) cùng nhánh
   nhưng **commit riêng** sau PR1 — xem [UI-skins](../UI-skins/README.md).

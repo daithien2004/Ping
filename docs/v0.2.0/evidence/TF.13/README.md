@@ -87,6 +87,18 @@ dateTime=…>` — vừa đúng ngữ nghĩa, vừa ẩn được bằng CSS tha
   `drills` skip theo bộ lọc.
 - Hệ quả: từ nay mọi run CI có vùng web đều **gác hồi quy giao diện** trên Linux.
 
+## Bootstrap lại sau khi bỏ skin (2026-11-14)
+
+- Bộ `linux/` bị xoá ở `97a4edf` khi sinh lại baseline `win32`; run
+  [43574872728](https://github.com/daithien2004/Ping/actions/runs/43574872728) (workflow_dispatch,
+  commit `3435a8b`) xanh ở chế độ bootstrap, sinh 36 ảnh và upload artifact
+  `visual-baselines-linux` (id 14106296322, 1.552.433 byte).
+- Artifact tải qua credential git sẵn có trên máy OWNER (endpoint vẫn trả 401 khi không đăng
+  nhập). Danh sách 36 tên khớp đúng `win32/`; kích thước ảnh đúng 375×812, 768×1024, 1280×800.
+- Commit `3eda1a2` chỉ thêm ảnh nhị phân. **Chưa có bằng chứng so sánh** cho tới run CI kế tiếp
+  sau khi push: lúc đó job `visual` phải xanh, không upload artifact, mới tính là gác hồi quy trên
+  Linux.
+
 ## Review, giới hạn và tiếp tục
 
 - **Bootstrap Linux là lỗ hổng tiềm ẩn**: nếu ai đó xoá hoặc thêm test mới mà thiếu
