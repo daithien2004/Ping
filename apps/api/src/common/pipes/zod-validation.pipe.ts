@@ -2,11 +2,6 @@ import { BadRequestException, Injectable, type PipeTransform } from '@nestjs/com
 import { ZodType } from 'zod';
 import { ErrorCodes } from '@ping/shared';
 
-/**
- * Validates a request payload with a Zod schema (typically one imported
- * from `@ping/shared` so the API and the web app share the same rules).
- * Usage: `@UsePipes(new ZodValidationPipe(createMessageSchema))`.
- */
 @Injectable()
 export class ZodValidationPipe implements PipeTransform {
   constructor(private readonly schema: ZodType) {}

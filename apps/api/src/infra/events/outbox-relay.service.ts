@@ -36,7 +36,6 @@ export class OutboxRelayService implements OnModuleInit, OnApplicationShutdown {
 
   async onApplicationShutdown(): Promise<void> {
     if (this.timer) clearInterval(this.timer);
-    // Drain remaining.
     await this.tick();
   }
 

@@ -8,11 +8,6 @@ import { RateLimitByIp } from '../decorators.js';
 import { RedisProvider } from '../../infra/redis/redis.module.js';
 import { HttpThrottlerGuard } from './http-throttler.guard.js';
 
-/**
- * ADR-0080: tracker của guard là danh tính người gọi khi access token HỢP LỆ, ngược lại là IP.
- * Điểm bảo mật quan trọng nhất là nhánh "ngược lại": token bịa/hết hạn phải rơi về IP, không được
- * đọc payload chưa verify để tạo bucket mới cho mỗi request.
- */
 const OPTIONS: ThrottlerModuleOptions = {
   throttlers: [{ name: 'default', ttl: 60_000, limit: 100 }],
 };

@@ -7,17 +7,11 @@ import { PrismaClient } from '../../generated/prisma/client.js';
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnApplicationShutdown {
   constructor(config: ConfigService<Env, true>) {
-    // Prisma 7 bắt buộc driver adapter: kết nối do thư viện `pg` đảm nhận,
-    // không còn query engine Rust đọc DATABASE_URL phía sau nữa.
     super({
       adapter: new PrismaPg({
         connectionString: config.getOrThrow('DATABASE_URL', { infer: true }),
-        // Kích thước pool cho instance này (T1.1): instance × pool <= max_connections + dự phòng.
         max: config.getOrThrow('PG_POOL_MAX', { infer: true }),
-        // Chờ lấy kết nối từ pool / thiết lập kết nối tối đa 5s, rồi báo lỗi (→ 503) thay vì treo.
         connectionTimeoutMillis: 5_000,
-        // statement_timeout: Postgres tự hủy câu lệnh; query_timeout: client bỏ chờ nếu mạng
-        // treo mà server không kịp báo. Hai giá trị bằng nhau, cái nào tới trước thì thắng.
         statement_timeout: config.getOrThrow('PG_QUERY_TIMEOUT_MS', { infer: true }),
         query_timeout: config.getOrThrow('PG_QUERY_TIMEOUT_MS', { infer: true }),
       }),
@@ -25,11 +19,10 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnAppli
   }
 
   async onModuleInit(): Promise<void> {
-    // Docker chưa lên → crash ngay lúc boot thay vì lỗi giữa chừng (fail-fast).
     await this.$connect();
   }
 
-  // Sau khi HTTP/Socket.IO đã đóng: request đang chạy vẫn còn DB để chạy nốt (ADR-0026).
+  // Đóng sau khi HTTP/Socket.IO đã đóng: request đang chạy vẫn còn DB.
   async onApplicationShutdown(): Promise<void> {
     await this.$disconnect();
   }

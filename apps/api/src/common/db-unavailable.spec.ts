@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { isDatabaseUnavailable } from './db-unavailable.js';
 
-// Hình dạng lỗi lấy từ thực nghiệm với Prisma 7 + @prisma/adapter-pg 7.10 (xem ADR-0026).
 const prismaError = (code: string, meta?: unknown) =>
   Object.assign(new Error('Invalid `prisma.x()` invocation'), {
     name: 'PrismaClientKnownRequestError',
@@ -47,8 +46,8 @@ describe('isDatabaseUnavailable', () => {
   });
 
   it('does not treat data errors or unrelated failures as an outage', () => {
-    expect(isDatabaseUnavailable(prismaError('P2002'))).toBe(false); // unique constraint
-    expect(isDatabaseUnavailable(prismaError('P2025'))).toBe(false); // record not found
+    expect(isDatabaseUnavailable(prismaError('P2002'))).toBe(false);
+    expect(isDatabaseUnavailable(prismaError('P2025'))).toBe(false);
     expect(isDatabaseUnavailable(prismaError('P2010', driverCode('23505')))).toBe(false);
     expect(isDatabaseUnavailable(new Error('boom'))).toBe(false);
     expect(isDatabaseUnavailable('ECONNREFUSED')).toBe(false);

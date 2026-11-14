@@ -102,7 +102,7 @@ describe('AllExceptionsFilter', () => {
     });
     const sent = run(malformed);
     expect(sent).toMatchObject({ status: 400, body: { code: ErrorCodes.BAD_REQUEST } });
-    expect(JSON.stringify(sent.body)).not.toContain('Unexpected token'); // không lộ chi tiết parser
+    expect(JSON.stringify(sent.body)).not.toContain('Unexpected token');
   });
 
   it('does not trust an error that only has a status field (no expose flag)', () => {

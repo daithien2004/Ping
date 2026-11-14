@@ -25,6 +25,6 @@ describe('withSafePublish', () => {
     await expect(safe.publish('c', 'm')).resolves.toBe(2);
     safe.on('error', () => undefined);
     expect(client.on).toHaveBeenCalledOnce();
-    expect(client.on.mock.contexts[0]).toBe(client); // không bị gọi với `this` là Proxy
+    expect(client.on.mock.contexts[0]).toBe(client);
   });
 });

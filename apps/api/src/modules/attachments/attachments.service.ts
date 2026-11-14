@@ -39,14 +39,11 @@ export class AttachmentsService {
   ) {}
 
   async create(userId: string, input: CreateUploadInput) {
-    // TG.7: avatar/icon tái dùng cùng pipeline nhưng không có bối cảnh channel; quyền và
-    // hạn mức theo đích (avatar: user, serverIcon: server với `update Server`).
     let serverId: string | null = null;
     if (input.scope === 'message') {
       const channel = await this.prisma.channel.findUnique({ where: { id: input.channelId } });
       if (!channel) throw new NotFoundException();
-      // TG.9 (ADR-0070): channel DM — kiểm DmParticipant thay vì ability server; attachment
-      // của tin DM có serverId NULL nên chỉ tính vào hạn mức USER (không có bối cảnh server).
+      // Attachment tin DM có serverId NULL nên chỉ tính vào hạn mức USER.
       if (channel.type === 'DM') {
         const participant = await this.prisma.dmParticipant.findUnique({
           where: { channelId_userId: { channelId: channel.id, userId } },
@@ -64,13 +61,10 @@ export class AttachmentsService {
       const ability = await this.ability.createForUserFresh(serverId, userId);
       if (!ability.can('update', 'Server')) throw new ForbiddenException();
     } else if (input.scope === 'sticker') {
-      // TG.22: sticker thuộc server; upload cần `manage Sticker` (MANAGE_EXPRESSIONS).
       serverId = input.serverId!;
       const ability = await this.ability.createForUserFresh(serverId, userId);
       if (!ability.can('manage', 'Sticker')) throw new ForbiddenException();
     } else if (input.scope === 'customEmoji') {
-      // TG.24: emoji tùy chỉnh thuộc server; cùng nhóm biểu cảm nên tái dùng bit
-      // `manage Sticker` (ADR-0068 mục 5 — không thêm subject CASL mới).
       serverId = input.serverId!;
       const ability = await this.ability.createForUserFresh(serverId, userId);
       if (!ability.can('manage', 'Sticker')) throw new ForbiddenException();
@@ -95,10 +89,8 @@ export class AttachmentsService {
         return { id: previous.id, status: previous.status };
       }
       const active = ['pending', 'uploaded', 'queued', 'processing', 'ready', 'deleting'];
-      // Reserve original plus worst-case canonical image/thumbnail before accepting bytes.
       const reservation = input.sizeBytes + AttachmentLimits.FILE_BYTES;
       const [user, server] = await Promise.all([
-        // Avatar tính vào hạn mức của người upload; serverIcon chỉ tính vào hạn mức server.
         input.scope === 'serverIcon'
           ? Promise.resolve({ _sum: { quotaBytes: 0 } })
           : tx.attachment.aggregate({
@@ -139,9 +131,7 @@ export class AttachmentsService {
   private async owned(id: string, userId: string) {
     const row = await this.prisma.attachment.findUnique({ where: { id } });
     if (!row || row.uploaderId !== userId) throw new NotFoundException();
-    // Chỉ uploader đụng được upload avatar/sticker/emoji của chính mình (sticker/emoji:
-    // claim lại kiểm quyền `manage Sticker` ở Stickers/EmojisService nên không cần tra
-    // ability ở đây).
+    // Chỉ uploader đụng được upload avatar/sticker/emoji của mình; claim sticker/emoji kiểm `manage Sticker` ở Stickers/EmojisService.
     if (row.scope === 'avatar' || row.scope === 'sticker' || row.scope === 'customEmoji')
       return row;
     if (row.scope === 'serverIcon') {
@@ -149,8 +139,6 @@ export class AttachmentsService {
       if (!ability.can('update', 'Server')) throw new ForbiddenException();
       return row;
     }
-    // TG.9: attachment tin DM (serverId NULL) — không có ability server để nạp; người gọi
-    // đã phải là uploader (kiểm ở trên) nên chỉ đối chiếu participant của channel DM.
     if (row.serverId === null) {
       if (row.channelId === null) throw new NotFoundException();
       const participant = await this.prisma.dmParticipant.findUnique({
@@ -201,7 +189,6 @@ export class AttachmentsService {
       }
       if (current.createdAt.getTime() < Date.now() - 3_600_000) throw new BadRequestException();
       await this.storage.write(`${id}.raw`, Buffer.concat(chunks));
-      // Upload is immutable from this point, including concurrent retries.
       await tx.attachment.update({ where: { id }, data: { status: 'uploaded' } });
       return { id, status: 'uploaded' };
     });
@@ -246,10 +233,6 @@ export class AttachmentsService {
     return { id };
   }
 
-  /**
-   * TG.7: đánh dấu attachment hồ sơ đã bị "gắn" — một tệp avatar/icon chỉ dùng đúng một lần,
-   * trong transaction của caller (cùng transaction với việc cập nhật hồ sơ/server).
-   */
   async claimProfileAttachment(
     tx: Prisma.TransactionClient,
     userId: string,
@@ -276,21 +259,10 @@ export class AttachmentsService {
     return row;
   }
 
-  /**
-   * TG.22: claim attachment đã kiểm định làm sticker — cùng pattern `claimProfileAttachment`:
-   * đúng scope 'sticker', uploader là người gọi, đã `ready`, chưa gắn; set `boundAt` trong
-   * transaction của caller (cùng transaction với việc tạo hàng Sticker và kiểm trần 30).
-   */
   async claimStickerAttachment(tx: Prisma.TransactionClient, userId: string, attachmentId: string) {
     return this.claimProfileAttachment(tx, userId, attachmentId, 'sticker');
   }
 
-  /**
-   * TG.24: claim attachment đã kiểm định làm custom emoji — cùng pattern
-   * `claimStickerAttachment`: đúng scope 'customEmoji', uploader là người gọi, đã `ready`,
-   * chưa gắn; set `boundAt` trong transaction của caller (cùng transaction với việc kiểm
-   * trần 50/50 và tạo hàng CustomEmoji).
-   */
   async claimCustomEmojiAttachment(
     tx: Prisma.TransactionClient,
     userId: string,
@@ -299,7 +271,6 @@ export class AttachmentsService {
     return this.claimProfileAttachment(tx, userId, attachmentId, 'customEmoji');
   }
 
-  /** Attachment đang được tham chiếu bởi avatarUrl/iconUrl cũ → worker dọn tệp và giải phóng hạn mức. */
   async releaseProfileAttachment(tx: Prisma.TransactionClient, url: string | null) {
     if (!url) return;
     const id = /\/api\/v1\/attachments\/([0-9a-f-]{36})\/file/.exec(url)?.[1];
@@ -328,9 +299,7 @@ export class AttachmentsService {
       select: { id: true, serverId: true, type: true },
     });
     if (!channel) throw new NotFoundException();
-    // TG.9 (ADR-0070 mục 8): attachment tin DM — chữ ký URL chỉ xác thực người KÝ URL, mỗi
-    // lần tải phải kiểm lại participant (serverId NULL không có ability server để nạp).
-    // Người ngoài (kể cả có URL) → 404 che tồn tại.
+    // Tin DM: chữ ký URL chỉ xác thực người ký, mỗi lần tải phải kiểm lại participant; người ngoài → 404.
     if (channel.type === 'DM') {
       const participant = await this.prisma.dmParticipant.findUnique({
         where: { channelId_userId: { channelId: channel.id, userId } },
@@ -360,23 +329,14 @@ export class AttachmentsService {
     };
   }
 
-  /**
-   * URL hồ sơ sống lâu (TG.7): ràng buộc attachment + variant + hạn, KHÔNG ràng buộc người xem —
-   * payload event và cache client render được ngay bằng <img>. Chỉ scope avatar/serverIcon,
-   * chỉ dùng cho ảnh đã reencode; bearer capability như URL tin nhắn (ADR-0053).
-   */
+  /** KHÔNG ràng buộc người xem (bearer capability): chỉ scope avatar/serverIcon, ảnh đã reencode. */
   private profileSign(id: string, expires: number, thumbnail: boolean) {
     return createHmac('sha256', this.config.get('JWT_ACCESS_SECRET', { infer: true }))
       .update(`attachment-profile-v1:${id}:${expires}:${thumbnail ? 'thumb' : 'ready'}`)
       .digest('hex');
   }
 
-  /**
-   * Mốc hạn của URL hồ sơ tính theo ô MỘT GIỜ: mọi lần đọc trong cùng ô trả URL y hệt nhau,
-   * nên echo/refetch không đổi `src` của <img> (không tải lại ảnh, không nháy). Làm tròn XUỐNG
-   * nên hạn vẫn ≤ hiện tại + 30 ngày — qua được kiểm tra `expires > now + PROFILE_URL_SECONDS`
-   * ở `file()`; 30 ngày chia hết cho 1 giờ nên `expires` cũng tròn giờ.
-   */
+  // Làm tròn XUỐNG ô 1 giờ để URL ổn định (không đổi `src` của <img>) và vẫn qua kiểm tra `expires` ở `file()`.
   private profileExpires(): number {
     const bucket = 60 * 60;
     return Math.floor(Date.now() / 1000 / bucket) * bucket + AttachmentLimits.PROFILE_URL_SECONDS;
@@ -393,11 +353,6 @@ export class AttachmentsService {
     };
   }
 
-  /**
-   * TG.22: cặp URL cho sticker — bản chính (động nếu sticker động) và khung tĩnh
-   * (thumbnail = khung đầu). Cùng mốc hạn 30 ngày; mỗi variant chữ ký riêng vì cờ
-   * `thumbnail` nằm trong HMAC.
-   */
   async stickerUrls(id: string): Promise<{ url: string; previewUrl: string }> {
     const row = await this.prisma.attachment.findUnique({ where: { id } });
     if (!row || row.scope !== 'sticker' || row.status !== 'ready') throw new NotFoundException();
@@ -408,18 +363,10 @@ export class AttachmentsService {
     };
   }
 
-  /**
-   * TG.22: cặp URL cho NHIỀU sticker bằng MỘT truy vấn (danh sách picker có thể vài chục
-   * hàng) — sticker thiếu/tệp chưa ready bị bỏ khỏi map, caller không nhận URL của chúng.
-   */
   async stickerUrlsMany(ids: string[]): Promise<Map<string, { url: string; previewUrl: string }>> {
     return this.expressionUrlsMany(ids, 'sticker');
   }
 
-  /**
-   * TG.24: cặp URL cho custom emoji (pattern `stickerUrls`) — bản chính (động nếu emoji
-   * động) và khung tĩnh 30 ngày.
-   */
   async emojiUrls(id: string): Promise<{ url: string; previewUrl: string }> {
     const row = await this.prisma.attachment.findUnique({ where: { id } });
     if (!row || row.scope !== 'customEmoji' || row.status !== 'ready')
@@ -431,12 +378,10 @@ export class AttachmentsService {
     };
   }
 
-  /** TG.24: cặp URL cho NHIỀU custom emoji — pattern `stickerUrlsMany`, chỉ scope customEmoji. */
   async emojiUrlsMany(ids: string[]): Promise<Map<string, { url: string; previewUrl: string }>> {
     return this.expressionUrlsMany(ids, 'customEmoji');
   }
 
-  /** Cốt chung của cặp URL biểu cảm (sticker/emoji) theo scope — tránh sao chép ký HMAC. */
   private async expressionUrlsMany(
     ids: string[],
     scope: 'sticker' | 'customEmoji',
@@ -473,7 +418,6 @@ export class AttachmentsService {
     const thumbnail = query.thumbnail === '1';
     const now = Math.floor(Date.now() / 1000);
     if (query.user === undefined) {
-      // TG.7: URL hồ sơ — chữ ký tự kiểm, không có bước kiểm quyền theo người xem.
       const expected = this.profileSign(id, query.expires, thumbnail);
       if (
         query.expires <= now ||
@@ -491,7 +435,6 @@ export class AttachmentsService {
       !timingSafeEqual(Buffer.from(query.signature), Buffer.from(expected))
     )
       throw new ForbiddenException();
-    // Signed URLs remain subject to current membership/permissions and deletion state.
     const row = await this.downloadable(id, query.user, thumbnail);
     return this.stream(row, thumbnail, res);
   }

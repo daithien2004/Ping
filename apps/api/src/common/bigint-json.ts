@@ -1,9 +1,5 @@
-// Prisma biểu diễn bitmask quyền (Role.permissions) bằng BigInt, mà
-// `JSON.stringify` ném TypeError khi gặp BigInt. Serialize thành chuỗi thập
-// phân ("64") — API contract dùng string cho bitmask vì nó vượt
-// Number.MAX_SAFE_INTEGER; client đẩy lại string thì zod `coerce.bigint()`
-// (roles/schemas.ts) đọc được. Import side-effect ở app.module.ts để cả e2e
-// (chạy AppModule nhưng không chạy main.ts) cũng có hiệu lực.
+// JSON.stringify ném TypeError với BigInt; serialize thành string ('64') vì bitmask vượt MAX_SAFE_INTEGER.
+// Import side-effect ở app.module.ts để e2e (không chạy main.ts) cũng có hiệu lực.
 declare global {
   interface BigInt {
     toJSON(): string;

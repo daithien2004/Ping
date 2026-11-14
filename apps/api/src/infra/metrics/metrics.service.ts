@@ -9,10 +9,7 @@ import { RedisProvider } from '../redis/redis.module.js';
 import { access, mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
-/**
- * Kết quả một lượt hỏi AI — tập hữu hạn để nhãn Prometheus không nổ cardinality
- * (không bao giờ dùng user id, câu hỏi hay nội dung tin làm nhãn).
- */
+// Tập hữu hạn: nhãn Prometheus không được nổ cardinality.
 export type AiRequestOutcome =
   | 'cancelled'
   | 'ok'
@@ -25,11 +22,8 @@ export type AiRequestOutcome =
   | 'no_citation'
   | 'unavailable';
 
-/**
- * Metrics Prometheus (ADR-0031). Registry riêng của từng instance Nest (không dùng registry toàn cục
- * của prom-client) để hai app trong cùng một process test không giẫm lên nhau. Phục vụ ở CỔNG RIÊNG
- * (`listen`), không bao giờ trên cổng công khai: số liệu nội bộ không nên ra internet.
- */
+// Registry riêng mỗi instance Nest (không dùng toàn cục) để hai app trong một process test không giẫm nhau.
+// Phục vụ ở cổng riêng, không bao giờ trên cổng công khai.
 @Injectable()
 export class MetricsService implements OnModuleDestroy {
   private readonly registry = new Registry();
@@ -42,7 +36,7 @@ export class MetricsService implements OnModuleDestroy {
   private readonly httpDuration = new Histogram({
     name: 'http_request_duration_seconds',
     help: 'Thời gian xử lý request HTTP',
-    // route = MẪU đường dẫn (/servers/:serverId), không phải URL thật: nhãn không được nổ số lượng.
+    // route = MẪU đường dẫn, không phải URL thật: nhãn không được nổ số lượng.
     labelNames: ['method', 'route', 'status_class'],
     registers: [this.registry],
   });
@@ -72,27 +66,23 @@ export class MetricsService implements OnModuleDestroy {
     help: 'So event outbox chua phat da vuot so lan thu toi da',
     registers: [this.registry],
   });
-  /** T5.3: entry stream chưa xử lý xong (lag + pending) của consumer indexer. */
   readonly consumerLag = new Gauge({
     name: 'consumer_lag',
     help: 'So event stream chua duoc consumer xu ly xong',
     registers: [this.registry],
   });
-  /** T5.7/ADR-0047: kết quả từng lượt hỏi AI. Nhãn là tập hữu hạn, không chứa user/nội dung. */
   readonly aiRequests = new Counter({
     name: 'ai_requests_total',
     help: 'So luot hoi AI theo ket qua',
     labelNames: ['outcome'],
     registers: [this.registry],
   });
-  /** Token đã dùng (prompt/completion) — cơ sở tính chi phí. */
   readonly aiTokens = new Counter({
     name: 'ai_tokens_total',
     help: 'So token LLM da dung',
     labelNames: ['kind'],
     registers: [this.registry],
   });
-  /** Chi phí ước tính (USD) theo giá cấu hình; free tier luôn 0. */
   readonly aiCost = new Counter({
     name: 'ai_cost_usd_total',
     help: 'Chi phi LLM uoc tinh (USD)',
@@ -137,8 +127,7 @@ export class MetricsService implements OnModuleDestroy {
       registers: [this.registry],
     });
     budget.set(budgetUsd);
-    // Registry collects metric families concurrently. Both gauges await the same DB read
-    // so health and spending describe this scrape, rather than the previous scrape.
+    // Cả hai gauge await cùng một lần đọc DB để mô tả cùng một lượt scrape.
     let pending: Promise<number | undefined> | undefined;
     const snapshot = (): Promise<number | undefined> => {
       pending ??= (async () => {
@@ -194,7 +183,6 @@ export class MetricsService implements OnModuleDestroy {
     });
   }
 
-  /** Middleware Express: đo mỗi request khi response kết thúc, kể cả 4xx/5xx và route không khớp. */
   readonly middleware = (req: Request, res: Response, next: NextFunction): void => {
     const started = process.hrtime.bigint();
     res.on('finish', () => {
@@ -216,13 +204,11 @@ export class MetricsService implements OnModuleDestroy {
     this.wsDisconnects.inc();
   }
 
-  /** Ghi nhận kết quả một lượt hỏi AI (đúng một lần cho mỗi request stream). */
   aiRequestFinished(outcome: AiRequestOutcome, seconds: number): void {
     this.aiRequests.inc({ outcome });
     this.aiLatency.observe({ outcome }, seconds);
   }
 
-  /** Ghi nhận một lời gọi LLM: thời gian, token và chi phí ước tính. */
   aiLlmCompleted(
     seconds: number,
     usage?: { promptTokens: number; completionTokens: number },
@@ -244,7 +230,6 @@ export class MetricsService implements OnModuleDestroy {
     this.searchLatency.observe({ outcome }, seconds);
   }
 
-  /** Mở cổng metrics riêng; port 0 để hệ điều hành chọn cổng trong test. */
   async listen(port: number): Promise<number> {
     this.server = createServer((req, res) => {
       if (req.method !== 'GET' || req.url !== '/metrics') {
@@ -269,7 +254,7 @@ export class MetricsService implements OnModuleDestroy {
 
   private async postgresUp(): Promise<boolean> {
     try {
-      await this.prisma.$queryRaw`SELECT 1`; // query_timeout (ADR-0026) cắt nếu treo
+      await this.prisma.$queryRaw`SELECT 1`;
       return true;
     } catch {
       return false;

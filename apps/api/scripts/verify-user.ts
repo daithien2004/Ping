@@ -1,12 +1,4 @@
-/**
- * Dev tool (TG.8): đánh dấu `emailVerified = true` cho một user.
- *
- * Dùng khi môi trường dev chạy API không có SMTP_URL (ConsoleMailer chỉ ghi log, không có
- * thư trong Mailpit) nên e2e seed không lấy được token xác minh để gọi
- * POST /auth/verify-email. Không dùng cho production.
- *
- *   pnpm --filter api exec tsx scripts/verify-user.ts <email>
- */
+/** Dev only: pnpm --filter api exec tsx scripts/verify-user.ts <email> */
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../src/generated/prisma/client.js';
 

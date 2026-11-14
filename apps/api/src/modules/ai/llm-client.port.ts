@@ -1,4 +1,3 @@
-/** Cổng gọi LLM. Logic AI chỉ phụ thuộc interface này, không gắn cứng Groq (ADR-0046). */
 export type ChatRole = 'system' | 'user' | 'assistant';
 
 export interface ChatMessage {
@@ -26,7 +25,6 @@ export interface LlmClient {
   ): Promise<LlmCompletion>;
 }
 
-/** AI chưa cấu hình hoặc provider không dùng được: tầng gọi phải suy giảm, không chặn chat. */
 export class AiUnavailableError extends Error {
   constructor(message = 'AI chưa được cấu hình') {
     super(message);

@@ -1,14 +1,9 @@
 import type { MailInput } from './mailer.js';
 
-/**
- * Mẫu thư vi/en (TG.8): xác minh email và đặt lại mật khẩu. Tiêu đề KHÔNG chứa URL/token
- * để e2e đối soát được; link một lần nằm trong body. Cấu trúc HTML tối giản — bảng màu
- * phẳng, không ảnh tải từ mạng (thư không vào spam vì không có tài nguyên ngoài).
- */
+// Tiêu đề KHÔNG chứa URL/token (e2e đối soát); link một lần nằm trong body.
 
 export type MailLocale = 'vi' | 'en';
 
-/** Ngôn ngữ thư theo cài đặt người dùng (TG.13); giá trị lạ/rỗng quy về tiếng Việt mặc định. */
 export function mailLocaleOf(locale: string | undefined | null): MailLocale {
   return locale === 'en' ? 'en' : 'vi';
 }
@@ -84,12 +79,10 @@ function render(copy: TemplateCopy, url: string): Omit<MailInput, 'to'> {
   };
 }
 
-/** Thư xác minh email — link chứa token một lần (TTL 24h). */
 export function verifyEmailTemplate(locale: MailLocale, verifyUrl: string): Omit<MailInput, 'to'> {
   return render(VERIFY_COPY[locale], verifyUrl);
 }
 
-/** Thư đặt lại mật khẩu — link chứa token một lần (TTL 30 phút). */
 export function resetPasswordTemplate(locale: MailLocale, resetUrl: string): Omit<MailInput, 'to'> {
   return render(RESET_COPY[locale], resetUrl);
 }

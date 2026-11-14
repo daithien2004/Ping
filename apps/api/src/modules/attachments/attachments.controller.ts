@@ -29,8 +29,7 @@ import { CurrentUser, type AuthenticatedUser } from '../auth/current-user.decora
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { AttachmentsService } from './attachments.service.js';
 
-// Mặc định cả controller là bucket uploads (30/phút); hai route đọc byte tệp có bucket riêng
-// bên dưới vì chúng bị gọi hàng loạt khi một kênh nhiều ảnh.
+// Mặc định bucket uploads (30/phút); hai route đọc byte tệp có bucket riêng vì bị gọi hàng loạt.
 @Controller()
 @Throttle({ default: RATE_LIMIT_BUCKETS.uploads })
 export class AttachmentsController {
@@ -71,7 +70,6 @@ export class AttachmentsController {
   cancel(@CurrentUser() user: AuthenticatedUser, @Param('uploadId') id: string) {
     return this.service.cancel(id, user.userId);
   }
-  // Có Authorization nên khoá theo người dùng (ADR-0080); chỉ `/file` bên dưới cần khoá theo IP.
   @Get('attachments/:attachmentId/download')
   @Throttle({ default: RATE_LIMIT_BUCKETS.attachmentRead })
   @UseGuards(JwtAuthGuard, AbilityGuard)

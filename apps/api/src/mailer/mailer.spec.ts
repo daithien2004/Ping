@@ -32,7 +32,6 @@ describe('mẫu thư vi/en (TG.8)', () => {
       expect(mail.subject).toBeTruthy();
       expect(mail.text).toContain(url);
       expect(mail.html).toContain(url);
-      // Hai ngôn ngữ khác nhau thật sự.
       expect(mail.subject).not.toBe(
         verifyEmailTemplate(locale === 'vi' ? 'en' : 'vi', url).subject,
       );

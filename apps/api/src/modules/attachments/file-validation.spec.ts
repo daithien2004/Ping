@@ -12,7 +12,6 @@ const webpChunk = (type: string, data: Buffer) => {
   return Buffer.concat([head, data, data.length % 2 ? Buffer.from([0]) : Buffer.alloc(0)]);
 };
 
-/** VP8L payload từ một WebP tĩnh do sharp sinh ra (bỏ vỏ RIFF, giữ đúng chiều dài khai báo). */
 async function vp8lPayload(color: string): Promise<Buffer> {
   const file = await sharp({ create: { width: 64, height: 64, channels: 3, background: color } })
     .webp({ lossless: true })
@@ -22,10 +21,6 @@ async function vp8lPayload(color: string): Promise<Buffer> {
   return sub.subarray(8, 8 + len);
 }
 
-/**
- * WebP ĐỘNG tự dựng theo WebP container spec: VP8X (cờ animation) + ANIM + 2 khung ANMF.
- * Dùng làm fixture kiểm định sticker vì sharp không sinh được ảnh động từ đầu.
- */
 async function animatedWebp(): Promise<Buffer> {
   const [f1, f2] = await Promise.all([vp8lPayload('red'), vp8lPayload('blue')]);
   const vp8x = webpChunk(
@@ -51,7 +46,6 @@ async function animatedWebp(): Promise<Buffer> {
   return Buffer.concat([Buffer.from('RIFF'), size, Buffer.from('WEBP'), body]);
 }
 
-/** PNG chunk với CRC chuẩn (fixture APNG). */
 function pngChunk(type: string, data: Buffer): Buffer {
   const head = Buffer.alloc(4);
   head.writeUInt32BE(data.length);
@@ -66,7 +60,6 @@ function pngChunk(type: string, data: Buffer): Buffer {
   return Buffer.concat([head, body, crc]);
 }
 
-/** APNG 2 khung (64×64 đỏ/xanh) — file-type trả image/png, nội dung có chữ ký `acTL`. */
 async function apng(): Promise<Buffer> {
   const frame = async (color: string) =>
     parsePng(
@@ -174,7 +167,6 @@ describe('sticker validation (TG.22, ADR-0067)', () => {
     expect(result.width).toBe(128);
     expect(result.height).toBe(96);
     expect(result.thumbnail).toBeInstanceOf(Buffer);
-    // Khung tĩnh không phải ảnh động — reduced-motion render được an toàn.
     expect((await sharp(result.thumbnail).metadata()).pages ?? 1).toBe(1);
   });
 
@@ -217,7 +209,6 @@ describe('sticker validation (TG.22, ADR-0067)', () => {
   });
 
   it('rejects a file above the 512 KiB sticker budget', async () => {
-    // Nhiễu thật (không tuần hoàn) để PNG nén xong vẫn vượt trần tệp gốc.
     const noise = randomBytes(600 * 600 * 3);
     const input = await sharp(noise, { raw: { width: 600, height: 600, channels: 3 } })
       .png()

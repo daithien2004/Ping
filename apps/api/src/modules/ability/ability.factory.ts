@@ -9,15 +9,8 @@ interface CachedContext {
   permissions: string; // bigint không serialize được JSON — lưu string
 }
 
-/**
- * Nơi DUY NHẤT build ability trong API (guide 10.2): nạp member kèm các role
- * của user trong server, OR permissions các role lại, rồi gọi `defineAbilityFor`
- * từ shared. Guard, service và Gateway (Bước 9+) đều đi qua factory này —
- * không rải logic kiểm tra quyền ở nhiều chỗ.
- */
 @Injectable()
 export class AbilityFactory {
-  /** Cache ngắn hạn: quyền chỉ đổi khi role đổi hoặc member bị gỡ role. */
   private readonly ttlSeconds = 30;
   private readonly logger = new Logger(AbilityFactory.name);
 
@@ -30,12 +23,7 @@ export class AbilityFactory {
     return defineAbilityFor(await this.contextFor(serverId, userId));
   }
 
-  /**
-   * Bỏ qua cache Redis, đọc membership/quyền từ Postgres ngay lúc gọi.
-   *
-   * Dùng cho cổng an toàn như truy xuất RAG (T5.4): user vừa bị kick hoặc vừa
-   * mất `VIEW_CHANNEL` không được nhận nội dung chỉ vì cache 30 giây còn cũ.
-   */
+  // Bỏ qua cache: cổng an toàn (RAG) không được nhận quyền cũ tới 30 giây.
   async createForUserFresh(serverId: string, userId: string): Promise<AppAbility> {
     return defineAbilityFor(await this.contextForFresh(serverId, userId));
   }
@@ -44,12 +32,9 @@ export class AbilityFactory {
     return this.loadContext(serverId, userId);
   }
 
-  /** Role đổi quyền hoặc gán/tháo role hàng loạt → cache cũ đang "nói dối": xóa ngay cả server. */
   async invalidateServer(serverId: string): Promise<void> {
-    // SCAN theo từng lô thay vì KEYS: KEYS quét toàn bộ Redis trong một lệnh và chặn
-    // mọi client khác (rate limit, pub/sub) cho tới khi xong.
-    // Redis chết: không xóa được cache. Cache chỉ sống tối đa `ttlSeconds` nên quyền sai tồn tại
-    // không quá 30 giây (ADR-0026), còn đổi role vẫn thành công thay vì lỗi 500.
+    // SCAN theo lô, không KEYS: KEYS chặn mọi client Redis khác.
+    // Redis chết: bỏ qua, quyền sai sống tối đa ttlSeconds.
     await failOpen(
       this.redis,
       this.logger,
@@ -80,10 +65,9 @@ export class AbilityFactory {
     return `ability:${serverId}:${userId}`;
   }
 
-  /** Quyền hiệu lực của user trong server; ném 403 nếu không phải member. */
   async contextFor(serverId: string, userId: string): Promise<AbilityContext> {
     const key = AbilityFactory.cacheKey(serverId, userId);
-    // Cache hỏng/chưa sẵn sàng = trượt cache: tính lại từ Postgres (nguồn sự thật).
+    // Cache hỏng = trượt cache, tính lại từ Postgres.
     const cached = await failOpen(
       this.redis,
       this.logger,
@@ -101,7 +85,6 @@ export class AbilityFactory {
     return context;
   }
 
-  /** Nguồn sự thật: đọc member + role + @everyone rồi OR quyền. */
   private async loadContext(serverId: string, userId: string): Promise<AbilityContext> {
     const member = await this.prisma.member.findUnique({
       where: { serverId_userId: { serverId, userId } },
@@ -117,11 +100,9 @@ export class AbilityFactory {
       },
     });
     if (!member) {
-      // Chặn sớm ngay ở tầng guard: không phải member thì không có ability nào cả.
       throw new ForbiddenException('You are not a member of this server');
     }
 
-    // Quyền hiệu lực = OR permissions của @everyone và mọi role member có.
     const permissions = [
       ...member.server.roles,
       ...member.roles.map((memberRole) => memberRole.role),

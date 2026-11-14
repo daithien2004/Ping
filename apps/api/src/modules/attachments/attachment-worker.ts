@@ -52,16 +52,8 @@ export class AttachmentWorker implements OnModuleInit, OnModuleDestroy {
     try {
       await this.prisma.$transaction(
         async (tx) => {
-          // TG.7/TG.22/TG.24: điều kiện dọn theo scope — tin bị xóa/kênh mất chỉ áp dụng cho
-          // tệp tin nhắn; serverIcon dọn khi server mất, avatar dọn khi uploader không còn,
-          // sticker/emoji dọn khi server mất; pending quá 1 giờ chưa gắn (mọi scope) đều là
-          // mồ côi. Sticker của GÓI HỆ THỐNG (serverId NULL, seed tạo — TG.22) không thuộc
-          // server nào nên loại khỏi mọi nhánh dọn: vòng đời của nó là "sống mãi" theo seed.
-          // Custom emoji luôn có serverId (ADR-0068) nên không cần nhánh loại trừ.
-          // TG.25: mồ côi theo TUỔI chỉ áp dụng cho scope 'message' — avatar/serverIcon KHÔNG
-          // BAO GIỜ có messageId nên row 'ready' đã rawRemoved của chúng khớp nhánh mồ côi
-          // vĩnh viễn: worker claim lại mỗi tick (LIMIT 1 chốt ở hàng CŨ NHẤT) và trừ
-          // quotaBytes vô hạn, đói cả hàng đợi upload (bắt được khi chạy suite TG.25).
+          // Sticker của gói hệ thống (serverId NULL) loại khỏi mọi nhánh dọn. Mồ côi theo TUỔI chỉ cho scope
+          // 'message': avatar/serverIcon không có messageId nên row ready đã rawRemoved sẽ bị claim lại mãi, đói hàng đợi.
           const rows = await tx.$queryRaw<Array<{ id: string }>>`
         SELECT id FROM "Attachment" a WHERE "nextRetryAt" <= NOW() AND
           NOT (scope = 'sticker' AND "serverId" IS NULL) AND (
@@ -131,9 +123,6 @@ export class AttachmentWorker implements OnModuleInit, OnModuleDestroy {
             return;
           }
           try {
-            // TG.22/TG.24: sticker và custom emoji có luồng kiểm định riêng (WebP động được
-            // phép — sticker xuất ≤512×512, emoji ≤128×128, kèm khung tĩnh); avatar/icon chỉ
-            // nhận ảnh tĩnh; tệp tin nhắn giữ nguyên bộ lọc bảo thủ (ADR-0053).
             const result =
               row.scope === 'sticker'
                 ? await validateStickerFile(await this.storage.read(`${row.id}.raw`))

@@ -4,7 +4,6 @@ import { MetricsService } from '../src/infra/metrics/metrics.service.js';
 import type { PrismaService } from '../src/infra/prisma/prisma.service.js';
 import type { RedisProvider } from '../src/infra/redis/redis.module.js';
 
-// Synthetic local-only demo; no real users, provider calls, or production cost records.
 const config = new ConfigService({ AI_DAILY_BUDGET_USD: 10 }) as ConfigService<Env, true>;
 const metrics = new MetricsService(
   {

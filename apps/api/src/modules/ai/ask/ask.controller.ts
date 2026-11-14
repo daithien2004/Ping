@@ -38,8 +38,7 @@ export class AskController {
       question: parsed.question,
       channelId: parsed.channelId,
     });
-    // Sau authorize: người ngoài nhận 403 chứ không bị trừ lượt (và 429 ở đây là JSON thường,
-    // chưa mở stream — dialog web đọc mã TOO_MANY_REQUESTS như mọi lỗi khác).
+    // Sau authorize: người ngoài nhận 403 chứ không bị trừ lượt; 429 ở đây là JSON thường (chưa mở stream).
     await this.rateLimiter.consume(user.userId);
 
     response.status(200);
@@ -56,7 +55,6 @@ export class AskController {
         question: parsed.question,
         channelId: parsed.channelId,
       })) {
-        // Client đã hủy (đóng tab/dialog): ngừng ghi, không nối socket đã đóng.
         if (response.destroyed) break;
         response.write(this.format(event));
       }

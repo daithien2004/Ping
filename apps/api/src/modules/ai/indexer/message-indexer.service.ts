@@ -17,11 +17,6 @@ import type { VectorStore } from '../vector-store.port.js';
 import { IndexerRunner } from './indexer.runner.js';
 import { MessageIndexerCore } from './message-indexer.core.js';
 
-/**
- * Chạy consumer indexer qua app context (cùng process worker/api).
- * OutboxRelay đã đẩy event vào stream; service này chỉ đọc theo consumer group.
- * Đọc `stream:outbox` nhưng **chỉ xử lý event message** (không ảnh hưởng relay).
- */
 @Injectable()
 export class MessageIndexerService implements OnModuleInit, OnApplicationShutdown {
   private readonly logger = new Logger(MessageIndexerService.name);

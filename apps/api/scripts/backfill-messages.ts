@@ -1,14 +1,4 @@
-/**
- * Backfill chỉ mục vector từ Postgres (T5.3).
- *
- * Dùng đúng `MessageIndexerCore` như consumer realtime (cùng chunk cửa sổ, cùng
- * payload) nên chạy lại không làm lệch chỉ mục. Tốc độ mặc định 10 tin/giây để
- * không giành CPU với API; `--after` cho phép chạy tiếp sau khi dừng.
- *
- *   pnpm --filter api ai:backfill
- *   pnpm --filter api ai:backfill -- --rate=20 --limit=500
- *   pnpm --filter api ai:backfill -- --after=<message-id>
- */
+/** pnpm --filter api ai:backfill -- --rate=20 --limit=500 --after=<message-id> */
 import { PrismaPg } from '@prisma/adapter-pg';
 import { config } from 'dotenv';
 import { PrismaClient } from '../src/generated/prisma/client.js';

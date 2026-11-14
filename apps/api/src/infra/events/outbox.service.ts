@@ -9,7 +9,6 @@ export interface OutboxEventInput {
   payload: unknown;
 }
 
-/** Ghi outbox trong cùng transaction với thay đổi dữ liệu (T1.3). */
 @Injectable()
 export class OutboxService {
   constructor(private readonly prisma: PrismaService) {}

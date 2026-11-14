@@ -4,30 +4,18 @@ import sharp from 'sharp';
 
 export class InvalidFile extends Error {}
 
-/** Kích thước xuất tối đa của sticker (ADR-0067): fit trong 512×512, không phóng to. */
 const STICKER_MAX_EDGE = 512;
 
-/** Kích thước xuất tối đa của custom emoji (ADR-0068): chuẩn 128×128. */
 const EMOJI_MAX_EDGE = 128;
 
-/** Tham số kiểm định ảnh biểu cảm: trần tệp gốc + cạnh xuất tối đa (sticker/emoji). */
 export interface ExpressionFileOptions {
   maxBytes: number;
   maxEdge: number;
 }
 
-/** Chữ ký chunk `acTL` của APNG — PNG tĩnh hợp lệ không bao giờ chứa chuỗi này. */
 const APNG_SIGNATURE = Buffer.from('acTL', 'ascii');
 
-/**
- * Kiểm định ảnh biểu cảm (TG.22/TG.24) với tham số riêng cho sticker và emoji
- * (ADR-0068 mục 2 — cùng một luồng, khác trần tệp và cạnh xuất): PNG/WebP tĩnh và
- * WebP động (APNG vào được ở kiểm định — file-type trả `image/png` — rồi reencode về
- * WebP động). Không nhận SVG/HTML (file-type không nhận diện được → từ chối sẵn) hay
- * JPEG. Ảnh TĨNH lớn hơn `maxEdge` bị từ chối (người upload phải tự resize); ảnh ĐỘNG
- * được reencode fit trong `maxEdge`×`maxEdge`. Trả về thêm `thumbnail` = khung tĩnh
- * (khung đầu của ảnh động) để `prefers-reduced-motion` hiển thị thay cho bản động.
- */
+// Ảnh TĨNH lớn hơn `maxEdge` bị từ chối; ảnh ĐỘNG được reencode fit trong `maxEdge`.
 export async function validateImageFile(
   bytes: Buffer,
   { maxBytes, maxEdge }: ExpressionFileOptions,
@@ -35,7 +23,7 @@ export async function validateImageFile(
   try {
     if (!bytes.length || bytes.length > maxBytes) throw new InvalidFile();
     const type = await fileTypeFromBuffer(bytes);
-    // file-type trả APNG với mime riêng `image/apng` (không phải image/png).
+    // file-type trả APNG với mime riêng `image/apng`.
     if (!type || !['image/png', 'image/apng', 'image/webp'].includes(type.mime))
       throw new InvalidFile();
     if (
@@ -45,9 +33,7 @@ export async function validateImageFile(
       throw new InvalidFile();
     if (type.mime === 'image/webp' && bytes.readUInt32LE(4) + 8 !== bytes.length)
       throw new InvalidFile();
-    // `animated: true` để sharp giải mã được mọi khung; số khung thực tế đọc ở metadata.
-    // APNG (file-type trả image/png) mang chữ ký `acTL` — coi là ảnh động để reencode giữ
-    // chuyển động khi libvips đọc được, nếu không thì rơi về webp tĩnh của khung đầu.
+    // APNG (file-type trả image/png) mang chữ ký `acTL`: coi là ảnh động để reencode giữ chuyển động.
     const image = sharp(bytes, {
       limitInputPixels: AttachmentLimits.IMAGE_PIXELS,
       failOn: 'warning',
@@ -71,7 +57,6 @@ export async function validateImageFile(
       .webp({ quality: 85 })
       .timeout({ seconds: 5 })
       .toBuffer({ resolveWithObject: true });
-    // Khung tĩnh cho reduced-motion: khung đầu của ảnh động, bản nhỏ của ảnh tĩnh.
     const thumbnail = await sharp(bytes, {
       limitInputPixels: AttachmentLimits.IMAGE_PIXELS,
       failOn: 'warning',
@@ -102,12 +87,10 @@ export async function validateImageFile(
   }
 }
 
-/** TG.22: sticker — tệp gốc ≤512 KiB, xuất ≤512×512 (ADR-0067). */
 export function validateStickerFile(bytes: Buffer) {
   return validateImageFile(bytes, { maxBytes: STICKER_FILE_BYTES, maxEdge: STICKER_MAX_EDGE });
 }
 
-/** TG.24: custom emoji — tệp gốc ≤256 KiB, xuất ≤128×128 (ADR-0068). */
 export function validateCustomEmojiFile(bytes: Buffer) {
   return validateImageFile(bytes, { maxBytes: EMOJI_FILE_BYTES, maxEdge: EMOJI_MAX_EDGE });
 }
@@ -115,7 +98,6 @@ export function validateCustomEmojiFile(bytes: Buffer) {
 /** Conservative binary allowlist. Originals never become publicly reachable. */
 export async function validateFile(
   bytes: Buffer,
-  // TG.7: avatar/icon chỉ nhận ảnh tĩnh — PDF chỉ hợp lệ cho tệp tin nhắn.
   { kinds = ['image', 'pdf'] as Array<'image' | 'pdf'> }: { kinds?: Array<'image' | 'pdf'> } = {},
 ) {
   try {
@@ -130,7 +112,6 @@ export async function validateFile(
     if (!type || !allowedMimes.includes(type.mime)) throw new InvalidFile();
     if (type.mime === 'application/pdf') {
       const text = bytes.toString('latin1');
-      // Reject active documents, embedded/encrypted content, escaped names and appended payloads.
       if (
         !text.startsWith('%PDF-1.') ||
         !/%%EOF\s*$/.test(text) ||

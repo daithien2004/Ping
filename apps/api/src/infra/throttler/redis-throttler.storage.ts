@@ -2,17 +2,11 @@ import { Injectable } from '@nestjs/common';
 import type { ThrottlerStorage } from '@nestjs/throttler';
 import { RedisProvider } from '../redis/redis.module.js';
 
-/**
- * `ThrottlerStorageRecord` exists in the package but is not re-exported from
- * its barrel, so derive it from the interface itself — stays in sync for free.
- */
+// ThrottlerStorageRecord không được re-export từ barrel của package.
 type ThrottlerStorageRecord = Awaited<ReturnType<ThrottlerStorage['increment']>>;
 
-/**
- * Một lần gọi, chạy nguyên tử trên Redis: tăng bộ đếm, mở window nếu là hit đầu,
- * bật cờ block khi vượt limit. Trả về [số hit, ms còn lại của window, ms còn lại của block (≤ 0 = không block)].
- * KEYS[1] = bộ đếm, KEYS[2] = cờ block; ARGV = ttl ms, limit, blockDuration ms.
- */
+// Nguyên tử: trả [số hit, ms còn lại của window, ms còn lại của block (≤ 0 = không block)].
+// KEYS[1] = bộ đếm, KEYS[2] = cờ block; ARGV = ttl ms, limit, blockDuration ms.
 const INCREMENT_SCRIPT = `
 local hits = redis.call('INCR', KEYS[1])
 local ttl = redis.call('PTTL', KEYS[1])
@@ -28,13 +22,7 @@ end
 return { hits, ttl, blockTtl }
 `;
 
-/**
- * Fixed-window counter trên Redis.
- *
- * Vào:  ttl / blockDuration là MILLISECONDS (guard dịch từ cấu hình module).
- * Ra:   timeToExpire / timeToBlockExpire là SECONDS — guard gán thẳng vào
- *       header X-RateLimit-Reset và Retry-After (chuẩn HTTP dùng giây).
- */
+// Vào: ttl/blockDuration là MILISECONDS. Ra: timeToExpire/timeToBlockExpire là SECONDS (gán thẳng vào header).
 @Injectable()
 export class RedisThrottlerStorage implements ThrottlerStorage {
   constructor(private readonly redis: RedisProvider) {}

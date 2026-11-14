@@ -1,9 +1,4 @@
-/**
- * Smoke call thủ công cho adapter Groq (T5.1). Không chạy trong test tự động và
- * không in khoá. Cần GROQ_API_KEY trong .env ở gốc repo.
- *
- *   pnpm --filter api exec tsx scripts/smoke-llm.ts
- */
+/** Cần GROQ_API_KEY trong .env gốc: pnpm --filter api exec tsx scripts/smoke-llm.ts */
 import { config } from 'dotenv';
 import { GroqLlmClient } from '../src/modules/ai/groq-llm.client.js';
 

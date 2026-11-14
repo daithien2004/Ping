@@ -12,11 +12,7 @@ export interface AuditEntry {
   metadata?: Prisma.InputJsonValue;
 }
 
-/**
- * Ghi AuditLog (quy tắc 11). `record` nhận client của transaction đang chạy để bản ghi
- * audit và hành động được ghi cùng thành công hoặc cùng hủy — không có hành động "lọt sổ".
- * requestId lấy từ CLS: trùng với requestId trong log và header X-Request-Id.
- */
+// Nhận client của transaction đang chạy để audit và hành động cùng commit/rollback.
 @Injectable()
 export class AuditService {
   constructor(
@@ -28,13 +24,6 @@ export class AuditService {
     return db.auditLog.create({ data: { ...entry, requestId: this.cls.getId() } });
   }
 
-  /**
-   * Đọc nhật ký hành động của một server (TF.10).
-   *
-   * Chỉ lọc theo serverId ở đây — quyền xem do guard (`view AuditLog`) kiểm tra trước,
-   * nên service không cần biết ai gọi. `after` là id bản ghi cuối của trang trước:
-   * UUIDv7 tăng dần theo thời điểm ghi nên với thứ tự giảm dần, mốc là `id < after`.
-   */
   async list(serverId: string, query: ListAuditLogQuery) {
     const rows = await this.prisma.auditLog.findMany({
       where: {
@@ -44,13 +33,12 @@ export class AuditService {
         ...(query.after ? { id: { lt: query.after } } : {}),
       },
       orderBy: { id: 'desc' },
-      take: query.limit + 1, // lấy dư một dòng để biết còn trang sau
+      take: query.limit + 1,
     });
     const hasMore = rows.length > query.limit;
     const page = hasMore ? rows.slice(0, query.limit) : rows;
 
-    // AuditLog không có quan hệ với User (bản ghi phải còn khi user bị xoá) nên tra tên
-    // người thực hiện bằng một query riêng theo tập id.
+    // AuditLog không có quan hệ với User (bản ghi phải còn khi user bị xóa) nên tra tên bằng query riêng.
     const actors = await this.prisma.user.findMany({
       where: { id: { in: [...new Set(page.map((row) => row.actorId))] } },
       select: { id: true, username: true, displayName: true },

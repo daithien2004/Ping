@@ -17,17 +17,11 @@ const uuid = z.uuid();
 
 const DEFAULT_LIMIT = 8;
 const MAX_LIMIT = 50;
-/** Một chunk hợp lệ không thể dài hơn cửa sổ indexer; chặn payload bị sửa tay. */
 const MAX_MESSAGES_PER_CHUNK = 50;
-/** Lấy dư ứng viên vì point của tin đã xoá có thể bị lọc ở bước hydrate. */
 const CANDIDATE_FACTOR = 3;
 const MAX_CANDIDATES = 150;
 const MAX_QUERY_LENGTH = 2_000;
 
-/**
- * Một mẩu ngữ cảnh đã qua kiểm quyền. `messages` giữ thứ tự cửa sổ hội thoại
- * (cũ → mới) đúng như lúc index.
- */
 export interface RetrievedChunk {
   score: number;
   messages: RetrievedMessage[];
@@ -52,7 +46,6 @@ export interface RetrievalInput {
   serverId: string;
   query: string;
   limit?: number;
-  /** Chỉ tìm trong một channel; channel phải thuộc `serverId`. */
   channelId?: string;
 }
 
@@ -67,21 +60,8 @@ const hydratedMessageSelect = {
   author: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
 } as const;
 
-/**
- * Truy xuất vector có kiểm soát quyền (ADR-0048).
- *
- * Thứ tự cố định, không được đảo:
- * 1. Đọc membership + quyền từ **Postgres**, bỏ qua cache ability (cache có thể
- *    còn member đã bị kick tới 30 giây).
- * 2. Chỉ tìm vector trong `serverId` (và `channelId` nếu có) — Qdrant không bao
- *    giờ là nguồn quyết định quyền.
- * 3. Hydrate lại **toàn bộ** `messageIds` từ Postgres. Một chunk chỉ được trả
- *    khi mọi tin còn tồn tại, chưa soft-delete, cùng server/channel với point.
- * 4. Chỉ sau đó mới trả nội dung cho tầng RAG/prompt.
- *
- * Bước 3 cố ý fail-closed theo từng chunk: vector được sinh từ cả cửa sổ, nên
- * trả một phần của cửa sổ vừa làm prompt sai vừa có thể che giấu tin vừa xoá.
- */
+// Thứ tự bắt buộc: (1) membership/quyền từ Postgres, (2) tìm vector trong serverId,
+// (3) hydrate TOÀN BỘ messageIds từ Postgres, fail-closed theo chunk, (4) mới trả nội dung.
 @Injectable()
 export class RetrievalService {
   constructor(
@@ -102,8 +82,7 @@ export class RetrievalService {
       MAX_LIMIT,
     );
 
-    // (1) Postgres trước mọi thứ khác. `createForUserFresh` ném 403 nếu user
-    // không còn là member; không dùng contextFor vì cache có TTL 30 giây.
+    // `createForUserFresh` thay vì contextFor: cache ability có TTL 30 giây, member bị kick vẫn còn.
     const ability = await this.abilityFactory.createForUserFresh(input.serverId, input.userId);
     if (!ability.can('view', 'Message')) {
       throw new ForbiddenException('You cannot view messages in this server');
@@ -128,7 +107,6 @@ export class RetrievalService {
     const collection = collectionName(embedded.model, embedded.dimensions);
     const candidateLimit = Math.min(limit * CANDIDATE_FACTOR, MAX_CANDIDATES);
 
-    // (2) Lọc server ngay trong vector store.
     const hits = await this.store.search(collection, vector, {
       serverId: input.serverId,
       channelId: input.channelId,
@@ -142,7 +120,6 @@ export class RetrievalService {
     if (eligible.length === 0) return [];
 
     const messageIds = [...new Set(eligible.flatMap((hit) => hit.payload.messageIds))];
-    // (3) Hydrate từ Postgres — nội dung không bao giờ lấy từ Qdrant.
     const rows = await this.prisma.message.findMany({
       where: { id: { in: messageIds } },
       select: hydratedMessageSelect,
@@ -178,7 +155,6 @@ export class RetrievalService {
       if (results.length >= limit) break;
     }
 
-    // (4) Chỉ nội dung đã hydrate + kiểm quyền mới rời khỏi service.
     return results;
   }
 
@@ -190,7 +166,6 @@ export class RetrievalService {
     if (!this.isValidPayload(hit.payload)) return false;
     if (hit.payload.serverId !== serverId) return false;
     if (channelId && hit.payload.channelId !== channelId) return false;
-    // Point id phải là tin neo nằm cuối cửa sổ; payload lệch là dữ liệu hỏng.
     if (hit.payload.messageIds.at(-1) !== hit.id) return false;
     return true;
   }
