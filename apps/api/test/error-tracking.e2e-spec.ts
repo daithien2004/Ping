@@ -14,8 +14,6 @@ vi.mock('../src/infra/sentry/sentry.js', async (importOriginal) => ({
   captureServerError: vi.fn(),
 }));
 
-// H5 (ADR-0031): một lỗi 500 bất ngờ có CÙNG requestId ở response body, header X-Request-Id và lỗi
-// gửi lên Sentry — chính là sợi dây để từ mã lỗi trên giao diện tra ra log và lỗi trên Sentry.
 describe('error tracking (e2e)', () => {
   let app: INestApplication;
 

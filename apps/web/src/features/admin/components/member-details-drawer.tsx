@@ -23,11 +23,6 @@ interface Props {
   onClose: () => void;
 }
 
-/**
- * Chi tiết một thành viên: thông tin cơ bản và gán vai trò (T3.3). Hộp chọn chỉ bật role
- * mà người thao tác có thể cấp (tập con quyền của mình) và chỉ mở khi họ quản được member
- * đích — API vẫn kiểm tra lại, UI chỉ phản ánh trước để tránh bấm rồi nhận 403.
- */
 export function MemberDetailsDrawer({ serverId, ownerId, member, onClose }: Props) {
   const t = useTranslations('admin');
   const tm = useTranslations('members');

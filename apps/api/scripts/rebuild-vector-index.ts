@@ -1,15 +1,4 @@
-/**
- * Rebuild toàn bộ chỉ mục vector từ Postgres (T5.2, cập nhật ở T5.3).
- *
- * Postgres là nguồn sự thật; Qdrant chỉ là chỉ mục có thể dựng lại. Từ T5.3 script
- * dùng chung `MessageIndexerCore` với consumer: point neo vào tin nhắn, vector là
- * cửa sổ tin liền trước cùng channel. Nhờ vậy rebuild không ghi đè chunk realtime
- * bằng point một-tin. Point id = message id nên chạy lại vẫn idempotent.
- *
- *   pnpm --filter api ai:rebuild                # upsert, giữ point cũ
- *   pnpm --filter api ai:rebuild -- --recreate  # xoá collection rồi dựng lại
- *   pnpm --filter api ai:rebuild -- --batch=100
- */
+/** pnpm --filter api ai:rebuild [-- --recreate | --batch=100]  (--recreate xoá collection rồi dựng lại) */
 import { PrismaPg } from '@prisma/adapter-pg';
 import { config } from 'dotenv';
 import { PrismaClient } from '../src/generated/prisma/client.js';

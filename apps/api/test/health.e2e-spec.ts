@@ -12,8 +12,6 @@ describe('Health endpoints (e2e)', () => {
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
     app = moduleRef.createNestApplication();
-    // main.ts applies the prefix, but main.ts never runs inside a test —
-    // the e2e harness must reproduce it or every path would be off.
     app.setGlobalPrefix('api/v1');
     await app.init();
   });
@@ -68,7 +66,6 @@ describe('Health endpoints (e2e)', () => {
       draining.get(ShutdownService).beginDrain();
       const res = await request(draining.getHttpServer()).get('/api/v1/ready').expect(503);
       expect(res.body.code).toBe('SERVICE_UNAVAILABLE');
-      // Liveness không đổi: process vẫn sống để xử lý nốt request đang chạy.
       await request(draining.getHttpServer()).get('/api/v1/health').expect(200);
     } finally {
       await draining.close();

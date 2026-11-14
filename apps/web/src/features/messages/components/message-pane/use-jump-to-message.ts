@@ -5,11 +5,6 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import type { ClientMessage } from '../../message-cache';
 
-/**
- * Nhận tin nhắn đang tải, bộ cuộn và hàm tạo đường dẫn tới một tin; trả hàm nhảy tới tin,
- * cùng ID tin đang được đánh dấu sau khi nhảy để giao diện làm nổi bật trong 2 giây.
- * Ví dụ: gọi `jumpTo('m8')` → nếu m8 đã tải thì cuộn tới m8; nếu chưa, mở đường dẫn tới m8.
- */
 export function useJumpToMessage({
   messages,
   virtualizer,

@@ -1,7 +1,4 @@
-// Dò liên kết tương đối hỏng trong mọi file Markdown của repo (ADR-0034). `pnpm docs:check`, cũng chạy trong CI.
-// Chỉ kiểm file/thư mục đích có tồn tại, không kiểm phần #neo, không kiểm URL http(s).
-// File đích bị `.gitignore` bỏ qua cũng tính là hỏng: nó có trên máy dev nhưng không có trên
-// clone/CI — đúng lỗi từng lọt qua CI của lô gộp 3 (link tới kế hoạch local).
+// File đích bị `.gitignore` bỏ qua cũng tính là hỏng: có trên máy dev nhưng không có trên clone/CI.
 import { spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
@@ -23,8 +20,6 @@ const link = /\[[^\]]*\]\(([^)\s]+)\)/g;
 const broken = [];
 const resolvedLinks = [];
 for (const file of markdownFiles(root)) {
-  // Bỏ khối mã và code span: ví dụ trong ``` hoặc `...` có thể chứa cú pháp giống liên kết
-  // (HANDOFF.md có `[text](url)` là ví dụ, không phải liên kết thật).
   const text = readFileSync(file, 'utf8')
     .replace(/```[\s\S]*?```/g, '')
     .replace(/`[^`\n]*`/g, '');
@@ -37,7 +32,6 @@ for (const file of markdownFiles(root)) {
   }
 }
 
-// `git check-ignore` gom một lượt; ngoài git repo (ví dụ bản export .tar) thì bỏ kiểm tra này.
 const ignored = new Set();
 if (resolvedLinks.length) {
   const unique = [...new Set(resolvedLinks.map((item) => item.resolved))];

@@ -29,11 +29,6 @@ interface ChannelGroupProps {
   onDragEnd: () => void;
 }
 
-/**
- * Một nhóm sidebar: header (thu gọn được, aria-expanded) + danh sách channel + vùng thả nối
- * cuối khi đang kéo channel. Vùng mặc định (categoryId null) không kéo được header nhưng vẫn
- * nhận channel thả vào; header của nó LUÔN hiện, không xóa được (plan TG.10).
- */
 export function ChannelGroup(props: ChannelGroupProps) {
   const {
     group,

@@ -9,16 +9,7 @@ import {
 } from '@ping/shared';
 import { create } from 'zustand';
 
-/**
- * Bản cài đặt ĐANG ÁP DỤNG trên thiết bị này (TG.13) — UI state, không phải server state:
- * server state nằm trong cache TanStack (`qk.settings`), store này để ThemeProvider (root
- * layout, có cả khi chưa đăng nhập) và các nơi cần giá trị tức thời đọc.
- *
- * Nguồn khởi tạo: cache localStorage của THIẾT BỊ (ghi mỗi lần apply) — người dùng tối mở
- * tab mới thấy tối ngay, không đợi GET settings về mới đổi màu (tránh nháy sáng rồi tối).
- * Giá trị server vẫn là nguồn sự thật: SettingsSync bơm sau khi đăng nhập, lệch thì sửa lại.
- * Chưa đăng nhập/lần đầu trên máy: mặc định trùng mặc định server ('system'/'comfortable'/'md').
- */
+/** Khởi tạo từ cache localStorage của thiết bị để không nháy sáng rồi tối khi tab mới tải. */
 interface AppliedSettingsState {
   theme: SettingsTheme;
   density: SettingsDensity;
@@ -34,7 +25,6 @@ interface CachedSettings {
   fontSize: SettingsFontSize;
 }
 
-/** Đọc cache thiết bị, chỉ nhận giá trị hợp lệ theo schema shared (localStorage có thể bị tay chỉnh). */
 function readCache(): Partial<CachedSettings> {
   if (typeof window === 'undefined') return {};
   try {
@@ -50,7 +40,6 @@ function readCache(): Partial<CachedSettings> {
     if (fontSize.success) out.fontSize = fontSize.data;
     return out;
   } catch {
-    // localStorage bị chặn hoặc JSON hỏng: bỏ qua cache, dùng mặc định.
     return {};
   }
 }
@@ -61,7 +50,7 @@ function writeCache(partial: Partial<CachedSettings>): void {
     const current = readCache();
     window.localStorage.setItem(CACHE_KEY, JSON.stringify({ ...current, ...partial }));
   } catch {
-    // Không ghi được (người dùng tắt storage): cài đặt chỉ sống trong phiên, không nổi lỗi.
+    // localStorage bị chặn: bỏ qua.
   }
 }
 

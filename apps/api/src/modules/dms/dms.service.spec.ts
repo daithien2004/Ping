@@ -4,12 +4,10 @@ import { TooManyRequestsError } from '../../common/too-many-requests.error.js';
 import type { PrismaService } from '../../infra/prisma/prisma.service.js';
 import { DmsService, dmKeyFor } from './dms.service.js';
 
-// Hai UUID lệch thứ tự từ điển — đủ để kiểm chuẩn hóa min|max (UUIDv7 so sánh theo byte).
 const ME = '00000000-0000-0000-0000-000000000001';
 const TARGET = '00000000-0000-0000-0000-000000000002';
 const OTHER = '00000000-0000-0000-0000-000000000003';
 
-/** Prisma giả đúng những gì DmsService đụng tới; $transaction chạy thẳng callback với tx giả. */
 function makePrisma() {
   const tx = {
     user: {
@@ -21,7 +19,7 @@ function makePrisma() {
         dmAllow: 'server_members',
       }),
     },
-    $queryRaw: vi.fn().mockResolvedValue([{ ok: true }]), // EXISTS giao Member: chung server
+    $queryRaw: vi.fn().mockResolvedValue([{ ok: true }]),
     userBlock: { findFirst: vi.fn().mockResolvedValue(null) },
     dmParticipant: {
       findMany: vi.fn().mockResolvedValue([]),
@@ -31,7 +29,7 @@ function makePrisma() {
   };
   const prisma = {
     $transaction: (cb: (client: typeof tx) => unknown) => cb(tx),
-    $queryRaw: vi.fn().mockResolvedValue([]), // GET /dms hoặc cặp đã có: rỗng mặc định
+    $queryRaw: vi.fn().mockResolvedValue([]),
     user: { findUnique: vi.fn().mockResolvedValue({ id: TARGET }) },
     userBlock: {
       findMany: vi.fn().mockResolvedValue([]),
@@ -149,7 +147,7 @@ describe('DmsService.create (get-or-create, ADR-0070 mục 2-5)', () => {
   it('trần 10 DM mới/giờ: 10 hàng trong cửa sổ → 429, Retry-After dương', async () => {
     const { prisma, tx } = makePrisma();
     const recent = Array.from({ length: 10 }, (_, i) => ({
-      createdAt: new Date(Date.now() - (i + 1) * 60_000), // 1..10 phút trước — còn trong 1 giờ
+      createdAt: new Date(Date.now() - (i + 1) * 60_000),
     }));
     tx.dmParticipant.findMany.mockResolvedValue(recent);
     const error = await new DmsService(prisma).create(ME, TARGET).catch((e) => e);
@@ -174,20 +172,18 @@ describe('DmsService.create (get-or-create, ADR-0070 mục 2-5)', () => {
   it('P2002 khi hai request song song → trả channel đã tồn tại thay vì lỗi', async () => {
     const { prisma, tx, prismaRaw } = makePrisma();
     tx.channel.create.mockRejectedValue(Object.assign(new Error('unique'), { code: 'P2002' }));
-    prismaRaw.$queryRaw
-      .mockResolvedValueOnce([]) // lần đầu: chưa có cặp
-      .mockResolvedValueOnce([
-        {
-          channelId: 'chan-winner',
-          lastReadMessageId: null,
-          partnerId: TARGET,
-          partnerUsername: 'bob',
-          partnerDisplayName: 'Bob',
-          partnerAvatarUrl: null,
-          unreadCount: 0,
-          lastMessageAt: null,
-        },
-      ]);
+    prismaRaw.$queryRaw.mockResolvedValueOnce([]).mockResolvedValueOnce([
+      {
+        channelId: 'chan-winner',
+        lastReadMessageId: null,
+        partnerId: TARGET,
+        partnerUsername: 'bob',
+        partnerDisplayName: 'Bob',
+        partnerAvatarUrl: null,
+        unreadCount: 0,
+        lastMessageAt: null,
+      },
+    ]);
     await expect(new DmsService(prisma).create(ME, TARGET)).resolves.toMatchObject({
       channelId: 'chan-winner',
     });
@@ -206,7 +202,7 @@ describe('DmsService.block/unblock (ADR-0070 mục 4)', () => {
     await expect(new DmsService(prisma).block(ME, TARGET)).rejects.toThrow(NotFoundException);
     const service = new DmsService(prisma);
     await service.block(ME, TARGET);
-    await service.block(ME, TARGET); // chặn lại người đã chặn không lỗi
+    await service.block(ME, TARGET);
     expect(prismaRaw.userBlock.upsert).toHaveBeenCalledTimes(2);
   });
 

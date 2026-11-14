@@ -18,19 +18,12 @@ import { QuickSwitcherHost } from './quick-switcher-host';
 
 const TOGGLE_ID = 'mobile-nav-toggle';
 
-/**
- * Khung app có đăng nhập (T6.8). Desktop giữ rail + sidebar cạnh nhau; dưới `md` rail và sidebar
- * thành một drawer chung sau thanh trên 48px. Drawer khoá focus trong chính nó, đóng bằng Esc,
- * backdrop hoặc khi đổi route; mở rộng cửa sổ qua `md` thì tự đóng.
- */
 export function AppShell({ children }: { children: ReactNode }) {
   const open = useMobileNav((state) => state.open);
   const setOpen = useMobileNav((state) => state.setOpen);
   const close = useMobileNav((state) => state.close);
   const pathname = usePathname();
   const t = useTranslations('common');
-  // Trang cài đặt cá nhân dùng cột nav riêng 232 px, nên panel người dùng bám theo cột đó
-  // thay vì rộng 303 px của sidebar kênh/DM.
   const onSettings = pathname === '/settings' || pathname.startsWith('/settings/');
 
   useEffect(() => {
@@ -57,8 +50,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         return;
       }
       if (event.key !== 'Tab') return;
-      // Rail và sidebar là hai nhánh DOM khác nhau (layout server + layout kênh), nên giữ focus
-      // bằng danh sách focusable của cả hai thay vì một focus-trap lồng nhau.
+      // Rail và sidebar là hai nhánh DOM khác nhau: giữ focus bằng danh sách focusable của cả hai, không dùng focus-trap lồng.
       const focusable = Array.from(
         document.querySelectorAll<HTMLElement>(
           '[data-mobile-nav] a[href], [data-mobile-nav] button:not([disabled]), [data-mobile-nav] [tabindex]:not([tabindex="-1"])',
@@ -88,13 +80,11 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    // Trang không được cuộn: nếu nội dung con rộng hơn cửa sổ, scrollbar của trang xuất hiện
-    // và Windows lấy mất 17 px chiều cao → `h-dvh` tràn → thêm scrollbar dọc (layout giật).
+    // Trang không được cuộn: scrollbar trang làm Windows mất 17 px → `h-dvh` tràn → thêm scrollbar dọc.
     <div data-app-shell className="flex h-dvh flex-col overflow-hidden">
       <ConnectionBanner />
       <VerifyEmailBanner />
       <QuickSwitcherHost />
-      {/* Cài đặt cá nhân: một modal dùng chung mở từ panel người dùng, URL không đổi. */}
       <SettingsModal />
       <header className="flex h-12 shrink-0 items-center gap-2 border-b bg-background px-2 md:hidden">
         <PingIconButton
@@ -121,8 +111,6 @@ export function AppShell({ children }: { children: ReactNode }) {
           id="mobile-nav"
           tabIndex={-1}
           className={cn(
-            // Đặt absolute trong hàng nội dung (đã ở dưới banner + thanh trên) nên drawer luôn
-            // khớp chiều cao còn lại, kể cả khi banner đẩy thanh trên xuống.
             'flex shrink-0 max-md:absolute max-md:inset-y-0 max-md:left-0 max-md:z-30 max-md:shadow-overlay max-md:transition-transform max-md:duration-200 max-md:outline-none',
             open
               ? 'max-md:visible max-md:translate-x-0'
@@ -136,8 +124,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="flex min-w-0 flex-1">
           <Suspense fallback={<Loading />}>{children}</Suspense>
         </div>
-        {/* Panel người dùng nổi trên đáy cột trái, dùng chung cho mọi màn — không nằm trong
-            sidebar kênh/DM. `data-mobile-nav` để focus-trap của drawer phủ tới khi mở. */}
+        {/* `data-mobile-nav` để focus-trap của drawer phủ tới panel người dùng khi mở. */}
         <div
           data-mobile-nav
           className={cn(

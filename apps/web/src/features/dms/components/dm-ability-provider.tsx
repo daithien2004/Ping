@@ -19,15 +19,13 @@ export function DmAbilityProvider({
   partnerId,
   children,
 }: {
-  /** Partner của DM — quyết định xem có biết là đang bị chặn hay không. */
   partnerId: string | undefined;
   children: ReactNode;
 }) {
   const { data: me } = useMe();
   const blocked = useDmBlockStore(selectDmBlocked(partnerId ?? ''));
-  // Ability xây lại khi rule create Message bị rút — composer/pane phản hồi ngay trong phiên.
   const ability = useMemo(() => (me ? dmAbilityFor(me.id, blocked) : null), [me, blocked]);
-  if (!ability) return null; // `me` luôn có trong vùng đăng nhập (AuthGate) — chỉ chờ một nhịp.
+  if (!ability) return null;
   return (
     <ServerPermissionContext value={{ serverId: null, ready: true }}>
       <AbilityProvider value={ability}>{children}</AbilityProvider>

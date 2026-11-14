@@ -17,7 +17,6 @@ interface TestUser {
 
 type HttpMethod = 'get' | 'post' | 'put' | 'delete';
 
-/** Chờ client nhận đúng một event — timeout làm test treo rõ ràng thay vì im lặng. */
 function waitEvent<T>(socket: Socket, event: string, timeoutMs = 3000): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const timer = setTimeout(() => {
@@ -49,22 +48,17 @@ function connectClient(app: INestApplication, token: string): Promise<Socket> {
 
 const sockets: Socket[] = [];
 
-/**
- * TG.11 ban/unban (e2e). Boot kèm websocket adapter để kiểm được realtime: người bị ban
- * nhận `member.removed` (cờ `banned: true`), người khác nhận `member.banned` cho room server.
- * Các spec e2e chạy tuần tự (fileParallelism: false) — dùng chung Postgres/Redis thật.
- */
 describe('Ban/unban member (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
   const emails: string[] = [];
 
   let owner: TestUser;
-  let mod: TestUser; // KICK_MEMBERS → được ban/unban
-  let victim: TestUser; // chỉ @everyone — nạn nhân chính
-  let watcher: TestUser; // VIEW_AUDIT_LOG (mạnh hơn mod, không có KICK_MEMBERS): vừa nghe event room server, vừa là target "người mạnh hơn" cho thứ bậc
-  let victim2: TestUser; // nạn nhân của tùy chọn deleteMessages24h
-  let outsider: TestUser; // chủ server khác, không thuộc server A
+  let mod: TestUser;
+  let victim: TestUser;
+  let watcher: TestUser;
+  let victim2: TestUser;
+  let outsider: TestUser;
   let serverA: string;
   let inviteA: string;
   let channelA: string;
@@ -101,12 +95,10 @@ describe('Ban/unban member (e2e)', () => {
     api('delete', `/api/v1/servers/${serverA}/bans/${userId}`, as.token);
 
   beforeAll(async () => {
-    // websocket: true — gắn RedisIoAdapter + lắng nghe cổng ngẫu nhiên để kiểm realtime thật.
     app = await bootApp({ websocket: true });
-    await app.get(RedisProvider).flushdb(); // reset rate limit giữa các lần chạy
+    await app.get(RedisProvider).flushdb();
     prisma = app.get(PrismaService);
 
-    // /auth/register giới hạn 5 request/phút/IP (abuse-limits): đúng 5 user, TUẦN TỰ.
     [owner, mod, victim, watcher, victim2] = [
       await registerUser(),
       await registerUser(),
@@ -125,12 +117,9 @@ describe('Ban/unban member (e2e)', () => {
         .expect(201);
     }
     await giveRole(mod, Permissions.VIEW_CHANNEL | Permissions.KICK_MEMBERS);
-    // "Mạnh hơn" mod: có thêm bit mà mod không có → canKickMember chặn mod ban người này.
-    // Không có KICK_MEMBERS nên watcher vẫn bị chặn các endpoint ban ở tầng guard.
     await giveRole(watcher, Permissions.VIEW_CHANNEL | Permissions.VIEW_AUDIT_LOG);
 
-    // outsider: người dùng hợp lệ (có server riêng) nhưng KHÔNG thuộc server A — dùng cho test IDOR.
-    // User thứ 6 vượt trần 5/phút của /auth/register: reset bộ đếm (Redis) rồi đăng ký tiếp.
+    // User thứ 6 vượt trần 5/phút của /auth/register: reset bộ đếm Redis rồi đăng ký tiếp.
     await app.get(RedisProvider).flushdb();
     outsider = await registerUser();
     await api('post', '/api/v1/servers', outsider.token).send({ name: 'B' }).expect(201);
@@ -154,7 +143,7 @@ describe('Ban/unban member (e2e)', () => {
   it('ban member: mất khỏi danh sách + realtime member.removed(banned) / member.banned + audit', async () => {
     const victimSocket = await connectClient(app, victim.token);
     const watcherSocket = await connectClient(app, watcher.token);
-    // Đợi gateway kèm join room (user:<id> + server:<id>) xong.
+    // Đợi gateway join room (user:<id> + server:<id>) xong.
     await new Promise((resolve) => setTimeout(resolve, 250));
 
     const removedPromise = waitEvent<{ serverId: string; banned?: boolean }>(
@@ -174,9 +163,7 @@ describe('Ban/unban member (e2e)', () => {
       bannedBy: { id: mod.id },
     });
 
-    // Người bị ban: event riêng kèm cờ banned (phân biệt với kick/tự rời).
     expect(await removedPromise).toEqual({ serverId: serverA, banned: true });
-    // Người khác trong room server: event member.banned để gỡ nạn nhân khỏi danh sách.
     expect(await bannedPromise).toEqual({ serverId: serverA, userId: victim.id });
 
     const members = await api('get', `/api/v1/servers/${serverA}/members`, owner.token).expect(200);
@@ -216,7 +203,6 @@ describe('Ban/unban member (e2e)', () => {
       createdAt: expect.any(String),
     });
 
-    // Danh sách ban là công cụ của người mang KICK_MEMBERS — member thường không xem được.
     await api('get', `/api/v1/servers/${serverA}/bans`, watcher.token).expect(403);
   });
 
@@ -235,7 +221,6 @@ describe('Ban/unban member (e2e)', () => {
       }),
     ]);
 
-    // Unban xong vào lại được bình thường.
     await api('post', '/api/v1/servers/join', victim.token)
       .send({ inviteCode: inviteA })
       .expect(201);
@@ -246,15 +231,10 @@ describe('Ban/unban member (e2e)', () => {
   });
 
   it('thứ bậc: member thường không ban được; mod không ban được owner/người mạnh hơn; tự ban → 400; người lạ → 404', async () => {
-    // Watcher mang VIEW_AUDIT_LOG nhưng không có KICK_MEMBERS: guard chặn (create ServerBan).
     await ban(watcher, { userId: owner.id }).expect(403);
-    // Owner là chủ server: canKickMember trả false.
     await ban(mod, { userId: owner.id }).expect(403);
-    // Target có quyền nằm ngoài quyền của mod (VIEW_AUDIT_LOG): cùng luật kick.
     await ban(mod, { userId: watcher.id }).expect(403);
-    // Tự ban mình → 400.
     await ban(mod, { userId: mod.id }).expect(400);
-    // userId không phải member của server A (chủ server B) → 404, không lộ thông tin.
     await ban(mod, { userId: outsider.id }).expect(404);
   });
 
@@ -265,7 +245,6 @@ describe('Ban/unban member (e2e)', () => {
     const old = await api('post', `/api/v1/channels/${channelA}/messages`, victim2.token)
       .send({ content: 'ancient', nonce: randomUUID() })
       .expect(201);
-    // Chỉnh createdAt tin "cũ" lùi quá 24 giờ — ban chỉ xóa tin trong cửa sổ 24h.
     await prisma.message.update({
       where: { id: old.body.id },
       data: { createdAt: new Date(Date.now() - 25 * 60 * 60 * 1000) },
@@ -276,10 +255,9 @@ describe('Ban/unban member (e2e)', () => {
 
     const list = await api('get', `/api/v1/channels/${channelA}/messages`, mod.token).expect(200);
     const ids = list.body.messages.map((m: { id: string }) => m.id);
-    expect(ids).toContain(old.body.id); // tin cũ hơn 24h: giữ nguyên
-    expect(ids).not.toContain(recent.body.id); // tin trong 24h: soft-delete
+    expect(ids).toContain(old.body.id);
+    expect(ids).not.toContain(recent.body.id);
 
-    // Dòng audit của ban này là dòng SERVER_BAN có metadata.deletedMessages (ban khác không có).
     const auditRow = (
       await prisma.auditLog.findMany({
         where: { serverId: serverA, action: 'SERVER_BAN' },
@@ -292,7 +270,6 @@ describe('Ban/unban member (e2e)', () => {
   });
 
   it('IDOR: chủ server khác không ban/unban/xem danh sách ban của server A được', async () => {
-    // outsider là chủ server B (người dùng hợp lệ, chỉ thiếu quyền trên server A): guard chặn.
     await ban(outsider, { userId: victim2.id }).expect(403);
     await unban(outsider, victim2.id).expect(403);
     await api('get', `/api/v1/servers/${serverA}/bans`, outsider.token).expect(403);

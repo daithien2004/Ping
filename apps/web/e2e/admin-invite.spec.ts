@@ -6,16 +6,9 @@ import { pacedLogin } from './login-pace';
 const API = 'http://localhost:4000/api/v1';
 const SEED_PASSWORD = 'password123';
 
-/** Hộp xác nhận đang mở; antd giữ popup đã đóng trong DOM nên phải lọc theo phần tử đang hiện. */
 const visiblePopconfirm = (page: Page) => page.locator('.ant-popconfirm').filter({ visible: true });
 
-/**
- * T3.6: mã mời trên bề mặt quản trị — xem/sao chép, tạo mã mới (vô hiệu mã cũ),
- * và luồng tham gia báo lỗi rõ ràng cho mã thu hồi/hết hạn.
- *
- * Dùng tài khoản seed (owner qua env + carol) vì `POST /auth/register` giới hạn
- * 5 lượt/phút/IP. Server riêng cho test này, xoá ở cuối.
- */
+/** Dùng tài khoản seed: POST /auth/register giới hạn 5 lượt/phút/IP. */
 test('admin invite: display, regenerate revokes old code, join reports clear errors', async ({
   browser,
 }) => {
@@ -57,14 +50,12 @@ test('admin invite: display, regenerate revokes old code, join reports clear err
       await visiblePopconfirm(ownerPage).getByRole('button', { name: 'Tạo mã mới' }).click();
 
       await expect(ownerPage.getByText(/Đã tạo mã mời mới:/)).toBeVisible();
-      // Cache server được invalidate và refetch — đợi mã mới hiển thị rồi mới đọc.
       await expect(inviteSection.getByTestId('invite-code')).not.toHaveText(originalCode, {
         timeout: 10_000,
       });
       const newCode = (await inviteSection.getByTestId('invite-code').textContent()) ?? '';
       await expect(inviteSection.getByText(/Hết hạn:/)).toBeVisible();
 
-      // Mã cũ bị thu hồi: API trả 410 + mã lỗi riêng, không phải 404 chung chung.
       const oldJoin = await ownerContext.request.post(`${API}/servers/join`, {
         headers: joiner.headers,
         data: { inviteCode: originalCode },
@@ -75,12 +66,9 @@ test('admin invite: display, regenerate revokes old code, join reports clear err
       await test.step('join bằng mã thu hồi qua UI hiện đúng thông báo', async () => {
         const joinerPage = await joinerContext.newPage();
         await joinerPage.goto('/');
-        // `/` → /channels/:serverId → kênh đầu: đợi chuyển hướng xong. Bấm "Tham gia" giữa chừng thì
-        // router.replace muộn của trang gốc server cũ đè lên điều hướng sang server mới (thấy trên CI).
+        // Đợi chuyển hướng xong: bấm "Tham gia" giữa chừng thì router.replace muộn của server cũ đè điều hướng (thấy trên CI).
         await expect(joinerPage).toHaveURL(/\/channels\/[^/]+\/[^/]+/);
         await joinerPage.getByRole('button', { name: 'Tham gia server' }).click();
-        // Hộp thoại mở trên trang server (carol đã ở Ping Playground): giới hạn trong dialog
-        // để không phụ thuộc phần nền (menu server cũng có mục «Sao chép mã mời»).
         await joinerPage.getByRole('dialog').getByLabel('Mã mời').fill(originalCode);
         await joinerPage.getByRole('button', { name: 'Tham gia', exact: true }).click();
         await expect(joinerPage.getByText('Mã mời đã bị thu hồi.')).toBeVisible();
@@ -89,8 +77,6 @@ test('admin invite: display, regenerate revokes old code, join reports clear err
       await test.step('join bằng mã mới qua UI vào được server', async () => {
         const joinerPage = await joinerContext.newPage();
         await joinerPage.goto('/');
-        // `/` → /channels/:serverId → kênh đầu: đợi chuyển hướng xong. Bấm "Tham gia" giữa chừng thì
-        // router.replace muộn của trang gốc server cũ đè lên điều hướng sang server mới (thấy trên CI).
         await expect(joinerPage).toHaveURL(/\/channels\/[^/]+\/[^/]+/);
         await joinerPage.getByRole('button', { name: 'Tham gia server' }).click();
         await joinerPage.getByRole('dialog').getByLabel('Mã mời').fill(newCode);

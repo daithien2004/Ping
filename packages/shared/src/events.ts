@@ -24,9 +24,7 @@ export const ServerEvents = {
   UserUpdated: 'user.updated',
   MemberUpdated: 'member.updated',
   ServerUpdated: 'server.updated',
-  /** TG.11: một thành viên vừa bị ban — tới room `server:<id>`, người khác gỡ nạn nhân khỏi danh sách. */
   MemberBanned: 'member.banned',
-  /** TG.10: thứ tự category hoặc thứ tự kênh trong một nhóm vừa đổi — room `server:<id>`. */
   ChannelReordered: 'channel.reordered',
 } as const;
 
@@ -45,9 +43,7 @@ export interface MessageAuthor {
 
 export interface MessageCreatedPayload {
   kind?: 'text' | 'sticker' | 'gif';
-  /** TG.22: preview sticker khi đây là tin sticker; tin văn bản không có. */
   sticker?: import('./schemas/sticker').MessageStickerPreview | null;
-  /** TG.25: preview GIF khi đây là tin GIF; tin khác không có. */
   gif?: import('./schemas/gif').MessageGifPreview | null;
   attachments?: import('./schemas/attachment').AttachmentDto[];
   id: string;
@@ -56,9 +52,7 @@ export interface MessageCreatedPayload {
   author: MessageAuthor;
   content: string;
   createdAt: string;
-  /** Nonce của client gửi: khớp tin optimistic với tin thật. null với tin không có nonce. */
   nonce: string | null;
-  /** TG.1: xem trước tin gốc nếu đây là reply; null = tin thường. */
   replyTo: import('./schemas/message').MessageReplyPreview | null;
 }
 
@@ -74,20 +68,14 @@ export interface MessageDeletedPayload {
   channelId: string;
 }
 
-/**
- * Cảm xúc thêm/gỡ (TG.2, ADR-0064). `count` là tổng số người đã thả emoji này SAU thao
- * tác — client lấy làm nguồn chuẩn thay vì tự cộng/trừ (hai tab không lệch đếm).
- */
 export interface ReactionChangedPayload {
   messageId: string;
   channelId: string;
   emoji: string;
-  /** Người vừa thêm/gỡ — tab khác của chính họ cập nhật cờ `me`. */
   userId: string;
   count: number;
 }
 
-/** Channel mới/đổi tên gửi tới room `server:<id>`; client cập nhật cache danh sách channel. */
 export type ChannelCreatedPayload = ChannelDto;
 export type ChannelUpdatedPayload = ChannelDto;
 
@@ -101,20 +89,11 @@ export interface TypingStartedPayload {
   userId: string;
 }
 
-/**
- * Gửi riêng tới user (room `user:<id>`): quyền của CHÍNH họ trong server có thể đã đổi
- * (role bị sửa/xóa, được gán role). Client tải lại quyền của server đó.
- */
 export interface PermissionsChangedPayload {
   serverId: string;
 }
 
-/**
- * Gửi riêng tới user: họ không còn là member của server (bị kick, tự rời, server bị xóa,
- * TG.11: bị ban). `banned: true` chỉ có khi người nhận vừa bị BAN — client phân biệt được
- * "bạn bị cấm" với "bạn đã rời/kick/server xóa". Kick/leave/server-delete không đặt cờ
- * nên payload của họ vẫn là `{ serverId }` như cũ (hợp đồng cũ không đổi).
- */
+/** `banned: true` chỉ có khi vừa bị BAN; kick/leave/server-delete không đặt cờ. */
 export interface MemberRemovedPayload {
   serverId: string;
   banned?: boolean;
@@ -125,41 +104,25 @@ export interface PresenceUpdatedPayload {
   status: 'online' | 'offline';
 }
 
-/**
- * Gửi riêng tới user (room `user:<id>`) khi họ đánh dấu đã đọc (T4.2): mọi tab/thiết bị
- * khác của cùng user cập nhật cursor theo — hai tab không tụt badge lệch nhau.
- */
 export interface ReadUpdatedPayload {
   channelId: string;
   lastReadMessageId: string;
 }
 
-/**
- * Gửi riêng tới user được mention (T4.2). Event `message.created` vẫn phát broadcast tới
- * room channel (ranh giới quyền); event này chỉ tới người được nhắc nên không lộ danh sách
- * mention của người khác. Payload tối giản: client tự đối chiếu với tin đã nhận/theo badge.
- */
 export interface MentionCreatedPayload {
   messageId: string;
   channelId: string;
   serverId: string;
 }
 
-/**
- * Phát tới room `server:<id>` khi có tin mới (T4.3): CHỈ mang metadata (không nội dung) để
- * badge unread trên các kênh không đang xem tăng theo realtime. Nội dung tin vẫn chỉ đi
- * room `channel:<id>` sau kiểm quyền — người không có quyền xem không nhận được gì hơn
- * "kênh đó vừa có hoạt động" ở mức server.
- */
+/** CHỈ metadata, không nội dung: nội dung chỉ đi room `channel:<id>` sau kiểm quyền. */
 export interface ChannelActivityPayload {
   channelId: string;
-  /** TG.9 (ADR-0070): DM không thuộc server — badge realtime đi room `user:<id>` với null. */
   serverId: string | null;
   messageId: string;
   authorId: string;
 }
 
-/** Gửi tới room `channel:<id>` khi một tin được ghim (TG.3, ADR-0066). `pinnedAt` là nguồn chuẩn. */
 export interface MessagePinnedPayload {
   messageId: string;
   channelId: string;
@@ -167,17 +130,11 @@ export interface MessagePinnedPayload {
   pinnedAt: string;
 }
 
-/** Gửi tới room `channel:<id>` khi một tin được bỏ ghim (TG.3). */
 export interface MessageUnpinnedPayload {
   messageId: string;
   channelId: string;
 }
 
-/**
- * Hồ sơ người dùng vừa đổi (TG.7): phát tới room `user:<id>` (các tab của chính họ) và room
- * `server:<id>` của từng server họ thuộc về. `avatarUrl` là URL hồ sơ sống lâu (30 ngày) nên
- * mọi client nhận được đều render được ngay không cần gọi API thêm.
- */
 export interface UserUpdatedPayload {
   id: string;
   username: string;
@@ -185,7 +142,6 @@ export interface UserUpdatedPayload {
   avatarUrl: string | null;
 }
 
-/** Biệt danh của một thành viên vừa đổi (TG.7); phát tới room `server:<id>`. */
 export interface MemberUpdatedPayload {
   serverId: string;
   memberId: string;
@@ -193,29 +149,16 @@ export interface MemberUpdatedPayload {
   user: { id: string; displayName: string; avatarUrl: string | null };
 }
 
-/**
- * Một thành viên vừa bị BAN (TG.11); phát tới room `server:<id>` để những người khác
- * gỡ nạn nhân khỏi danh sách thành viên. Event riêng thay vì tái dùng `member.removed`
- * cho room server: web xử lý `member.removed` như "chính mình mất quyền truy cập server"
- * (dọn UI server) — phát room-wide sẽ xóa UI của mọi người. Tên event mới nên client cũ
- * chưa biết chỉ bỏ qua. Payload tối giản `userId` (member đã bị xóa, memberId vô nghĩa),
- * KHÔNG kèm reason — lý do ban chỉ xem qua danh sách ban / audit log.
- */
+/** Event riêng, không dùng `member.removed` (web coi đó là mình mất quyền truy cập); không kèm reason. */
 export interface MemberBannedPayload {
   serverId: string;
   userId: string;
 }
 
-/**
- * Biểu cảm của server vừa đổi (TG.24, ADR-0068): tạo/xóa custom emoji hoặc sticker. Payload
- * chỉ mang serverId — client invalidate toàn bộ query biểu cảm (emoji map + sticker list) để
- * hai tab tự đồng bộ; danh sách mới lấy qua REST.
- */
 export interface ExpressionsUpdatedPayload {
   serverId: string;
 }
 
-/** Tên/icon server vừa đổi (TG.7); phát tới room `server:<id>`. */
 export interface ServerUpdatedPayload {
   id: string;
   name: string;
@@ -223,14 +166,8 @@ export interface ServerUpdatedPayload {
 }
 
 /**
- * Thứ tự vừa đổi (TG.10); phát tới room `server:<id>`. Một shape duy nhất, phân biệt bằng
- * `scope` — client chỉ cần invalidate query server-detail của server này và render lại:
- * - scope 'categories': thứ tự DANH MỤC đổi (tạo/reorder/xóa category — mảng là các
- *   category theo thứ tự MỚI, sau xóa thì danh sách còn lại). `channelIds` mang các
- *   **categoryId** (tái dùng mảng của shape chung cho gọn hợp đồng; `categoryId` không gửi
- *   trong scope này).
- * - scope 'category': thứ tự KÊNH TRONG MỘT NHÓM đổi — `categoryId` là nhóm đích (kể cả
- *   `null` = kênh chuyển về vùng mặc định) và `channelIds` là các **channelId** theo thứ tự mới.
+ * categories: `channelIds` là các categoryId theo thứ tự mới.
+ * category: `categoryId` là nhóm đích (null = vùng mặc định), `channelIds` là channelId.
  */
 export interface ChannelReorderedPayload {
   serverId: string;
@@ -239,7 +176,6 @@ export interface ChannelReorderedPayload {
   channelIds: string[];
 }
 
-/** Payload client gửi lên chỉ là dữ liệu chưa tin cậy: gateway parse bằng schema này. */
 export const channelEventSchema = z.object({ channelId: z.uuid() });
 export type ChannelJoinPayload = z.infer<typeof channelEventSchema>;
 export type ChannelJoinResult = { ok: true } | { ok: false; code: ErrorCode };

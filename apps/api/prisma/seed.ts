@@ -1,8 +1,4 @@
-/**
- * Dev seed — chạy bằng `pnpm --filter api exec prisma db seed`.
- * Mọi tài khoản dùng chung mật khẩu "password123" (CHỈ dev local, không production).
- * Idempotent: id cố định + upsert → chạy lại bao nhiêu lần cũng cho cùng trạng thái.
- */
+/** Mọi tài khoản dùng mật khẩu "password123" (chỉ dev local). Chạy: `pnpm --filter api exec prisma db seed` */
 import { Permissions } from '@ping/shared';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { argon2id, hash } from 'argon2';
@@ -11,8 +7,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PrismaClient } from '../src/generated/prisma/client.js';
 
-// Prisma 7: client không tự đọc DATABASE_URL nữa — phải trao driver adapter.
-// Prisma CLI inject .env vào subprocess seed nên biến đã có sẵn ở đây.
+// Prisma 7: client không tự đọc DATABASE_URL — phải trao driver adapter.
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) {
   throw new Error('DATABASE_URL is not set — seed cần env này để kết nối Postgres.');
@@ -22,16 +17,13 @@ const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString }) })
 
 const PASSWORD = 'password123';
 
-// Định dạng UUIDv7 thật (timestamp đầu, variant bits, random sau).
 const id = (suffix: string): string => `01990000-0000-7000-8000-00000000${suffix}`;
 
 async function main(): Promise<void> {
   const passwordHash = await hash(PASSWORD, { type: argon2id });
 
-  // ── Users ──────────────────────────────────────────────────────────────
-  // emailVerified: true ở CẢ create lẫn update — DB dev có user từ trước migration
-  // TG.8 (mặc định false) cũng phải được xác minh, nếu không chính sách chưa xác minh
-  // (chặn tạo server) làm vỡ ~300 e2e cũ đăng nhập bằng user seed.
+  // emailVerified: true ở cả create lẫn update: user dev có từ trước (mặc định false) phải được xác minh,
+  // nếu không e2e đăng nhập bằng user seed vỡ.
   const [alice, bob, carol] = await Promise.all([
     prisma.user.upsert({
       where: { email: 'alice@ping.dev' },
@@ -71,7 +63,6 @@ async function main(): Promise<void> {
     }),
   ]);
 
-  // ── Server ─────────────────────────────────────────────────────────────
   const server = await prisma.server.upsert({
     where: { id: id('0100') },
     update: {},
@@ -80,12 +71,10 @@ async function main(): Promise<void> {
       name: 'Ping Playground',
       ownerId: alice.id,
       inviteCode: 'playground',
-      // T3.6: join tra mã ở bảng ServerInvite — seed cũng tạo bản ghi đang hoạt động.
       invites: { create: { id: id('0125'), code: 'playground', createdById: alice.id } },
     },
   });
 
-  // ── Roles ──────────────────────────────────────────────────────────────
   const everyone = await prisma.role.upsert({
     where: { id: id('0201') },
     update: {},
@@ -121,7 +110,6 @@ async function main(): Promise<void> {
     },
   });
 
-  // ── Members (mỗi user đúng 1 lần mỗi server nhờ @@unique) ──────────────
   await Promise.all([
     prisma.member.upsert({
       where: { serverId_userId: { serverId: server.id, userId: alice.id } },
@@ -156,7 +144,6 @@ async function main(): Promise<void> {
     }),
   ]);
 
-  // ── Channels ───────────────────────────────────────────────────────────
   const [general, random, dev] = await Promise.all([
     prisma.channel.upsert({
       where: { id: id('0401') },
@@ -175,7 +162,6 @@ async function main(): Promise<void> {
     }),
   ]);
 
-  // ── Messages ───────────────────────────────────────────────────────────
   const messages = [
     { id: id('0501'), channelId: general.id, authorId: alice.id, content: 'Welcome to Ping! 🏓' },
     {
@@ -216,8 +202,6 @@ async function main(): Promise<void> {
       id: id('050a'),
       channelId: dev.id,
       authorId: bob.id,
-      // Idempotency key: nếu client retry, upsert theo id + unique (channelId, authorId, nonce)
-      // chặn ghi trùng bản ghi này.
       content: 'Message này mang nonce để demo chống retry trùng.',
       nonce: 'demo-nonce-1',
     },
@@ -238,12 +222,7 @@ async function main(): Promise<void> {
   console.log('Đăng nhập dev: alice@ping.dev (hoặc bob@, carol@) / mật khẩu "%s".', PASSWORD);
 }
 
-/**
- * Gói sticker hệ thống (TG.22, ADR-0067): tài sản tự vẽ của dự án (nguồn giấy phép ở
- * ASSETS_LICENSES.md ở gốc repo). `serverId` null = gói hệ thống, mọi member dùng được.
- * Tệp được phục vụ từ `<ATTACHMENT_STORAGE_DIR>/<attachmentId>.ready` — seed copy file WebP
- * từ apps/web/public/stickers sang đó, nên api + worker không phải xử lý gì thêm.
- */
+/** Tệp sticker phải nằm ở `<ATTACHMENT_STORAGE_DIR>/<attachmentId>.ready`; seed copy từ apps/web/public/stickers. */
 const SYSTEM_PACK_ID = '019c0000-0000-7000-8000-000000000001';
 const SYSTEM_UPLOADER_ID = '019c0000-0000-7000-8000-000000000000';
 
@@ -265,7 +244,6 @@ async function seedSystemStickers(): Promise<number> {
     dirname(fileURLToPath(import.meta.url)),
     '../../../apps/web/public/stickers',
   );
-  // API default `../../.uploads` tính từ cwd (apps/api) — seed chạy cùng cwd nên khớp.
   const storageDir = resolve(process.env.ATTACHMENT_STORAGE_DIR ?? '../../.uploads');
   await mkdir(storageDir, { recursive: true });
 
@@ -282,8 +260,7 @@ async function seedSystemStickers(): Promise<number> {
     const stickerId = `019c0000-0000-7000-8000-0000000001${String(index).padStart(2, '0')}`;
     const filename = `${slug}.webp`;
     const bytes = await readFile(join(publicDir, filename));
-    // Cả hai variant giống worker: `.ready` (bản chính) và `.thumb` (khung tĩnh cho
-    // prefers-reduced-motion) — thiếu `.thumb` thì sticker hệ thống vỡ ảnh khi reduced-motion.
+    // Cần cả `.ready` và `.thumb` như worker: thiếu `.thumb` thì sticker hệ thống vỡ ảnh khi reduced-motion.
     await copyFile(join(publicDir, filename), join(storageDir, `${attachmentId}.ready`));
     await copyFile(join(publicDir, filename), join(storageDir, `${attachmentId}.thumb`));
     await prisma.attachment.upsert({
@@ -294,7 +271,7 @@ async function seedSystemStickers(): Promise<number> {
         uploaderId: SYSTEM_UPLOADER_ID,
         scope: 'sticker',
         channelId: null,
-        serverId: null, // gói hệ thống không thuộc server nào
+        serverId: null,
         messageId: null,
         boundAt: new Date(),
         nonce: `019c0000-0000-7000-8000-0000000003${String(index).padStart(2, '0')}`,

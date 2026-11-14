@@ -2,11 +2,7 @@ import * as Sentry from '@sentry/node';
 
 type Event = Sentry.ErrorEvent;
 
-/**
- * Chạy ngay trước khi Sentry gửi sự kiện (ADR-0031, quy tắc 11): bỏ mọi thứ có thể chứa nội dung
- * tin nhắn hay bí mật — body, cookie, header, query string — và chỉ giữ id của user. Giữ tag
- * `requestId` để từ lỗi trên Sentry tra được log backend.
- */
+// Bỏ body, cookie, header, query string (có thể chứa nội dung tin nhắn); chỉ giữ id user và tag requestId.
 export function scrubEvent(event: Event): Event | null {
   if (event.request) {
     const { method, url } = event.request;
@@ -22,17 +18,13 @@ export function scrubEvent(event: Event): Event | null {
   return event;
 }
 
-/**
- * DSN rỗng = tắt hẳn: không khởi tạo SDK nên không có hook, không mạng, không overhead.
- * Không bật tracing (tracesSampleRate 0); mọi sự kiện đi qua scrubEvent.
- */
+// DSN rỗng = tắt hẳn, không khởi tạo SDK.
 export function initSentry(dsn: string | undefined): boolean {
   if (!dsn) return false;
   Sentry.init({ dsn, tracesSampleRate: 0, beforeSend: scrubEvent });
   return true;
 }
 
-/** Gửi một lỗi 500 bất ngờ, gắn requestId (và userId nếu có). Không làm gì khi Sentry tắt. */
 export function captureServerError(
   error: unknown,
   { requestId, userId }: { requestId: string; userId?: string },

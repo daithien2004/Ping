@@ -1,9 +1,3 @@
-/**
- * Đo p95 TRUY VẤN tìm kiếm (T4.6, ADR-0045) trên tập 20.000 tin tiếng Việt trong DB dev
- * (server riêng, dọn sau). Đo ở lớp SQL — đúng câu lệnh service dựng (WHERE/GIN như lúc
- * chạy qua HTTP); overhead HTTP/guard không thuộc "p95 truy vấn". Chạy:
- *   pnpm --filter api exec tsx test/search/measure.ts
- */
 import { randomUUID } from 'node:crypto';
 import { hash } from 'argon2';
 import pg from 'pg';
@@ -98,7 +92,6 @@ async function main() {
     channels.push(row.rows[0].id);
   }
 
-  // Seed theo lô, nội dung xoay vòng corpus, thời điểm trải đều 90 ngày qua hai kênh.
   const BATCH = 2_000;
   const seeded = Date.now();
   for (let offset = 0; offset < MESSAGES; offset += BATCH) {

@@ -1,7 +1,4 @@
-// Kịch bản 1 (hướng dẫn 16.3): đọc lịch sử tin nhắn và danh sách thành viên qua REST.
-//   k6 run tools/loadtest/rest-history.js -e PORTS=4001,4002 -e RATE=200 -e DURATION=60s
-// Mỗi vòng: trang đầu của một channel (70% là channel nóng), rồi đi sâu 4 trang bằng cursor `before`;
-// 25% vòng có thêm một trang thành viên. Mục tiêu: p95 < 200 ms, lỗi < 0,1%.
+// k6 run tools/loadtest/rest-history.js -e PORTS=4001,4002 -e RATE=200 -e DURATION=60s  (mục tiêu p95 < 200 ms, lỗi < 0,1%)
 import http from 'k6/http';
 import { check } from 'k6';
 import { SharedArray } from 'k6/data';
@@ -12,7 +9,6 @@ const PORTS = (__ENV.PORTS || '4001').split(',');
 
 export const options = {
   scenarios: {
-    // Khởi động nóng trước khi đo (JIT, pool kết nối, cache quyền): không có bước này, vài giây đầu làm p95 xấu giả tạo.
     warmup: {
       executor: 'constant-arrival-rate',
       rate: 20,
@@ -26,7 +22,7 @@ export const options = {
       startTime: '12s',
       env: { PHASE: 'main' },
       executor: 'constant-arrival-rate',
-      rate: Number(__ENV.RATE || 200), // vòng mỗi giây (mỗi vòng 5–6 request)
+      rate: Number(__ENV.RATE || 200),
       timeUnit: '1s',
       duration: __ENV.DURATION || '60s',
       preAllocatedVUs: 200,
@@ -48,7 +44,6 @@ export default function () {
   const base = `http://127.0.0.1:${PORTS[i % PORTS.length]}/api/v1`;
   const params = (kind) => ({
     headers: { Authorization: `Bearer ${tokens[i].token}`, 'X-Forwarded-For': xff(i) },
-    // Vòng khởi động gắn nhãn riêng để không lọt vào ngưỡng và số liệu.
     tags: { kind: __ENV.PHASE === 'warmup' ? `warmup_${kind}` : kind },
   });
   const channel =

@@ -18,7 +18,6 @@ interface CategoryNameDialogProps {
   onClose: () => void;
 }
 
-/** TG.10: tạo/đổi tên category — cùng khuôn với ChannelNameDialog, chỉ một trường `name`. */
 export function CategoryNameDialog({
   serverId,
   open,

@@ -6,7 +6,7 @@ import { RealtimeService } from './realtime.service.js';
 
 function setup(redisUp: boolean) {
   const everywhere = vi.fn().mockRejectedValue(new Error('would wait for other instances'));
-  const local = vi.fn().mockResolvedValue([{}, {}]); // 2 socket trên instance này
+  const local = vi.fn().mockResolvedValue([{}, {}]);
   const server = { in: () => ({ fetchSockets: everywhere, local: { fetchSockets: local } }) };
   const service = new RealtimeService(
     {} as PrismaService,

@@ -1,10 +1,6 @@
 import { expect, type Page, test } from '@playwright/test';
 import { paceLogin, pacedLogin } from './login-pace';
 
-// Tìm ra bằng test tay (2026-11-06): rời server sang DM thì layout `servers/[serverId]` bị
-// <Activity> giữ ẩn và mã cũ đọc id bằng `useParams()` (trả undefined khi ẩn) → web gọi
-// GET /servers/undefined và /servers/undefined/channels (400). Bản sửa 2026-11-06 (ADR-0020);
-// nay id đọc từ pathname công khai (`lib/channel-url.ts`, ADR-0088) nên cũng phải không gọi bừa.
 const channelUrl = () => `/channels/${process.env.E2E_SERVER_ID!}/${process.env.E2E_CHANNEL_ID!}`;
 const composer = (page: Page) => page.locator('[data-testid="message-composer"]:visible');
 
@@ -27,7 +23,6 @@ test('rời server sang tin nhắn trực tiếp (và quay lại) không gọi A
   });
 
   await signIn(page);
-  // URL cũ vẫn vào đúng trang qua chuyển hướng 308 (ADR-0088).
   await page.goto(`/servers/${process.env.E2E_SERVER_ID}/channels/${process.env.E2E_CHANNEL_ID}`);
   await expect(page).toHaveURL(
     new RegExp(`/channels/${process.env.E2E_SERVER_ID}/${process.env.E2E_CHANNEL_ID}$`),
@@ -37,7 +32,6 @@ test('rời server sang tin nhắn trực tiếp (và quay lại) không gọi A
   await page.goto(channelUrl());
   await expect(composer(page)).toBeVisible();
 
-  // Điều hướng phía client (không reload): layout của server vẫn được giữ ẩn khi sang DM.
   await page.getByTestId('dm-rail').click();
   await expect(page).toHaveURL(/\/channels\/@me$/);
   await expect(page.getByText('Tin nhắn trực tiếp').first()).toBeVisible();
@@ -46,18 +40,12 @@ test('rời server sang tin nhắn trực tiếp (và quay lại) không gọi A
   await expect(page).toHaveURL(/\/channels\//);
   await page.getByTestId('dm-rail').click();
   await expect(page).toHaveURL(/\/channels\/@me$/);
-  // Cho các query lỗi (nếu có) kịp phát request trước khi kết luận.
   await page.waitForTimeout(1500);
 
   expect(bad, 'request tới /servers/undefined').toEqual([]);
 });
 
-// Race thấy trên CI (admin-invite: "Tham gia" xong URL vẫn ở server cũ): người dùng bấm sang server B
-// khi trang gốc `/servers/A` còn chờ danh sách kênh. Điều hướng sang B chưa commit nên URL vẫn là A;
-// nếu danh sách kênh của A về lúc đó, ChannelRedirect của A gọi router.replace(kênh của A) và lần
-// điều hướng sau này thắng → người dùng bị kéo ngược về A. Ở đây B chuyển chậm (3 giây), kênh của A về trước.
-// FIXME (docs/tech-debt.md): lỗi có thật và có sẵn từ trước ADR-0020 amendment; test đỏ trên cả
-// code cũ lẫn mới. Bỏ `.fixme` khi sửa ChannelRedirect không đè lên điều hướng đang chờ.
+// Race thấy trên CI: điều hướng sang B chưa commit khi danh sách kênh của A về, ChannelRedirect của A router.replace và thắng.
 test.fixme('chuyển sang server khác khi trang gốc server cũ vừa nhận kênh: không bị kéo ngược về', async ({
   browser,
 }) => {
@@ -81,7 +69,6 @@ test.fixme('chuyển sang server khác khi trang gốc server cũ vừa nhận k
     try {
       const page = await context.newPage();
       const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-      // Danh sách kênh của A về sau ~1,5 giây; tải trang B (RSC/document) về sau 3 giây.
       await page.route(`**/api/v1/servers/${serverA}/channels`, async (route) => {
         await delay(1_500);
         await route.continue();
@@ -93,7 +80,7 @@ test.fixme('chuyển sang server khác khi trang gốc server cũ vừa nhận k
       await page.goto(`/channels/${serverA}`);
       await page.getByRole('link', { name: serverB.name }).click();
 
-      // Chờ quá cả hai độ trễ: URL phải kết thúc ở B, không bị kéo về kênh của A.
+      // Chờ quá cả hai độ trễ: URL phải kết thúc ở B.
       await page.waitForTimeout(6_000);
       await expect(page).toHaveURL(new RegExp(`/channels/${serverB.id}`));
     } finally {

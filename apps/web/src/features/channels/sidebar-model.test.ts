@@ -95,7 +95,6 @@ describe('planChannelMove', () => {
       channel('b', { categoryId: 'c1', positionKey: 'aba' }),
       channel('c', { categoryId: 'c2', positionKey: 'm' }),
     ];
-    // Chèn 'c' GIỮA 'a' và 'b': hai mốc sát nhau không còn khoảng.
     const plan = planChannelMove(tight, 'c', 'c1', 1);
     expect(plan).toEqual({ kind: 'move', input: { categoryId: 'c1' } });
   });

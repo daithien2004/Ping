@@ -12,12 +12,6 @@ import { DeviceOptions } from './device-options';
 import { ServerChannelOverrides } from './server-channel-overrides';
 import { ServerLevelRow } from './server-level-row';
 
-/**
- * Thông báo (TG.13) — gom về đây những thứ trước đây rải rác (TG.12): cài đặt thiết bị
- * (bỏ qua @everyone, âm thanh — localStorage), quyền Notification của trình duyệt, mức theo
- * server và các ghi đè theo kênh (server API, đồng bộ thiết bị). Server/channel đã rời khỏi
- * thì dòng tương ứng không còn chỗ resolve tên — bỏ lặng lẽ, prefs thừa vô hại.
- */
 export function NotificationsSection() {
   const t = useTranslations('settings.notifications');
   const tc = useTranslations('common');

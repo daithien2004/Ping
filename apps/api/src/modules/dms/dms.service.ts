@@ -15,18 +15,13 @@ import { TooManyRequestsError } from '../../common/too-many-requests.error.js';
 import { isUniqueConstraintError } from '../../common/utils/prisma-errors.js';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
 
-/** Trần spam (ADR-0070 mục 5): tối đa 10 DM MỚI/giờ/user — đếm DB trên DmParticipant.createdAt
- * (index `@@index([userId])`) nên không mất trạng thái khi Redis restart. Local cho module như
- * LIMIT của MessageRateLimiter: bản chất giới hạn tần suất, không phải trần thực thể của Limits. */
 const DMS_PER_HOUR = 10;
 const HOUR_MS = 3_600_000;
-/** Trần đếm unread (ADR-0070 mục 7): cùng ngữ nghĩa COUNT_CAP của ReadStateService. */
 const COUNT_CAP = 100;
-/** Mốc so sánh UUIDv7: tin không có cursor = toàn bộ là chưa đọc (pattern unreadForServer). */
+// Mốc so sánh UUIDv7: không có cursor = toàn bộ chưa đọc.
 const zero = '00000000-0000-0000-0000-000000000000';
 
-/** Vi phạm điều kiện cho phép DM — CÙNG mã `DM_BLOCKED` cho "bị chặn" lẫn "tắt DM" để không
- * dò được nguyên nhân (ADR-0070 mục 3, quy tắc 14: client rẽ nhánh theo code). */
+// Cùng mã DM_BLOCKED cho 'bị chặn' lẫn 'tắt DM' để không dò được nguyên nhân.
 function dmBlocked(): ForbiddenException {
   return new ForbiddenException({
     code: ErrorCodes.DM_BLOCKED,
@@ -34,30 +29,16 @@ function dmBlocked(): ForbiddenException {
   });
 }
 
-/**
- * Chuẩn hóa cặp participant thành `dmKey` = `"min|max"` hai UUID đã xếp thứ tự (ADR-0070
- * mục 1-2): UUIDv7 so sánh theo byte = theo thời gian nên thứ tự ổn định bất kể ai là người
- * tạo trước — chìa khóa idempotent của POST /dms và của unique `Channel.dmKey`.
- */
+// dmKey = 'min|max' hai UUID đã sắp: thứ tự ổn định, là khóa idempotent của POST /dms.
 export function dmKeyFor(meId: string, targetId: string): string {
   return meId < targetId ? `${meId}|${targetId}` : `${targetId}|${meId}`;
 }
 
-/**
- * DM 1:1 + chặn người dùng (TG.9, ADR-0070). DM không có Member → membership và con trỏ đọc
- * nằm trên `DmParticipant`; điều kiện cho phép kiểm tại thời điểm TẠO cặp (get-or-create),
- * còn tin MỚI trong DM có sẵn bị chặn ở MessagesService khi có UserBlock.
- */
 @Injectable()
 export class DmsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  /**
-   * POST /dms — get-or-create idempotent (ADR-0070 mục 2): cặp đã có → 200 với channel cũ
-   * (kể cả khi hiện bị chặn: đọc tin cũ là chủ đích); chưa có → một transaction kiểm điều
-   * kiện (mục 3) rồi tạo Channel + 2 DmParticipant. Hai request song song cùng cặp: hàng sau
-   * chạm unique `dmKey` → bắt P2002 và trả existing — LUÔN 200, không 409.
-   */
+  // Cặp đã có trả channel cũ kể cả khi hiện bị chặn (đọc tin cũ là chủ đích).
   async create(meId: string, targetId: string): Promise<DmSummary> {
     if (meId === targetId) {
       throw new BadRequestException({
@@ -65,7 +46,6 @@ export class DmsService {
         message: 'Cannot DM yourself',
       });
     }
-    // Chuẩn hóa thứ tự cặp: UUIDv7 so sánh theo byte = theo thời gian (pattern con trỏ read-state).
     const dmKey = dmKeyFor(meId, targetId);
 
     const existing = await this.summaries(meId, dmKey);
@@ -81,7 +61,6 @@ export class DmsService {
         if (!target) {
           throw new NotFoundException('User not found');
         }
-        // (b) chung server — MỘT truy vấn EXISTS giao Member (index Member.userId sẵn có, không N+1).
         const shared = await tx.$queryRaw<{ ok: boolean }[]>(
           Prisma.sql`SELECT EXISTS (
             SELECT 1 FROM "Member" m1
@@ -92,8 +71,6 @@ export class DmsService {
         if (!shared[0]?.ok) {
           throw dmBlocked();
         }
-        // (c) target cho phép DM từ thành viên server chung; (d) chưa có UserBlock theo bất kỳ
-        // chiều nào. Vi phạm (c) lẫn (d) cùng trả DM_BLOCKED (chống dò nguyên nhân).
         if (target.dmAllow !== 'server_members') {
           throw dmBlocked();
         }
@@ -109,8 +86,6 @@ export class DmsService {
         if (blocked) {
           throw dmBlocked();
         }
-        // (e) trần 10 DM mới/giờ: 10 hàng DmParticipant mới nhất của tôi còn trong cửa sổ 1 giờ
-        // thì chặn, Retry-After tính đến khi hàng cũ nhất ra khỏi cửa sổ.
         const recent = await tx.dmParticipant.findMany({
           where: { userId: meId },
           orderBy: { createdAt: 'desc' },
@@ -124,8 +99,7 @@ export class DmsService {
             'Too many new DMs in the past hour',
           );
         }
-        // Channel DM: không thuộc server nào (serverId NULL — migration expand), name rỗng
-        // (sidebar hiển thị hồ sơ đối tác), dmKey chốt idempotency.
+        // serverId NULL; name rỗng (sidebar hiển thị hồ sơ đối tác).
         const channel = await tx.channel.create({
           data: { type: 'DM', name: '', dmKey },
           select: { id: true },
@@ -150,7 +124,7 @@ export class DmsService {
         };
       });
     } catch (error) {
-      // Hai request song song cùng cặp: unique `dmKey` chặn ghi trùng → trả channel đã tồn tại.
+      // Race cùng cặp: unique dmKey chặn ghi trùng → trả channel đã tồn tại.
       if (isUniqueConstraintError(error)) {
         const summary = await this.summaries(meId, dmKey);
         if (summary.length > 0) {
@@ -161,22 +135,11 @@ export class DmsService {
     }
   }
 
-  /**
-   * GET /dms — danh sách DM của người gọi (ADR-0070 mục 7): đối tác + unreadCount theo công
-   * thức `unreadForServer` (không tính tin của chính mình, tin đã xóa mềm, trần 100) nhưng
-   * qua `DmParticipant.lastReadMessageId`. Thứ tự theo tin mới nhất, DM chưa có tin xếp sau.
-   * Một truy vấn duy nhất cho cả danh sách (không N+1).
-   */
   async list(meId: string): Promise<DmListResponse> {
     return { dms: await this.summaries(meId) };
   }
 
-  /**
-   * POST /users/:userId/block — idempotent; chặn hai mức (tạo DM mới + tin mới trong DM có
-   * sẵn, mức sau kiểm ở MessagesService). KHÔNG ghi AuditLog: AuditLog.serverId là bắt buộc
-   * (schema.prisma) mà chặn user không có bối cảnh server nào — ADR-0070 chấp nhận DM/block
-   * không có audit (mục Context).
-   */
+  // KHÔNG ghi AuditLog: AuditLog.serverId bắt buộc mà block không có bối cảnh server.
   async block(meId: string, targetId: string): Promise<void> {
     if (meId === targetId) {
       throw new BadRequestException({
@@ -191,7 +154,6 @@ export class DmsService {
     if (!target) {
       throw new NotFoundException('User not found');
     }
-    // Upsert: chặn lại người đã chặn không đổi gì.
     await this.prisma.userBlock.upsert({
       where: { blockerId_blockedId: { blockerId: meId, blockedId: targetId } },
       create: { blockerId: meId, blockedId: targetId },
@@ -199,19 +161,12 @@ export class DmsService {
     });
   }
 
-  /** DELETE /users/:userId/block — idempotent: gỡ người chưa chặn vẫn 204. */
   async unblock(meId: string, targetId: string): Promise<void> {
     await this.prisma.userBlock.deleteMany({
       where: { blockerId: meId, blockedId: targetId },
     });
   }
 
-  /**
-   * GET /users/me/blocks (TG.13): liệt kê người TÔI đã chặn (UserBlock của TG.9), mới nhất
-   * trước. Gộp vào service này để mọi truy vấn UserBlock ở một chỗ; bỏ chặn tái dùng
-   * DELETE /users/:userId/block — không thêm endpoint. Dữ liệu user-scoped: khóa
-   * `blockerId` theo JWT; hồ sơ bị chặn trả đúng shape BlockedUserDto, không lộ gì thêm.
-   */
   async listBlocks(meId: string): Promise<BlockedUsersResponse> {
     const rows = await this.prisma.userBlock.findMany({
       where: { blockerId: meId },
@@ -232,11 +187,6 @@ export class DmsService {
     };
   }
 
-  /**
-   * Danh sách DmSummary của `meId` (lọc thêm `dmKey` cho đường get-or-create): join đối tác
-   * qua hàng DmParticipant còn lại của cùng channel, đếm unread có trần 100, lấy mốc tin mới
-   * nhất. `lastMessageAt` NULL xếp sau (ORDER BY ... DESC NULLS LAST).
-   */
   private async summaries(meId: string, dmKey?: string): Promise<DmSummary[]> {
     const rows = await this.prisma.$queryRaw<
       Array<{

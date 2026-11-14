@@ -34,7 +34,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { ChannelsService } from './channels.service.js';
 import { ReadStateService } from './read-state.service.js';
 
-/** @Controller() gốc vì route trải trên hai prefix: /servers/:id/channels và /channels/:id. */
+// @Controller() gốc: route trải trên /servers/:id/channels và /channels/:id.
 @Controller()
 @UseGuards(JwtAuthGuard, AbilityGuard)
 export class ChannelsController {
@@ -61,10 +61,6 @@ export class ChannelsController {
     return this.channelsService.list(serverId);
   }
 
-  /**
-   * Đánh dấu đã đọc đến `messageId` (T4.2): chỉ thành viên xem được channel; cursor chỉ
-   * tiến, không lùi. 204 — các tab khác của cùng user nhận `read.updated`.
-   */
   @Put('channels/:channelId/read')
   @Throttle({ default: RATE_LIMIT_BUCKETS.history })
   @CheckAbility(['view', 'Message'])
@@ -77,7 +73,6 @@ export class ChannelsController {
     return this.readState.markRead(channelId, user.userId, body.messageId);
   }
 
-  /** Số tin/mention chưa đọc của mọi channel trong server (T4.2); đếm có trần 100. */
   @Get('servers/:serverId/unread')
   @Throttle({ default: RATE_LIMIT_BUCKETS.readLight })
   @CheckAbility(['view', 'Server'])
@@ -103,11 +98,6 @@ export class ChannelsController {
     return this.channelsService.remove(channelId, user.userId);
   }
 
-  /**
-   * TG.10: di chuyển channel vào category (`categoryId` = id) hoặc ra vùng mặc định (null).
-   * `positionKey` do UI tính bằng lexorank; bỏ trống = chèn cuối nhóm đích. 200 kèm DTO mới;
-   * room server nhận `channel.reordered` với thứ tự mới của nhóm đích.
-   */
   @Put('channels/:channelId/move')
   @Throttle({ default: RATE_LIMIT_BUCKETS.writeStructure })
   @CheckAbility(['manage', 'Channel'])
@@ -119,7 +109,6 @@ export class ChannelsController {
     return this.channelsService.move(channelId, user.userId, body);
   }
 
-  /** TG.10: đặt/xóa chủ đề hiển thị ở header (chuỗi rỗng = xóa); phát `channel.updated`. */
   @Patch('channels/:channelId/topic')
   @Throttle({ default: RATE_LIMIT_BUCKETS.writeStructure })
   @CheckAbility(['manage', 'Channel'])

@@ -12,10 +12,6 @@ export type ChannelScope =
       onSendError?: (error: unknown) => void;
     };
 
-/**
- * Hai hàm dưới đây dùng `switch` đầy đủ có chủ ý: thêm một loại kênh vào `ChannelScope` sẽ làm chúng
- * không biên dịch được cho tới khi quyết định loại đó thuộc nhánh nào.
- */
 export function serverIdOf(scope: ChannelScope): string | null {
   switch (scope.kind) {
     case 'server':
@@ -25,7 +21,6 @@ export function serverIdOf(scope: ChannelScope): string | null {
   }
 }
 
-/** Dùng cho chữ hiển thị khác nhau giữa DM và kênh server (nhãn, lời mở đầu). */
 export function isDmScope(scope: ChannelScope): boolean {
   switch (scope.kind) {
     case 'dm':

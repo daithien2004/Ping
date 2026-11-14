@@ -17,16 +17,12 @@ interface TestUser {
 
 type HttpMethod = 'get' | 'post' | 'patch' | 'put' | 'delete';
 
-/**
- * Phân quyền role: IDOR trên /roles/:roleId, leo thang đặc quyền qua MANAGE_ROLES,
- * và gán role không được làm member mất quyền của @everyone.
- */
 describe('Role authorization (e2e)', () => {
   let app: INestApplication;
   const emails: string[] = [];
 
   let owner: TestUser;
-  let manager: TestUser; // chỉ có VIEW_CHANNEL | SEND_MESSAGES | MANAGE_ROLES
+  let manager: TestUser;
   let member: TestUser;
   let outsider: TestUser;
   let serverId: string;
@@ -144,7 +140,6 @@ describe('Role authorization (e2e)', () => {
       .send({ permissions: Permissions.ADMINISTRATOR.toString() })
       .expect(403);
 
-    // Tập con quyền của chính mình thì được.
     await api('post', `/api/v1/servers/${serverId}/roles`, manager.token)
       .send({ name: 'reader', permissions: Permissions.VIEW_CHANNEL.toString() })
       .expect(201);
@@ -156,7 +151,6 @@ describe('Role authorization (e2e)', () => {
       .expect(403);
     await api('delete', `/api/v1/roles/${adminRoleId}`, manager.token).expect(403);
 
-    // Tự gán role admin cho mình.
     await api(
       'put',
       `/api/v1/servers/${serverId}/members/${await memberIdOf(manager)}/roles`,
@@ -165,7 +159,6 @@ describe('Role authorization (e2e)', () => {
       .send({ roleIds: [managerRoleId, adminRoleId] })
       .expect(403);
 
-    // Đổi role của owner.
     await api(
       'put',
       `/api/v1/servers/${serverId}/members/${await memberIdOf(owner)}/roles`,
@@ -191,7 +184,6 @@ describe('Role authorization (e2e)', () => {
       assigned.body.roles.map((entry: { role: { name: string } }) => entry.role.name).sort(),
     ).toEqual(['@everyone', 'tag']);
 
-    // @everyone mang VIEW_CHANNEL: member vẫn xem được channel.
     await api('get', `/api/v1/servers/${serverId}/channels`, member.token).expect(200);
   });
 });

@@ -13,7 +13,7 @@ describe('DM contracts (TG.9, ADR-0070)', () => {
   it('dmAllow chỉ nhận hai mức v0.2.0', () => {
     expect(dmAllowSchema.safeParse('server_members').success).toBe(true);
     expect(dmAllowSchema.safeParse('none').success).toBe(true);
-    expect(dmAllowSchema.safeParse('all').success).toBe(false); // chờ TG.15
+    expect(dmAllowSchema.safeParse('all').success).toBe(false);
     expect(dmAllowSchema.safeParse('anyone').success).toBe(false);
   });
 

@@ -36,7 +36,6 @@ export interface ReactVariables {
   active: boolean;
 }
 
-/** `serverId` là `null` trong DM: không có quyền theo server để làm tươi lại khi gặp 403. */
 export function createMessageActions(
   queryClient: QueryClient,
   serverId: string | null,
@@ -94,8 +93,6 @@ export function createMessageActions(
     },
 
     async react({ messageId, emoji, active }: ReactVariables) {
-      // Không dùng `write`: nó huỷ request đang chạy rồi refetch cả trang, đúng đường khiến
-      // pill biến mất rồi hiện lại. Lớp ý định giữ pill qua mọi snapshot cho đến khi có phản hồi.
       const token = startReactionIntent(messageId, emoji, active);
       queryClient.setQueryData<MessagesCache>(key, (old) => applyReactionIntents(old));
 
@@ -119,8 +116,6 @@ export function createMessageActions(
       } catch (error) {
         const settled = settleReactionIntent(messageId, emoji, token);
         if (settled) {
-          // Event đã đụng đúng emoji này (hoặc lỗi mạng: server có thể đã ghi) → không nghịch đảo
-          // dựa trên số đếm không còn chắc; tải lại để đối soát.
           if (settled.sawEvent || isTransientError(error)) refetch();
           else await write((old) => toggleReaction(old, messageId, emoji, !active));
         }

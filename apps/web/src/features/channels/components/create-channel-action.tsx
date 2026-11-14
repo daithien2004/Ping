@@ -21,7 +21,6 @@ function CreateChannelButton({ serverId }: { serverId: string }) {
   const t = useTranslations('channels');
   return (
     <>
-      {/* Discord: hàng "Tạo channel" phẳng như một mục danh sách, không phải nút có viền. */}
       <button
         type="button"
         disabled={!ready}

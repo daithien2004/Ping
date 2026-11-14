@@ -20,10 +20,6 @@ import type { VectorStore } from './vector-store.port.js';
 
 export { EMBEDDER, LLM_CLIENT, VECTOR_STORE } from './ai.tokens.js';
 
-/**
- * Điểm nối duy nhất cho AI (ADR-0046). Port được export để module khác inject;
- * adapter thật chỉ tải model/gọi mạng khi có lời gọi đầu tiên.
- */
 @Module({
   imports: [AuthModule],
   controllers: [AskController],

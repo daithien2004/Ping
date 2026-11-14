@@ -15,12 +15,6 @@ import { captureServerError } from '../../infra/sentry/sentry.js';
 import { isDatabaseUnavailable } from '../db-unavailable.js';
 import { TooManyRequestsError } from '../too-many-requests.error.js';
 
-/**
- * Single filter that turns every thrown exception into the uniform error
- * shape `{ code, message, details?, requestId }`. Stacks and internal
- * messages never reach the client in production.
- */
-/** Lỗi theo quy ước `http-errors`: có `status` 4xx và `expose: true` (an toàn để báo cho client). */
 function isExposedClientError(error: unknown): error is Error & { status: number } {
   const { status, expose } = (error ?? {}) as { status?: unknown; expose?: unknown };
   return (
@@ -69,7 +63,6 @@ export class AllExceptionsFilter implements ExceptionFilter {
         } else if (Array.isArray(record.message)) {
           details = record.message;
         }
-        // Chỉ nhận code thuộc danh mục (quy tắc 14); code tự chế bị thay bằng code theo status.
         if (isErrorCode(record.code)) {
           code = record.code;
         }
@@ -78,25 +71,18 @@ export class AllExceptionsFilter implements ExceptionFilter {
         }
       }
 
-      // A controlled HttpException never carries a stack: the response was
-      // built on purpose (e.g. terminus throwing 503 during a readiness
-      // probe). Stacks belong only to genuinely unexpected errors below.
       if (status >= 500 && isProduction) {
         message = 'Internal server error';
       }
     } else if (exception instanceof ForbiddenError) {
-      // CASL throwUnlessCan — lỗi "có chủ đích",403 format thống nhất, không stack.
       status = HttpStatus.FORBIDDEN;
       code = ErrorCodes.FORBIDDEN;
       message = exception.message;
     } else if (isExposedClientError(exception)) {
-      // Lỗi 4xx do middleware Express ném ra trước khi tới controller (body-parser: body quá lớn,
-      // JSON hỏng). Không phải HttpException của Nest nên trước đây rơi xuống nhánh 500.
       status = exception.status;
       message = status === 413 ? 'Payload too large' : 'Bad request';
     } else if (isDatabaseUnavailable(exception)) {
-      // Hạ tầng hỏng, không phải bug của request: 503 + requestId, không stack, không lộ chi tiết
-      // driver (host, port…). Chỉ log tên lỗi để biết nguồn.
+      // Hạ tầng hỏng: 503 + requestId, không stack, không lộ chi tiết driver (host, port).
       status = HttpStatus.SERVICE_UNAVAILABLE;
       code = ErrorCodes.SERVICE_UNAVAILABLE;
       message = 'Service unavailable';
@@ -112,16 +98,12 @@ export class AllExceptionsFilter implements ExceptionFilter {
     code ??= errorCodeForStatus(status);
 
     if (stack !== undefined) {
-      // Not an HttpException: something crashed unexpectedly — keep the stack.
       this.logger.error(
         { requestId, status, code, path: request.url.split('?')[0], stack },
         'unhandled exception',
       );
-      // Chỉ lỗi bất ngờ (bug) lên Sentry; 503 do hạ tầng đã có metrics và cảnh báo.
       captureServerError(exception, { requestId, userId: request.user?.userId });
     } else if (status >= 500) {
-      // Deliberate 5xx (e.g. readiness probe while a dependency is down):
-      // error-level because it matters, but no stack — nothing was unhandled.
       this.logger.error(
         { requestId, status, code, path: request.url.split('?')[0], ...logContext },
         'server error',

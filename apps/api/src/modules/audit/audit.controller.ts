@@ -14,11 +14,6 @@ import { AuditService } from './audit.service.js';
 export class AuditController {
   constructor(private readonly auditService: AuditService) {}
 
-  /**
-   * Nhật ký hành động của server (TF.10): lọc theo hành động/người thực hiện, phân trang
-   * cursor. Cần quyền `view AuditLog` (bit VIEW_AUDIT_LOG) — guard chặn trước khi vào
-   * service, nên không phải member hoặc không có quyền đều không đọc được.
-   */
   @Get()
   @CheckAbility(['view', 'AuditLog'])
   list(

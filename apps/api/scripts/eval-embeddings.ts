@@ -1,12 +1,4 @@
-/**
- * Đánh giá embedding cho T5.1 (ADR-0046).
- *
- * Chạy một model mỗi lần để số đo RAM không bị ảnh hưởng bởi model trước:
- *   pnpm --filter api exec tsx scripts/eval-embeddings.ts --model Xenova/multilingual-e5-small
- *
- * Kết quả ghi vào docs/v0.2.0/evidence/T5.1/embedding-eval.<slug>.json.
- * Bộ dữ liệu là tin nhắn demo tiếng Việt, không phải dữ liệu người dùng thật.
- */
+/** pnpm --filter api exec tsx scripts/eval-embeddings.ts --model Xenova/multilingual-e5-small (một model mỗi lần để đo RAM sạch) */
 import { mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -48,7 +40,6 @@ function arg(name: string, fallback: string): string {
 function cosine(a: number[], b: number[]): number {
   let dot = 0;
   for (let index = 0; index < a.length; index += 1) dot += (a[index] ?? 0) * (b[index] ?? 0);
-  // Vector đã chuẩn hoá nên không cần chia norm.
   return dot;
 }
 
@@ -79,7 +70,6 @@ function tokens(text: string): string[] {
     .filter((token) => token.length > 1 && !STOP_WORDS.has(token));
 }
 
-/** Baseline túi từ (không phải Postgres FTS) để so sánh tương đối. */
 function lexicalRank(query: string, messages: Message[]): string[] {
   const queryTokens = new Set(tokens(query));
   return messages
@@ -149,7 +139,6 @@ const passages = await embedder.embed(
 const coldStartMs = performance.now() - started;
 const rssAfter = process.memoryUsage().rss;
 
-// Đo lại batch khi model đã nằm trong RAM để tách thời gian tải model khỏi thời gian suy luận.
 const batchStarted = performance.now();
 await embedder.embed(
   dataset.messages.map((message) => message.content),

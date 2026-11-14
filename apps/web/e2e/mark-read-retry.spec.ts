@@ -1,8 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { paceLogin } from './login-pace';
 
-// Phần A.2 của docs/perf/viec-con-lai-va-cuon-tin-nhan.md: PUT /read lỗi mạng một lần phải được
-// gửi lại (và chỉ gửi lại một lần), thay vì bỏ mất mốc đã đọc tới khi có tin mới/remount.
 const channelUrl = () => `/channels/${process.env.E2E_SERVER_ID!}/${process.env.E2E_CHANNEL_ID!}`;
 const composer = (page: Page) => page.locator('[data-testid="message-composer"]:visible');
 
@@ -41,7 +39,6 @@ test('PUT /read lỗi một lần thì tự gửi lại đúng một lần', asy
   await page.goto(channelUrl());
   await expect(composer(page)).toBeVisible({ timeout: 45_000 });
 
-  // Lần đầu bị huỷ, lần hai đi qua: tổng đúng 2 request, 1 thành công.
   await expect.poll(() => puts, { timeout: 15_000 }).toBe(2);
   await page.waitForTimeout(1_500);
   expect(puts, 'không thử lại quá một lần').toBe(2);

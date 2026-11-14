@@ -3,7 +3,6 @@
 import { Empty, type EmptyProps as AntdEmptyProps } from 'antd';
 
 export type PingEmptyProps = Omit<AntdEmptyProps, 'image'> & {
-  /** Hình khay nhỏ cho khung hẹp (popup, danh sách); bỏ trống thì dùng hình hộp lớn. */
   compact?: boolean;
 };
 

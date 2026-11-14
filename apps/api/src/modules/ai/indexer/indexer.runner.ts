@@ -10,20 +10,12 @@ export interface IndexerRunnerOptions {
   consumer: string;
   stream?: string;
   group?: string;
-  /** Entry pending lâu hơn ngưỡng này sẽ được nhận lại (consumer chết giữa chừng). */
   claimIdleMs?: number;
-  /** Tổng entry chưa xử lý xong (lag + pending). */
   onLag?: (lag: number) => void;
   onError?: (error: unknown, context: string) => void;
 }
 
-/**
- * Vòng lặp consumer Redis Stream, tách khỏi Nest để drill/backfill dùng lại.
- *
- * Cam kết: chỉ `XACK` sau khi xử lý thành công. Consumer chết sau khi upsert
- * Qdrant nhưng trước khi ack sẽ khiến entry nằm trong pending; consumer mới
- * `XAUTOCLAIM` rồi xử lý lại — upsert theo id tin nhắn nên không tạo point trùng.
- */
+// Chỉ XACK sau khi xử lý xong; upsert theo id tin nên xử lý lại sau XAUTOCLAIM không tạo point trùng.
 export class IndexerRunner {
   private readonly stream: string;
   private readonly group: string;
@@ -71,7 +63,6 @@ export class IndexerRunner {
     try {
       await this.redis.xgroup('CREATE', this.stream, this.group, '0', 'MKSTREAM');
     } catch (error) {
-      // Nhóm đã tồn tại là trạng thái bình thường khi nhiều instance cùng chạy.
       if (!String((error as Error).message).includes('BUSYGROUP')) throw error;
     }
     this.groupReady = true;
@@ -125,7 +116,7 @@ export class IndexerRunner {
         continue;
       }
 
-      // Không ack ở đây: lỗi DB/embedding/Qdrant phải để entry pending và thử lại.
+      // Không ack: lỗi DB/embedding/Qdrant để entry pending và thử lại.
       await this.core.handleEvent(type, messageId);
       await this.ack(streamId);
     }

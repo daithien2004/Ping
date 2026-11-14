@@ -77,7 +77,6 @@ export function MessageComposer({
       handledReplyFocus.current = undefined;
       return;
     }
-    // Ô soạn có thể còn khóa trong lúc quyền đang refetch; chờ tới khi mở rồi mới focus.
     if (!interactive || handledReplyFocus.current === replyToId) return;
     handledReplyFocus.current = replyToId;
     textareaRef?.current?.focus();
@@ -89,7 +88,6 @@ export function MessageComposer({
     textareaRef?.current?.focus();
   }, [focusRequest, interactive, textareaRef]);
 
-  // Hâm nóng chunk + dữ liệu picker lúc app rảnh — bấm nút lần đầu không phải chờ tải/chờ mạng.
   useEffect(() => {
     const warm = () => {
       void preloadEmojiPicker();
@@ -169,7 +167,6 @@ export function MessageComposer({
               ref={textareaRef}
               variant="borderless"
               className="min-h-8 flex-1 min-w-0"
-              // Chữ cân giữa hàng 32 px: 22 px dòng + 5 px đệm trên/dưới.
               style={{ paddingBlock: 5 }}
               disabled={!interactive}
               value={draft}

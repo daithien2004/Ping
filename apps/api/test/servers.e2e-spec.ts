@@ -18,13 +18,6 @@ interface TestUser {
 
 type HttpMethod = 'get' | 'post' | 'patch' | 'put' | 'delete';
 
-/**
- * Bộ test quyền của Bước 8 (guide 10.5): đủ quyền / thiếu quyền / không phải
- * member, cùng vòng đời server — channel — role — member.
- *
- * Dùng ĐÚNG 4 user (trần register là 5/phút/IP) và KHÔNG login lại: access token
- * lấy luôn từ response register để không tiêu vào hạn mức login 10/phút.
- */
 describe('Servers, channels & roles (e2e)', () => {
   let app: INestApplication;
   const emails: string[] = [];
@@ -51,7 +44,6 @@ describe('Servers, channels & roles (e2e)', () => {
     return { id: res.body.user.id, email, token: res.body.accessToken };
   }
 
-  /** supertest chain: gọi `api(...)` rồi `.send(...).expect(...)`. */
   function api(method: HttpMethod, url: string, token?: string) {
     const agent = request(app.getHttpServer());
     const call = {
@@ -76,13 +68,12 @@ describe('Servers, channels & roles (e2e)', () => {
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
     app = moduleRef.createNestApplication();
-    // main.ts không chạy trong e2e: tự lắp cookie-parser + global prefix như thật.
+    // main.ts không chạy trong e2e: tự lắp cookie-parser + global prefix.
     app.use(cookieParser());
     app.setGlobalPrefix('api/v1');
     await app.init();
 
-    // Redis trong e2e là Redis thật, sống qua các run — xóa để cửa sổ rate limit
-    // (và cache ability 30s) không dính dữ liệu của run trước.
+    // Redis thật sống qua các run: xóa để rate limit và cache ability 30s không dính run trước.
     const redis = moduleRef.get(RedisProvider);
     await redis.flushdb();
 
@@ -99,7 +90,6 @@ describe('Servers, channels & roles (e2e)', () => {
       select: { id: true },
     });
     const userIds = users.map((user) => user.id);
-    // Message.author là Restrict: xóa tin trước, rồi tới server (cascade phần còn lại).
     await prisma.message.deleteMany({ where: { authorId: { in: userIds } } });
     await prisma.server.deleteMany({ where: { ownerId: { in: userIds } } });
     await prisma.user.deleteMany({ where: { id: { in: userIds } } });
@@ -151,7 +141,6 @@ describe('Servers, channels & roles (e2e)', () => {
   });
 
   it('POST /servers/:id/invite/regenerate — mã cũ vô hiệu (INVITE_REVOKED), mã mới join được, hết hạn (INVITE_EXPIRED), audit ghi hành động (T3.6)', async () => {
-    // Thành viên thường và người ngoài đều không có `update Server`.
     await api('post', `/api/v1/servers/${serverId}/invite/regenerate`, plain.token)
       .send({})
       .expect(403);
@@ -159,7 +148,6 @@ describe('Servers, channels & roles (e2e)', () => {
       .send({})
       .expect(403);
 
-    // Owner regenerate: mã mới không hạn dùng; mã cũ bị thu hồi.
     const regen = await api('post', `/api/v1/servers/${serverId}/invite/regenerate`, owner.token)
       .send({})
       .expect(201);
@@ -172,13 +160,11 @@ describe('Servers, channels & roles (e2e)', () => {
       .expect(410)
       .expect((res) => expect(res.body.code).toBe('INVITE_REVOKED'));
 
-    // Mã mới hoạt động: outsider vào được rồi rời ra để không ảnh hưởng test sau.
     await api('post', '/api/v1/servers/join', outsider.token)
       .send({ inviteCode: regen.body.invite.code })
       .expect(201);
     await api('post', `/api/v1/servers/${serverId}/leave`, outsider.token).expect(204);
 
-    // Hạn dùng quá khứ (gán trực tiếp trong DB) → INVITE_EXPIRED.
     const prisma = app.get(PrismaService);
     await prisma.serverInvite.updateMany({
       where: { code: regen.body.invite.code },
@@ -189,11 +175,9 @@ describe('Servers, channels & roles (e2e)', () => {
       .expect(410)
       .expect((res) => expect(res.body.code).toBe('INVITE_EXPIRED'));
 
-    // Detail trả kèm hạn dùng (đã quá hạn) để UI hiển thị.
     const detail = await api('get', `/api/v1/servers/${serverId}`, owner.token).expect(200);
     expect(typeof detail.body.inviteExpiresAt).toBe('string');
 
-    // Audit đã ghi regenerate (trước các hành động khác nên nằm cuối danh sách giảm dần).
     const audit = await api('get', `/api/v1/servers/${serverId}/audit-log`, owner.token).expect(
       200,
     );
@@ -204,7 +188,6 @@ describe('Servers, channels & roles (e2e)', () => {
   });
 
   it('PATCH /servers/:id - đổi tên cần MANAGE_SERVER, tên hợp lệ, và ghi audit SERVER_UPDATE', async () => {
-    // Thành viên thường và người ngoài đều không có `update Server`.
     await api('patch', `/api/v1/servers/${serverId}`, plain.token)
       .send({ name: 'hack' })
       .expect(403);
@@ -212,7 +195,6 @@ describe('Servers, channels & roles (e2e)', () => {
       .send({ name: 'hack' })
       .expect(403);
 
-    // Cùng schema zod với lúc tạo server: tên rỗng (sau trim) bị chặn.
     await api('patch', `/api/v1/servers/${serverId}`, owner.token)
       .send({ name: '   ' })
       .expect(400);
@@ -225,7 +207,6 @@ describe('Servers, channels & roles (e2e)', () => {
     const detail = await api('get', `/api/v1/servers/${serverId}`, plain.token).expect(200);
     expect(detail.body.name).toBe('Ping Đổi Tên');
 
-    // Audit ghi trong cùng transaction, kèm tên trước/sau để đối chiếu.
     const audit = await api('get', `/api/v1/servers/${serverId}/audit-log`, owner.token).expect(
       200,
     );
@@ -257,7 +238,7 @@ describe('Servers, channels & roles (e2e)', () => {
     const members = await api('get', `/api/v1/servers/${serverId}/members`, plain.token).expect(
       200,
     );
-    expect(members.body.members).toHaveLength(3); // owner + plain + joiner
+    expect(members.body.members).toHaveLength(3);
   });
 
   it('member thiếu MANAGE_CHANNELS → tạo channel 403', async () => {
@@ -289,8 +270,7 @@ describe('Servers, channels & roles (e2e)', () => {
       assigned.body.roles.map((entry: { role: { name: string } }) => entry.role.name),
     ).toContain('moderator');
 
-    // Cache ability của plain (đang là bản "không quyền") phải bị RolesService xóa —
-    // nếu không, request này vẫn thấy 403 và test đỏ.
+    // RolesService phải xóa cache ability của plain, không thì request này vẫn 403.
     await api('post', `/api/v1/servers/${serverId}/channels`, plain.token)
       .send({ name: 'announcements' })
       .expect(201);
@@ -352,7 +332,6 @@ describe('Servers, channels & roles (e2e)', () => {
     await api('delete', `/api/v1/servers/${serverId}`, plain.token).expect(403);
     await api('delete', `/api/v1/servers/${serverId}`, owner.token).expect(200);
 
-    // Server biến mất cùng membership: chính owner giờ cũng là "người lạ".
     await api('get', `/api/v1/servers/${serverId}`, owner.token).expect(403);
 
     const mine = await api('get', '/api/v1/servers', owner.token).expect(200);

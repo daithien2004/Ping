@@ -5,7 +5,6 @@ import { AuditService } from './audit.service.js';
 
 @Global()
 @Module({
-  // AuthModule: controller dùng JwtAuthGuard (cần AuthService).
   imports: [AuthModule],
   controllers: [AuditController],
   providers: [AuditService],

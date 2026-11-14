@@ -5,8 +5,6 @@ import { RealtimeModule } from '../realtime/realtime.module.js';
 import { EmojisController } from './emojis.controller.js';
 import { EmojisService } from './emojis.service.js';
 
-// AuditModule toàn cục (@Global) nên không cần import — EmojisService ghi AuditLog trực tiếp.
-// AttachmentsModule xuất `Storage` để service đọc metadata tệp `.ready` (cờ animated).
 @Module({
   imports: [AuthModule, AttachmentsModule, RealtimeModule],
   controllers: [EmojisController],

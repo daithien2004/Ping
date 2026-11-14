@@ -11,16 +11,11 @@ import { PingPasswordInput } from '@/components/ui/ping-password-input';
 import { useErrorMessage } from '@/lib/error-message';
 import { useResetPassword } from '../hooks';
 
-/** Giá trị form: schema shared chỉ gồm token+password — ô đối chiếu kiểm ở dưới. */
 type ResetPasswordValues = {
   password: string;
   confirmPassword: string;
 };
 
-/**
- * Đặt lại mật khẩu bằng token trong thư (TG.8): `/reset-password?token=...`. Đặt lại xong
- * server thu hồi MỌI phiên — cả thiết bị đã mất cũng bị đăng xuất, UI dẫn về trang đăng nhập.
- */
 export function ResetPasswordForm() {
   const t = useTranslations('auth');
   const errorMessage = useErrorMessage();
@@ -28,7 +23,6 @@ export function ResetPasswordForm() {
   const token = useSearchParams().get('token');
   const [form] = usePingForm<ResetPasswordValues>();
   const reset = useResetPassword();
-  // Luật chỉ cho ô mật khẩu (token không nằm trong form): pick từ schema shared.
   const rules = zodFormRules(resetPasswordSchema.pick({ password: true }), () =>
     form.getFieldsValue(),
   );
@@ -44,7 +38,6 @@ export function ResetPasswordForm() {
           href="/forgot-password"
           className="text-sm font-medium underline-offset-4 hover:underline"
         >
-          {/* Màu ở span con: antd tô <a> bằng màu link tự sinh, đè class text-* trên Link. */}
           <span className="text-link">{t('forgotTitle')}</span>
         </Link>
       </div>
@@ -75,14 +68,12 @@ export function ResetPasswordForm() {
   return (
     <PingForm
       form={form}
-      // Tiền tố id các ô: form này có thể còn trong DOM (<Activity>) khi mở form khác cũng có ô
       // `password`, tránh trùng id khiến label trỏ nhầm ô.
       name="resetPassword"
       layout="vertical"
       noValidate
       className="flex w-full max-w-sm flex-col"
       onFinish={(values) => {
-        // Schema shared kiểm độ dài; cặp khớp kiểm tại đây để câu báo lỗi đi qua i18n.
         const parsed = resetPasswordSchema.pick({ password: true }).safeParse(values);
         if (!parsed.success) return;
         reset.mutate({ token, password: parsed.data.password });
@@ -118,7 +109,6 @@ export function ResetPasswordForm() {
       </PingButton>
       <p className="mt-2 text-sm">
         <Link href="/login" className="font-medium underline-offset-4 hover:underline">
-          {/* Màu ở span con: antd tô <a> bằng màu link tự sinh, đè class text-* trên Link. */}
           <span className="text-link">{t('backToLogin')}</span>
         </Link>
       </p>

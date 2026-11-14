@@ -1,11 +1,9 @@
 import { channelUrl, messageUrl, ownerUrl } from '@/lib/channel-url';
 
-/** URL công khai kiểu Discord `/channels/:serverId` (ADR-0088). */
 export const serverPath = (serverId: string) => ownerUrl(serverId);
 
 export const channelPath = (serverId: string, channelId: string) => channelUrl(serverId, channelId);
 
-/** TG.5: permalink của một tin — mở channel ở cửa sổ quanh tin đó (ADR-0063, URL ADR-0088). */
 export const messagePath = (serverId: string, channelId: string, messageId: string) =>
   messageUrl(serverId, channelId, messageId);
 

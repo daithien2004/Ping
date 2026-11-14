@@ -5,19 +5,12 @@ import { useTranslations } from 'use-intl';
 import { usePrefersReducedMotion } from '../use-prefers-reduced-motion';
 import { GIF_MAX_HEIGHT, GifPlaceholder } from './gif-placeholder';
 
-/**
- * Thân tin GIF (TG.25, ADR-0069): ảnh kích thước theo width/height do server lưu, trần chiều cao
- * như sticker lớn, giữ tỉ lệ. `prefers-reduced-motion` → KHÔNG tự phát (GIF không có khung tĩnh):
- * render khối giữ chỗ đúng tỉ lệ, bấm mới gắn ảnh thật (một lần, giữ sau đó). URL Tenor chết
- * (nhà cung cấp đổi link) → khung "GIF không còn xem được" thay vì ảnh vỡ, như sticker bị xóa.
- */
 export function GifMessage({ gif }: { gif: MessageGifPreview | null }) {
   const t = useTranslations('gifs');
   const reduced = usePrefersReducedMotion();
   const [played, setPlayed] = useState(false);
   const [broken, setBroken] = useState(false);
-  // onError gắn qua ref thay vì prop JSX: handler DOM trực tiếp vẫn bắt lỗi tải ảnh (URL đã chết,
-  // cache còn link cũ) mà không đụng rule a11y cấm handler trên phần tử phi tương tác.
+  // onError gắn qua ref: handler DOM trực tiếp bắt lỗi tải ảnh mà không đụng rule a11y.
   const bindError = useCallback((el: HTMLImageElement | null) => {
     if (el) el.onerror = () => setBroken(true);
   }, []);

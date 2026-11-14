@@ -1,16 +1,10 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, type Page } from '@playwright/test';
 
-// Dùng chung cho các spec a11y (H4, hướng dẫn 16.8, ADR-0029): một bộ luật axe, một cách
-// đợi theme/animation. Violation nào cũng làm test đỏ: sửa app/token, đừng nới bộ luật.
 const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];
 
-// `only`: vùng cần quét. Menu modal của Radix đặt aria-hidden lên phần còn lại của trang nhưng phần
-// đó vẫn focusable trên DOM (focus bị bẫy bên trong menu) → axe báo aria-hidden-focus; chỉ quét menu.
-// axe đọc màu tính toán tại thời điểm quét: ngay sau khi đổi nền sáng/tối hoặc mở menu/hộp thoại, các chuyển động CSS
-// (transition màu, animate-in) còn chạy dở nên màu ở giữa chừng làm contrast "đỏ" lúc có lúc không (đã gặp trên CI
-// và ở màn Tài khoản: đo được #625d60 trên #2a2a2e ≈ 2,2:1 trong lúc chuyển tiếp, màu cuối vẫn đạt).
-// Đợi hết chuyển động hữu hạn rồi mới quét.
+// Menu modal Radix đặt aria-hidden lên phần còn lại nhưng phần đó vẫn focusable → aria-hidden-focus; chỉ quét `only`.
+// Đợi hết chuyển động hữu hạn: màu giữa chừng làm contrast "đỏ" lúc có lúc không.
 async function settleAnimations(page: Page) {
   await page.waitForFunction(
     () =>
@@ -22,20 +16,14 @@ async function settleAnimations(page: Page) {
   );
 }
 
-/**
- * SSR luôn dựng bảng màu sáng (server không biết `prefers-color-scheme`); `<html data-theme>`
- * chỉ xuất hiện sau khi ThemeProvider chạy effect ở client. Quét trước mốc đó, axe đo chữ antd
- * màu sáng trên bề mặt đã tối (đỏ #c20000 trên #222327 ≈ 2,6:1) và báo color-contrast giả.
- */
+/** SSR luôn dựng bảng màu sáng; quét trước khi `<html data-theme>` xuất hiện sẽ báo color-contrast giả. */
 async function settleTheme(page: Page) {
   await page.waitForFunction(() => document.documentElement.hasAttribute('data-theme'));
 }
 
 export async function scan(page: Page, what: string, only?: string) {
   await settleTheme(page);
-  // Tắt transition màu đúng lúc quét (transition đang chạy có thể khởi động lại do click/hover
-  // ngay trước axe đọc màu). Gỡ ngay sau khi quét: để nguyên sẽ chặn animation vào của menu mở
-  // sau đó (antd chờ animationend nên mục menu kẹt ở trạng thái ẩn).
+  // Gỡ transition ngay sau khi quét: để nguyên sẽ chặn animation vào của menu mở sau đó (antd chờ animationend).
   const freeze = await page.addStyleTag({
     content: '*,*::before,*::after{transition:none!important}',
   });

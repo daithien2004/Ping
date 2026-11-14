@@ -6,16 +6,9 @@ import { pacedLogin } from './login-pace';
 const API = 'http://localhost:4000/api/v1';
 const SEED_PASSWORD = 'password123';
 
-/** Hộp xác nhận đang mở; antd giữ popup đã đóng trong DOM nên phải lọc theo phần tử đang hiện. */
 const visiblePopconfirm = (page: Page) => page.locator('.ant-popconfirm').filter({ visible: true });
 
-/**
- * T3.4: danh sách thành viên, kick có kiểm thứ bậc, hiển thị vai trò.
- *
- * Dùng tài khoản seed (bob/carol/alice) thay vì đăng ký mới: `POST /auth/register` chỉ cho
- * 5 lượt/phút/IP và cả bộ e2e chạy trên cùng một IP — thêm 3 lượt đăng ký ở đây sẽ đẩy các
- * spec chạy sau vào 429. Server riêng cho test này, xoá ở cuối.
- */
+/** Dùng tài khoản seed: register 5 lượt/phút/IP dùng chung cả bộ e2e, thêm lượt sẽ đẩy spec sau vào 429. */
 test('admin members: role badges, kick hierarchy guard and realtime removal', async ({
   browser,
 }) => {
@@ -27,7 +20,6 @@ test('admin members: role badges, kick hierarchy guard and realtime removal', as
   try {
     const suffix = randomUUID().slice(0, 8);
     const login = async (context: typeof ownerContext, email: string, password: string) => {
-      // Mọi login phải qua pacedLogin: bộ e2e chạy chung IP, API giới hạn 10 lượt/phút.
       const auth = await pacedLogin(context.request, email, password);
       return { auth, headers: { Authorization: `Bearer ${auth.accessToken}` } };
     };
@@ -89,15 +81,12 @@ test('admin members: role badges, kick hierarchy guard and realtime removal', as
     const victimPage = await victimContext.newPage();
 
     await kickerPage.goto(settings);
-    // 30s thay vì mặc định: trong full suite, hydration + next dev compile route có thể vượt
-    // 10s dưới tải (spec này pass solo đều nhưng fail test 6 của 3 run full liền — hết thời
-    // gian chờ chứ không phải trang hỏng; trang render đúng khi được đủ thời gian).
+    // 30s: hydration + next dev compile route có thể vượt 10s dưới tải (hết giờ chứ không phải trang hỏng).
     await expect(kickerPage.getByRole('heading', { name: 'Cài đặt server' })).toBeVisible({
       timeout: 30_000,
     });
     const members = kickerPage.getByRole('region', { name: 'Thành viên' });
     await expect(members).toBeVisible();
-    // Chỉ KICK_MEMBERS: không thấy vùng vai trò nhưng vẫn vào được danh sách thành viên.
     await expect(kickerPage.getByRole('region', { name: 'Vai trò' })).toHaveCount(0);
 
     const rowOf = (name: string) => members.getByRole('row', { name: new RegExp(name) });
@@ -120,7 +109,6 @@ test('admin members: role badges, kick hierarchy guard and realtime removal', as
         rowOf(kicker.auth.user.displayName).getByRole('button', { name: /không thể tự kick mình/ }),
       ).toBeDisabled();
 
-      // Vai trò hiển thị bằng nhãn (RoleTag) trong cột Vai trò.
       await expect(rowOf(strong.auth.user.displayName).getByText(`strong-${suffix}`)).toBeVisible();
       await expect(rowOf(kicker.auth.user.displayName).getByText(`kick-${suffix}`)).toBeVisible();
     });
@@ -142,7 +130,6 @@ test('admin members: role badges, kick hierarchy guard and realtime removal', as
       ).json()) as ServerDetail;
       await victimPage.goto(`/channels/${serverId}/${detail.channels[0]!.id}`);
       await expect(victimPage.getByRole('link', { name: '# general' })).toBeVisible();
-      // Đánh dấu window để chứng minh lần chuyển trang sau đó là điều hướng client, không reload.
       await victimPage.evaluate(() => {
         (window as unknown as { __pingE2E?: string }).__pingE2E = 'alive';
       });
@@ -156,7 +143,6 @@ test('admin members: role badges, kick hierarchy guard and realtime removal', as
       await expect(kickerPage.getByText('Đã kick thành viên.')).toBeVisible();
       await expect(rowOf(victim.auth.user.displayName)).toHaveCount(0);
 
-      // Không reload: `member.removed` đưa victim ra khỏi server, app tự chuyển sang server còn lại.
       await expect(victimPage).not.toHaveURL(new RegExp(serverId), { timeout: 15_000 });
       expect(
         await victimPage.evaluate(() => (window as unknown as { __pingE2E?: string }).__pingE2E),

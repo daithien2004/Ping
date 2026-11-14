@@ -27,7 +27,6 @@ import { useServers } from '../hooks';
 import { serverPath } from '../navigation';
 import { OnboardingWizard, type OnboardingMode } from './onboarding-wizard';
 
-/** Một mục trên rail: tooltip bên phải + thanh chỉ báo bên trái khi đang chọn (kiểu app chat). */
 function RailItem({
   label,
   active,
@@ -52,22 +51,16 @@ function RailItem({
   );
 }
 
-/** Icon rail theo Discord: khung tròn 40 px, rê chuột bo vuông 16 px; không tô màu thương hiệu
- *  cho mục đang chọn — mục chọn chỉ khác ở pill trái + bo góc (đo từ Discord web). */
 const railIcon =
   'flex size-10 items-center justify-center rounded-full bg-secondary text-secondary-foreground transition-all hover:rounded-xl hover:brightness-110';
 
-/** Cột trái: mục DM, các server của tôi, tạo/tham gia server, tài khoản. */
 export function ServerRail() {
-  // URL công khai `/channels/{serverId|@me}/...` (ADR-0088): đọc theo pathname, không dùng useParams.
   const pathname = usePathname();
   const serverId = serverIdFromPath(pathname);
   const { data: servers } = useServers();
   const logoutMutation = useLogout();
   const [wizard, setWizard] = useState<OnboardingMode | null>(null);
   const t = useTranslations();
-  // TG.12: tab title + favicon theo tổng unread mọi server + DM (trước đây chỉ tổng mention).
-  // ADR-0077: badge đọc cache gộp `qk.unreadAll` — không cần danh sách id server.
   useNotifyBadge('Ping');
 
   return (
@@ -77,13 +70,10 @@ export function ServerRail() {
       data-slot="rail"
       className="flex min-h-0 w-18 shrink-0 flex-col items-center bg-rail py-2 text-rail-foreground"
     >
-      {/* Danh sách server cuộn riêng; cụm tài khoản ở đáy luôn cố định như Discord. */}
       <div
         data-slot="rail-list"
         className="no-scrollbar flex min-h-0 w-full flex-1 flex-col items-center gap-2 overflow-x-hidden overflow-y-auto"
       >
-        {/* TG.9: mục "Tin nhắn trực tiếp" nằm trên cùng của rail (như trang chủ Discord) — ngoài
-            ChannelSidebar per-server theo ADR-0070 mục 7. */}
         <DmRailItem active={isDmPath(pathname)} />
 
         {servers.map((server) => (
@@ -123,7 +113,6 @@ export function ServerRail() {
       </div>
 
       <div data-slot="rail-footer" className="mt-2 flex w-full flex-col items-center gap-2">
-        {/* TG.12: xin quyền Notification sau thao tác người dùng — chỉ hiện khi còn 'default'. */}
         <EnableNotificationsButton />
         <RailItem label={t('auth.signOut')}>
           <PingIconButton
@@ -141,17 +130,11 @@ export function ServerRail() {
         onClose={() => setWizard(null)}
       />
 
-      {/* T4.3: mình được nhắc ở kênh không đang xem — trình đọc màn hình đọc lên một lần. */}
       <MentionAnnouncer />
     </nav>
   );
 }
 
-/**
- * Mục "Tin nhắn trực tiếp" trên rail (TG.9): badge đỏ tổng unread mọi DM — mọi tin DM đều
- * mention-style (ADR-0070 mục 7) nên chỉ một mức badge, khác server (mention đỏ + chấm xám).
- * Cache `qk.dms` được `useDmEvents` cập nhật realtime nên badge đổi ngay không reload.
- */
 function DmRailItem({ active }: { active: boolean }) {
   const t = useTranslations('dms');
   const { data: dms } = useDms();
@@ -181,10 +164,6 @@ function DmRailItem({ active }: { active: boolean }) {
   );
 }
 
-/**
- * Một server trên rail kèm badge unread (T4.3): mention > 0 → badge đỏ số mention; còn lại
- * unread > 0 → chấm xám. Nhãn aria gộp số để trình đọc màn hình đọc đủ thông tin.
- */
 function ServerRailItem({
   serverId,
   name,
@@ -206,8 +185,6 @@ function ServerRailItem({
         ? t('railLabelUnread', { name, count: unreadTotal })
         : name;
   const showMention = mentionTotal > 0;
-  // Chấm thay vì số: unread thường không phải mention, con số đỏ thứ hai cạnh số mention làm
-  // rail ồn và hai trạng thái trông giống nhau.
   const showUnread = unreadTotal > 0 && !showMention;
 
   return (
@@ -228,9 +205,7 @@ function ServerRailItem({
             color={showUnread ? 'var(--muted-foreground)' : undefined}
             offset={[-4, 4]}
           >
-            {/* TG.7: icon server (nếu có) đè lên fallback chữ cái; ảnh reencode WebP qua pipeline TG.6. */}
-            {/* CSS của antd không nằm trong layer Tailwind nên class `bg-*`/`rounded-*` trên
-                avatar bị kiểu dựng sẵn của antd đè; đặt màu/bo góc qua `style` (vẫn là token). */}
+            {/* antd CSS ngoài layer Tailwind đè class `bg-*`/`rounded-*`; đặt màu/bo góc qua `style` (vẫn là token). */}
             <PingAvatar
               size={40}
               data-slot="rail-icon"
@@ -253,7 +228,6 @@ function ServerRailItem({
   );
 }
 
-/** Vùng aria-live ẩn về mặt thị giác: đọc "bạn đã được nhắc trong server X" cho mention ngoài kênh đang xem. */
 function MentionAnnouncer() {
   const session = useRealtime();
   const t = useTranslations('servers');

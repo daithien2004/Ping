@@ -23,7 +23,6 @@ describe('AskRateLimiter (T6.5)', () => {
     await expect(limiter.consume('user-1')).resolves.toBeUndefined();
     await expect(limiter.consume('user-1')).rejects.toMatchObject({ retryAfterSeconds: 42 });
 
-    // Fixed window 1 phút/user, tên throttle riêng để không đụng bộ đếm khác.
     expect(evaluate).toHaveBeenCalledWith(
       expect.stringContaining('INCR'),
       2,

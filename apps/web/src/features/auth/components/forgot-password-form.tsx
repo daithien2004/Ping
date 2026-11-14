@@ -11,10 +11,6 @@ import { PingInput } from '@/components/ui/ping-input';
 import { useErrorMessage } from '@/lib/error-message';
 import { useForgotPassword } from '../hooks';
 
-/**
- * Quên mật khẩu (TG.8): nhập email → server LUÔN trả 202 bất kể email có tồn tại. UI hiển thị
- * đúng một câu trung lập sau khi gửi để không lộ email nào đã đăng ký (chống dò tài khoản).
- */
 export function ForgotPasswordForm() {
   const t = useTranslations('auth');
   const errorMessage = useErrorMessage();
@@ -32,7 +28,6 @@ export function ForgotPasswordForm() {
           {t('forgotSent')}
         </p>
         <Link href="/login" className="text-sm font-medium underline-offset-4 hover:underline">
-          {/* Màu ở span con: antd tô <a> bằng màu link tự sinh, đè class text-* trên Link. */}
           <span className="text-link">{t('backToLogin')}</span>
         </Link>
       </div>
@@ -59,7 +54,6 @@ export function ForgotPasswordForm() {
       </PingFormItem>
       {forgot.isError && (
         <p role="alert" className="text-sm text-destructive">
-          {/* Lỗi hạ tầng/rate limit — câu lỗi theo mã, không tiết lộ trạng thái email. */}
           {errorMessage(forgot.error)}
         </p>
       )}
@@ -68,7 +62,6 @@ export function ForgotPasswordForm() {
       </PingButton>
       <p className="mt-2 text-sm">
         <Link href="/login" className="font-medium underline-offset-4 hover:underline">
-          {/* Màu ở span con: antd tô <a> bằng màu link tự sinh, đè class text-* trên Link. */}
           <span className="text-link">{t('backToLogin')}</span>
         </Link>
       </p>

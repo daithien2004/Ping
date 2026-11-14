@@ -1,9 +1,4 @@
-/**
- * Khung app vẽ bằng markup thuần (không hook, không bản dịch) để dùng được cả ngoài
- * `Providers` — nơi `LocaleProvider` còn treo nên chưa có `IntlProvider`. Nhờ vậy HTML tĩnh của
- * Next đã có sẵn khung: F5 là thấy rail + sidebar + vùng tin ngay, không còn màn trắng chờ JS.
- * Hình học bám `RailSkeleton`/`SidebarSkeleton` và `AppShell` để lúc thật hiện vào không nhảy.
- */
+/** Markup thuần (không hook, không bản dịch): dùng được ngoài `Providers` nơi chưa có IntlProvider. */
 const RAIL_ITEMS = [0, 1, 2];
 const SIDEBAR_ITEMS = [0, 1, 2, 3];
 const MESSAGE_ROWS = [0, 1, 2, 3, 4];
@@ -15,7 +10,6 @@ export function ShellSkeleton() {
       data-testid="shell-skeleton"
       className="flex h-dvh flex-col overflow-hidden bg-background"
     >
-      {/* Thanh trên chỉ có ở mobile, đúng như `AppShell`. */}
       <div className="flex h-12 shrink-0 items-center gap-2 border-b px-2 md:hidden">
         <div className="size-8 animate-pulse rounded-md bg-muted" />
         <div className="h-4 w-16 animate-pulse rounded bg-muted" />

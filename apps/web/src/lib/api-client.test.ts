@@ -13,7 +13,6 @@ function json(status: number, body: unknown, headers: Record<string, string> = {
   });
 }
 
-/** Nạp lại module mỗi test: token và Promise refresh là state cấp module. */
 async function load() {
   vi.resetModules();
   return import('./api-client');
@@ -31,7 +30,6 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-/** Đợi các promise nối tiếp (acquireSlot → fetch) chạy xong trong một lượt microtask. */
 async function flushMicrotasks(): Promise<void> {
   await Promise.resolve();
   await Promise.resolve();
@@ -227,7 +225,6 @@ describe('api-client', () => {
 
     const pending = api.get('/users/me');
     await flushMicrotasks();
-    // Request khác đã refresh xong trong lúc request này còn bay.
     await refreshAccessToken();
     releaseFirst(json(401, { code: 'UNAUTHORIZED', message: 'x' }));
     await expect(pending).resolves.toEqual({ ok: true });
@@ -406,7 +403,6 @@ describe('api-client', () => {
 
     const request = api.get('/servers');
     await flushMicrotasks();
-    // Token đổi trong lúc request đang chờ Retry-After (ví dụ refresh của tab khác vừa xong).
     setAccessToken('new');
     await vi.advanceTimersByTimeAsync(1_000);
 

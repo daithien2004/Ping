@@ -15,7 +15,6 @@ describe('collapsed-categories', () => {
   it('toggle thêm rồi bỏ đúng một category', () => {
     expect(toggleCollapsed([], 'c1')).toEqual(['c1']);
     expect(toggleCollapsed(['c1', 'c2'], 'c1')).toEqual(['c2']);
-    // Toggle lần nữa không nhân đôi, bỏ không trúng thì nguyên vẹn.
     expect(toggleCollapsed(['c2'], 'c1')).toEqual(['c2', 'c1']);
   });
 

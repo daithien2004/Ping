@@ -5,7 +5,6 @@ import { bootApp } from './helpers/boot.js';
 
 const WEB_ORIGIN = process.env.WEB_ORIGIN ?? 'http://localhost:3000';
 
-/** Cấu hình HTTP dùng chung với main.ts (configureApp): header bảo mật, CORS, giới hạn body. */
 describe('HTTP hardening (e2e)', () => {
   let app: INestApplication;
   beforeAll(async () => {
@@ -55,7 +54,6 @@ describe('HTTP hardening (e2e)', () => {
     expect(allowed.headers['access-control-allow-origin']).toBe(WEB_ORIGIN);
     expect(allowed.headers['access-control-allow-credentials']).toBe('true');
 
-    // ADR-0078: web phải đọc được header điều tiết trên response thật (khác origin).
     const actual = await request(app.getHttpServer())
       .get('/api/v1/health')
       .set('Origin', WEB_ORIGIN);
@@ -68,8 +66,6 @@ describe('HTTP hardening (e2e)', () => {
       .options('/api/v1/auth/refresh')
       .set('Origin', 'https://evil.example')
       .set('Access-Control-Request-Method', 'POST');
-    // Với origin cố định, API luôn trả đúng WEB_ORIGIN (không phản chiếu origin của kẻ lạ):
-    // trình duyệt thấy không khớp với trang gọi nên chặn.
     expect(foreign.headers['access-control-allow-origin']).not.toBe('https://evil.example');
   });
 });

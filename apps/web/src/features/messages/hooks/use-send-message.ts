@@ -29,11 +29,6 @@ export interface SendMessageVariables {
   };
 }
 
-/**
- * Nhận nội dung gửi, channel và tác giả; thêm ngay một bản tin tạm vào cache trước khi API phản hồi.
- * Ví dụ: gửi `"Chào"` → danh sách lập tức có tin `{ content: 'Chào', status: 'sending' }`;
- * khi server trả lời, mutation sẽ thay bản tạm bằng tin thật hoặc đánh dấu gửi lỗi.
- */
 export function addOptimisticMessage(
   queryClient: QueryClient,
   channelId: string,

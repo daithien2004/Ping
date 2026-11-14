@@ -9,7 +9,6 @@ import {
 import type { ZodType } from 'zod';
 import { apiBaseUrl } from './env';
 
-/** Lỗi từ API, luôn mang `code` thuộc ErrorCodes và `requestId` (nếu server trả về) để báo lỗi. */
 export class ApiError extends Error {
   constructor(
     readonly status: number,
@@ -23,10 +22,7 @@ export class ApiError extends Error {
   }
 }
 
-// Access token chỉ sống trong bộ nhớ của tab (không localStorage: chống XSS đọc trộm).
-// Mất khi tải lại trang → khôi phục bằng refreshAccessToken() nhờ cookie httpOnly.
 let accessToken: string | null = null;
-// Promise refresh đang chạy: mọi request gặp 401 cùng lúc chờ chung một lần refresh.
 let refreshing: Promise<string | null> | null = null;
 let tokenGeneration = 0;
 let unauthenticatedHandler: (() => void) | undefined;
@@ -46,7 +42,6 @@ export function expireSession(): void {
   unauthenticatedHandler?.();
 }
 
-// Lần khôi phục phiên đang chạy (F5): dùng chung cho query mount sớm và socket.
 let restoring: Promise<string | null> | null = null;
 
 /**
@@ -67,45 +62,32 @@ export function restoreSession(): Promise<string | null> {
   return restoring;
 }
 
-/**
- * Chờ lần khôi phục phiên đang chạy (nếu có) trước khi gửi request cần token. Không tự bắt
- * đầu refresh: trang chưa đăng nhập không phải trả giá bằng một request /auth/refresh.
- */
 async function waitForSession(): Promise<void> {
   if (accessToken || !restoring) return;
   try {
     await restoring;
   } catch {
-    // Lỗi tạm thời: cứ gửi request; nếu 401 thì `sendWithRefresh` chờ Retry-After rồi xử lý.
+    /* bỏ qua */
   }
 }
 
-/** Gọi khi phiên đăng nhập hết hẳn (refresh thất bại) — F2 nối vào điều hướng tới /login. */
 export function setUnauthenticatedHandler(handler?: () => void): void {
   unauthenticatedHandler = handler;
 }
 
 type Method = 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
 
-/** Chờ giữa hai lần thử khi lỗi mạng (ms). */
 const NETWORK_RETRY_DELAY_MS = 300;
 
-/**
- * Số request tối đa đang bay. Trình duyệt tự giới hạn ~6 kết nối/host; giữ đúng mức đó để
- * hàng đợi không dồn request vào socket mà vẫn che được các đợt bắn đồng loạt (rail nhiều
- * server, nhiều component cùng mount).
- */
 const MAX_IN_FLIGHT = 6;
 /** 429 không kèm header: chờ ngắn rồi thử tiếp thay vì bắn lại ngay. */
 const RETRY_AFTER_FALLBACK_MS = 1_000;
-/** Trần chờ: server khóa 60 giây (app.module) — không để một header lạ treo tab vô hạn. */
 const RETRY_AFTER_MAX_MS = 60_000;
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/** Như `delay` nhưng dừng ngay khi signal bị hủy (đóng dialog/rời trang giữa lúc chờ 429). */
 function wait(ms: number, signal?: AbortSignal): Promise<void> {
   if (signal?.aborted) return Promise.reject(abortError());
   return new Promise((resolve, reject) => {
@@ -135,7 +117,6 @@ let pauseTimer: ReturnType<typeof setTimeout> | undefined;
 
 const abortError = () => new DOMException('Aborted', 'AbortError');
 
-/** Cấp một suất chạy: FIFO, tôn trọng trạng thái tạm dừng và signal của từng request. */
 function acquireSlot(signal?: AbortSignal): Promise<void> {
   if (signal?.aborted) return Promise.reject(abortError());
   return new Promise<void>((resolve, reject) => {
@@ -158,10 +139,6 @@ function releaseSlot(): void {
   pump();
 }
 
-/**
- * Nhả hàng đợi khi còn suất. Trong lúc tạm dừng thì đứng yên: request mới (kể cả refresh)
- * chờ đúng `Retry-After`, không bắn vào cửa sổ đang bị khóa.
- */
 function pump(): void {
   if (pausedUntil > Date.now()) return;
   while (inFlight < MAX_IN_FLIGHT && waiters.length > 0) {
@@ -178,7 +155,6 @@ function pump(): void {
   }
 }
 
-/** Tạm dừng TOÀN BỘ hàng đợi tới `ms` nữa; lần tạm dừng dài hơn thắng. */
 function pauseFor(ms: number): void {
   if (ms <= 0) return;
   const until = Date.now() + ms;
@@ -194,7 +170,6 @@ function pauseFor(ms: number): void {
   (pauseTimer as { unref?: () => void }).unref?.();
 }
 
-/** Đổi "số giây" của header (Retry-After / Reset) sang ms; `null` khi không đọc được. */
 function headerMs(value: string | null): number | null {
   if (!value) return null;
   const seconds = Number(value);
@@ -231,7 +206,6 @@ function noteResponse(response: Response): void {
   });
 }
 
-/** Header thêm cho một request cụ thể (ví dụ `Accept: text/event-stream`). */
 export interface SendOptions {
   signal?: AbortSignal;
   headers?: Record<string, string>;
@@ -243,9 +217,6 @@ async function send(
   body?: unknown,
   options?: SendOptions,
 ): Promise<Response> {
-  // Header dựng ở MỖI lần gửi, không phải một lần lúc gọi: request chờ suất trong hàng đợi
-  // (hoặc chờ khôi phục phiên) có thể được gửi sau khi token vừa đổi — dựng sớm sẽ mang
-  // token cũ/không có và nhận 401 oan.
   const buildHeaders = (): Headers => {
     const headers = new Headers();
     if (accessToken) {
@@ -263,23 +234,17 @@ async function send(
     }
     return headers;
   };
-  // Refresh xoay vòng token và trả cookie mới. Nếu trang đang điều hướng (F5, mở URL khác) thì
-  // request thường bị hủy giữa chừng: server đã xoay vòng nhưng Set-Cookie không kịp vào cookie
-  // jar, tài liệu kế tiếp gửi token cũ và nhận 401 "already rotated". `keepalive` để trình duyệt
-  // hoàn tất request và ghi cookie dù tài liệu cũ đã bị gỡ. Logout cũng cần để cookie bị xóa hẳn.
   const keepalive = path === '/auth/refresh' || path === '/auth/logout';
   const request = () =>
     fetch(`${apiBaseUrl}${path}`, {
       method,
       headers: buildHeaders(),
-      // Gửi kèm cookie refresh (httpOnly) cho /auth/*; API bật CORS credentials cho WEB_ORIGIN.
       credentials: 'include',
       body: body === undefined ? undefined : JSON.stringify(body),
       signal: options?.signal,
       keepalive,
     });
   // Mỗi lần gọi thật chiếm một suất (ADR-0078); nhả ngay khi fetch trả về — kể cả SSE, để
-  // một kết nối dài không giữ suất của cả app.
   const attempt = async (): Promise<Response> => {
     await acquireSlot(options?.signal);
     try {
@@ -305,12 +270,8 @@ async function send(
     }
     return response;
   } catch (error) {
-    // Người dùng hủy (đóng dialog, rời trang): để AbortError đi tiếp, không thử lại.
     if (options?.signal?.aborted) throw error;
-    // fetch chỉ reject khi không tới được server (mất mạng, API tắt, CORS chặn).
-    // Thử lại một lần cho GET: sau khi API khởi động lại, trình duyệt vẫn còn socket keep-alive
     // cũ (Chrome giữ tới ~4 phút) nên request có thể rơi vào socket đã chết. Lần thử sau mở
-    // kết nối khác nên thường thành công. GET là idempotent nên thử lại không đổi trạng thái;
     // POST (đăng nhập, refresh) không thử lại vì API xoay vòng refresh token (ADR-0007).
     if (method === 'GET') {
       await delay(NETWORK_RETRY_DELAY_MS);
@@ -319,20 +280,13 @@ async function send(
         noteResponse(response);
         return response;
       } catch (retryError) {
-        // Trong lúc chờ, người dùng đóng dialog/rời trang: giữ nguyên AbortError.
         if (options?.signal?.aborted) throw retryError;
-        // Vẫn không tới được server: báo lỗi mạng như bên dưới.
       }
     }
     throw new ApiError(0, ErrorCodes.SERVICE_UNAVAILABLE, 'Network error');
   }
 }
 
-/**
- * Chờ trước khi thử refresh lần hai: request refresh thua trong một lần xoay vòng đồng thời
- * (hai tab, hoặc tải lại trang giữa lúc khôi phục phiên) nhận 401 ngay sau khi bên thắng đã
- * ghi cookie mới — chờ một nhịp để Set-Cookie của bên thắng kịp vào cookie jar.
- */
 const REFRESH_RETRY_DELAY_MS = 200;
 
 /**
@@ -362,7 +316,6 @@ async function lostRotationRace(res: Response): Promise<boolean> {
     const body = (await res.clone().json()) as { message?: unknown };
     return body.message !== 'Missing refresh token';
   } catch {
-    // Không đọc được body (proxy trả HTML): giữ hành vi cũ là thử lại một lần.
     return true;
   }
 }
@@ -398,7 +351,7 @@ async function toApiError(res: Response): Promise<ApiError> {
   try {
     body = (await res.json()) as Record<string, unknown>;
   } catch {
-    // Không phải JSON (ví dụ proxy trả trang lỗi HTML): dùng status.
+    /* bỏ qua */
   }
   const requestId =
     typeof body.requestId === 'string'
@@ -413,30 +366,19 @@ async function toApiError(res: Response): Promise<ApiError> {
   );
 }
 
-/**
- * Gửi request, tự refresh access token một lần khi gặp 401 (trừ `/auth/*` để không lặp vô hạn).
- * Dùng chung cho `request` (JSON) và `stream` (SSE).
- */
 async function sendWithRefresh(
   method: Method,
   path: string,
   body?: unknown,
   options?: SendOptions,
 ): Promise<Response> {
-  // Chụp "thế hệ" phiên TRƯỚC mọi await: request thuộc phiên nào thì 401 về muộn cũng không
-  // được xóa token của phiên mới (đăng nhập/đăng xuất trong lúc request đang bay).
   const generation = tokenGeneration;
   // F5: chờ phiên khôi phục xong rồi mới gửi, thay vì bắn đi thiếu `Authorization` (xem
-  // `restoreSession`). `/auth/*` không cần token nên bỏ qua để không chờ chính nó.
   if (!path.startsWith('/auth/')) await waitForSession();
   // Token dùng cho lần gửi đầu: 401 về muộn có thể chỉ vì request này mang token CŨ trong khi
-  // request khác đã refresh xong. Khi đó gửi lại bằng token mới, KHÔNG xoay vòng thêm lần nữa —
-  // mỗi lần xoay vòng thừa là một cơ hội mất Set-Cookie lúc trang điều hướng.
   let sentToken = accessToken;
   let res = await send(method, path, body, options);
 
-  // Access token hết hạn (15 phút): refresh một lần rồi thử lại đúng một lần.
-  // Bỏ qua /auth/*: login sai mật khẩu cũng là 401, refresh ở đó sẽ thành vòng lặp.
   if (res.status === 401 && !path.startsWith('/auth/')) {
     if (generation === tokenGeneration && accessToken && accessToken !== sentToken) {
       sentToken = accessToken;
@@ -467,8 +409,6 @@ async function request<T>(
   if (res.status === 204) {
     return undefined as T;
   }
-  // TG.8: hành động vòng đời tài khoản trả 200/202 với body rỗng (quên mật khẩu luôn 202,
-  // xác minh email 204) — đọc JSON chỉ khi có nội dung, body rỗng coi như undefined.
   const text = await res.text();
   if (text === '') {
     return undefined as T;
@@ -494,9 +434,7 @@ async function stream(
   return res;
 }
 
-/** `schema` (tùy chọn): parse response bằng zod ở những chỗ quan trọng (hướng dẫn 12.2). */
 export const api = {
-  /** Binary PUT with real upload progress; shares token refresh and API error handling. */
   upload: async (
     path: string,
     file: File,
@@ -567,10 +505,6 @@ export const api = {
     request<T>('PUT', path, body, schema),
   delete: <T = void>(path: string, schema?: ZodType<T>) =>
     request<T>('DELETE', path, undefined, schema),
-  /**
-   * Request trả về `Response` chưa đọc — dùng cho SSE. Ví dụ:
-   * `api.stream('POST', '/servers/x/ask', body, { signal, headers: { Accept: 'text/event-stream' } })`.
-   */
   stream: (method: Method, path: string, body?: unknown, options?: SendOptions) =>
     stream(method, path, body, options),
 };

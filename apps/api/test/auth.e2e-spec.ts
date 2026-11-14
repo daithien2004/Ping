@@ -9,11 +9,8 @@ import { PrismaService } from '../src/infra/prisma/prisma.service.js';
 import { RedisProvider } from '../src/infra/redis/redis.module.js';
 import { REFRESH_COOKIE_NAME } from '../src/modules/auth/auth.constants.js';
 
-// Mỗi run một suffix khác nhau để chạy lại test không đụng unique constraint
-// với dữ liệu của run trước (cleanup có afterAll nhưng phòng khi run bị kill giữa chừng).
 const runId = Date.now().toString(36);
 
-/** Lấy đúng cặp `name=value` từ header Set-Cookie, bỏ hết attribute. */
 function refreshCookieOf(setCookie: string[] | string | undefined): string {
   const header = cookieHeaderLines(setCookie).find((cookie) =>
     cookie.startsWith(`${REFRESH_COOKIE_NAME}=`),
@@ -28,7 +25,6 @@ function refreshCookieOf(setCookie: string[] | string | undefined): string {
   return nameValue;
 }
 
-/** SHA-256 của giá trị cookie — đúng cách API lưu refresh token trong bảng Session. */
 function tokenHashOf(cookie: string): string {
   return createHash('sha256')
     .update(cookie.slice(cookie.indexOf('=') + 1))
@@ -43,7 +39,6 @@ function cookieHeaderLines(setCookie: string[] | string | undefined): string[] {
   return Array.isArray(setCookie) ? setCookie : [setCookie];
 }
 
-/** Header mà web gửi cho endpoint dùng cookie (refresh/logout): chống CSRF, ADR-0027. */
 const WEB = {
   Origin: process.env.WEB_ORIGIN ?? 'http://localhost:3000',
   'X-Ping-Client': 'web',
@@ -62,7 +57,6 @@ describe('Auth (e2e)', () => {
     return { email, username };
   }
 
-  // KHÔNG async: helper phải trả về Test object của supertest để .expect() chain được.
   function register(email: string, username: string) {
     return request(app.getHttpServer())
       .post('/api/v1/auth/register')
@@ -76,22 +70,18 @@ describe('Auth (e2e)', () => {
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
     app = moduleRef.createNestApplication();
-    // main.ts chạy cookie-parser nhưng main.ts không chạy trong test —
-    // e2e phải tự lắp lại middleware, thiếu nó req.cookies sẽ là undefined.
+    // main.ts không chạy trong test: tự lắp cookie-parser, thiếu thì req.cookies là undefined.
     app.use(cookieParser());
-    // Tương tự global prefix: main.ts set, test thì không.
     app.setGlobalPrefix('api/v1');
     await app.init();
 
-    // Redis là bộ đếm rate limit thật, còn sống qua các run — xóa để test
-    // không dính phần còn lại của cửa sổ 60s từ run trước.
+    // Redis rate limit thật sống qua các run: xóa để khỏi dính phần còn lại của cửa sổ 60s.
     const redis = moduleRef.get(RedisProvider);
     await redis.flushdb();
   });
 
   afterAll(async () => {
     const prisma = app.get(PrismaService);
-    // Session cascade theo user; user e2e không sở hữu server/tin nhắn nên xóa sạch được.
     await prisma.user.deleteMany({ where: { email: { in: emails } } });
     await app.close();
   });
@@ -119,7 +109,6 @@ describe('Auth (e2e)', () => {
       `t-${runId}-${uniqueSuffix()}@nope.dev`,
       'whatever-1234',
     ).expect(401);
-    // Không tiết lộ email có tồn tại: cùng code, cùng message.
     expect(wrongPassword.body.code).toBe('UNAUTHORIZED');
     expect(unknownEmail.body.message).toBe(wrongPassword.body.message);
 
@@ -149,7 +138,6 @@ describe('Auth (e2e)', () => {
     const loginRes = await login(email, 'password123').expect(200);
     const cookie1 = refreshCookieOf(loginRes.headers['set-cookie']);
 
-    // Rotation: response mang cookie mới, khác hẳn cookie cũ.
     const rotated = await request(app.getHttpServer())
       .post('/api/v1/auth/refresh')
       .set(WEB)
@@ -159,13 +147,11 @@ describe('Auth (e2e)', () => {
     expect(cookie2).not.toBe(cookie1);
     expect(typeof rotated.body.accessToken).toBe('string');
 
-    // Dùng lại token cũ SAU cửa sổ ân hạn (lâu hơn một cú refresh đồng thời) mới là đánh cắp.
     await app.get(PrismaService).session.updateMany({
       where: { refreshTokenHash: tokenHashOf(cookie1) },
       data: { revokedAt: new Date(Date.now() - 60_000) },
     });
 
-    // Reuse: đưa lại cookie đã bị xoay vòng → 401...
     const reused = await request(app.getHttpServer())
       .post('/api/v1/auth/refresh')
       .set(WEB)
@@ -173,7 +159,6 @@ describe('Auth (e2e)', () => {
       .expect(401);
     expect(reused.body.code).toBe('UNAUTHORIZED');
 
-    // ...và session MỚI cũng chết theo policy revoke-all.
     await request(app.getHttpServer())
       .post('/api/v1/auth/refresh')
       .set(WEB)
@@ -190,13 +175,11 @@ describe('Auth (e2e)', () => {
     const loginRes = await login(email, 'password123').expect(200);
     const cookie1 = refreshCookieOf(loginRes.headers['set-cookie']);
 
-    // Hai tab cùng hết hạn access token và cùng refresh bằng một cookie.
     const refresh = (cookie: string) =>
       request(app.getHttpServer()).post('/api/v1/auth/refresh').set(WEB).set('Cookie', cookie);
     const results = await Promise.all([refresh(cookie1), refresh(cookie1)]);
     expect(results.map((res) => res.status).sort()).toEqual([200, 401]);
 
-    // Bên thắng giữ được phiên: không bị coi là token bị đánh cắp.
     const winner = results.find((res) => res.status === 200);
     const cookie2 = refreshCookieOf(winner?.headers['set-cookie']);
     await refresh(cookie2).expect(200);
@@ -224,7 +207,6 @@ describe('Auth (e2e)', () => {
       .expect(401);
   });
 
-  // LUÔN để cuối: hammer login dùng chung cửa sổ đếm 60s với các login của test trên.
   it('rate limit login — quá 10 lần/phút/IP → 429 kèm Retry-After', async () => {
     let sawTooManyRequests = false;
     for (let attempt = 0; attempt < 15; attempt += 1) {
@@ -240,7 +222,7 @@ describe('Auth (e2e)', () => {
 
   describe('CSRF: refresh và logout chỉ nhận request từ web của ping', () => {
     const attempt = async (headers: Record<string, string>, route = 'refresh') => {
-      await app.get(RedisProvider).flushdb(); // register tối đa 5 lần/phút: mỗi ca cần ngân sách mới
+      await app.get(RedisProvider).flushdb();
       const { email, username } = trackUser();
       await register(email, username).expect(201);
       const loginRes = await login(email, 'password123').expect(200);
@@ -261,7 +243,6 @@ describe('Auth (e2e)', () => {
       expect(res.status).toBe(403);
       expect(res.body).toMatchObject({ code: 'FORBIDDEN' });
       expect(res.headers['set-cookie']).toBeUndefined();
-      // Cookie vẫn dùng được: request bị chặn trước khi chạm vào session.
       await request(app.getHttpServer())
         .post('/api/v1/auth/refresh')
         .set('Cookie', cookie)

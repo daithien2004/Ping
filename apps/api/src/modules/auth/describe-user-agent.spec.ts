@@ -35,7 +35,6 @@ describe('describeUserAgent (TG.8: tóm tắt User-Agent cho danh sách phiên)'
 
   it('UA không nhận diện được và thiếu UA → nhãn trung tính, không ném', () => {
     expect(describeUserAgent('curl/8.4.0')).toBe('Trình duyệt khác trên nền tảng khác');
-    // Chuỗi rỗng coi như thiếu header.
     expect(describeUserAgent('')).toBe('Ứng dụng không rõ');
     expect(describeUserAgent(undefined)).toBe('Ứng dụng không rõ');
     expect(describeUserAgent(null)).toBe('Ứng dụng không rõ');

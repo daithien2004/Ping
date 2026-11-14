@@ -21,10 +21,6 @@ const SECTIONS: Record<SettingsSectionKey, ComponentType> = {
   shortcuts: ShortcutsSection,
 };
 
-/**
- * Cài đặt cá nhân dạng modal dùng chung (kiểu Discord): rail trái đổi mục tại chỗ, URL không
- * đổi; đóng bằng Esc / backdrop / nút X. Render một lần ở AppShell nên mở được từ bất kỳ màn.
- */
 export function SettingsModal() {
   const { open, section, setSection, close } = useSettingsModal();
   const t = useTranslations('settings');

@@ -10,27 +10,16 @@ import { RedisProvider } from '../src/infra/redis/redis.module.js';
 import { resetPasswordTemplate, verifyEmailTemplate } from '../src/mailer/templates.js';
 import { REFRESH_COOKIE_NAME } from '../src/modules/auth/auth.constants.js';
 
-/**
- * TG.8 — vòng đời tài khoản (e2e trên Postgres + Redis + Mailpit thật):
- * chính sách chưa xác minh, xác minh email qua token trong thư (Mailpit), quên/đặt lại
- * mật khẩu (phản hồi chống dò, token một lần lưu băm, thu hồi phiên), đổi mật khẩu,
- * danh sách/thu hồi phiên và rate limit gửi thư.
- *
- * Toàn suite chạy TUẦN TỰ (fileParallelism: false) và spec này KHÔNG flushdb giữa chừng:
- * register giới hạn 5/phút/IP nên (a)(b)(c) dùng chung một user đăng ký MỘT lần; forgot
- * đếm theo IP trong 1 giờ nên test rate limit (h) phải nằm CUỐI.
- */
 const runId = Date.now().toString(36);
 const PASSWORD = 'password123';
 const NEW_PASSWORD = 'fresh-password-456';
 
-// Mailpit của docker compose (f9892bd): UI/API 8025, SMTP 1025.
+// Mailpit của docker compose: UI/API 8025, SMTP 1025.
 const MAILPIT = process.env.E2E_MAILPIT_URL ?? 'http://127.0.0.1:8025';
 
 const VERIFY_SUBJECT = verifyEmailTemplate('vi', 'x').subject;
 const RESET_SUBJECT = resetPasswordTemplate('vi', 'x').subject;
 
-/** Hàng tóm tắt thư trong danh sách của Mailpit. */
 interface MailpitSummary {
   ID: string;
   To: Array<{ Address: string }>;
@@ -47,7 +36,6 @@ describe('Account lifecycle TG.8 (e2e)', () => {
   let prisma: PrismaService;
   const emails: string[] = [];
 
-  // User dùng chung cho (a)(b)(c): đăng ký một lần vì trần register 5/phút/IP.
   const abc = { email: '', username: '', accessToken: '', verifyToken: '' };
 
   const uniqueSuffix = () => Math.random().toString(36).slice(2, 8);
@@ -67,7 +55,6 @@ describe('Account lifecycle TG.8 (e2e)', () => {
     http().post(api('/auth/register')).send({ email, username, password: PASSWORD });
   const login = (email: string, password: string) =>
     http().post(api('/auth/login')).send({ email, password });
-  /** Request kèm access token — supertest cần chọn verb trước nên bọc sẵn các verb dùng. */
   const as = (token: string) => {
     const header = { Authorization: `Bearer ${token}` };
     return {
@@ -78,7 +65,6 @@ describe('Account lifecycle TG.8 (e2e)', () => {
     };
   };
 
-  /** Cặp `name=value` của cookie refresh từ header Set-Cookie. */
   function refreshCookieOf(setCookie: string[] | string | undefined): string {
     const lines = Array.isArray(setCookie) ? setCookie : setCookie ? [setCookie] : [];
     const header = lines.find((cookie) => cookie.startsWith(`${REFRESH_COOKIE_NAME}=`));
@@ -86,7 +72,6 @@ describe('Account lifecycle TG.8 (e2e)', () => {
     return header.split(';')[0]!;
   }
 
-  /** Đợi Mailpit có thư cho địa chỉ, trả token một lần trong link của body text. */
   async function mailTokenOf(email: string, subject: string, timeoutMs = 20_000): Promise<string> {
     const deadline = Date.now() + timeoutMs;
     while (Date.now() < deadline) {
@@ -109,26 +94,19 @@ describe('Account lifecycle TG.8 (e2e)', () => {
   }
 
   beforeAll(async () => {
-    // Spec này cần thư thật trong Mailpit để lấy token: bật SMTP TRƯỚC khi boot AppModule
-    // (ConfigModule chụp env lúc boot; process.env thắng giá trị trong .env/vitest env).
-    // Các spec khác giữ ConsoleMailer (SMTP_URL rỗng ở vitest.config.e2e) để không tốn
-    // I/O SMTP cho thư không ai đọc.
     process.env.SMTP_URL = process.env.E2E_SMTP_URL ?? 'smtp://127.0.0.1:1025';
 
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
     app = moduleRef.createNestApplication();
-    // main.ts không chạy trong test: e2e tự lắp middleware + prefix (như auth.e2e-spec).
     app.use(cookieParser());
     app.setGlobalPrefix('api/v1');
     await app.init();
     prisma = app.get(PrismaService);
-    // Xóa cửa sổ rate limit của run trước (giống auth.e2e-spec) — làm MỘT lần ở đây.
+    // Xóa cửa sổ rate limit của run trước, làm MỘT lần ở đây.
     await moduleRef.get(RedisProvider).flushdb();
   });
 
   afterAll(async () => {
-    // Server của user (tạo ở test b) chặn xóa user qua FK Restrict — dọn trước,
-    // cascade kéo theo channel/role/member/invite; sau đó user (EmailToken cascade theo).
     const users = await prisma.user.findMany({
       where: { email: { in: emails } },
       select: { id: true },
@@ -137,7 +115,6 @@ describe('Account lifecycle TG.8 (e2e)', () => {
     await prisma.server.deleteMany({ where: { ownerId: { in: ids } } });
     await prisma.user.deleteMany({ where: { email: { in: emails } } });
     await app.close();
-    // Khôi phục ConsoleMailer cho spec kế tiếp chạy trên cùng worker vitest.
     process.env.SMTP_URL = '';
   });
 
@@ -147,8 +124,6 @@ describe('Account lifecycle TG.8 (e2e)', () => {
     abc.username = username;
     const res = await register(email, username).expect(201);
     abc.accessToken = res.body.accessToken;
-    // e2e mặc định coi user đăng ký là đã xác minh (auto-verify khi NODE_ENV=test, lý do
-    // ở AuthService.register) — test chủ động đặt lại để đi đúng luồng chưa xác minh.
     await prisma.user.update({ where: { email }, data: { emailVerified: false } });
     const me = await as(abc.accessToken).get(api('/users/me')).expect(200);
     expect(me.body.emailVerified).toBe(false);
@@ -164,7 +139,6 @@ describe('Account lifecycle TG.8 (e2e)', () => {
     abc.verifyToken = await mailTokenOf(abc.email, VERIFY_SUBJECT);
     await http().post(api('/auth/verify-email')).send({ token: abc.verifyToken }).expect(204);
 
-    // Verify-email đảo lại cờ false mà (a) đã đặt — bằng chứng endpoint đổi trạng thái thật.
     const me = await as(abc.accessToken).get(api('/users/me')).expect(200);
     expect(me.body.emailVerified).toBe(true);
 
@@ -172,7 +146,6 @@ describe('Account lifecycle TG.8 (e2e)', () => {
   });
 
   it('(c) token xác minh dùng lại → 400 VERIFY_TOKEN_INVALID; token vớ vẩn cũng vậy', async () => {
-    // Token của (b) đã tiêu: dùng lại bị từ chối bằng CÙNG MỘT mã (sai/hết hạn/đã dùng).
     const reused = await http()
       .post(api('/auth/verify-email'))
       .send({ token: abc.verifyToken })
@@ -210,7 +183,7 @@ describe('Account lifecycle TG.8 (e2e)', () => {
     const rowBefore = await prisma.emailToken.findFirst({
       where: { user: { email }, kind: 'reset' },
     });
-    expect(rowBefore?.tokenHash).not.toBe(token); // DB chỉ giữ băm, không giữ token thô
+    expect(rowBefore?.tokenHash).not.toBe(token);
 
     await http()
       .post(api('/auth/password/reset'))
@@ -220,7 +193,6 @@ describe('Account lifecycle TG.8 (e2e)', () => {
     const row = await prisma.emailToken.findUnique({ where: { id: rowBefore!.id } });
     expect(row?.usedAt).not.toBeNull();
 
-    // Đặt lại mật khẩu thu hồi MỌI phiên — refresh cookie cũ phải chết ngay.
     await http().post(api('/auth/refresh')).set(WEB).set('Cookie', cookieOld).expect(401);
 
     await login(email, PASSWORD).expect(401);
@@ -237,7 +209,6 @@ describe('Account lifecycle TG.8 (e2e)', () => {
     const tokenB = loginRes.body.accessToken as string;
     const cookieB = refreshCookieOf(loginRes.headers['set-cookie']);
 
-    // register tạo một phiên (A), login tạo phiên thứ hai (B).
     const listA = await as(tokenA).get(api('/users/me/sessions')).expect(200);
     expect(listA.body.sessions).toHaveLength(2);
     expect(listA.body.sessions.filter((s: { current: boolean }) => s.current)).toHaveLength(1);
@@ -245,20 +216,17 @@ describe('Account lifecycle TG.8 (e2e)', () => {
     const otherB = listA.body.sessions.find((s: { current: boolean }) => !s.current)!;
     expect(currentA.device).toBeTruthy();
 
-    // Người nhìn từ phiên B cũng thấy đúng phiên của mình là current (claim sid trong JWT).
     const listB = await as(tokenB).get(api('/users/me/sessions')).expect(200);
     expect(listB.body.sessions.find((s: { current: boolean }) => s.current)!.id).toBe(
       listB.body.sessions.find((s: { id: string }) => s.id !== currentA.id)!.id,
     );
 
-    // IDOR: người khác không thu hồi được phiên của mình (không tồn tại với họ).
-    const stranger = await login(/* user của (e) */ emails[1], NEW_PASSWORD).expect(200);
+    const stranger = await login(emails[1], NEW_PASSWORD).expect(200);
     await http()
       .delete(`${api('/users/me/sessions')}/${currentA.id}`)
       .set('Authorization', `Bearer ${stranger.body.accessToken}`)
       .expect(404);
 
-    // Thu hồi phiên B từ phiên A → refresh của B chết, của A còn sống.
     await as(tokenA)
       .delete(`${api('/users/me/sessions')}/${otherB.id}`)
       .expect(204);
@@ -285,10 +253,7 @@ describe('Account lifecycle TG.8 (e2e)', () => {
       .send({ currentPassword: PASSWORD, password: NEW_PASSWORD })
       .expect(204);
 
-    // Phiên B (khác) chết — refresh 401; phiên A sống; đăng nhập bằng mật khẩu mới OK.
     await http().post(api('/auth/refresh')).set(WEB).set('Cookie', cookieB).expect(401);
-    // Phiên A refresh thành công (rotation tạo hàng phiên mới) — client thật sẽ cất
-    // access token MỚI từ response này; test cũng vậy để `sid` trỏ đúng phiên đang sống.
     const refreshedA = await http()
       .post(api('/auth/refresh'))
       .set(WEB)
@@ -298,7 +263,6 @@ describe('Account lifecycle TG.8 (e2e)', () => {
     const cookieA2 = refreshCookieOf(refreshedA.headers['set-cookie']);
     await login(email, NEW_PASSWORD).expect(200);
 
-    // "Đăng xuất mọi nơi khác": những phiên còn lại bị thu hồi, phiên hiện tại giữ nguyên.
     await as(tokenA2).delete(api('/users/me/sessions')).expect(204);
     const list = await as(tokenA2).get(api('/users/me/sessions')).expect(200);
     expect(list.body.sessions).toHaveLength(1);
@@ -306,9 +270,6 @@ describe('Account lifecycle TG.8 (e2e)', () => {
     await http().post(api('/auth/refresh')).set(WEB).set('Cookie', cookieA2).expect(200);
   });
 
-  // LUÔN để cuối: forgot đếm theo IP trong cửa sổ 1 giờ — (d) đã tiêu 2 lượt, (e) 1 lượt,
-  // hammer tới khi vượt trần 10/giờ (lượt 11) → 429. Re-run toàn bộ trong 1 giờ vẫn xanh
-  // nhờ flushdb ở beforeAll.
   it('(h) rate limit forgot — 10 lượt/giờ theo IP, lượt 11 → 429 kèm Retry-After', async () => {
     let saw429 = false;
     for (let attempt = 0; attempt < 15 && !saw429; attempt += 1) {

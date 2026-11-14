@@ -3,39 +3,20 @@ import { expect, test, type Page } from '@playwright/test';
 import { findMailToken } from './global-setup';
 import { paceLogin, pacedLogin } from './login-pace';
 
-/**
- * TG.8 — vòng đời tài khoản trên web. Ba test độc lập chạy nối tiếp (workers=1):
- *  (a) đăng ký → tạo server bị chặn VERIFY_REQUIRED → lấy token verify từ Mailpit →
- *      /verify?token= thành công → tạo server được, banner chưa xác minh tắt;
- *  (b) quên mật khẩu alice: thông báo trung lập → token reset từ Mailpit → đổi mật khẩu →
- *      đăng nhập bằng mật khẩu mới → đổi NGƯỢC về password123 (form Đổi mật khẩu);
- *  (c) phiên đăng nhập: danh sách ≥1 dòng, dòng hiện tại đánh dấu; thu hồi từng phiên và
- *      «thu hồi các phiên khác» — phiên bị thu hồi reload là về /login.
- *
- * Login đi qua pacedLogin/paceLogin (rate limit 10/phút/IP); register 5/phút/IP nên mỗi lần
- * chạy chỉ đăng ký đúng 1 user mới (test a). Mailpit đọc qua API 8025, lọc theo người nhận.
- */
 const API = 'http://localhost:4000/api/v1';
 const SEED_PASSWORD = 'password123';
 const ALICE = 'alice@ping.dev';
 
-// <Activity> giữ trang đã rời (form ẩn) trong DOM: chỉ lấy ô đang hiện.
 const field = (page: Page, label: string) =>
   page.getByLabel(label, { exact: true }).filter({ visible: true });
 
-/** Đợi một request đúng method + path trả 2xx rồi trả response (bấm nút phải nằm sau).
- * Timeout 30s: không có timeout nghĩa là form không submit được sẽ treo tới timeout test 300s. */
 const waitForOk = (page: Page, path: string, method: string) =>
   page.waitForResponse(
     (res) => res.url().includes(path) && res.request().method() === method && res.ok(),
     { timeout: 30_000 },
   );
 
-/**
- * Chờ token từ Mailpit (thư đến hơi trễ sau register/forgot); đỏ nếu quá 30s không có.
- * `since` = mốc thời gian TRƯỚC khi gửi yêu cầu: bỏ qua thư cũ của lần chạy trước (alice
- * nhận thư reset nhiều lần) — nếu không, poller trả token cũ đã dùng ngay khi thư mới chưa tới.
- */
+/** `since` = mốc TRƯỚC khi gửi yêu cầu: bỏ qua thư cũ (alice nhận reset nhiều lần), không thì poller trả token đã dùng. */
 async function pollMailToken(email: string, path: '/verify' | '/reset-password', since: number) {
   const deadline = Date.now() + 30_000;
   let token: string | undefined;
@@ -63,7 +44,6 @@ test('(a) đăng ký → tạo server bị chặn vì chưa xác minh → verify
     await field(page, 'Mật khẩu').fill(password);
     await page.getByRole('button', { name: 'Tạo tài khoản' }).click();
     await expect(page.getByRole('heading', { name: 'Bạn chưa ở trong server nào' })).toBeVisible();
-    // me.emailVerified=false → banner ở đầu app shell; sau verify sẽ tắt (đối chiếu cuối test).
     await expect(page.getByTestId('verify-email-banner')).toBeVisible();
   });
 
@@ -105,8 +85,8 @@ test('(b) quên mật khẩu: thông báo trung lập → reset bằng token Mai
 }) => {
   test.setTimeout(300_000);
   const newPassword = `tg8-${randomUUID().slice(0, 8)}-Aa1`;
-  let alicePassword = SEED_PASSWORD; // theo vết để finally phủi tay nếu đỏ giữa chừng
-  let forgotAt = 0; // mốc lọc thư reset, gán khi bấm gửi (dùng ở step sau nên nằm ngoài step)
+  let alicePassword = SEED_PASSWORD;
+  let forgotAt = 0;
 
   try {
     await test.step('từ /login bấm «Quên mật khẩu?» → gửi email alice', async () => {
@@ -114,11 +94,10 @@ test('(b) quên mật khẩu: thông báo trung lập → reset bằng token Mai
       await page.getByRole('link', { name: 'Quên mật khẩu?' }).click();
       await expect(page).toHaveURL(/\/forgot-password$/);
       await field(page, 'Email').fill(ALICE);
-      forgotAt = Date.now(); // chỉ nhận thư reset gửi SAU thời điểm này
+      forgotAt = Date.now();
       const sent = waitForOk(page, '/auth/password/forgot', 'POST');
       await page.getByRole('button', { name: 'Gửi thư đặt lại mật khẩu' }).click();
       await sent;
-      // Câu trung lập bất kể email có tồn tại (không lộ tài khoản nào đã đăng ký).
       await expect(page.getByTestId('forgot-sent')).toBeVisible();
     });
 
@@ -142,7 +121,6 @@ test('(b) quên mật khẩu: thông báo trung lập → reset bằng token Mai
       await field(page, 'Mật khẩu').fill(newPassword);
       await page.getByRole('button', { name: 'Đăng nhập' }).click();
       await expect(page.getByTestId('personal-settings')).toBeVisible();
-      // 30s: danh sách channel sau login có thể chậm dưới tải (pattern admin-members TG.8).
       await expect(page).toHaveURL(/\/channels\/[0-9a-f-]+\/[0-9a-f-]+/, { timeout: 30_000 });
     });
 
@@ -155,7 +133,6 @@ test('(b) quên mật khẩu: thông báo trung lập → reset bằng token Mai
       const patched = waitForOk(page, '/users/me/password', 'PATCH');
       await page.getByTestId('settings-change-password-submit').click();
       await patched;
-      // Toast xác nhận + form được xoá (không giữ mật khẩu trong DOM).
       await expect(page.getByText('Đã đổi mật khẩu.').first()).toBeVisible();
       const leftover = await page
         .locator('[data-testid="settings-change-password"] input[type=password]')
@@ -169,17 +146,15 @@ test('(b) quên mật khẩu: thông báo trung lập → reset bằng token Mai
       expect(auth.user.email).toBe(ALICE);
     });
   } finally {
-    // Đỏ giữa chừng sau khi đã đổi mật khẩu: trả alice về password123 để các spec khác không dính
-    // 401. Thử vài lần — một cú 429/401 ở đây từng để alice kẹt mật khẩu mới và làm đỏ cả bộ.
     if (alicePassword !== SEED_PASSWORD) {
       const request = page.context().request;
       for (let attempt = 0; attempt < 3; attempt++) {
         try {
-          // Bước đổi ngược có thể đã kịp chạy trước khi timeout: thử mật khẩu seed trước.
+          // Bước đổi ngược có thể đã chạy trước khi timeout: thử mật khẩu seed trước.
           await pacedLogin(request, ALICE, SEED_PASSWORD);
           break;
         } catch {
-          // Chưa về seed — thử đổi bằng mật khẩu tạm.
+          /* bỏ qua */
         }
         try {
           const auth = await pacedLogin(request, ALICE, alicePassword);
@@ -189,7 +164,7 @@ test('(b) quên mật khẩu: thông báo trung lập → reset bằng token Mai
           });
           if (patched.ok()) break;
         } catch {
-          // 429/401: pacedLogin sẽ giãn cửa sổ ở lần sau.
+          /* bỏ qua */
         }
         await new Promise((resolve) => setTimeout(resolve, 1_000 * (attempt + 1)));
       }
@@ -207,7 +182,6 @@ test('(c) phiên đăng nhập: danh sách, thu hồi từng phiên và thu hồ
   try {
     await test.step('dọn phiên cũ của alice, mở /settings: đúng 1 dòng «Phiên này»', async () => {
       const alice = await pacedLogin(ctx1.request, ALICE, SEED_PASSWORD);
-      // Cắt trạng thái cũ (các lần chạy trước để lại phiên trong DB): giữ duy nhất phiên này.
       const cleaned = await ctx1.request.delete(`${API}/users/me/sessions`, {
         headers: { Authorization: `Bearer ${alice.accessToken}` },
       });
@@ -219,7 +193,6 @@ test('(c) phiên đăng nhập: danh sách, thu hồi từng phiên và thu hồ
       const rows = page1.locator('[data-testid^="settings-session-row-"]');
       await expect(rows).toHaveCount(1);
       await expect(page1.getByTestId('settings-session-current')).toBeVisible();
-      // Dòng hiện tại không có nút thu hồi (không tự thu hồi phiên đang mở).
       await expect(page1.locator('[data-testid^="settings-session-revoke-"]')).toHaveCount(0);
     });
 
@@ -230,20 +203,16 @@ test('(c) phiên đăng nhập: danh sách, thu hồi từng phiên và thu hồ
       await expect(page2.getByTestId('personal-settings')).toBeVisible();
 
       const page1 = ctx1.pages()[0]!;
-      // Tải lại để đọc danh sách mới (staleTime 30s — fetch lúc mở trang còn trước phiên 2).
       await page1.reload();
       const rows = page1.locator('[data-testid^="settings-session-row-"]');
       await expect(rows).toHaveCount(2);
-      // Thiết bị của phiên 2 là Chrome e2e — cột thiết bị hiện nội dung, không rỗng.
       await expect(page1.getByTestId(/settings-session-row-/).last()).toContainText('Chrome');
 
       await page1.locator('[data-testid^="settings-session-revoke-"]').first().click();
-      // Popconfirm: nút xác nhận nằm trong lớp popover của antd (tránh trùng nút mở).
       await page1.locator('.ant-popover').getByRole('button', { name: 'Thu hồi' }).click();
       await expect(rows).toHaveCount(1);
       await expect(page1.getByTestId('settings-session-current')).toBeVisible();
 
-      // Phiên bị thu hồi reload → refresh 401 → AuthGate về /login.
       await page2.reload();
       await expect(page2).toHaveURL(/\/login(\?|$)/);
     });

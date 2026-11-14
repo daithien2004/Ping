@@ -14,7 +14,6 @@ export function useInView<T extends HTMLElement>(
   inView: boolean;
 } {
   const ref = useRef<T>(null);
-  // Môi trường không có IntersectionObserver (trình duyệt cũ): coi như đã hiện ngay từ mount —
   // tính trong lazy initializer (tính sẵn của IO không đổi lúc chạy) thay vì setState trong effect.
   const [inView, setInView] = useState(() => typeof IntersectionObserver === 'undefined');
   useEffect(() => {

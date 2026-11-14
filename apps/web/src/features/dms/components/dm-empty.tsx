@@ -3,10 +3,6 @@
 import { MessageCircle } from 'lucide-react';
 import { useTranslations } from 'use-intl';
 
-/**
- * Màn chính trống của "/dms" (chưa chọn hội thoại): gợi ý entry chính để tạo DM — nút
- * "Nhắn tin" trong thẻ hồ sơ thành viên của server (TG.9, v0.2 không có trang tìm người).
- */
 export function DmEmpty() {
   const t = useTranslations('dms');
   return (

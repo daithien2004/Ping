@@ -19,7 +19,6 @@ import { useDms, useToggleBlock } from '../hooks';
 import { dmMessagePath } from '../navigation';
 import { selectDmBlocked, useDmBlockStore } from '../store';
 
-/** `use()` cần một promise ổn định cho trang permalink (không có searchParams). */
 const EMPTY_QUERY: Promise<Record<string, string | string[] | undefined>> = Promise.resolve({});
 
 /**
@@ -38,13 +37,11 @@ export function DmView({
 }: {
   params: Promise<{ channelId: string }>;
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
-  /** Permalink `/channels/@me/:channelId/:messageId`: tin đích lấy từ segment của route. */
   focusId?: string | null;
 }) {
   const { channelId } = use(params);
   const query = use(searchParams ?? EMPTY_QUERY);
   const focusId = focusIdProp ?? (typeof query.m === 'string' ? query.m : null);
-  // Dữ liệu DM lấy từ GET /dms (một nguồn duy nhất — header, rail và badge cùng cache).
   const { data: dms, isPending, isError, error, refetch, isFetching } = useDms();
   const errorMessage = useErrorMessage();
   const state = dmViewState({ isPending, isError, dms, channelId });
@@ -89,7 +86,6 @@ function DmLoadError({
   );
 }
 
-/** IDOR an toàn: DM của người khác chỉ "không tìm thấy" (API trả 404, không lộ tồn tại). */
 function DmNotFound() {
   const t = useTranslations('dms');
   return <p className="m-auto text-sm text-muted-foreground">{t('notFound')}</p>;
@@ -114,8 +110,6 @@ function DmConversation({ dm, focusId }: { dm: DmSummary; focusId: string | null
     );
   }
 
-  // 403 DM_BLOCKED khi gửi tin: API dùng chung một mã cho cả hai chiều (chống dò nguyên nhân)
-  // nên client cũng hiển thị trung lập — banner + tắt composer cho tới khi có thay đổi.
   const partnerId = dm.partner.id;
   const onSendError = useCallback(
     (error: unknown) => {
@@ -148,9 +142,6 @@ function DmConversation({ dm, focusId }: { dm: DmSummary; focusId: string | null
         onOpenPin={(messageId) => router.push(pathToMessage(messageId))}
       />
       {blocked && <DmBlockedBanner />}
-      {/* key: mỗi tin đích permalink là một phiên xem riêng, như ChannelView. Suspense riêng
-          để header đối tác đứng yên khi pane tin nhắn của DM mới còn tải (trước đây cả layout
-          thay bằng Loading, header biến mất rồi hiện lại). */}
       <Suspense fallback={<MessageListSkeleton />}>
         <MessagePane
           key={`${dm.channelId}:${focusId ?? ''}`}

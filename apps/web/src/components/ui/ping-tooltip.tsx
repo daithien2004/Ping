@@ -5,7 +5,6 @@ import { POPUP_STYLES } from './popup-styles';
 
 export type PingTooltipProps = Omit<AntdTooltipProps, 'styles'>;
 
-// pointerEvents none: tooltip chặn chuột sẽ nuốt cú bấm vào phần tử nằm dưới nó.
 export function PingTooltip(props: PingTooltipProps) {
   return (
     <Tooltip

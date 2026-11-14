@@ -21,7 +21,6 @@ describe('assignRanks (TG.10 — gán rank cách đều khi rebalance)', () => {
       for (let i = 1; i < count; i += 1) {
         expect(ranks[i]! > ranks[i - 1]!, `count=${count} ranks[${i}]`).toBe(true);
         expect(ranks[i]).toMatch(/^[a-z]+$/);
-        // Mục đích của rebalance: sau khi gán lại, chèn giữa mọi cặp liền nhau phải còn chỗ.
         expect(rankBetween(ranks[i - 1], ranks[i]), `count=${count} gap[${i}]`).not.toBeNull();
       }
       expect(rankBetween(undefined, ranks[0]!)).not.toBeNull();
@@ -48,7 +47,6 @@ describe('compareRanks + rankAfter (TG.10)', () => {
   it('rankAfter nối cuối; undefined là mốc đầu; cạn khoảng trả null cho caller rebalance', () => {
     expect(rankAfter(undefined)).toBe(firstRank());
     expect(rankAfter('m')).toBe(after('m'));
-    // Chuỗi rỗng (dữ liệu lệch) không còn gì phía trước → null.
     expect(rankAfter('')).toBeNull();
   });
 });

@@ -17,7 +17,6 @@ interface TestUser {
 
 type HttpMethod = 'get' | 'post' | 'patch' | 'delete';
 
-/** Request đồng thời và client retry không được làm hỏng dữ liệu hay trả 500. */
 describe('Data integrity under retries and races (e2e)', () => {
   let app: INestApplication;
   const emails: string[] = [];
@@ -118,7 +117,6 @@ describe('Data integrity under retries and races (e2e)', () => {
       1,
     );
 
-    // Cùng key nhưng người khác: không đụng nhau.
     const other = await api('post', '/api/v1/servers', joiner.token)
       .set('Idempotency-Key', key)
       .send({ name: 'Retry me' })

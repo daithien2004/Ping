@@ -1,14 +1,12 @@
 import { expect, type Locator, type Page, test } from '@playwright/test';
 
-// F4 trên channel #long (300 tin, tạo ở global-setup). Nối tiếp trên MỘT trang: mỗi lần tải lại
-// app tốn ~6 request, chạy rời từng test dễ chạm rate limit.
+// Nối tiếp trên MỘT trang: mỗi lần tải lại tốn ~6 request, chạy rời dễ chạm rate limit.
 test.describe.configure({ mode: 'serial' });
 
 let page: Page;
 const serverId = () => process.env.E2E_SERVER_ID!;
 const channelId = () => process.env.E2E_CHANNEL_ID!;
 
-/** Vùng cuộn đang hiện. <Activity> giữ trang channel cũ ở dạng ẩn trong DOM. */
 const pane = (name: string) => page.locator(`[aria-label="Tin nhắn trong #${name}"]:visible`);
 const composer = (name: string) => page.getByRole('textbox', { name: `Nhắn #${name}` });
 const distanceFromBottom = (scroller: Locator) =>
@@ -34,8 +32,6 @@ test('1. vào channel: xuống tin mới nhất, chỉ render phần đang thấ
 
 test('2. cuộn lên: tải dần tin cũ tới đầu channel', async () => {
   const scroller = pane('long');
-  // 300 tin / 50 mỗi trang: cứ kéo lên đầu tới khi tin #1 được render. Neo (anchorTo: 'end') giữ
-  // nguyên tin đang xem sau mỗi trang nên phải kéo lại nhiều lần.
   await expect(async () => {
     await scroller.evaluate((el) => el.scrollTo(0, 0));
     await expect(page.getByText(/^#1 /)).toBeVisible({ timeout: 1_000 });
@@ -45,7 +41,6 @@ test('2. cuộn lên: tải dần tin cũ tới đầu channel', async () => {
 
 test('3 + 5. gửi khi đang đọc tin cũ: hiện ngay (đang gửi), được xác nhận, tự xuống đáy', async () => {
   const content = `e2e gửi ${Date.now()}`;
-  // Giữ request 500ms để thấy trạng thái optimistic.
   await page.route('**/channels/*/messages', async (route) => {
     if (route.request().method() === 'POST') await new Promise((r) => setTimeout(r, 500));
     await route.continue();
@@ -63,7 +58,6 @@ test('3 + 5. gửi khi đang đọc tin cũ: hiện ngay (đang gửi), được
 
 test('4. server đã lưu nhưng HTTP mất response → socket xác nhận, không trùng tin', async () => {
   const content = `e2e thử lại ${Date.now()}`;
-  // Request TỚI server (tin được lưu) nhưng trình duyệt thấy lỗi mạng: đúng ca nonce phải chặn trùng.
   await page.route('**/channels/*/messages', async (route) => {
     if (route.request().method() !== 'POST') return route.continue();
     await route.fetch();
@@ -77,7 +71,6 @@ test('4. server đã lưu nhưng HTTP mất response → socket xác nhận, kh�
   await expect(page.getByText('Gửi thất bại')).toHaveCount(0);
   await page.unrouteAll();
 
-  // Dữ liệu từ server (không phải cache): đúng MỘT tin.
   await page.reload();
   await expect(page.getByText(/^#300 /)).toBeAttached();
   await expect(page.locator('article:visible', { hasText: content })).toHaveCount(1);

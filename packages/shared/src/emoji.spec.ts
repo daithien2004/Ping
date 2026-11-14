@@ -4,8 +4,8 @@ import { isAllowedReactionEmoji, reactionEmojiSchema } from './emoji';
 describe('reaction emoji allowlist (TG.2)', () => {
   it('accepts single- and multi-codepoint emoji from the picker dataset', () => {
     expect(isAllowedReactionEmoji('👍')).toBe(true);
-    expect(isAllowedReactionEmoji('❤️')).toBe(true); // base + variation selector
-    expect(isAllowedReactionEmoji('🧑‍💻')).toBe(true); // ZWJ sequence
+    expect(isAllowedReactionEmoji('❤️')).toBe(true);
+    expect(isAllowedReactionEmoji('🧑‍💻')).toBe(true);
     expect(isAllowedReactionEmoji('🧑‍⚕️')).toBe(true);
   });
 

@@ -20,7 +20,6 @@ import { useMe, useRegister } from '../hooks';
 import { safeRedirectPath } from '../session';
 import { useErrorMessage } from '@/lib/error-message';
 
-/** Tên trường cố định của form (dùng khi xoá lúc trang bị ẩn). */
 const REGISTER_FIELDS = ['email', 'username', 'displayName', 'password'] as const;
 
 export function RegisterForm() {
@@ -34,7 +33,6 @@ export function RegisterForm() {
   const t = useTranslations('auth');
   const errorMessage = useErrorMessage();
 
-  // Ô "tên hiển thị" để trống = không đặt (server dùng username): schema không nhận chuỗi rỗng.
   const getValues = (): Record<string, unknown> => {
     const values = form.getFieldsValue();
     const displayName = values.displayName?.trim();
@@ -93,8 +91,6 @@ export function RegisterForm() {
         </PingButton>
         <p className="mt-2 text-sm">
           {t('haveAccount')}{' '}
-          {/* Màu ở span con: antd tô <a> bằng màu link nó tự sinh (đậm hơn token, 4,01:1 trên
-              card tối) nên class text-* trên Link bị đè. */}
           <Link
             href={`/login?next=${encodeURIComponent(next)}`}
             className="font-medium underline-offset-4 hover:underline"

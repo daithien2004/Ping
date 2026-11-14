@@ -18,19 +18,9 @@ const PENDING = '__pending__';
 const TTL_SECONDS = 24 * 60 * 60;
 const uuid = z.uuid();
 
-/**
- * Header `Idempotency-Key` (quy tắc 12): client retry một request tạo dữ liệu với CÙNG key
- * nhận lại đúng response lần đầu thay vì tạo bản ghi thứ hai. Không gửi header thì chạy bình thường.
- *
- * Key gắn với user + method + URL, lưu trên Redis 24 giờ. Lần đầu giữ chỗ bằng SET NX;
- * request trùng key khi lần đầu còn đang chạy → 409. Handler lỗi → xóa chỗ để retry chạy lại.
- * Status code không cần lưu: Nest áp status của route (201) lên cả response phát lại.
- *
- * Redis là nơi DUY NHẤT chống tạo trùng ở đây, nên khi Redis chết mà request có header này thì
- * trả 503 (fail-closed, ADR-0026). Request không có header không bị ảnh hưởng. Sau khi handler
- * đã tạo xong, lỗi Redis (lưu response, xóa chỗ) chỉ được log: tuyệt đối không biến một thao tác
- * đã thành công thành lỗi.
- */
+// Redis là nơi duy nhất chống tạo trùng: Redis chết + có header → 503 (fail-closed).
+// Sau khi handler thành công, lỗi Redis chỉ log, không biến thao tác đã thành công thành lỗi.
+// Request trùng key khi lần đầu còn chạy → 409; handler lỗi → xóa chỗ giữ.
 @Injectable()
 export class IdempotencyInterceptor implements NestInterceptor {
   private readonly logger = new Logger(IdempotencyInterceptor.name);
@@ -80,7 +70,7 @@ export class IdempotencyInterceptor implements NestInterceptor {
         return body;
       }),
       catchError((error: unknown) =>
-        // Handler lỗi: trả chỗ giữ để retry chạy lại. Xóa không được thì vẫn ném lỗi GỐC.
+        // Xóa chỗ giữ không được thì vẫn ném lỗi GỐC.
         from(this.redis.del(redisKey).catch(() => undefined)).pipe(
           mergeMap(() => {
             throw error;

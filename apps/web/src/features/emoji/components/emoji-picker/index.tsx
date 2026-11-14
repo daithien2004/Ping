@@ -48,10 +48,8 @@ export function matchesSearch(entry: EmojiEntry, query: string): boolean {
   );
 }
 
-/** Mục trong thanh chọn bên trái: 'server' chỉ xuất hiện khi có `serverId` (TG.24). */
 type EmojiTab = EmojiGroup | 'recent' | 'server';
 
-/** Icon cho thanh mục — Discord dùng icon dọc bên trái, nhãn chữ ở title/aria. */
 const TAB_ICONS: Record<EmojiTab, ReactNode> = {
   recent: <History className="size-4" />,
   smileys: <Smile className="size-4" />,
@@ -65,26 +63,17 @@ const TAB_ICONS: Record<EmojiTab, ReactNode> = {
   server: <Sparkles className="size-4" />,
 };
 
-/** Lưới 9 cột như Discord; cũng là bước nhảy của ArrowUp/ArrowDown. */
 const EMOJI_COLUMNS = 9;
 
 type Hovered = { glyph?: string; image?: string; label: string } | null;
 
-/**
- * Emoji picker (TG.23, ADR-0057 — hình do font hệ thống; TG.24 thêm mục "Của server").
- * Bố cục theo Discord: ô tìm kiếm trên cùng, thanh icon dọc bên trái để nhảy giữa các mục,
- * danh sách cuộn có tiêu đề từng mục, chân picker hiện emoji đang trỏ và nút tông da.
- * Mục "server" chỉ có khi biết `serverId`; chọn emoji server gọi `onPickCustom` với token.
- */
 export function EmojiPicker({
   onPick,
   serverId,
   onPickCustom,
 }: {
   onPick: (unicode: string) => void;
-  /** Server hiện tại — có thì hiện mục emoji tùy chỉnh của server (TG.24). */
   serverId?: string;
-  /** Chọn emoji server → nhận token `:ten:<id>` để chèn vào nội dung/reaction. */
   onPickCustom?: (token: string) => void;
 }) {
   const t = useTranslations('emoji');
@@ -97,15 +86,11 @@ export function EmojiPicker({
     initialTab: 'recent',
     clearQuery: () => setQuery(''),
   });
-  // Store ngoài React (xem recent.ts): đồng bộ với mọi nơi khác ghi "gần đây" (vd thanh reaction
-  // trong message-actions.tsx) thay vì giữ state cục bộ riêng.
   const recent = useSyncExternalStore(
     subscribeRecentEmoji,
     recentEmojiSnapshot,
     serverRecentEmojiSnapshot,
   );
-  // Emoji server (TG.24): cùng query với renderer và màn quản trị (cache chia sẻ, event
-  // `expressions.updated` invalidate — mục server tự cập nhật khi có emoji mới).
   const { data: emojiData, isError, refetch, isFetching } = useEmojis(serverId ?? '');
   const serverEmojis = useMemo(() => emojiData?.emojis ?? [], [emojiData]);
 
@@ -117,7 +102,6 @@ export function EmojiPicker({
         .filter((entry): entry is EmojiEntry => entry !== undefined),
     [recent],
   );
-  // Có truy vấn → tìm trên TOÀN BỘ dataset (hệ thống + server), như Discord.
   const unicodeResults = useMemo(
     () => (searching ? EMOJI_DATA.filter((entry) => matchesSearch(entry, query)) : []),
     [searching, query],
@@ -136,12 +120,10 @@ export function EmojiPicker({
   }
 
   function pickCustom(emoji: CustomEmojiDto) {
-    // "Gần đây" chỉ theo dõi emoji hệ thống (unicode); emoji server chèn thẳng token.
     onPickCustom?.(emojiInsertToken(emoji));
   }
 
   function onGridKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
-    // Chỉ điều hướng trong lưới hiện tại — mỗi mục là một lưới riêng.
     const grid = event.currentTarget.closest('[data-grid]');
     const buttons = Array.from(grid?.querySelectorAll<HTMLButtonElement>('button') ?? []);
     const index = buttons.indexOf(event.currentTarget);
@@ -167,7 +149,6 @@ export function EmojiPicker({
   const railTabs: EmojiTab[] = serverId
     ? ['recent', 'server', ...EMOJI_GROUPS]
     : ['recent', ...EMOJI_GROUPS];
-  // Mục "Gần đây" rỗng thì ẩn, như Discord (chưa ai dùng emoji nào).
   const sections = railTabs.filter((name) => name !== 'recent' || recentEntries.length > 0);
   const resultCount = unicodeResults.length + customResults.length;
 

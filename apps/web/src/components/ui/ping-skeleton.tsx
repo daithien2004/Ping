@@ -4,7 +4,6 @@ import { Skeleton, type SkeletonProps as AntdSkeletonProps } from 'antd';
 import { cn } from '@/lib/utils';
 
 export interface PingSkeletonProps extends AntdSkeletonProps {
-  /** Khối một màu đúng kích thước `className`, thay cho dòng chữ mô phỏng của antd. */
   block?: boolean;
 }
 

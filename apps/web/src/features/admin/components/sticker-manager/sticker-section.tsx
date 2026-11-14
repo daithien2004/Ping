@@ -18,7 +18,6 @@ type StickerFormValues = {
   tags?: string;
 };
 
-/** Form nhập tags là một chuỗi phân tách dấu phẩy; tách thành mảng để khớp `createStickerSchema`. */
 function parseStickerTags(value: string | undefined): string[] {
   return (value ?? '')
     .split(',')
@@ -30,10 +29,6 @@ function suggestStickerName(filename: string): string {
   return filename.replace(/\.[^.]+$/, '').slice(0, 32);
 }
 
-/**
- * Quản lý sticker của server (TG.22, ADR-0067): upload PNG/WebP ≤ 512 KB (ảnh động giữ lại,
- * ảnh tĩnh ≤ 512×512), đặt tên + thẻ tìm kiếm rồi claim; xóa có Popconfirm.
- */
 export function StickerSection({ serverId }: { serverId: string }) {
   const t = useTranslations('admin');
   const tc = useTranslations('common');
@@ -58,8 +53,6 @@ export function StickerSection({ serverId }: { serverId: string }) {
     reset: createMutation.reset,
     successMessage: t('stickerCreated'),
   });
-  // Mảng tags validate bằng đúng luật của `createStickerSchema` (8 thẻ, 24 ký tự/thẻ) — không
-  // viết lại giới hạn ở client.
   const rules = zodFormRules(
     z.object({
       name: createStickerSchema.shape.name,
@@ -74,7 +67,6 @@ export function StickerSection({ serverId }: { serverId: string }) {
     () => form.getFieldsValue(),
   );
 
-  // Sticker của server = gói có serverId; gói hệ thống (serverId null) chỉ xem được.
   const stickers = (data?.packs ?? []).flatMap((pack) =>
     pack.serverId !== null ? pack.stickers : [],
   );
@@ -197,7 +189,6 @@ export function StickerSection({ serverId }: { serverId: string }) {
               data-testid="sticker-item"
               className="flex w-40 flex-col items-center gap-1 rounded-lg border bg-muted/40 p-2"
             >
-              {/* Ảnh đã kiểm định; trong quản trị dùng khung tĩnh cho nhẹ và ổn định layout. */}
               <img
                 src={profileImageUrl(sticker.previewUrl)}
                 alt={sticker.name}

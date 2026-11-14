@@ -4,12 +4,7 @@ import { pingToast } from '@/components/ui/ping-toast';
 import { useProfileUpload, type ProfileUpload } from '@/features/profile/hooks';
 import { useErrorMessage } from '@/lib/error-message';
 
-/**
- * Luồng chọn tệp → gợi ý tên → form tạo (sticker/emoji server dùng chung, TG.22/TG.24):
- * cùng pipeline upload TG.6, cùng chu trình chooseFile/reset/submit, chỉ khác scope upload,
- * cách gợi ý tên và payload gửi API. Nhận thẳng `mutate`/`reset` (không phải cả
- * `UseMutationResult`) để tránh kiểu generic của react-query suy diễn sai chiều.
- */
+/** Nhận `mutate`/`reset` thay vì `UseMutationResult` để tránh generic của react-query suy diễn sai chiều. */
 export function useUploadCreateForm<TValues extends { name: string }, TInput>({
   scope,
   serverId,

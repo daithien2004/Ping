@@ -65,7 +65,7 @@ try {
     { encoding: 'utf8' },
   ).trim();
 } catch {
-  /* Report unknown rather than inventing a SHA. */
+  // Không đọc được SHA thì báo unknown, không bịa.
 }
 const fixtureFiles = ['embedding-dataset.json', 'qa-dataset.json', 'injection-dataset.json'];
 const hash = createHash('sha256');

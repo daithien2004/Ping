@@ -2,7 +2,6 @@ import { ErrorCodes, type ErrorCode } from '@ping/shared';
 import { useTranslations } from 'use-intl';
 import { ApiError } from './api-client';
 
-/** Code có câu chung trong `errors.*` của messages/*.json. */
 const KNOWN = [
   ErrorCodes.UPLOAD_INVALID,
   ErrorCodes.UPLOAD_QUOTA_EXCEEDED,
@@ -22,13 +21,11 @@ const KNOWN = [
   ErrorCodes.EMOJI_LIMIT_REACHED,
   // TG.9: bị chặn hoặc đối phương tắt DM — API cố ý dùng chung một mã chống dò (ADR-0070).
   ErrorCodes.DM_BLOCKED,
-  // TG.8: token xác minh hết hạn/đã dùng, và chính sách tài khoản chưa xác minh email.
   ErrorCodes.VERIFY_TOKEN_INVALID,
   ErrorCodes.VERIFY_REQUIRED,
 ] as const;
 type KnownCode = (typeof KNOWN)[number];
 
-/** Câu override do nơi gọi đã dịch, theo code ("Không có quyền tạo channel"…). */
 export type ErrorOverrides = Partial<Record<ErrorCode, string>>;
 
 export type ErrorDescription =
@@ -36,11 +33,6 @@ export type ErrorDescription =
   | { key: KnownCode | 'unknown'; requestId?: string }
   | { key: 'unknownWithId'; requestId: string };
 
-/**
- * Chọn câu báo lỗi theo `ApiError.code` (hợp đồng), không theo `message` của server (hướng dẫn
- * 16.7): câu server là tiếng Anh và có thể đổi. Lỗi không lường trước kèm requestId để báo lại.
- * Hàm thuần (dễ test); `useErrorMessage` lo phần dịch.
- */
 export function describeError(error: unknown, overrides: ErrorOverrides = {}): ErrorDescription {
   if (error instanceof ApiError) {
     const override = overrides[error.code];
@@ -49,7 +41,6 @@ export function describeError(error: unknown, overrides: ErrorOverrides = {}): E
     }
     const known = KNOWN.find((code) => code === error.code);
     if (known) {
-      // Lỗi phía server (5xx) kèm mã để báo lại; lỗi do người dùng (4xx) hay mất kết nối thì không.
       return error.status >= 500 && error.requestId
         ? { key: known, requestId: error.requestId }
         : { key: known };
@@ -61,7 +52,6 @@ export function describeError(error: unknown, overrides: ErrorOverrides = {}): E
   return { key: 'unknown' };
 }
 
-/** `const errorMessage = useErrorMessage(); errorMessage(error, { FORBIDDEN: t('…') })`. */
 export function useErrorMessage() {
   const t = useTranslations('errors');
   return (error: unknown, overrides?: ErrorOverrides): string => {

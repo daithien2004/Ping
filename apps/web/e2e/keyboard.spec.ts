@@ -1,8 +1,6 @@
 import { expect, type Page, test } from '@playwright/test';
 import { paceLogin } from './login-pace';
 
-// H4 (ADR-0029): dùng được hoàn toàn bằng bàn phím — mở hộp thoại, focus vào ô nhập, Esc đóng và
-// trả focus về nút đã mở, mở menu thao tác tin nhắn.
 async function signIn(page: Page) {
   await paceLogin();
   await page.goto('/login');
@@ -12,7 +10,6 @@ async function signIn(page: Page) {
   await expect(page.getByRole('link', { name: '# general' })).toBeVisible();
 }
 
-// Một lần đăng nhập cho cả hai kịch bản (đăng nhập bị giới hạn 5 lần/phút/IP).
 test('keyboard: dialog focus in and back, message menu', async ({ page }) => {
   await signIn(page);
   const createButton = page.getByRole('button', { name: 'Tạo server' });
@@ -29,8 +26,7 @@ test('keyboard: dialog focus in and back, message menu', async ({ page }) => {
 
   await page.goto(`/channels/${process.env.E2E_SERVER_ID}/${process.env.E2E_CHANNEL_ID}`);
   const menuButton = page.getByRole('button', { name: 'Thao tác tin nhắn' }).last();
-  // Quyền server được làm mới ngầm sau khi shell vẽ từ cache (ADR-0087), nên thanh thao tác
-  // tạm disabled tới khi quyền sẵn sàng. Chờ nút dùng được rồi mới focus như người dùng bàn phím.
+  // Quyền server làm mới ngầm sau khi vẽ từ cache nên thanh thao tác tạm disabled: chờ dùng được rồi mới focus.
   await expect(menuButton).toBeEnabled();
   await menuButton.focus();
   await page.keyboard.press('Enter');

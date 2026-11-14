@@ -13,14 +13,7 @@ const VIEWPORTS = [
 ] as const;
 const SCHEMES = ['light', 'dark'] as const;
 
-/**
- * Ổn định ảnh trước khi chụp:
- * - ẩn thanh cuộn (Chromium Windows/Linux vẽ khác nhau);
- * - ẩn `<time>` bằng `visibility` (giữ chỗ, không đổi layout) — giờ tương đối đổi theo lần
- *   chạy nên không thể đưa vào baseline, còn hộp mask màu tím che mất nội dung xung quanh;
- * - chờ font Geist tải xong;
- * - chờ handshake socket xong — banner "Đang kết nối…" xuất hiện ngay sau khi trang mount.
- */
+/** Ẩn thanh cuộn (Chromium Windows/Linux vẽ khác nhau) và `<time>` bằng visibility (giờ tương đối đổi theo lần chạy). */
 async function stabilize(page: Page): Promise<void> {
   await page.waitForTimeout(800);
   await expect(page.getByText(/Đang kết nối…|Mất kết nối\. Đang thử/)).toHaveCount(0);
@@ -38,10 +31,6 @@ async function openChat(page: Page): Promise<void> {
   await expect(page.getByTestId('ask-ai-button')).toBeVisible();
 }
 
-/**
- * Chặn đúng route hỏi AI: nội dung SSE do test quyết định nên ảnh không phụ thuộc model.
- * Phần còn lại (auth, quyền, danh sách tin) vẫn chạy trên API thật.
- */
 async function mockAsk(page: Page): Promise<void> {
   await page.route('**/api/v1/servers/*/ask', async (route) => {
     const origin = new URL(page.url()).origin;
@@ -71,16 +60,7 @@ async function mockAsk(page: Page): Promise<void> {
   });
 }
 
-/**
- * 5 màn chính của app, chụp lần lượt trên cùng một phiên (một lần đăng nhập): chat, tìm kiếm,
- * cài đặt giao diện, quản trị server, ngăn kéo hỏi AI. `page.context().request` chia sẻ cookie với trang nên
- * đăng nhập qua API có hiệu lực ngay khi trang tải — không đi qua form (rate limit 10/phút).
- *
- * Mỗi tổ hợp kích thước × sáng/tối là một test và PHẢI đăng nhập phiên mới: refresh token
- * xoay vòng sau mỗi lần dùng, dùng lại cookie cũ bị coi là đánh cắp và thu hồi mọi phiên.
- * Baseline nằm trong `visual/__screenshots__`; cập nhật có chủ đích bằng
- * `pnpm --filter web test:visual:update` rồi xem lại ảnh diff trước khi commit.
- */
+/** Đăng nhập qua API (context.request chia cookie với trang), không qua form: rate limit 10/phút. */
 for (const viewport of VIEWPORTS) {
   for (const scheme of SCHEMES) {
     test.describe(`${scheme} ${viewport.name}`, () => {

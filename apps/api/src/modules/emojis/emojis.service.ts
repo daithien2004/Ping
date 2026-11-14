@@ -23,7 +23,6 @@ type CustomEmojiRow = {
   attachment: { id: string; width: number | null; height: number | null };
 };
 
-/** Hàng CustomEmoji + attachment → DTO với cặp URL hồ sơ (bản chính + khung tĩnh). */
 function toCustomEmojiDto(
   row: CustomEmojiRow,
   urls: { url: string; previewUrl: string },
@@ -49,20 +48,8 @@ export class EmojisService {
     private readonly audit: AuditService,
   ) {}
 
-  /**
-   * Tạo emoji tùy chỉnh (TG.24, ADR-0068): claim tệp đã kiểm định (scope customEmoji,
-   * WebP ≤128×128) + tạo hàng CustomEmoji + giữ trần `Limits.EMOJIS_STATIC/ANIMATED_PER_SERVER`
-   * dưới advisory lock theo server (pattern trần sticker TG.22). Không bảng gói — emoji
-   * của server phẳng.
-   *
-   * Cờ `animated` suy từ tệp `.ready` đã reencode (metadata `pages > 1` cho WebP động):
-   * worker không có cột riêng và mime `image/webp` không phân biệt tĩnh/động. Tệp ≤256 KiB
-   * nên đọc metadata rất rẻ — chỉ chạy lúc upload (hiếm), không truy vấn thêm DB.
-   *
-   * Idempotent theo tệp (quy tắc 12, pattern sticker): client retry cùng `attachmentId`
-   * sau khi lần đầu đã commit → tệp đã `boundAt` → trả lại emoji cũ thay vì lỗi; tệp đã
-   * gắn vào server khác thì không trả gì (không lộ).
-   */
+  // animated suy từ metadata pages > 1 của tệp .ready: mime image/webp không phân biệt tĩnh/động.
+  // Idempotent theo tệp: attachmentId đã boundAt → trả emoji cũ; gắn server khác → không lộ.
   async create(
     serverId: string,
     userId: string,
@@ -77,7 +64,6 @@ export class EmojisService {
           input.attachmentId,
         );
         const animated = await this.readAnimated(input.attachmentId);
-        // Trần theo bucket tĩnh/động (ADR-0068 mục 2): xóa mềm giải phóng chỉ tiêu.
         const count = await tx.customEmoji.count({
           where: { serverId, deletedAt: null, animated },
         });
@@ -121,11 +107,6 @@ export class EmojisService {
     }
   }
 
-  /**
-   * Danh sách emoji cho picker/quản trị (TG.24): toàn bộ emoji còn sống của server, mới
-   * tạo trước không — thứ tự ổn định theo createdAt để picker không nhảy. Trần 50+50 →
-   * trả mảng thẳng, không phân trang.
-   */
   async list(serverId: string): Promise<CustomEmojiListResponse> {
     const rows = await this.prisma.customEmoji.findMany({
       where: { serverId, deletedAt: null },
@@ -149,11 +130,6 @@ export class EmojisService {
     };
   }
 
-  /**
-   * Xóa emoji (TG.24): soft-delete để token `:ten:<id>` trong tin cũ render placeholder
-   * (ADR-0068 mục 3), phát hành tệp (worker dọn theo scope) và ghi audit `EMOJI_DELETE` —
-   * xóa tài nguyên người khác tạo là hành động quản trị (quy tắc 11). Emoji đã xóa → 404.
-   */
   async remove(emojiId: string, userId: string): Promise<{ id: string }> {
     const emoji = await this.prisma.customEmoji.findUnique({ where: { id: emojiId } });
     if (!emoji || emoji.deletedAt) throw new NotFoundException('Emoji not found');
@@ -172,7 +148,6 @@ export class EmojisService {
         },
         tx,
       );
-      // Pattern `releaseProfileAttachment` (TG.7): tệp đã gắn → worker dọn và giải phóng hạn mức.
       await tx.attachment.updateMany({
         where: { id: emoji.attachmentId, boundAt: { not: null } },
         data: { status: 'deleting' },
@@ -184,7 +159,6 @@ export class EmojisService {
     return { id: emojiId };
   }
 
-  /** Emoji còn sống (cho path idempotent); đã xóa/không tồn tại → 404. */
   private async one(id: string): Promise<CustomEmojiDto> {
     const row = await this.prisma.customEmoji.findUnique({
       where: { id },
@@ -201,10 +175,6 @@ export class EmojisService {
     return toCustomEmojiDto(row, await this.attachments.emojiUrls(row.attachmentId));
   }
 
-  /**
-   * Số khung của tệp `.ready` (WebP) — ảnh động có `pages > 1`. Đọc ngay trong transaction
-   * tạo: nếu tệp chưa sẵn sàng thì `claim` đã chặn trước đó (status phải là `ready`).
-   */
   private async readAnimated(attachmentId: string): Promise<boolean> {
     const bytes = await this.storage.read(`${attachmentId}.ready`);
     const meta = await sharp(bytes, { animated: true }).metadata();

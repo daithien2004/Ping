@@ -3,7 +3,6 @@ import en from '../../messages/en.json';
 import vi from '../../messages/vi.json';
 import { localeFromCookie } from './config';
 
-/** Mọi đường dẫn key lá, ví dụ "auth.email", "common.languages.vi". */
 function keys(tree: object, prefix = ''): string[] {
   return Object.entries(tree).flatMap(([key, value]) =>
     typeof value === 'object' && value !== null

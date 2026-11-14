@@ -1,9 +1,4 @@
-/**
- * Bản đồ shortcode → Unicode cho render markdown (TG.4) và gợi ý composer (TG.23) — NGUỒN
- * DUY NHẤT của cặp shortcode↔emoji. File này nhẹ (chỉ 2 chuỗi mỗi dòng) nên vào bundle ban
- * đầu; dataset đầy đủ với từ khóa vi/en nằm ở data.ts, chỉ picker lazy-load (ADR-0057/0058).
- * Test dữ liệu (data.test.ts) bắt file này khớp EMOJI_DATA.
- */
+/** NGUỒN DUY NHẤT của cặp shortcode↔emoji; data.test.ts bắt lệch với EMOJI_DATA. */
 export const SHORTCODE_TO_UNICODE: Record<string, string> = {
   grin: '😁',
   grinning: '😀',

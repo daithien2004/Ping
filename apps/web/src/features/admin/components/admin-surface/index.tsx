@@ -23,20 +23,11 @@ import { InviteSection } from './invite-section';
 import { MembersSection } from './members-section';
 import { RolesSection } from './roles-section';
 
-// Drawer chỉ cần khi mở chi tiết một thành viên: tách khỏi chunk của trang cài đặt và chỉ tải
-// khi thực sự mở (giữ bundle ban đầu theo ngân sách, xem ADR-0058).
 const MemberDetailsDrawer = dynamic(
   () => import('../member-details-drawer').then((module) => module.MemberDetailsDrawer),
   { ssr: false },
 );
 
-/**
- * Bề mặt quản trị của server (TF.10): vai trò và quyền, thành viên, nhật ký hành động và
- * vùng nguy hiểm — tất cả dựng bằng bộ `Ping*`.
- *
- * Mỗi mục chỉ hiện khi người dùng có quyền tương ứng; API vẫn kiểm tra lại nên giao diện
- * không phải là hàng rào bảo mật.
- */
 export function AdminSurface({ params }: { params: Promise<{ serverId: string }> }) {
   const { serverId } = use(params);
   const t = useTranslations('admin');
@@ -55,7 +46,6 @@ export function AdminSurface({ params }: { params: Promise<{ serverId: string }>
   const canManageServer = ability.can('update', 'Server');
   const canManageChannels = ability.can('manage', 'Channel');
   const canKick = ability.can('delete', 'Member');
-  // TG.22: quản lý sticker của server (MANAGE_EXPRESSIONS).
   const canManageStickers = ability.can('manage', 'Sticker');
   const isOwner = permissions?.isOwner ?? false;
   const actor: AbilityContext | null =
@@ -66,7 +56,6 @@ export function AdminSurface({ params }: { params: Promise<{ serverId: string }>
           permissions: BigInt(permissions.permissions),
         }
       : null;
-  // Không có quyền quản trị nào thì không mở bề mặt quản trị (API vẫn kiểm tra lại).
   const hasAdminAccess =
     canManageRoles ||
     canViewAudit ||

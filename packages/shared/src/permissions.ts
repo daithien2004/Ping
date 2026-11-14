@@ -7,15 +7,10 @@ export const Permissions = {
   MANAGE_SERVER: 32n,
   ADMINISTRATOR: 64n,
   KICK_MEMBERS: 128n,
-  /** Xem nhật ký hành động của server (TF.10). Không mặc định cho ai. */
   VIEW_AUDIT_LOG: 256n,
-  /** Được ping @everyone/@role trong tin nhắn (T4.1, ADR-0043). Không mặc định cho ai. */
   MENTION_EVERYONE: 512n,
-  /** Được thả cảm xúc lên tin nhắn (TG.2, ADR-0064). Mặc định có trong `@everyone`. */
   ADD_REACTIONS: 1024n,
-  /** Được tự đặt biệt danh của chính mình trong server (TG.7). Mặc định có trong `@everyone`. */
   CHANGE_NICKNAME: 2048n,
-  /** Quản lý sticker của server (TG.22, ADR-0067). KHÔNG mặc định cho ai — chỉ role được cấp. */
   MANAGE_EXPRESSIONS: 4096n,
 } as const;
 

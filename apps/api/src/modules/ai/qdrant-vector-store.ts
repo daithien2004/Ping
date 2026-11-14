@@ -21,11 +21,6 @@ function nonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.length > 0;
 }
 
-/**
- * Payload do Qdrant trả về là JSON không tin cậy (có thể do index cũ/hỏng hoặc
- * người vận hành sửa tay). Chỉ nhận đúng hình dạng tối thiểu; point hỏng bị bỏ
- * qua để không bao giờ đi tiếp vào prompt với dữ liệu nửa vời.
- */
 function parsePayload(value: unknown): VectorPayload | undefined {
   if (value === null || typeof value !== 'object' || Array.isArray(value)) {
     return undefined;
@@ -54,13 +49,7 @@ function parsePayload(value: unknown): VectorPayload | undefined {
   };
 }
 
-/**
- * Adapter Qdrant REST (không thêm SDK). Chỉ dùng các endpoint ổn định:
- * tạo collection, tạo payload index, upsert/xoá point, đếm, health.
- *
- * `baseUrl` rỗng = tính năng vector tắt; mọi thao tác ném `VectorStoreError`
- * để tầng trên suy giảm thay vì crash.
- */
+// `baseUrl` rỗng = tắt vector; mọi thao tác ném `VectorStoreError`.
 export class QdrantVectorStore implements VectorStore {
   private readonly baseUrl: string | undefined;
 
@@ -123,8 +112,7 @@ export class QdrantVectorStore implements VectorStore {
       throw new VectorStoreError('Số lượng kết quả không hợp lệ');
     }
 
-    // Lọc server ngay trong Qdrant: kể cả khi payload bị sửa, tầng hydrate vẫn
-    // kiểm lại server/channel từ Postgres. `channelId` chỉ là tối ưu phạm vi.
+    // Lọc server trong Qdrant; hydrate vẫn kiểm lại từ Postgres, `channelId` chỉ là tối ưu.
     const must: Record<string, unknown>[] = [
       { key: 'serverId', match: { value: options.serverId } },
     ];
@@ -159,7 +147,7 @@ export class QdrantVectorStore implements VectorStore {
       }
       const payload = parsePayload(raw.payload);
       if (!payload) continue;
-      // Qdrant đã lọc, nhưng kiểm lại để một bản ghi lỗi không vượt qua ranh giới server.
+      // Kiểm lại dù Qdrant đã lọc: bản ghi lỗi không được vượt ranh giới server.
       if (payload.serverId !== options.serverId) continue;
       if (options.channelId && payload.channelId !== options.channelId) continue;
       hits.push({ id: raw.id, score: raw.score, payload });
@@ -227,7 +215,6 @@ export class QdrantVectorStore implements VectorStore {
   ): Promise<Response> {
     const response = await this.rawRequest(path, init);
     if (!expected.includes(response.status)) {
-      // Không đưa body vào lỗi: có thể chứa dữ liệu đầu vào.
       throw new VectorStoreError(`Qdrant trả về HTTP ${response.status}`, response.status);
     }
     return response;

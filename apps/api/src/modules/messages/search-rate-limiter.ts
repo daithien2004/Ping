@@ -4,16 +4,10 @@ import { RedisProvider } from '../../infra/redis/redis.module.js';
 import { failOpen } from '../../infra/redis/redis-policy.js';
 import { RedisThrottlerStorage } from '../../infra/throttler/redis-throttler.storage.js';
 
-/** Tối đa 30 lần tìm kiếm trong 1 phút cho mỗi user (T6.5). */
 const LIMIT = 30;
 const WINDOW_MS = 60_000;
 
-/**
- * Giới hạn tìm kiếm theo user (T6.5): truy vấn FTS + trigram quét toàn server nên một user có
- * thể chiếm DB; throttler toàn cục 100 req/phút/IP không đủ và chạy trước JwtAuthGuard nên
- * không biết userId. Cùng pattern MessageRateLimiter/GifRateLimiter — Redis chết thì fail-open
- * (ADR-0026), thà mất giới hạn còn hơn chặn tìm kiếm.
- */
+// Truy vấn FTS + trigram quét toàn server nên giới hạn theo user; Redis chết → fail-open.
 @Injectable()
 export class SearchRateLimiter {
   private readonly logger = new Logger(SearchRateLimiter.name);

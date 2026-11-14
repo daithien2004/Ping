@@ -4,8 +4,6 @@ import { useLocale, useTranslations } from 'use-intl';
 import { locales, switchLocale } from '@/i18n/config';
 import { cn } from '@/lib/utils';
 
-// Nhóm radio gốc (ẩn về mặt thị giác): có sẵn bàn phím và trạng thái cho trình đọc màn hình.
-// Nhãn hiện VI/EN cho gọn; tên truy cập vẫn là tên đầy đủ.
 export function LanguageSwitcher({
   className,
   vertical = false,

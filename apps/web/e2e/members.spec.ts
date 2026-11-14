@@ -3,7 +3,6 @@ import { expect, test } from '@playwright/test';
 import { pacedLogin } from './login-pace';
 import type { AuthResponse, ServerDetail } from '@ping/shared';
 
-// H10 (ADR-0030): panel thành viên, presence realtime giữa hai phiên, ẩn/hiện bằng nút.
 const API = 'http://localhost:4000/api/v1';
 
 test('member panel shows who is online, follows presence live, and can be hidden', async ({
@@ -47,22 +46,18 @@ test('member panel shows who is online, follows presence live, and can be hidden
     const panel = pa.getByRole('complementary', { name: 'Thành viên' });
     const row = panel.getByRole('listitem').filter({ hasText: displayName });
 
-    // B chưa mở trang nào: có trong danh sách nhưng offline.
     await expect(row).toBeVisible();
     await expect(row).toContainText('Offline');
     await expect(panel.getByRole('region', { name: /^Offline/ })).toContainText(displayName);
 
-    // B mở trang → A thấy B chuyển sang nhóm Online, không tải lại.
     const pb = await b.newPage();
     await pb.goto(path);
     await expect(panel.getByRole('region', { name: /^Đang online/ })).toContainText(displayName);
     await expect(row).toContainText('Đang online');
 
-    // B đóng trang → về Offline.
     await pb.close();
     await expect(panel.getByRole('region', { name: /^Offline/ })).toContainText(displayName);
 
-    // Nút ẩn/hiện, bằng bàn phím: huy hiệu Next dev che góc phải trên nên chuột không bấm tới được.
     const hide = pa.getByRole('button', { name: 'Ẩn danh sách thành viên' });
     await hide.focus();
     await pa.keyboard.press('Enter');

@@ -20,12 +20,7 @@ interface SearchRow {
   author: { id: string; username: string; displayName: string; avatarUrl: string | null };
 }
 
-/**
- * Tìm kiếm tin nhắn trong một server (T4.6, ADR-0045): FTS `simple` + unaccent (cột sinh
- * `Message.search`, index GIN) OR con-chuỗi trigram (index GIN trên `f_unaccent(content)`).
- * WHERE luôn ràng buộc `channel.serverId` + `deletedAt IS NULL` — không lộ server khác,
- * không trả tin đã xóa. Mới nhất trước, cursor `before` theo id.
- */
+// WHERE luôn ràng buộc `channel.serverId` + `deletedAt IS NULL`: không lộ server khác, không trả tin đã xóa.
 @Injectable()
 export class SearchService {
   constructor(

@@ -28,7 +28,6 @@ interface PersistedCache {
   queries: PersistedQuery[];
 }
 
-/** Tiền tố được phép lưu; mọi nhánh khác (tin nhắn, thành viên, tìm kiếm…) bỏ qua. */
 function isPersistable(key: readonly unknown[]): boolean {
   const [root, , third] = key;
   switch (root) {
@@ -40,8 +39,6 @@ function isPersistable(key: readonly unknown[]): boolean {
     case 'privacy':
       return true;
     case 'servers':
-      // Danh sách server, chi tiết một server, channel và quyền — đủ để vẽ khung; biểu cảm
-      // (emoji/sticker) lưu kèm để picker mở ra là có dữ liệu ngay sau F5.
       return (
         key.length <= 2 ||
         third === 'channels' ||
@@ -55,7 +52,6 @@ function isPersistable(key: readonly unknown[]): boolean {
 }
 
 function hasData(query: Query): boolean {
-  // `me === null` là "chưa đăng nhập": lưu lại chỉ làm tab sau tưởng đã có phiên.
   return query.state.data != null && isPersistable(query.queryKey);
 }
 
@@ -91,7 +87,7 @@ function write(queryClient: QueryClient) {
     const payload: PersistedCache = { version: VERSION, savedAt: Date.now(), queries };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
   } catch {
-    // Hết quota / chế độ riêng tư: bỏ qua, lần mở sau chỉ chậm hơn chút.
+    /* bỏ qua */
   }
 }
 
@@ -107,21 +103,17 @@ export function hydratePersistedQueries(queryClient: QueryClient): boolean {
   for (const entry of stored.queries) {
     if (!Array.isArray(entry.key) || entry.data == null) continue;
     if (!isPersistable(entry.key)) continue;
-    // `updatedAt: 0` = coi mọi bản lưu là CŨ. Người dùng vẫn thấy khung ngay, nhưng query
     // mount lên là refetch nền liền thay vì coi dữ liệu cũ còn "tươi" 30 giây. Quan trọng với
-    // quyền: thành viên vừa được cấp/thu quyền ở nơi khác phải thấy UI đổi ngay sau F5.
     queryClient.setQueryData(entry.key, entry.data, { updatedAt: 0 });
     if (entry.key[0] === qk.me[0]) signedIn = true;
   }
   // `me` có staleTime Infinity nên `updatedAt: 0` vẫn không đủ làm nó cũ; invalidate để lần
-  // mount đầu refetch nền — người dùng thấy khung ngay, phiên hết hạn vẫn bị phát hiện.
   void queryClient.invalidateQueries({ queryKey: qk.me });
   return signedIn;
 }
 
 let started = false;
 
-/** Ghi lại cache mỗi khi dữ liệu khung đổi (gộp 500ms) và lúc tab bị ẩn/đóng. */
 export function startPersistingQueries(queryClient: QueryClient) {
   if (started) return;
   started = true;
@@ -138,7 +130,6 @@ export function startPersistingQueries(queryClient: QueryClient) {
       return;
     }
     if (event.type !== 'updated') return;
-    // Chỉ ghi khi dữ liệu thật sự đổi; 'fetch'/'invalidate' gần như luôn kéo theo 'success'.
     if (event.action.type === 'success' || event.action.type === 'setState') schedule();
   });
 
@@ -150,11 +141,10 @@ export function startPersistingQueries(queryClient: QueryClient) {
   window.addEventListener('pagehide', flush);
 }
 
-/** Đăng xuất / phiên hết hạn: xóa luôn bản lưu — người tiếp theo không thấy dữ liệu cũ. */
 export function clearPersistedQueries() {
   try {
     localStorage.removeItem(STORAGE_KEY);
   } catch {
-    // Không xóa được thì removeQueries phía sau vẫn dọn cache trong bộ nhớ.
+    /* bỏ qua */
   }
 }

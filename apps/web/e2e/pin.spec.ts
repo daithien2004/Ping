@@ -6,10 +6,6 @@ import { pacedLogin } from './login-pace';
 
 const API = 'http://localhost:4000/api/v1';
 
-/**
- * TG.3 (ADR-0066): ghim tin qua UI — menu Ghim/Bỏ ghim, chỉ báo trên tin, panel danh sách ghim,
- * realtime giữa hai người (bob là moderator có MANAGE_MESSAGES trong seed) và axe cho panel.
- */
 test('pins: pin from menu, panel, realtime and unpin', async ({ browser }) => {
   test.setTimeout(240_000);
   const ownerContext = await browser.newContext();
@@ -51,8 +47,7 @@ test('pins: pin from menu, panel, realtime and unpin', async ({ browser }) => {
     const bobArticle = bobPage.locator(`article[data-message-id="${message.id}"]`);
     await expect(bobArticle).toBeVisible({ timeout: 45_000 });
 
-    // Chờ socket của bob vào room channel trước khi kiểm realtime: `message.created` chỉ tới
-    // room đã join, nên tin đánh dấu hiện ở tab bob là bằng chứng join xong.
+    // Chờ socket của bob join room: tin đánh dấu hiện ở tab bob là bằng chứng đã join.
     const warmup = await ownerContext.request.post(`${API}/channels/${channelId}/messages`, {
       headers,
       data: { content: `warmup ${suffix}`, nonce: randomUUID() },
@@ -64,13 +59,11 @@ test('pins: pin from menu, panel, realtime and unpin', async ({ browser }) => {
     });
 
     await test.step('menu tin nhắn → Ghim, chỉ báo hiện ngay', async () => {
-      // Cụm thao tác ẩn có `pointer-events-none` tới khi article được hover (như người dùng
-      // thật rê chuột vào tin); click thẳng sẽ chờ mãi vì nút không nhận chuột.
+      // Cụm thao tác ẩn pointer-events-none tới khi hover article: phải hover trước khi click.
       await article.hover();
       await article.getByRole('button', { name: 'Thao tác tin nhắn' }).click();
       await page.getByTestId('pin').click();
       await expect(article.getByTestId('pin-indicator')).toBeVisible({ timeout: 15_000 });
-      // Realtime: tab của bob thấy tin được ghim mà không cần tải lại.
       await expect(bobArticle.getByTestId('pin-indicator')).toBeVisible({ timeout: 15_000 });
     });
 
@@ -96,8 +89,6 @@ test('pins: pin from menu, panel, realtime and unpin', async ({ browser }) => {
     });
 
     await test.step('bỏ ghim trong panel → cả hai tab cập nhật', async () => {
-      // Bỏ ghim bằng chủ server (bob chỉ là thành viên thường ở server mới, không có
-      // MANAGE_MESSAGES); realtime của bob đã được kiểm ở bước ghim phía trên.
       await page.getByTestId('pinned-panel').getByRole('button', { name: 'Bỏ ghim' }).click();
       await expect(article.getByTestId('pin-indicator')).toHaveCount(0, { timeout: 15_000 });
       await expect(bobArticle.getByTestId('pin-indicator')).toHaveCount(0, { timeout: 15_000 });

@@ -12,7 +12,6 @@ export interface AuditLogFilters {
   actorId?: string;
 }
 
-/** Một trang nhật ký (cursor `after` = id bản ghi cuối trang trước, ADR-0028). */
 export const listAuditLog = (serverId: string, filters: AuditLogFilters = {}, after?: string) => {
   const params = new URLSearchParams();
   if (filters.action) params.set('action', filters.action);
@@ -22,7 +21,6 @@ export const listAuditLog = (serverId: string, filters: AuditLogFilters = {}, af
   return api.get<AuditLogPage>(`/servers/${serverId}/audit-log${query ? `?${query}` : ''}`);
 };
 
-/** Danh sách vai trò của server (cần quyền `manage Role`). */
 export const listRoles = (serverId: string) => api.get<RoleDto[]>(`/servers/${serverId}/roles`);
 
 export interface CreateRoleInput {
@@ -35,11 +33,9 @@ export interface CreateRoleInput {
 export const createRole = (serverId: string, input: CreateRoleInput) =>
   api.post<RoleDto>(`/servers/${serverId}/roles`, input);
 
-/** Gán danh sách vai trò cho một thành viên; `@everyone` do API tự giữ. */
 export const assignMemberRoles = (serverId: string, memberId: string, roleIds: string[]) =>
   api.put<MemberDto>(`/servers/${serverId}/members/${memberId}/roles`, { roleIds });
 
-/** Sửa vai trò. `permissions` là bitmask dạng chuỗi thập phân (JSON không có bigint). */
 export const updateRole = (
   roleId: string,
   input: { name?: string; permissions?: string; position?: number },
@@ -47,14 +43,11 @@ export const updateRole = (
 
 export const deleteRole = (roleId: string) => api.delete<{ id: string }>(`/roles/${roleId}`);
 
-/** Kick thành viên (T3.4). API kiểm tra thứ bậc; `204` không có body. */
 export const kickMember = (serverId: string, memberId: string) =>
   api.delete<void>(`/servers/${serverId}/members/${memberId}`);
 
-/** Tạo mã mời mới, vô hiệu mã cũ (T3.6). `expiresInDays` bỏ qua = không hạn dùng. */
 export const regenerateInvite = (serverId: string, input: { expiresInDays?: number }) =>
   api.post<RegenerateInviteResult>(`/servers/${serverId}/invite/regenerate`, input);
 
-/** Xoá server — chỉ chủ server (API tự kiểm tra). */
 export const deleteServer = (serverId: string) =>
   api.delete<{ id: string }>(`/servers/${serverId}`);

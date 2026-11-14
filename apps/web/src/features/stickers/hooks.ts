@@ -4,13 +4,8 @@ import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tansta
 import { qk } from '@/lib/query-keys';
 import { createSticker, deleteSticker, listStickers } from './api';
 
-/** Gói biểu cảm đổi hiếm; 5 phút đủ cho picker mở/đóng liên tục. */
 const STICKER_STALE_TIME = 5 * 60 * 1000;
 
-/**
- * Gói sticker của một server (TG.22): gói hệ thống + gói server, sticker đã xóa không trả.
- * Picker và màn quản trị dùng chung một query; tạo/xóa invalidate đúng server đó.
- */
 export function useStickers(serverId: string) {
   return useQuery<StickerListResponse>({
     queryKey: qk.stickers(serverId),
@@ -19,7 +14,6 @@ export function useStickers(serverId: string) {
   });
 }
 
-/** Tải trước danh sách sticker khi ô soạn tin rảnh — mở picker không phải chờ mạng. */
 export function prefetchStickers(queryClient: QueryClient, serverId: string): Promise<void> {
   return queryClient.prefetchQuery({
     queryKey: qk.stickers(serverId),
@@ -45,19 +39,15 @@ export function useDeleteSticker(serverId: string) {
     mutationFn: (stickerId: string) => deleteSticker(stickerId),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: qk.stickers(serverId) });
-      // Tin cũ chứa sticker vừa xóa chỉ hiện khung "sticker đã bị xóa" sau khi DTO mới
-      // về — invalidate toàn bộ cache tin nhắn của server (hành động hiếm, chấp nhận được).
       void queryClient.invalidateQueries({ queryKey: ['channels'] });
     },
   });
 }
 
-/** Phẳng hóa danh sách gói thành mảng sticker (picker cần một danh sách để tìm/lưới). */
 export function flattenStickers(list: StickerListResponse | undefined): StickerDto[] {
   return (list?.packs ?? []).flatMap((pack) => pack.stickers);
 }
 
-/** Preview tĩnh gửi kèm tin optimistic khi người dùng chọn sticker (TG.22). */
 export function stickerPreviewOf(sticker: StickerDto): MessageStickerPreview {
   return {
     id: sticker.id,

@@ -1,13 +1,5 @@
-// Bật N instance API (đã build: `pnpm build`) dùng chung Postgres `ping_load` và Redis, mỗi instance một
-// cổng HTTP và một cổng metrics. Không cần load balancer: k6 tự chọn instance theo VU, nên người gửi và
-// người nghe nằm ở instance khác nhau (đo độ trễ liên instance).
-//
-//   node tools/loadtest/run-instances.mjs 3
-//   node tools/loadtest/run-instances.mjs 3 --restart-after=60 --restart-index=0   (restart 1 instance giữa tải)
-//
-// Cổng: HTTP 4001..400N, metrics 9101..910N. Log mỗi instance: tools/loadtest/data/api-<i>.log.
-// TRUST_PROXY=1: client gửi X-Forwarded-For riêng từng người dùng ảo, nên rate limit theo IP không chặn
-// phép đo (và không phải thêm cờ "tắt rate limit" vào code).
+// node tools/loadtest/run-instances.mjs 3 [--restart-after=60 --restart-index=0]  (cần `pnpm build`)
+// TRUST_PROXY=1: mỗi VU gửi X-Forwarded-For riêng nên rate limit theo IP không chặn phép đo.
 import { spawn } from 'node:child_process';
 import { mkdirSync, openSync } from 'node:fs';
 import path from 'node:path';
@@ -53,9 +45,7 @@ async function waitHealthy(index) {
     try {
       const response = await fetch(`http://127.0.0.1:${4001 + index}/api/v1/health`);
       if (response.ok) return;
-    } catch {
-      /* chưa nghe */
-    }
+    } catch {}
     await new Promise((resolve) => setTimeout(resolve, 500));
   }
   throw new Error(`instance ${index} did not become healthy`);

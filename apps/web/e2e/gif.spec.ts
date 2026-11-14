@@ -4,9 +4,6 @@ import type { GifDto, GifSearchResponse, ServerDetail } from '@ping/shared';
 import { pacedLogin } from './login-pace';
 
 const API = 'http://localhost:4000/api/v1';
-// PNG nhỏ sinh cục bộ (cùng fixture với sticker.spec): mọi ảnh "Tenor" trong test được đáp từ
-// buffer này qua page.route — bộ e2e KHÔNG phụ thuộc Tenor thật (ADR-0069), đồng thời chứng minh
-// CSP `img-src` đã mở đúng origin https://media.tenor.com (CSP chặn trước khi route chạm mạng).
 const png = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAACgAAAAeCAIAAADRv8uKAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAN0lEQVRIie3VwQkAQAgDwe2/6VwZ3mPAvyAx0+pksjinnnDlnVIgU5lBIiyGxbA4LIbFsLivWHw+nauNqku18gAAAABJRU5ErkJggg==',
   'base64',
@@ -23,11 +20,6 @@ const gif = (id: string, width: number, height: number): GifDto => ({
 const TRENDING = [gif('gif-trending-a', 200, 150), gif('gif-trending-b', 100, 100)];
 const SEARCH_CAT = [gif('gif-cat-c', 300, 200)];
 
-/**
- * Mock đúng phạm vi cần che (ADR-0069): cổng `/gifs/*` của backend (không phụ thuộc key/quota
- * Tenor của môi trường) và ảnh media.tenor.com. Gửi tin GIF đi API THẬT như sticker.spec —
- * URL mock thuộc host allowlist nên server nhận; ảnh trong tin được route đáp từ buffer.
- */
 async function mockGifRoutes(page: Page) {
   await page.route('**/api/v1/gifs/**', async (route) => {
     const url = new URL(route.request().url());
@@ -48,17 +40,14 @@ async function mockGifRoutes(page: Page) {
       body: JSON.stringify(body),
     });
   });
-  // Ảnh "media.tenor.com" được đáp từ buffer cục bộ — không tải Tenor thật.
   await page.route('**/media.tenor.com/**', (route) =>
     route.fulfill({ status: 200, contentType: 'image/png', body: png }),
   );
 }
 
-/** Vùng danh sách tin của channel: <Activity> giữ trang cũ ẩn trong DOM nên lọc :visible. */
 const paneOf = (page: Page, channel: string) =>
   page.locator(`[aria-label="Tin nhắn trong #${channel}"]:visible`);
 
-/** Mở sticker picker (dynamic import lần đầu có thể chậm) rồi bật tab GIF, trả về locator picker. */
 async function openGifTab(page: Page) {
   await page.getByTestId('sticker-button').click();
   const picker = page.getByTestId('sticker-picker');
@@ -67,9 +56,6 @@ async function openGifTab(page: Page) {
   return picker;
 }
 
-// TG.25a+b (ADR-0069): tab GIF — trending grid hiện ảnh (mock /gifs/*), ghi công Tenor hiển thị,
-// bấm GIF là GỬI ngay tin kind='gif' (không content) qua API thật, mục vừa bấm vào "Gần đây",
-// tìm kiếm cập nhật grid theo q.
 test('tab GIF: trending, ghi công, bấm-là-gửi, gần đây, tìm kiếm theo q', async ({ browser }) => {
   test.setTimeout(240_000);
   const alice = await browser.newContext();
@@ -77,7 +63,6 @@ test('tab GIF: trending, ghi công, bấm-là-gửi, gần đây, tìm kiếm th
     const auth = await pacedLogin(alice.request, 'alice@ping.dev', 'password123');
     const headers = { Authorization: `Bearer ${auth.accessToken}` };
     const suffix = randomUUID().slice(0, 8);
-    // Server riêng cho test, xóa ở cuối — không đụng dữ liệu seed.
     const server = (await (
       await alice.request.post(`${API}/servers`, { headers, data: { name: `GIF ${suffix}` } })
     ).json()) as ServerDetail;
@@ -106,7 +91,7 @@ test('tab GIF: trending, ghi công, bấm-là-gửi, gần đây, tìm kiếm th
     await test.step('bấm GIF = gửi ngay: tin kind="gif" render ảnh, picker đóng', async () => {
       const picker = page.getByTestId('sticker-picker');
       await picker.getByTestId('gif-option').first().click();
-      await expect(picker).toHaveCount(0); // chọn xong picker đóng
+      await expect(picker).toHaveCount(0);
       const image = paneOf(page, channel.name).locator('article').last().getByTestId('gif-image');
       await expect(image).toBeVisible({ timeout: 15_000 });
       await expect(image).toHaveAttribute('src', TRENDING[0]!.url);
@@ -144,8 +129,6 @@ test('tab GIF: trending, ghi công, bấm-là-gửi, gần đây, tìm kiếm th
   }
 });
 
-// TG.25c: thiếu nhà cung cấp (503 GIF_PROVIDER_UNAVAILABLE) → empty state riêng "chưa khả dụng",
-// ẩn lưới và ẩn ghi công; chat vẫn gửi tin thường bình thường qua API thật.
 test('GIF 503 provider unavailable: empty state riêng, gửi tin thường vẫn được', async ({
   browser,
 }) => {
@@ -181,7 +164,6 @@ test('GIF 503 provider unavailable: empty state riêng, gửi tin thường vẫ
       await expect(picker.getByTestId('gif-grid')).toHaveCount(0);
       await expect(picker.getByTestId('gif-recent')).toHaveCount(0);
       await expect(picker.getByTestId('gif-attribution')).toHaveCount(0);
-      // Bấm góc trên trái (ngoài panel, panel luôn cách mép ≥8 px) — bấm giữa scrim dễ trúng panel.
       await page.getByTestId('ping-popover-scrim').click({ position: { x: 4, y: 4 } });
     });
 

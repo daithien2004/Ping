@@ -12,11 +12,6 @@ import { PinnedPanel } from '@/features/messages/components/pinned-panel';
 import { NotificationBell } from '@/features/notifications/components/notification-bell';
 import { UserAvatar } from '@/features/profile/components/user-avatar';
 
-/**
- * Đầu trang hội thoại: đối tác, chuông thông báo, nút ghim và nút chặn/bỏ chặn.
- *
- * DM không có cột phải như kênh server: danh sách ghim mở thành popover ngay dưới nút ghim.
- */
 export function DmHeader({
   dm,
   blocked,
@@ -38,7 +33,6 @@ export function DmHeader({
       <p className="truncate font-semibold">{name}</p>
       <span className="truncate text-xs text-muted-foreground">@{dm.partner.username}</span>
       <div className="ml-auto flex items-center gap-1">
-        {/* TG.12: DM không có dòng server — chuông đặt mức/mute riêng cho hội thoại này. */}
         <NotificationBell serverId={null} channelId={dm.channelId} dm />
         <PingPopover
           trigger="click"
@@ -64,7 +58,6 @@ export function DmHeader({
           />
         </PingPopover>
         {blocked ? (
-          // Bỏ chặn: xác nhận nhẹ — không phải hành động nguy hiểm như chặn.
           <PingPopconfirm
             title={t('unblockConfirm', { name })}
             onConfirm={() => onToggleBlock(false)}
@@ -76,7 +69,6 @@ export function DmHeader({
             </PingButton>
           </PingPopconfirm>
         ) : (
-          // Chặn: hành động ảnh hưởng hai chiều — luôn hỏi lại (quy ước PingPopconfirm).
           <PingPopconfirm
             title={t('blockConfirm', { name })}
             description={t('blockHint')}
@@ -94,10 +86,6 @@ export function DmHeader({
   );
 }
 
-/**
- * Báo đang bị chặn. API dùng chung một mã `DM_BLOCKED` cho cả hai chiều (chống dò nguyên nhân)
- * nên câu chữ cũng trung lập, không nói ai chặn ai.
- */
 export function DmBlockedBanner() {
   const t = useTranslations('dms');
   return (

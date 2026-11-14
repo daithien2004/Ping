@@ -7,10 +7,6 @@ import { PrismaService } from '../src/infra/prisma/prisma.service.js';
 import { RedisProvider } from '../src/infra/redis/redis.module.js';
 import { bootApp } from './helpers/boot.js';
 
-/**
- * Tuân thủ docs/api-conventions.md (hướng dẫn 16.7, ADR-0028): chạy trên app thật và đo hành vi
- * thật của API. Test này là nơi quy ước được kiểm tra bằng máy; viết lại quy ước thì sửa test này.
- */
 const runId = Date.now().toString(36);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ISO_UTC = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
@@ -28,9 +24,9 @@ describe('API conventions (e2e)', () => {
   let redis: RedisProvider;
   const emails: string[] = [];
 
-  let alice: Actor; // chủ server A
-  let carol: Actor; // thành viên thường
-  let dan: Actor; // người ngoài
+  let alice: Actor;
+  let carol: Actor;
+  let dan: Actor;
   let serverId = '';
   let inviteCode = '';
   let channelId = '';
@@ -110,7 +106,6 @@ describe('API conventions (e2e)', () => {
   });
 
   describe('errors: { code, message, requestId, details? } with a catalog code', () => {
-    /** [mô tả, status mong đợi, mã mong đợi, hàm gây lỗi] */
     const cases: Array<[string, number, string[], () => Promise<request.Response>]> = [
       [
         'invalid body',
@@ -259,7 +254,6 @@ describe('API conventions (e2e)', () => {
         'GET /messages/:id/reactions/:emoji',
         () => call('get', `/messages/${messageId}/reactions/${encodeURIComponent('👍')}`, alice),
       ],
-      // TG.3: trạng thái ghim + danh sách ghim (mảng có trần, không phân trang).
       ['PUT /messages/:id/pin', () => call('put', `/messages/${messageId}/pin`, alice)],
       ['GET /channels/:id/pins', () => call('get', `/channels/${channelId}/pins`, alice)],
     ];
@@ -347,7 +341,7 @@ describe('API conventions (e2e)', () => {
         id: message.body.id,
       });
 
-      expect((await call('post', `/servers/${server.body.id}/leave`, carol)).status).toBe(403); // chưa là member
+      expect((await call('post', `/servers/${server.body.id}/leave`, carol)).status).toBe(403);
       expect((await call('delete', `/servers/${server.body.id}`, dan)).status).toBe(200);
       expect(
         (
@@ -429,7 +423,7 @@ describe('API conventions (e2e)', () => {
       }
       expect((await call('get', `/channels/${channelId}/messages?offset=5`, alice)).status).toBe(
         200,
-      ); // offset không có tác dụng
+      );
     });
 
     it('members: { members, hasMore }, `after` cursor, limit 1..100', async () => {

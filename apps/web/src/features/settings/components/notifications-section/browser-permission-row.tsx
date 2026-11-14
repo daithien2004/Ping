@@ -5,7 +5,6 @@ import {
   useNotificationPermission,
 } from '@/features/notifications/components/enable-notifications';
 
-/** Quyền Notification là trạng thái CỦA TRÌNH DUYỆT (thiết bị này), không lưu server. */
 export function BrowserPermissionRow() {
   const t = useTranslations('settings.notifications');
   const permission = useNotificationPermission();

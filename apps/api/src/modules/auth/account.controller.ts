@@ -13,14 +13,8 @@ import type { Request } from 'express';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe.js';
 import { AccountService } from './account.service.js';
 
-/**
- * Các endpoint vòng đời tài khoản không cần đăng nhập (TG.8). Không dùng cookie nên
- * không cần CsrfGuard (quy tắc 18 chỉ áp cho endpoint xác thực bằng cookie).
- *
- * Chống dò tài khoản: forgot/resend LUÔN trả 202 với body giống hệt nhau dù email có
- * tồn tại hay không — "đã nhận yêu cầu" chỉ nghĩa là yêu cầu được chấp nhận xử lý.
- * 202 thay vì 204: hành động được xếp hàng (gửi thư bất đồng bộ), chưa hoàn tất.
- */
+// forgot/resend LUÔN trả 202 cùng body dù email có tồn tại (chống dò tài khoản).
+// Không dùng cookie nên không cần CsrfGuard.
 @Controller('auth')
 export class AccountController {
   constructor(private readonly accountService: AccountService) {}
@@ -37,8 +31,6 @@ export class AccountController {
     @Body(new ZodValidationPipe(forgotPasswordSchema)) body: ForgotPasswordInput,
     @Req() req: Request,
   ): Promise<typeof MAIL_QUEUED_RESPONSE> {
-    // await để 429 (rate limit) và lỗi validate truyền ra response; gửi thư bên trong
-    // vẫn fire-and-forget nên response không chờ SMTP.
     await this.accountService.forgotPassword(body.email, req.ip ?? 'unknown');
     return MAIL_QUEUED_RESPONSE;
   }
@@ -60,5 +52,4 @@ export class AccountController {
   }
 }
 
-/** Body cố định của 202 — giống hệt cho mọi trường hợp, không tiết lộ email có tồn tại. */
 export const MAIL_QUEUED_RESPONSE = { status: 'queued' } as const;

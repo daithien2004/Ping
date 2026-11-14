@@ -5,14 +5,9 @@ import type { AuthResponse, RoleDto, ServerDetail } from '@ping/shared';
 
 const API = 'http://localhost:4000/api/v1';
 
-/**
- * Hộp xác nhận (Popconfirm) đang mở. antd giữ popup đã đóng trong DOM nên phải lọc theo
- * phần tử đang hiện, nếu không sẽ bấm nhầm nút của hộp xác nhận đã đóng.
- */
+/** antd giữ popup đã đóng trong DOM nên phải lọc theo phần tử đang hiện. */
 const visiblePopconfirm = (page: Page) => page.locator('.ant-popconfirm').filter({ visible: true });
 
-// TF.10: bề mặt quản trị dựng bằng bộ Ping* — nhật ký hành động theo quyền, sửa quyền
-// vai trò bằng nhóm checkbox, xoá vai trò phải xác nhận, chi tiết thành viên trong drawer.
 test('admin surface: audit log follows permissions, role permissions save, dangerous actions confirm', async ({
   browser,
 }) => {
@@ -65,8 +60,6 @@ test('admin surface: audit log follows permissions, role permissions save, dange
       await expect(memberPage.getByRole('heading', { name: 'Cài đặt server' })).toBeVisible();
       await expect(memberPage.getByRole('region', { name: 'Nhật ký hành động' })).toHaveCount(0);
       await expect(memberPage.getByRole('region', { name: 'Thông tin server' })).toHaveCount(0);
-      // Member không có quyền quản trị nào thì menu tên server không có lối vào Cài đặt server
-      // (nút «Cài đặt cá nhân» ở panel người dùng là quyền của mọi thành viên, không tính).
       await memberPage.getByRole('button', { name: 'Menu server' }).click();
       await expect(memberPage.getByRole('menuitem', { name: 'Cài đặt server' })).toHaveCount(0);
       await expect(memberPage.getByRole('menuitem', { name: 'Sao chép mã mời' })).toBeVisible();
@@ -79,7 +72,6 @@ test('admin surface: audit log follows permissions, role permissions save, dange
       await section.getByRole('textbox', { name: 'Tên server' }).fill(renamed);
       await section.getByRole('button', { name: 'Lưu' }).click();
       await expect(ownerPage.getByText('Đã đổi tên server.')).toBeVisible();
-      // Danh sách server (rail) đọc từ cache đã được cập nhật, không cần tải lại trang.
       await expect(ownerPage.getByRole('link', { name: renamed })).toBeVisible();
 
       const detail = (await (
@@ -87,7 +79,6 @@ test('admin surface: audit log follows permissions, role permissions save, dange
       ).json()) as ServerDetail;
       expect(detail.name).toBe(renamed);
 
-      // Trả tên cũ để các spec khác dùng chung server không bị ảnh hưởng.
       await section.getByRole('textbox', { name: 'Tên server' }).fill(server.name);
       await section.getByRole('button', { name: 'Lưu' }).click();
       await expect(ownerPage.getByRole('link', { name: server.name })).toBeVisible();
@@ -105,7 +96,6 @@ test('admin surface: audit log follows permissions, role permissions save, dange
         await owner.request.get(`${API}/servers/${serverId}/roles`, { headers: ownerHeaders })
       ).json()) as RoleDto[];
       const everyone = roles.find((role) => role.isDefault)!;
-      // VIEW_CHANNEL | SEND_MESSAGES | VIEW_AUDIT_LOG
       expect(
         (
           await owner.request.patch(`${API}/roles/${everyone.id}`, {
@@ -122,7 +112,6 @@ test('admin surface: audit log follows permissions, role permissions save, dange
         });
         expect(allowed.status()).toBe(200);
       } finally {
-        // Khôi phục @everyone cho các spec sau.
         expect(
           (
             await owner.request.patch(`${API}/roles/${everyone.id}`, {
@@ -161,7 +150,6 @@ test('admin surface: audit log follows permissions, role permissions save, dange
         await owner.request.get(`${API}/servers/${serverId}/roles`, { headers: ownerHeaders })
       ).json()) as RoleDto[];
       const saved = roles.find((item) => item.id === role.id)!;
-      // VIEW_CHANNEL | VIEW_AUDIT_LOG
       expect(BigInt(saved.permissions)).toBe(257n);
     });
 
@@ -229,8 +217,6 @@ test('admin surface: audit log follows permissions, role permissions save, dange
       await expect(danger).toBeVisible();
       await danger.getByRole('button', { name: 'Xoá server' }).click();
       await expect(ownerPage.getByText('Xoá server này?')).toBeVisible();
-      // Hủy: server phải còn nguyên. Popup đã đóng vẫn nằm trong DOM nên kiểm tra
-      // phần tử đang hiện, không kiểm tra số phần tử có chứa câu hỏi.
       await visiblePopconfirm(ownerPage).getByRole('button', { name: 'Hủy' }).click();
       await expect(visiblePopconfirm(ownerPage)).toHaveCount(0);
     });

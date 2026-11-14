@@ -12,7 +12,6 @@ interface ReactionIntent {
 const pending = new Map<string, Map<string, ReactionIntent>>();
 let nextToken = 1;
 
-/** Ghi nhận ý định thả/gỡ; response nào mang token cũ hơn thì không còn quyền ghi đè. */
 export function startReactionIntent(messageId: string, emoji: string, me: boolean): number {
   const token = nextToken;
   nextToken += 1;
@@ -40,11 +39,6 @@ export function settleReactionIntent(
   return { sawEvent: intent.sawEvent };
 }
 
-/**
- * Phủ các ý định đang chờ lên một snapshot cache (dữ liệu server hoặc bản ghi khác).
- * Chỉ cộng/trừ khi snapshot chưa phản ánh cờ `me` của ý định — nhờ vậy áp lại nhiều lần
- * (fetch chồng, event echo) không đếm đôi. Trả nguyên tham chiếu khi không có gì phải đổi.
- */
 export function applyReactionIntents(cache: MessagesCache | undefined): MessagesCache | undefined {
   if (!cache || pending.size === 0) return cache;
   let result = cache;
@@ -100,7 +94,6 @@ function overlayReactions(
   return changed ? rows : reactions;
 }
 
-/** Chỉ dùng cho test: xoá trạng thái module giữa các ca. */
 export function clearReactionIntents(): void {
   pending.clear();
 }

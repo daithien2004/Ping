@@ -46,7 +46,7 @@ export function useResetOnHide(
         for (const field of fieldNames) cleared[field] = '';
         form.setFieldsValue(cleared);
       } catch {
-        // Form đã bỏ khỏi DOM.
+        /* bỏ qua */
       }
       const fieldsInDom = container?.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>(
         'input, textarea',

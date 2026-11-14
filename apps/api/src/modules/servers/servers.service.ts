@@ -32,11 +32,6 @@ import { compareRanks } from '../categories/ranks.js';
 import { verifyRequired } from '../auth/account.service.js';
 import { RealtimeService } from '../realtime/realtime.service.js';
 
-/**
- * Tạo server trong MỘT lần insert lồng nhau (guide 10.1): server + role
- * `@everyone` + channel `general` + owner làm member — hoặc tất cả cùng thành
- * công, hoặc không gì cả (transaction ngầm của Prisma nested write).
- */
 @Injectable()
 export class ServersService {
   constructor(
@@ -48,31 +43,20 @@ export class ServersService {
     private readonly config: ConfigService<Env, true>,
   ) {}
 
-  /** Trần mềm số server mỗi user tham gia (tính cả server tự tạo). */
   private async assertCanJoinAnotherServer(userId: string): Promise<void> {
     if ((await this.prisma.member.count({ where: { userId } })) >= Limits.MAX_SERVERS_PER_USER) {
       throw limitReached('servers', Limits.MAX_SERVERS_PER_USER);
     }
   }
 
-  /**
-   * Chính sách tài khoản chưa xác minh (TG.8): chưa xác minh email thì không được tạo
-   * server và không được cấp mã mời. Đặt ở tầng SERVICE chứ không phải defineAbilityFor:
-   * đây là điều kiện hồ sơ tài khoản (trạng thái xác minh), không phải luật quyền theo
-   * role — ability vẫn trả "owner được tạo server" cho user chưa xác minh.
-   *
-   * CHỈ áp dụng khi hệ thống có đường gửi thư (`SMTP_URL` cấu hình — Mailer SMTP): môi
-   * trường không có mailer (drill, smoke prod example, dev tối giản) thì user KHÔNG THỂ
-   * tự xác minh — chặn là khóa vĩnh viễn vô lý. Đã đỏ CI ở 2662d94 (drills + smoke đăng
-   * ký user rồi tạo server ngay).
-   */
+  // Đặt ở SERVICE chứ không phải defineAbilityFor: là điều kiện hồ sơ, không phải luật role. CHỈ áp dụng khi có
+  // `SMTP_URL`: không có mailer thì user không thể tự xác minh, chặn là khóa vĩnh viễn.
   private async assertEmailVerified(userId: string): Promise<void> {
     if (!this.config.get('SMTP_URL', { infer: true })) return;
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { emailVerified: true },
     });
-    // User vừa bị xóa giữa chừng thì tra cứu trật — xử lý như trường hợp không xác minh.
     if (user && !user.emailVerified) {
       throw verifyRequired();
     }
@@ -83,15 +67,12 @@ export class ServersService {
     await this.assertCanJoinAnotherServer(userId);
     const inviteCode = await this.generateUniqueInviteCode();
 
-    // Transaction: server + role @everyone + channel general + owner là member
-    // mang @everyone — hoặc tất cả cùng xong, hoặc không gì cả (guide 10.1).
     return this.prisma.$transaction(async (tx) => {
       const server = await tx.server.create({
         data: {
           name,
           ownerId: userId,
           inviteCode,
-          // T3.6: mã mời là bản ghi ServerInvite đang hoạt động (join tra bảng này).
           invites: { create: { code: inviteCode, createdById: userId } },
           roles: {
             create: {
@@ -113,8 +94,6 @@ export class ServersService {
         select: { id: true },
       });
 
-      // Owner cũng là member và cũng mang @everyone: không ai là "thành viên
-      // đặc biệt" chỉ vì đã tạo server (quyền owner nằm ở Server.ownerId).
       await tx.member.create({
         data: {
           serverId: server.id,
@@ -139,7 +118,6 @@ export class ServersService {
       include: { _count: { select: { members: true, channels: true } } },
       orderBy: { createdAt: 'asc' },
     });
-    // Không đưa `_count` (chi tiết của Prisma) ra API: số đếm là trường phẳng camelCase (ADR-0028).
     return servers.map(({ _count, ...server }) => ({
       ...server,
       memberCount: _count.members,
@@ -152,22 +130,14 @@ export class ServersService {
       await this.prisma.server.findUniqueOrThrow({
         where: { id: serverId },
         include: {
-          // TG.10: category sắp theo lexorank (so sánh chuỗi) — DB collation tùy cấu hình
-          // nên sắp lại trong JS bằng compareRanks cho mọi môi trường ra cùng kết quả.
           categories: { orderBy: { position: 'asc' } },
           channels: { orderBy: { position: 'asc' } },
           roles: { orderBy: { position: 'asc' } },
-          // Mã đang hoạt động là bản ghi chưa thu hồi duy nhất (regenerate thu hồi hết
-          // rồi tạo mới, create tạo đúng một) — chỉ lấy hạn dùng để UI hiển thị.
           invites: { where: { revokedAt: null }, select: { expiresAt: true }, take: 1 },
           _count: { select: { members: true } },
         },
       });
-    // TG.10: thứ tự hiển thị sidebar — vùng mặc định (channel ngoài category, sắp theo
-    // `position` Int cũ) TRƯỚC để giữ hình ảnh cũ khi chưa có category; sau đó từng category
-    // theo `position` lexorank của nó, kênh trong category sắp theo `positionKey` (so sánh
-    // chuỗi). `position` Int của kênh trong category là giá trị cũ vô nghĩa — client nhóm
-    // theo `categoryId` trước khi render.
+    // Vùng mặc định (channel ngoài category, theo `position` Int) đứng TRƯỚC; kênh trong category sắp theo `positionKey`.
     const categoryOrder = new Map(categories.map((category, index) => [category.id, index]));
     const sortedChannels = [...channels].sort((a, b) => {
       if (a.categoryId === null && b.categoryId === null) return a.position - b.position;
@@ -181,8 +151,6 @@ export class ServersService {
     });
     return {
       ...server,
-      // Category trả đúng hợp đồng ChannelCategoryDto ({id, name, position}); các trường
-      // audit (createdAt/updatedAt/serverId) là nội bộ — không đưa ra API.
       categories: categories.map(
         ({ serverId: _serverId, createdAt: _c, updatedAt: _u, ...category }) => category,
       ),
@@ -192,11 +160,6 @@ export class ServersService {
     };
   }
 
-  /**
-   * Đổi tên/icon server (T3.1, TG.7). Guard đã xác nhận `update Server`; ở đây đọc giá trị cũ
-   * để audit có before/after, rồi cập nhật và ghi audit trong cùng một transaction. Icon gắn
-   * bằng attachment `scope=serverIcon` đã ready; icon cũ chuyển `deleting` cho worker dọn.
-   */
   async update(
     serverId: string,
     actorId: string,
@@ -250,10 +213,6 @@ export class ServersService {
     return server;
   }
 
-  /**
-   * TG.7: tự đặt biệt danh của chính mình. Guard đã xác nhận `update Member`
-   * (bit CHANGE_NICKNAME); endpoint `/members/me` chỉ chạm đúng member của caller.
-   */
   async updateMyNickname(serverId: string, userId: string, nickname: string | null) {
     const member = await this.prisma.member.findUnique({
       where: { serverId_userId: { serverId, userId } },
@@ -279,16 +238,11 @@ export class ServersService {
     return updated;
   }
 
-  /** Dùng lại AbilityFactory (có cache, đã cộng @everyone): một nơi duy nhất tính quyền. */
   async myPermissions(serverId: string, userId: string): Promise<MyServerPermissions> {
     const { isOwner, permissions } = await this.abilityFactory.contextFor(serverId, userId);
     return { isOwner, permissions: permissions.toString() };
   }
 
-  /**
-   * Phân trang cursor (keyset) theo id thành viên tăng dần (UUIDv7: cũ → mới, cùng thứ tự `joinedAt`).
-   * `after` thuộc server khác thì chỉ đơn giản không khớp hàng nào của server này, không lộ gì.
-   */
   async members(serverId: string, { after, limit }: ListMembersQuery) {
     const rows = await this.prisma.member.findMany({
       where: { serverId, ...(after ? { id: { gt: after } } : {}) },
@@ -297,7 +251,7 @@ export class ServersService {
         roles: { select: { role: { select: { id: true, name: true } } } },
       },
       orderBy: { id: 'asc' },
-      take: limit + 1, // lấy dư một hàng để biết còn trang sau
+      take: limit + 1,
     });
     const hasMore = rows.length > limit;
     const page = hasMore ? rows.slice(0, limit) : rows;
@@ -306,8 +260,7 @@ export class ServersService {
   }
 
   async join(userId: string, inviteCode: string) {
-    // T3.6: join tra mã mời ở bảng ServerInvite để phân biệt rõ hết hạn/thu hồi
-    // (mã lỗi riêng) với mã không tồn tại. `Server.inviteCode` chỉ là bản sao hiển thị.
+    // Tra bảng ServerInvite để phân biệt hết hạn/thu hồi với không tồn tại; `Server.inviteCode` chỉ là bản sao hiển thị.
     const invite = await this.prisma.serverInvite.findUnique({
       where: { code: inviteCode },
       include: { server: { select: { id: true, name: true, inviteCode: true } } },
@@ -329,10 +282,7 @@ export class ServersService {
     }
     const server = invite.server;
 
-    // TG.11: người bị ban không vào lại được bằng mã mời — chặn trước mọi nhánh khác của
-    // join. Kiểm theo (serverId, userId) trên bảng ServerBan (unique index, một lần tra).
-    // Message không kèm reason: lý do ban là dữ liệu của người quản lý (xem qua danh sách
-    // ban / audit log), người bị ban chỉ cần biết mình bị cấm.
+    // Kiểm ban TRƯỚC mọi nhánh khác của join; message không kèm reason (lý do là dữ liệu của người quản lý).
     const ban = await this.prisma.serverBan.findUnique({
       where: { serverId_userId: { serverId: server.id, userId } },
       select: { id: true },
@@ -358,7 +308,6 @@ export class ServersService {
       select: { id: true },
     });
 
-    // Member mới luôn nhận role @everyone — không ai "vô hình" trong server.
     let member;
     try {
       member = await this.prisma.member.create({
@@ -370,7 +319,6 @@ export class ServersService {
         include: { roles: { select: { role: { select: { id: true, name: true } } } } },
       });
     } catch (error) {
-      // Hai request join đồng thời cùng lọt qua check `existing`: unique (serverId, userId) chặn.
       if (isUniqueConstraintError(error)) {
         throw new ConflictException('You are already a member of this server');
       }
@@ -395,23 +343,16 @@ export class ServersService {
     }
 
     await this.prisma.member.delete({ where: { id: member.id } });
-    // Không còn member: cache ability của user trong server này phải chết ngay.
+    // Cache ability phải chết ngay và socket đang mở phải rời room ngay, không đợi ngắt kết nối.
     await this.abilityFactory.invalidateMember(serverId, userId);
-    // Socket đang mở của user phải rời room của server ngay, không đợi ngắt kết nối.
     await this.realtime.refreshAccess(serverId, [userId]);
   }
 
-  /**
-   * Kick: guard đã xác nhận người gọi có `delete Member` trong server này. Ở đây kiểm tra
-   * theo đối tượng: member phải thuộc đúng server trên URL, và người bị kick không được
-   * là owner, chính người gọi, hay người có quyền vượt người gọi (canKickMember).
-   */
   async kick(serverId: string, actorId: string, memberId: string): Promise<void> {
     const member = await this.prisma.member.findUnique({
       where: { id: memberId },
       select: { id: true, serverId: true, userId: true },
     });
-    // memberId của server khác gắn vào URL server này: coi như không tồn tại (không lộ thông tin).
     if (!member || member.serverId !== serverId) {
       throw new NotFoundException('Member not found in this server');
     }
@@ -425,7 +366,6 @@ export class ServersService {
       throw new ForbiddenException('You cannot kick this member');
     }
 
-    // Xóa member (MemberRole cascade theo) và ghi audit trong cùng một transaction.
     await this.prisma.$transaction([
       this.prisma.member.delete({ where: { id: member.id } }),
       this.audit.record({
@@ -436,7 +376,6 @@ export class ServersService {
         metadata: { userId: member.userId },
       }),
     ]);
-    // Giống leave: quyền cache và socket room của người bị kick phải mất ngay.
     await this.abilityFactory.invalidateMember(serverId, member.userId);
     await this.realtime.refreshAccess(serverId, [member.userId]);
   }
@@ -449,19 +388,16 @@ export class ServersService {
     if (!server) {
       throw new NotFoundException('Server not found');
     }
-    // Tier 2 (guide 10.2): xóa server là đặc quyền của CHỦ SỞ HỮU, không phải
-    // một loại quyền role — nên check đối tượng ở đây thay vì @CheckAbility.
+    // Xóa server là đặc quyền CHỦ SỞ HỮU (tier 2), không phải quyền role nên check ở đây thay vì @CheckAbility.
     if (server.ownerId !== userId) {
       throw new ForbiddenException('Only the owner can delete this server');
     }
 
-    // Lấy danh sách member TRƯỚC khi cascade xóa họ, để còn báo cho họ qua socket.
+    // Lấy member TRƯỚC khi cascade xóa họ để còn báo qua socket.
     const memberUserIds = (
       await this.prisma.member.findMany({ where: { serverId }, select: { userId: true } })
     ).map((member) => member.userId);
 
-    // Cascade trong schema dọn channels/messages/roles/members.
-    // AuditLog không có khóa ngoại nên bản ghi này còn lại sau khi cascade dọn sạch server.
     await this.prisma.$transaction([
       this.prisma.server.delete({ where: { id: serverId } }),
       this.audit.record({
@@ -477,19 +413,11 @@ export class ServersService {
     return { id: serverId };
   }
 
-  /**
-   * Tạo mã mời mới (T3.6): thu hồi mọi mã đang hoạt động, cấp mã mới (hạn dùng tùy
-   * chọn), đồng bộ bản sao `Server.inviteCode` và ghi audit — tất cả trong một
-   * transaction nên không có khoảnh khắc server "không có mã".
-   * Guard đã xác nhận `update Server` trước khi vào đây.
-   */
   async regenerate(
     serverId: string,
     actorId: string,
     input: RegenerateInviteInput,
   ): Promise<RegenerateInviteResult> {
-    // Cấp mã mời cũng thuộc chính sách chưa xác minh (TG.8): chủ server chưa xác minh
-    // email không được phát mã kéo người mới vào.
     await this.assertEmailVerified(actorId);
     const server = await this.prisma.server.findUnique({
       where: { id: serverId },
@@ -528,11 +456,6 @@ export class ServersService {
     });
   }
 
-  /**
-   * 6 byte ngẫu nhiên → 8 ký tự base64url (~48 bit): đủ ngắn để share, đủ rộng
-   * để không đoán được. Vẫn kiểm tra trùng vì unique constraint là chốt chặn cuối.
-   * Chấp nhận client của transaction đang chạy để gọi được trong `regenerate`.
-   */
   private async generateUniqueInviteCode(db: Prisma.TransactionClient = this.prisma) {
     for (let attempt = 0; attempt < 3; attempt += 1) {
       const code = randomBytes(6).toString('base64url');

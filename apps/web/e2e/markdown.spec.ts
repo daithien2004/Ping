@@ -5,10 +5,6 @@ import { pacedLogin } from './login-pace';
 
 const API = 'http://localhost:4000/api/v1';
 
-/**
- * TG.4 (ADR-0054): markdown tập con qua UI — định dạng hiển thị đúng; payload XSS chỉ còn
- * văn bản thuần (không element nguy hiểm); mention thành chip; spoiler bấm để lộ.
- */
 test('markdown: formatting renders, XSS payloads are inert, mention chip, spoiler reveals', async ({
   browser,
 }) => {
@@ -36,7 +32,6 @@ test('markdown: formatting renders, XSS payloads are inert, mention chip, spoile
       const before = await page.locator('article').count();
       await composer.fill(content);
       await composer.press('Enter');
-      // Chờ tin mới thực sự vào danh sách (optimistic render ngay, cả khi sending).
       await expect(page.locator('article')).toHaveCount(before + 1, { timeout: 20_000 });
     };
 
@@ -50,7 +45,6 @@ test('markdown: formatting renders, XSS payloads are inert, mention chip, spoile
       await expect(page.getByText('code', { exact: true })).toBeVisible();
       await expect(page.getByText('🔥')).toBeVisible();
       await expect(page.getByTestId('mention-chip').first()).toContainText('@bob');
-      // Spoiler bấm để lộ.
       const spoiler = page.getByRole('button', { name: 'Nội dung bị che, bấm để xem' }).first();
       await expect(spoiler).toBeVisible();
       await spoiler.click();
@@ -71,16 +65,13 @@ test('markdown: formatting renders, XSS payloads are inert, mention chip, spoile
     await test.step('payload XSS chỉ là văn bản thuần', async () => {
       const payload = `<script>alert(1)</script> [x](javascript:alert(1)) <img src=x onerror=alert(1)>`;
       await send(payload);
-      // Payload hiện NGUYÊN VĂN như chữ trong tin (không thẻ nào được tạo từ nó).
       await expect(
         page.locator('article').filter({ hasText: '[x](javascript:alert(1))' }),
       ).toHaveCount(1);
-      // Trong tin payload không được sinh ra link nào (toàn bộ là text thuần).
       const payloadArticle = page.locator('article').filter({
         hasText: '[x](javascript:alert(1))',
       });
       expect(await payloadArticle.locator('a').count()).toBe(0);
-      // Payload article không sinh phần tử nào (script/iframe/img) — mọi thứ là text.
       expect(await payloadArticle.locator('script, iframe, img').count()).toBe(0);
     });
 

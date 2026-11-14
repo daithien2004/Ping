@@ -12,12 +12,6 @@ import { getSession } from '@/features/auth/api';
 import { UserAvatar } from '@/features/profile/components/user-avatar';
 import { qk } from '@/lib/query-keys';
 
-/**
- * Trang landing công khai (TF.8).
- *
- * Người đã đăng nhập thì vào app luôn; khách mới thấy phần giới thiệu + đường vào đăng nhập /
- * đăng ký. Mọi chuỗi nằm trong `messages/*.json` (namespace `landing`) — không hardcode.
- */
 export default function LandingPage() {
   const router = useRouter();
   const t = useTranslations('landing');

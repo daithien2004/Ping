@@ -4,7 +4,6 @@ import { PingSegmented } from '@/components/ui/ping-segmented';
 
 const LEVELS = ['all', 'mentions', 'none'] as const;
 
-/** Nhãn mức dùng chung với chuông kênh (TG.12) — một nguồn chữ, không dịch lại. */
 export function LevelControl({
   value,
   onChange,

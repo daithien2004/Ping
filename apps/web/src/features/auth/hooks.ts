@@ -34,8 +34,6 @@ export function useMe() {
 export function useSessionExpiry() {
   const queryClient = useQueryClient();
   useEffect(() => {
-    // Chỉ đặt `me = null`; AuthGate xóa các query còn lại sau khi cây `(app)` đã unmount —
-    // removeQueries trên query đang có observer sẽ refetch bằng token vừa bị xóa.
     setUnauthenticatedHandler(() => {
       queryClient.setQueryData(qk.me, null);
     });
@@ -49,7 +47,6 @@ export function useLogin() {
     mutationFn: login,
     onSuccess: (user) => {
       // Phiên mới không được kế thừa query/lỗi của phiên trước: request cũ có thể vẫn đang bay
-      // và kịp ghi lỗi 401 vào cache trong lúc màn đăng nhập mở.
       clearSessionQueries(queryClient);
       queryClient.setQueryData(qk.me, user);
     },
@@ -72,24 +69,12 @@ export function useLogout() {
   return useMutation({
     mutationFn: logout,
     onSettled: () => {
-      // AuthGate sẽ về /login không kèm ?next= (không dẫn người sau tới trang của người trước).
       markSignedOut();
-      // Đặt me = null TRƯỚC: AuthGate đang theo dõi query này sẽ chuyển về /login.
-      // (Không dùng queryClient.clear(): nó xóa luôn query `me`, AuthGate mất theo dõi và
-      // không bao giờ biết đã đăng xuất — đã gặp khi kiểm tra trong trình duyệt.)
       queryClient.setQueryData(qk.me, null);
-      // Dữ liệu còn lại (server, tin nhắn...) do AuthGate xóa ngay sau khi nó unmount cây
-      // `(app)` — xóa tại đây, khi AppShell còn observer, sẽ refetch bằng token vừa bị xóa.
-      // `useLogin` cũng xóa trước khi đặt phiên mới, phòng request cũ về muộn.
     },
   });
 }
 
-/**
- * POST /auth/verify-email: thành công thì làm tươi `me` — nếu người dùng đang đăng nhập trên
- * trình duyệt này (xác minh ngay sau đăng ký), banner chưa xác minh tắt và chính sách
- * VERIFY_REQUIRED được gỡ mà không cần đăng nhập lại.
- */
 export function useVerifyEmail() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -100,25 +85,18 @@ export function useVerifyEmail() {
   });
 }
 
-/** POST /auth/verify-email/resend — không đụng cache: chỉ báo thành công cho người dùng. */
 export function useResendVerification() {
   return useMutation({ mutationFn: resendVerification });
 }
 
-/** POST /auth/password/forgot — server luôn trả 202; UI hiện câu trung lập như nhau. */
 export function useForgotPassword() {
   return useMutation({ mutationFn: forgotPassword });
 }
 
-/** POST /auth/password/reset — server thu hồi mọi phiên; caller điều hướng về /login. */
 export function useResetPassword() {
   return useMutation({ mutationFn: resetPassword });
 }
 
-/**
- * PATCH /users/me/password: phiên hiện tại vẫn giữ, các phiên khác bị thu hồi ở server —
- * làm tươi danh sách phiên để các dòng biến mất ngay.
- */
 export function useChangePassword() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -134,7 +112,6 @@ export function useSessions() {
   return useQuery({ queryKey: qk.sessions, queryFn: listSessions, staleTime: 30_000 });
 }
 
-/** DELETE /users/me/sessions/:sessionId — làm tươi danh sách sau khi thu hồi. */
 export function useRevokeSession() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -145,7 +122,6 @@ export function useRevokeSession() {
   });
 }
 
-/** DELETE /users/me/sessions — thu hồi mọi phiên khác, làm tươi danh sách. */
 export function useRevokeOtherSessions() {
   const queryClient = useQueryClient();
   return useMutation({

@@ -11,7 +11,6 @@ import { useErrorMessage } from '@/lib/error-message';
 import { errorReference } from '@/lib/error-reference';
 import { useAuditLog } from '../hooks';
 
-/** Nhãn tiếng Việt của mỗi hành động trong nhật ký (namespace `admin.auditActions`). */
 const ACTION_KEYS = {
   ROLE_CREATE: 'roleCreate',
   ROLE_UPDATE: 'roleUpdate',
@@ -38,10 +37,6 @@ function formatTime(value: string, locale: string): string {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString(locale);
 }
 
-/**
- * Nhật ký hành động của server (TF.10): bảng `PingTable`, lọc theo hành động, phân trang
- * cursor (mỗi lần bấm "Xem thêm" lấy trang kế tiếp bằng id bản ghi cuối).
- */
 export function AuditLogTable({ serverId }: { serverId: string }) {
   const t = useTranslations('admin');
   const ta = useTranslations('admin.auditActions');

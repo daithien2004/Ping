@@ -1,8 +1,4 @@
-// TF.15: báo cáo JS tải ban đầu theo route (gzip) từ `page_client-reference-manifest.js`
-// của Turbopack — mỗi manifest liệt kê chunk của module client mà route cần; chunk có
-// `async: true` tải khi mở tính năng (modal AI, search…) nên không tính. Cộng thêm base dùng
-// chung (`rootMainFiles` + `polyfillFiles` + `lowPriorityFiles`) như `bundle-budget.mjs`.
-// Không đặt ngưỡng mới: ngân sách tổng vẫn do `bundle-budget.mjs` chặn.
+// Chunk `async: true` không tính (tải khi mở tính năng). Không đặt ngưỡng: ngân sách do bundle-budget.mjs chặn.
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { gzipSync } from 'node:zlib';

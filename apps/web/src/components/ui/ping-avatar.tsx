@@ -19,7 +19,6 @@ type PresenceProps =
 
 export type PingAvatarProps = Omit<AntdAvatarProps, 'size'> &
   PresenceProps & {
-    /** Bậc cỡ, hoặc đường kính px. */
     size?: PingSize | number;
   };
 

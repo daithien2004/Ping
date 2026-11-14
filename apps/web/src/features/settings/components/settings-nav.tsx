@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTranslations } from 'use-intl';
 
-/** Các mục cài đặt (TG.13) — /settings là mục Tài khoản, còn lại là route con. */
 export const SETTINGS_ITEMS = [
   { href: '/settings', key: 'account', icon: User },
   { href: '/settings/appearance', key: 'appearance', icon: Palette },
@@ -15,10 +14,6 @@ export const SETTINGS_ITEMS = [
   { href: '/settings/shortcuts', key: 'shortcuts', icon: Keyboard },
 ] as const;
 
-/**
- * Nav mục cài đặt: role="navigation" + aria-current="page" (a11y), nền token theo nghĩa.
- * Dùng usePathname (được phép: là component layout, không phải page — ADR-0020).
- */
 export function SettingsNav() {
   const pathname = usePathname();
   const t = useTranslations('settings');
@@ -40,8 +35,7 @@ export function SettingsNav() {
               active ? 'bg-accent' : 'hover:bg-accent/50'
             }`}
           >
-            {/* Màu đặt ở span con: antd tô màu thẻ <a> bằng rule không nằm trong layer nên
-                class `text-*` trên chính Link không thắng được. */}
+            {/* Màu ở span con: antd tô <a> bằng rule ngoài layer nên class `text-*` trên Link bị đè. */}
             <span
               className={`flex items-center gap-2 text-base font-medium ${
                 active

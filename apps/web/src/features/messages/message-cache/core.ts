@@ -10,7 +10,6 @@ import { tempIdOf } from './temp-id';
 import type { ClientMessage, ClientMessagePage, MessagesCache } from './types';
 
 const REPLY_PREVIEW_LENGTH = 120;
-/** URL hồ sơ còn hạn trên 1 ngày thì dùng tiếp — chừa biên cho lần tải kế tiếp. */
 const STICKER_URL_REUSE_MARGIN_SECONDS = 24 * 60 * 60;
 
 export function mapPages(
@@ -38,11 +37,6 @@ export const sameMessage = (a: ClientMessage, b: ClientMessage) =>
 export const nonceKey = (message: ClientMessage) =>
   message.nonce === null ? '' : `${message.authorId}:${message.nonce}`;
 
-/**
- * Gom tin nhắn từ mọi trang thành một mảng rồi đảo thứ tự để tin cũ nhất đứng trước.
- * Ví dụ: pages = [[m5, m4], [m3, m2]] → [m2, m3, m4, m5].
- * Nếu cache chưa có thì trả về mảng rỗng.
- */
 export function oldestFirst(cache: { pages: ClientMessagePage[] } | undefined): ClientMessage[] {
   return (cache?.pages.flatMap((page) => page.messages) ?? []).reverse();
 }
@@ -61,11 +55,6 @@ function reusableUrl(before: string | null, after: string | null): string | null
     : after;
 }
 
-/**
- * Giữ URL sticker đang hiện khi server trả CÙNG sticker với mốc ký mới (echo socket, phản hồi
- * POST, refetch). Đổi `src` dù cùng tệp vẫn khiến `<img>` tải lại và nháy; URL còn hạn trên
- * 1 ngày thì dùng tiếp, gần hạn mới nhận URL mới. Khác sticker hoặc sticker đã xóa → bản mới.
- */
 function keepStickerUrls(
   before: MessageStickerPreview | null | undefined,
   after: MessageStickerPreview | null | undefined,
@@ -94,7 +83,6 @@ function stickerUrlsByMessage(messages: ClientMessage[]): Map<string, MessageSti
   return map;
 }
 
-/** Áp URL sticker cũ lên dữ liệu vừa fetch — chỉ tạo object mới khi thật sự có URL được giữ. */
 function carryStickerUrls(
   previous: Map<string, MessageStickerPreview>,
   cache: MessagesCache,
@@ -143,8 +131,6 @@ export function optimisticMessage(
 ): ClientMessage {
   return {
     id: tempIdOf(input.nonce),
-    // Tệp đã upload xong (có DTO server) → render ngay trong tin tạm, không đợi POST trả về;
-    // ảnh dùng width/height để chừa đúng ô nên danh sách không nhảy khi ảnh tải xong.
     ...(input.attachments?.length ? { attachments: input.attachments } : {}),
     ...(input.stickerId ? { kind: 'sticker' as const, sticker: input.sticker ?? null } : {}),
     ...(input.gif
@@ -214,11 +200,6 @@ function insertSorted(pages: ClientMessagePage[], message: ClientMessage): void 
   pages[pages.length - 1] = { ...last, messages: [...last.messages, message] };
 }
 
-/**
- * Nhận cache và nonce của lần gửi; đổi tin tạm tương ứng từ đang gửi sang thất bại.
- * Ví dụ: tin `{ nonce: 'n1', status: 'sending' }` → `{ nonce: 'n1', status: 'failed' }`.
- * Nếu cache chưa có thì trả lại `undefined`.
- */
 export function markFailed(cache: MessagesCache | undefined, nonce: string) {
   if (!cache) return cache;
   return mapPages(cache, (rows) =>
@@ -259,22 +240,6 @@ export function applyPin(
   }));
 }
 
-/**
- * Ghép cache cũ (`before`) với dữ liệu mới từ server (`after`), giữ lại trạng thái cục bộ.
- *
- * Ví dụ:
- * before = {
- *   messages: [m1, temp-1(status: 'sending')],
- *   deletedIds: ['m2'],
- *   window: { aroundId: 'm1' },
- * }
- * after = { messages: [m1, m2] }
- * output = {
- *   messages: [m1, temp-1(status: 'sending')],
- *   deletedIds: ['m2'],
- *   window: { aroundId: 'm1' },
- * }
- */
 export function preserveLocalMessages(
   before: MessagesCache | undefined,
   after: MessagesCache,

@@ -1,10 +1,3 @@
-/**
- * Ghép cửa sổ tin nhắn liền kề thành một chunk hội thoại cho embedding.
- *
- * Cửa sổ neo vào tin mới nhất (tin kích hoạt): lấy tối đa `windowSize` tin
- * cùng channel, đi ngược về trước, dừng khi vượt `maxTokens`. Nhờ vậy point id
- * luôn là id tin neo — upsert lại cùng một point là idempotent.
- */
 export interface ChunkMessage {
   id: string;
   author: string;
@@ -16,11 +9,7 @@ export interface ConversationChunk {
   messageIds: string[];
 }
 
-/**
- * Ước lượng token không phụ thuộc tokenizer: tiếng Việt thường ~3 ký tự/token.
- * Đây là giới hạn mềm để chunk không phình quá cửa sổ model; số đo thật nằm ở
- * T5.1 (độ trễ embed theo batch).
- */
+// Ước lượng ~3 ký tự/token (tiếng Việt), giới hạn mềm.
 export function estimateTokens(text: string): number {
   return Math.max(1, Math.ceil(text.length / 3));
 }
@@ -36,7 +25,6 @@ export function buildConversationChunk(
   const selected: ChunkMessage[] = [];
   let tokens = 0;
 
-  // Đi từ tin neo (cuối mảng) ngược về trước để tin mới luôn có mặt.
   for (let index = messages.length - 1; index >= 0; index -= 1) {
     const message = messages[index];
     if (!message) continue;

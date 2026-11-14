@@ -1,11 +1,9 @@
 import type { StickerDto } from '@ping/shared';
 import { foldVi } from '@/lib/fold-vi';
 
-/** Số sticker tối đa lưu trong "Gần đây" (localStorage) — như emoji picker (TG.23). */
 export const STICKER_RECENT_MAX = 24;
 const RECENT_KEY = 'ping.sticker-recent';
 
-/** Tìm theo tên + thẻ, không dấu ("nguoi nham" trúng "người nhắm") — TG.22. */
 export function stickerMatchesSearch(sticker: StickerDto, query: string): boolean {
   const q = foldVi(query.trim().toLowerCase());
   if (q === '') return true;
@@ -27,7 +25,6 @@ export function loadRecentStickers(): string[] {
   }
 }
 
-/** Ghim một id vào đầu danh sách gần đây (một lần duy nhất), trần {@link STICKER_RECENT_MAX}. */
 export function pushRecentSticker(recent: string[], stickerId: string): string[] {
   return [stickerId, ...recent.filter((id) => id !== stickerId)].slice(0, STICKER_RECENT_MAX);
 }
@@ -36,6 +33,6 @@ export function saveRecentStickers(list: string[]): void {
   try {
     localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, STICKER_RECENT_MAX)));
   } catch {
-    // localStorage đầy/bị chặn: bỏ qua — tính năng gần đây là tiện ích, không phải dữ liệu.
+    // localStorage đầy/bị chặn: bỏ qua.
   }
 }

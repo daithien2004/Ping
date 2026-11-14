@@ -41,11 +41,7 @@ export class MessagesController {
     private readonly searchRateLimiter: SearchRateLimiter,
   ) {}
 
-  /**
-   * Tìm kiếm tin nhắn trong server (T4.6, ADR-0045): FTS + trigram, lọc channel/author/thời
-   * gian, cursor `before`. Guard `view Message` (T6.5) — thành viên thiếu VIEW_CHANNEL không
-   * được đọc nội dung tin qua search; where luôn ràng buộc serverId.
-   */
+  // Guard `view Message`: thành viên thiếu VIEW_CHANNEL không được đọc tin qua search; where luôn ràng buộc serverId.
   @Get('servers/:serverId/search')
   @Throttle({ default: RATE_LIMIT_BUCKETS.search })
   @CheckAbility(['view', 'Message'])
@@ -80,11 +76,7 @@ export class MessagesController {
     return this.messagesService.create(channelId, user.userId, body);
   }
 
-  /**
-   * PATCH/DELETE không có @CheckAbility loại: rule update/delete Message là
-   * ĐIỀU KIỆN (authorId = me) — phải để service kiểm tra với đối tượng thật
-   * (tier 2). Guard vẫn đảm bảo người gọi là member của server chứa tin.
-   */
+  // PATCH/DELETE không có @CheckAbility loại: rule update/delete Message có ĐIỀU KIỆN (authorId = me) nên service kiểm với đối tượng thật.
   @Patch('messages/:messageId')
   @Throttle({ default: RATE_LIMIT_BUCKETS.writeMessage })
   update(
@@ -106,11 +98,6 @@ export class MessagesController {
     return this.messagesService.remove(messageId, user.userId, ability);
   }
 
-  /**
-   * TG.3 (ADR-0066): ghim tin trong channel. `PUT`/`DELETE` idempotent, trả trạng thái sau thao
-   * tác; danh sách ghim có trần `Limits.PINS_PER_CHANNEL` nên trả mảng thẳng, không phân trang.
-   * Quyền: `MANAGE_MESSAGES` + `VIEW_CHANNEL` (subject `Pin` trong `defineAbilityFor`).
-   */
   @Get('channels/:channelId/pins')
   @Throttle({ default: RATE_LIMIT_BUCKETS.history })
   @CheckAbility(['view', 'Message'])
@@ -132,11 +119,6 @@ export class MessagesController {
     return this.messagesService.unpin(messageId, user.userId);
   }
 
-  /**
-   * TG.2 (ADR-0064): cảm xúc. `PUT`/`DELETE` idempotent — thả/gỡ lại cùng emoji không đổi
-   * trạng thái và không phát event lần hai. Emoji đi qua allowlist của `@ping/shared` trong
-   * service (param `:emoji` đã được Express giải mã URL).
-   */
   @Get('messages/:messageId/reactions/:emoji')
   @Throttle({ default: RATE_LIMIT_BUCKETS.history })
   @CheckAbility(['view', 'Message'])

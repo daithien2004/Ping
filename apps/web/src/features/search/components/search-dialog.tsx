@@ -5,7 +5,6 @@ import { Search } from 'lucide-react';
 import { Suspense, useState } from 'react';
 import { useTranslations } from 'use-intl';
 
-// Tải lười: chỉ nạp chunk hộp thoại tìm kiếm ở lần mở đầu tiên (T6.10).
 const LazySearchModal = dynamic(
   () => import('./search-modal').then((module) => module.SearchModal),
   { ssr: false },

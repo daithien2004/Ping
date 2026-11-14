@@ -1,8 +1,5 @@
-// Lấy mẫu metrics của các instance (H5, /metrics) mỗi vài giây trong lúc chạy k6, ghi CSV để đưa vào báo cáo.
-//   node tools/loadtest/sample-metrics.mjs <nhãn> [cổng-metrics,...] [giây]
-//   ví dụ: node tools/loadtest/sample-metrics.mjs fanout-3x 9101,9102,9103 5      (dừng bằng Ctrl+C)
-// Cột: thời điểm, cổng, socket đang mở, độ trễ event loop p99 (ms), CPU tích lũy (giây), RSS (MB),
-// tổng request, số request 5xx.
+// node tools/loadtest/sample-metrics.mjs <nhãn> [cổng-metrics,...] [giây]  (dừng bằng Ctrl+C)
+// Cột CSV: thời điểm, cổng, socket mở, event loop p99 (ms), CPU (giây), RSS (MB), tổng request, request 5xx.
 import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';

@@ -35,15 +35,6 @@ async function fetchMessages(
   return ((await response.json()) as MessagePage).messages;
 }
 
-/**
- * Chuẩn bị trạng thái tất định cho ảnh baseline:
- * - cài đặt alice về mặc định (theme 'system' → màu theo `colorScheme` của context, mật độ
- *   thoáng, cỡ chữ md, tiếng Việt) để lần chạy trước không đổi giao diện lần sau;
- * - xác nhận dữ liệu seed có mặt — thiếu seed thì báo lỗi rõ thay vì chụp màn hình rỗng rồi
- *   ghi baseline sai;
- * - đánh dấu đã đọc mọi kênh để không có vạch "Tin mới" phụ thuộc thời điểm chạy;
- * - lưu storage state đăng nhập alice cho các test.
- */
 export default async function globalSetup(): Promise<void> {
   await waitForApi();
   const context = await request.newContext();
@@ -79,15 +70,13 @@ export default async function globalSetup(): Promise<void> {
 
     const seeded = await fetchMessages(context, headers, general);
     if (!seeded.some((message) => message.content === SEEDED_CONTENT)) {
-      // DB dev dùng chung tích thêm tin (chat tay, test) → ảnh lệch baseline và tin seed trôi
-      // khỏi trang đầu; visual chỉ chạy trên DB vừa migrate + seed.
+      // Visual chỉ chạy trên DB vừa migrate + seed: DB dev dùng chung tích thêm tin làm ảnh lệch baseline.
       throw new Error(
         `Kênh #general thiếu tin seed "${SEEDED_CONTENT}" — phải chạy trên DB sạch vừa seed, ` +
           `không dùng DB dev chung (xem docs/v0.2.0/evidence/TF.13/README.md).`,
       );
     }
 
-    // Vạch "Tin mới" đặt theo con trỏ đọc; đánh dấu hết để ảnh không phụ thuộc lần chạy trước.
     for (const channel of detail.channels) {
       const messages =
         channel.id === general.id ? seeded : await fetchMessages(context, headers, channel);

@@ -13,18 +13,6 @@ import { AuditService } from '../audit/audit.service.js';
 import { RealtimeService } from '../realtime/realtime.service.js';
 import { assignRanks } from './ranks.js';
 
-/**
- * Category channel (TG.10): CRUD + reorder. Vị trí là lexorank so sánh theo chuỗi
- * (packages/shared/src/lexorank.ts) — chèn giữa hai nhóm chỉ đụng MỘT hàng, nên kéo thả của
- * hai người dùng đồng thời không đánh số lại hàng loạt; chỉ khi `rankBetween` cạn khoảng
- * (hiếm) mới gán lại đều cả nhóm bằng `assignRanks`.
- *
- * Quyền đã do guard kiểm (`manage Channel` = MANAGE_CHANNELS — cùng quyền với tạo/xóa
- * channel, vì category chỉ là cách nhóm kênh). Audit: chỉ ghi CHANNEL_REORDER cho
- * reorder/move channel — tạo/đổi tên category là dữ liệu hiển thị, hoàn toàn có thể hoàn tác
- * qua chính nó và thấy ngay trong UI (không thuộc nhóm hành động nhạy cảm của quy tắc 11);
- * xóa category không phá dữ liệu nào (kênh được giữ, về vùng mặc định) nên cũng không ghi.
- */
 @Injectable()
 export class CategoriesService {
   constructor(
@@ -35,11 +23,9 @@ export class CategoriesService {
 
   async create(serverId: string, name: string): Promise<ChannelCategoryDto> {
     const created = await this.prisma.$transaction(async (tx) => {
-      // Khóa riêng cho category của server (tiền tố 'cat:' để không đụng khóa position Int
-      // của channel): hai request tạo category cùng lúc xếp hàng thay vì cùng đọc một max
-      // rồi cùng nối cuối.
+      // Khóa 'cat:' tách khỏi khóa position Int của channel; request tạo đồng thời xếp hàng.
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'cat:' + serverId}))`;
-      // Đếm TRONG lock nên trần chính xác (mẫu của ChannelsService.create).
+      // Đếm trong lock để trần chính xác.
       if (
         (await tx.channelCategory.count({ where: { serverId } })) >=
         Limits.MAX_CATEGORIES_PER_SERVER
@@ -52,8 +38,6 @@ export class CategoriesService {
       });
       const position = last ? after(last.position) : rankBetween(undefined, undefined);
       if (position === null) {
-        // after() chỉ cạn với chuỗi rỗng — rank không bao giờ rỗng; nhánh này là lưới an toàn
-        // cho dữ liệu lệch: gán lại đều toàn bộ category hiện có rồi nối category mới cuối.
         const all = await tx.channelCategory.findMany({
           where: { serverId },
           orderBy: { position: 'asc' },
@@ -72,14 +56,12 @@ export class CategoriesService {
       }
       return tx.channelCategory.create({ data: { serverId, name, position } });
     });
-    // Danh sách category đổi (thêm phần tử): báo room server để tab khác fetch lại —
-    // client không cần biết category mới nằm đâu, payload chỉ mang thứ tự id mới.
     await this.emitCategoriesReordered(serverId);
     return { id: created.id, name: created.name, position: created.position };
   }
 
   async rename(serverId: string, categoryId: string, name: string): Promise<ChannelCategoryDto> {
-    // Tra theo cả serverId: categoryId của server khác gắn vào URL — 404 che tồn tại.
+    // Tra theo cả serverId: categoryId của server khác → 404.
     const category = await this.prisma.channelCategory.findFirst({
       where: { id: categoryId, serverId },
     });
@@ -88,16 +70,9 @@ export class CategoriesService {
       where: { id: category.id },
       data: { name },
     });
-    // Đổi tên không đổi thứ tự/chọn lọc gì: các tab khác sẽ thấy qua refetch detail của
-    // chính họ (web refetch sau thao tác của mình) — không phát event cho một trường hiển thị.
     return { id: updated.id, name: updated.name, position: updated.position };
   }
 
-  /**
-   * Xóa category: kênh trong đó được GIỮ nguyên (về vùng mặc định) — đặt categoryId +
-   * positionKey null trong cùng transaction, giữ `position` Int cũ nên kênh trở lại đúng
-   * chỗ cũ của vùng mặc định. FK cũng khai báo ON DELETE SET NULL làm lưới an toàn.
-   */
   async remove(serverId: string, categoryId: string): Promise<{ id: string }> {
     const category = await this.prisma.channelCategory.findFirst({
       where: { id: categoryId, serverId },
@@ -114,12 +89,6 @@ export class CategoriesService {
     return { id: category.id };
   }
 
-  /**
-   * Sắp lại TOÀN BỘ category theo `orderedIds` (đã validate: đủ mọi category, không trùng).
-   * Đúng thứ tự hiện có → không ghi gì (idempotent, không đánh số lại hàng loạt). Đổi thứ
-   * tự → gán rank nối tiếp theo mảng (mỗi rank > rank trước); chỉ khi `rankBetween` cạn
-   * khoảng thì gán lại ĐỀU cả danh sách bằng assignRanks (rebalance — xem ranks.ts).
-   */
   async reorder(
     serverId: string,
     actorId: string,
@@ -141,11 +110,9 @@ export class CategoriesService {
       if (orderedIds.some((id) => !known.has(id))) {
         throw new BadRequestException(message);
       }
-      // Đã đúng thứ tự → không có gì để làm (đòi hỏi "idempotent" của TG.10).
       if (categories.every((category, index) => category.id === orderedIds[index])) {
         return { updated: categories.map((category) => this.toDto(category)) };
       }
-      // Gán nối tiếp: mốc trái là rank vừa gán, mốc phải trống (nối cuối danh sách).
       let ranks: string[] = [];
       let rebalance = false;
       let prev: string | undefined;
@@ -184,7 +151,6 @@ export class CategoriesService {
     return updated;
   }
 
-  /** Danh sách id category theo thứ tự hiện tại, phát `channel.reordered` scope 'categories'. */
   private async emitCategoriesReordered(serverId: string): Promise<void> {
     const categories = await this.prisma.channelCategory.findMany({
       where: { serverId },
@@ -194,7 +160,7 @@ export class CategoriesService {
     this.realtime.emitToServer(serverId, ServerEvents.ChannelReordered, {
       serverId,
       scope: 'categories',
-      // Hợp đồng ChannelReorderedPayload: scope 'categories' → mảng này là CÁC CATEGORYID.
+      // scope 'categories': mảng này là các categoryId.
       channelIds: categories.map((category) => category.id),
     });
   }

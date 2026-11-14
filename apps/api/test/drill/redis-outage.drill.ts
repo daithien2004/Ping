@@ -1,15 +1,4 @@
-/**
- * DRILL (diễn tập thật), không phải test tự động: tắt Redis THẬT bằng docker compose rồi xem một
- * API đã build xử lý ra sao (ADR-0026, docs/runbook/failure-modes.md).
- *
- *   docker compose up -d
- *   pnpm --filter api build
- *   pnpm --filter api drill:redis
- *
- * Script tự chạy API ở cổng 4100 (Redis DB 2, không đụng dữ liệu dev ở DB 0) nên không cần bật dev
- * server. Nó DỪNG container redis của docker compose trong vài giây: mọi thứ khác đang dùng Redis
- * trên máy (dev server, e2e) sẽ bị suy giảm tạm thời. Không chạy trong `test:e2e` vì lý do đó.
- */
+/** Dừng container redis vài giây: dev server và e2e đang chạy sẽ suy giảm tạm thời; không chạy trong `test:e2e`. */
 import { call, compose, finish, record, seedChat, startApi, waitFor } from './lib.js';
 
 const api = startApi();
@@ -79,9 +68,9 @@ try {
 } catch (error) {
   record('Drill chạy hết', false, (error as Error).message);
   try {
-    compose('start', 'redis'); // đừng để Redis đang tắt
+    compose('start', 'redis');
   } catch {
-    // best effort
+    // Dọn dẹp tốt nhất có thể: container có thể đã chạy lại.
   }
 } finally {
   api.child.kill();

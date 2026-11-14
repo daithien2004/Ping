@@ -13,13 +13,6 @@ interface GroqResponse {
   usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
 }
 
-/**
- * Adapter Groq (OpenAI-compatible) cho free tier. Không có key thì mọi lời gọi
- * ném `AiUnavailableError` để tầng trên suy giảm thay vì treo.
- *
- * T5.7: mỗi lần thử có timeout riêng; chỉ thử lại khi lỗi tạm thời (429/5xx/lỗi mạng),
- * tối đa `maxRetries` lần. Lỗi 4xx khác (sai khoá, request hỏng) không thử lại.
- */
 export class GroqLlmClient implements LlmClient {
   constructor(
     private readonly apiKey: string | undefined,
@@ -58,13 +51,12 @@ export class GroqLlmClient implements LlmClient {
           signal: AbortSignal.timeout(this.timeoutMs),
         });
       } catch {
-        // Lỗi mạng/timeout: có thể thử lại; không đưa chi tiết lỗi vào message trả về.
         continue;
       }
 
       if (!response.ok) {
         if (isRetryableStatus(response.status) && attempt < this.maxRetries) continue;
-        // Không đưa body vào lỗi: body có thể chứa chi tiết khoá/đầu vào.
+        // Không đưa body vào lỗi: có thể chứa khoá/đầu vào.
         throw new AiUnavailableError(`Groq trả về HTTP ${response.status}`);
       }
 

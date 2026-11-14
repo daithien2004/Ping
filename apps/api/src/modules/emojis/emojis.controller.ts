@@ -15,12 +15,7 @@ import { CurrentUser, type AuthenticatedUser } from '../auth/current-user.decora
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { EmojisService } from './emojis.service.js';
 
-/**
- * Emoji tùy chỉnh theo server (TG.24, ADR-0068). Xem danh sách: mọi member (`view Sticker`);
- * tạo cần `create Sticker` (MANAGE_EXPRESSIONS — cùng nhóm biểu cảm với sticker nên tái
- * dùng subject 'Sticker', không thêm subject CASL); xóa cần `delete Sticker` — guard tra
- * server qua chính emoji (nhánh `:emojiId` của AbilityGuard), service ghi audit `EMOJI_DELETE`.
- */
+// Dùng chung subject 'Sticker' (MANAGE_EXPRESSIONS), không thêm subject CASL.
 @Controller()
 @Throttle({ default: RATE_LIMIT_BUCKETS.writeStructure })
 @UseGuards(JwtAuthGuard, AbilityGuard)

@@ -3,7 +3,6 @@ import type { MemberDto, MemberPage } from '@ping/shared';
 
 export type MembersCache = InfiniteData<MemberPage, string | undefined>;
 
-/** Đặt trạng thái online của một user ở trang nào đang giữ họ. Không đổi gì thì trả lại đúng object cũ. */
 export function setPresence(
   cache: MembersCache | undefined,
   userId: string,
@@ -22,7 +21,6 @@ export function setPresence(
   return changed ? { ...cache, pages } : cache;
 }
 
-/** Online trước, mỗi nhóm giữ thứ tự của server (theo ngày vào). */
 export function groupByPresence(members: MemberDto[]) {
   return {
     online: members.filter((m) => m.online),

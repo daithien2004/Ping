@@ -1,10 +1,7 @@
 import type { GifDto } from '@ping/shared';
 
-/** TTL 5 phút (ADR-0069 mục 3): kết quả công khai của nhà cung cấp, không dữ liệu người dùng. */
 const TTL_MS = 5 * 60_000;
-/** Trần số entry; hết chỗ thì xóa entry cũ nhất (FIFO theo thứ tự chèn của Map). */
 const MAX_ENTRIES = 200;
-/** Chống khóa phình vô hạn nếu callers ghép dữ liệu lạ vào key. */
 const MAX_KEY_LENGTH = 512;
 
 interface Entry {
@@ -12,11 +9,6 @@ interface Entry {
   expiresAt: number;
 }
 
-/**
- * Cache in-memory TTL 5 phút cho kết quả search/trending (ADR-0069 mục 3) — CHỈ giữ dữ liệu
- * công khai, không bao giờ dữ liệu người dùng. Một instance của tiến trình, một Map duy nhất;
- * key đã ghép loại + q + limit ở tầng service, quá dài thì trim.
- */
 export class GifCache {
   private readonly entries = new Map<string, Entry>();
 
@@ -39,7 +31,6 @@ export class GifCache {
 
   set(key: string, gifs: GifDto[]): void {
     const normalized = this.trimKey(key);
-    // Hết chỗ: xóa entry cũ nhất trước (Map giữ thứ tự chèn — key đầu tiên là cũ nhất).
     while (this.entries.size >= this.maxEntries) {
       const oldest = this.entries.keys().next().value;
       if (oldest === undefined) break;

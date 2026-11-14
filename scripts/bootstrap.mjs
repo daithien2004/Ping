@@ -1,11 +1,4 @@
-// `pnpm bootstrap`: từ một bản clone mới tới môi trường dev chạy được bằng MỘT lệnh (ADR-0034).
-// (Không đặt tên `setup`: `pnpm setup` là lệnh có sẵn của pnpm, cấu hình PATH, nên script cùng tên không chạy.)
-//
-//   pnpm bootstrap            cài dependency, tạo .env, bật Postgres+Redis, migrate, seed
-//   pnpm bootstrap --skip-install   bỏ bước cài dependency (đã cài rồi)
-//
-// Chạy lại bao nhiêu lần cũng được (idempotent): .env có sẵn thì giữ nguyên, migration và seed đều an toàn khi lặp.
-// Viết bằng Node thuần để chạy giống nhau trên Windows, macOS và Linux (không phụ thuộc bash).
+// `pnpm bootstrap [--skip-install]`. Không đặt tên `setup`: `pnpm setup` là lệnh có sẵn của pnpm nên script cùng tên không chạy.
 import { execSync } from 'node:child_process';
 import { copyFileSync, existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';

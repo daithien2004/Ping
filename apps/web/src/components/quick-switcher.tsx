@@ -14,7 +14,6 @@ import { PingModal } from '@/components/ui/ping-modal';
 import { PingInput, type PingInputRef } from '@/components/ui/ping-input';
 import { PingEmpty } from '@/components/ui/ping-empty';
 
-// Chỉ trình bày: trạng thái mở và dữ liệu do `QuickSwitcherHost` (features/shell) cấp.
 export interface QuickSwitcherItem {
   id: string;
   label: string;
@@ -42,10 +41,8 @@ export function QuickSwitcher({ items, open, onOpenChange }: QuickSwitcherProps)
     [items, deferredQuery],
   );
   const hasResults = filtered.length > 0;
-  // `items` có thể co lại khi đang mở: kẹp chỉ số để không trỏ ra ngoài danh sách.
   const current = Math.min(active, filtered.length - 1);
 
-  // Callback ref, không phải ref object + effect: antd mount nội dung modal qua Portal ở commit sau
   // nên ref object còn null lúc effect chạy (focus() thay autoFocus, ADR-0029).
   const focusInput = useCallback((element: PingInputRef | null) => {
     element?.focus();
@@ -56,7 +53,6 @@ export function QuickSwitcher({ items, open, onOpenChange }: QuickSwitcherProps)
     router.push(href);
   }
 
-  // Giữ focus ở ô nhập và đổi lựa chọn bằng phím (mẫu ARIA combobox).
   function onKeyDown(event: ReactKeyboardEvent<HTMLInputElement>) {
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       event.preventDefault();
@@ -126,7 +122,6 @@ export function QuickSwitcher({ items, open, onOpenChange }: QuickSwitcherProps)
               }}
             >
               {item.group ? (
-                // Chữ phụ trên nền `accent` chỉ 4,20:1: dùng màu chữ của dòng chọn để giữ AA.
                 <span
                   className={`mr-1.5 text-xs ${
                     index === current ? 'text-accent-foreground' : 'text-muted-foreground'

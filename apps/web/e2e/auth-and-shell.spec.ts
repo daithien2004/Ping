@@ -2,14 +2,12 @@ import { randomUUID } from 'node:crypto';
 import { expect, type Page, test } from '@playwright/test';
 import { ensureUserVerified } from './global-setup';
 
-// F2 + F3: một user mới đi trọn luồng, các bước phụ thuộc nhau nên chạy nối tiếp trên một trang.
 test.describe.configure({ mode: 'serial' });
 
 const id = randomUUID().slice(0, 8);
 const email = `e2e-ui-${id}@example.test`;
 const password = 'e2e-password';
 
-// <Activity> giữ trang đã rời (form /register, dialog đóng…) ẩn trong DOM: chỉ lấy ô đang hiện.
 const field = (page: Page, label: string) => page.getByLabel(label).filter({ visible: true });
 
 test('register, sign out without ?next=, sign in, create server and channel', async ({ page }) => {
@@ -23,10 +21,8 @@ test('register, sign out without ?next=, sign in, create server and channel', as
   });
 
   await test.step('tạo server → vào #general', async () => {
-    // TG.8: tài khoản vừa đăng ký phải xác minh email trước khi tạo server khi có SMTP_URL.
     await ensureUserVerified(email);
     await page.getByRole('button', { name: 'Tạo server' }).first().click();
-    // Wizard onboarding: nút mở wizard và nút gửi trong wizard trùng tên → bám theo dialog.
     const wizard = page.getByRole('dialog');
     await field(page, 'Tên server').fill(`UI ${id}`);
     await wizard.getByRole('button', { name: 'Tạo server' }).click();
@@ -48,7 +44,6 @@ test('register, sign out without ?next=, sign in, create server and channel', as
 
   await test.step('sao chép mã mời → toast xác nhận (quy ước toast của TF.9)', async () => {
     await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
-    // Bám Discord: mã mời nằm trong menu của tên server, không còn nút rời ở header sidebar.
     await page.getByRole('button', { name: 'Menu server' }).click();
     await page.getByRole('menuitem', { name: 'Sao chép mã mời' }).click();
     await expect(page.getByText('Đã sao chép mã mời.')).toBeVisible();
@@ -57,7 +52,6 @@ test('register, sign out without ?next=, sign in, create server and channel', as
   await test.step('tự đăng xuất → /login KHÔNG kèm ?next= (ADR-0019)', async () => {
     await page.getByRole('button', { name: 'Thoát' }).click();
     await expect(page).toHaveURL(/\/login$/);
-    // Người sau trên cùng trình duyệt không được thấy (kể cả trong DOM ẩn) trang của người trước.
     await expect(page.getByRole('link', { name: '# ui-test', includeHidden: true })).toHaveCount(0);
   });
 
@@ -66,7 +60,6 @@ test('register, sign out without ?next=, sign in, create server and channel', as
     await field(page, 'Mật khẩu').fill(password);
     await page.getByRole('button', { name: 'Đăng nhập' }).click();
     await expect(page.getByRole('link', { name: '# ui-test' })).toBeVisible();
-    // Form đăng nhập/đăng ký bị giấu, không bị gỡ: mật khẩu không được nằm lại trong DOM.
     const leftover = await page
       .locator('input[type=password]')
       .evaluateAll((inputs) => inputs.filter((i) => (i as HTMLInputElement).value !== '').length);

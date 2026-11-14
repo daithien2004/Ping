@@ -5,10 +5,6 @@ import { pacedLogin } from './login-pace';
 
 const API = 'http://localhost:4000/api/v1';
 
-/**
- * TG.23: emoji picker — mở/nhóm/tìm "cười"/chọn gần đây/tông da; gợi ý :ten: qua bàn phím;
- * emoji lớn khi tin chỉ toàn emoji. Dùng pacedLogin (10 login/phút/IP).
- */
 test('emoji picker: search, insert, recent, suggestion and big emoji', async ({ browser }) => {
   test.setTimeout(240_000);
   const ownerContext = await browser.newContext();
@@ -35,13 +31,11 @@ test('emoji picker: search, insert, recent, suggestion and big emoji', async ({ 
       const picker = page.getByTestId('emoji-picker');
       await expect(picker).toBeVisible({ timeout: 15_000 });
       await page.getByTestId('emoji-search').fill('cuoi');
-      // "cười" trúng smile/joy/laughing — grid có kết quả, không phải trạng thái rỗng.
       await expect(picker.getByRole('gridcell').first()).toBeVisible();
       const first = picker.getByRole('gridcell').first();
       const label = await first.getAttribute('aria-label');
       expect(label).toBeTruthy();
       await first.click();
-      // Chọn xong: picker đóng, composer chứa emoji.
       await expect(picker).toHaveCount(0);
       await expect(composer).not.toHaveValue('');
     });
@@ -49,7 +43,6 @@ test('emoji picker: search, insert, recent, suggestion and big emoji', async ({ 
     await test.step('gợi ý :ten: qua bàn phím: gõ ":fir" → mũi tên + Enter chèn shortcode', async () => {
       await composer.fill('đang nóng :fir');
       await expect(page.getByTestId('emoji-suggestions')).toBeVisible({ timeout: 15_000 });
-      // Mục đầu đã được chọn sẵn (suggestionIndex=0): Enter chọn ngay.
       await composer.press('Enter');
       await expect(composer).toHaveValue(/đang nóng :[a-z_]+:/);
     });
@@ -63,7 +56,6 @@ test('emoji picker: search, insert, recent, suggestion and big emoji', async ({ 
       await composer.fill('😄 😄 😄');
       await composer.press('Enter');
       await expect(page.getByTestId('big-emoji').first()).toBeVisible({ timeout: 15_000 });
-      // Tin có chữ thường → không còn big-emoji mới.
       await composer.fill('xin chào 😄');
       await composer.press('Enter');
       await expect(page.getByTestId('big-emoji')).toHaveCount(1);

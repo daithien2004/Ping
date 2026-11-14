@@ -13,16 +13,12 @@ import { useServers } from '@/features/servers/hooks';
 import { channelPath, serverPath } from '@/features/servers/navigation';
 import { serverIdFromPath } from '@/lib/channel-url';
 
-// Tải lười: chunk của modal chỉ được tải ở lần bấm Ctrl/Cmd+K đầu tiên (T6.10).
 const LazyQuickSwitcher = dynamic(
   () => import('@/components/quick-switcher').then((module) => module.QuickSwitcher),
   { ssr: false },
 );
 
-/**
- * Cầu nối dữ liệu cho quick switcher (TF.5): server của tôi, hội thoại DM và kênh của server
- * đang mở. Ctrl/Cmd+K do component này bắt (không phải modal) để lần mở đầu mới tải chunk modal.
- */
+/** Ctrl/Cmd+K do component này bắt (không phải modal) để lần mở đầu mới tải chunk modal. */
 export function QuickSwitcherHost() {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -39,7 +35,6 @@ export function QuickSwitcherHost() {
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
-  // Đóng là tháo hẳn modal: mở lại luôn bắt đầu với ô tìm kiếm trống (state nằm trong modal).
   if (!mounted || !open) return null;
   return (
     <Suspense fallback={null}>
@@ -57,7 +52,6 @@ function QuickSwitcherData({
 }) {
   const { data: servers } = useServers();
   const { data: dms } = useDms();
-  // ADR-0088: server đang mở đọc từ pathname (`/channels/:serverId/...` hoặc `/servers/:id/settings`).
   const serverId = serverIdFromPath(usePathname());
   const t = useTranslations('quickSwitcher');
 

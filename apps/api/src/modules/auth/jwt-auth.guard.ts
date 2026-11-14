@@ -3,14 +3,7 @@ import type { Request } from 'express';
 import { AuthService } from './auth.service.js';
 import type { AuthenticatedUser } from './current-user.decorator.js';
 
-/**
- * Xác thực access JWT (header `Authorization: Bearer`) rồi gắn user vào request.
- *
- * Guard tự verify trực tiếp thay vì dùng passport: về sau Socket.IO handshake
- * chỉ cần gọi lại `authService.verifyAccessToken(token)` — cùng một nơi xác thực,
- * không đụng tới guard. Passport strategy vốn xoay quanh HttpRequest nên tách
- * ra dùng cho socket rất gượng ép.
- */
+// Tự verify thay vì passport để Socket.IO handshake tái dùng `authService.verifyAccessToken`.
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
   constructor(private readonly authService: AuthService) {}
@@ -28,7 +21,6 @@ export class JwtAuthGuard implements CanActivate {
       request.user = await this.authService.verifyAccessToken(token);
       return true;
     } catch {
-      // Không tiết lộ lý do thật (hết hạn hay sai chữ ký) — client chỉ cần biết: 401, đăng nhập lại.
       throw new UnauthorizedException('Invalid or expired access token');
     }
   }

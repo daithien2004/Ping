@@ -10,11 +10,6 @@ const ACTOR = '00000000-0000-7000-8000-000000000002';
 const CHANNEL = '00000000-0000-7000-8000-000000000003';
 const CATEGORY = '00000000-0000-7000-8000-000000000004';
 
-/**
- * TG.10: unit test phần move channel + topic của ChannelsService (Prisma giả) — kiểm chèn
- * cuối (sinh rank), dùng positionKey của client, rebalance khi cạn khoảng và về vùng mặc định.
- */
-
 const serverChannel = (overrides: Record<string, unknown> = {}) => ({
   id: CHANNEL,
   serverId: SERVER,
@@ -35,7 +30,6 @@ function makePrisma() {
     channel: {
       aggregate: vi.fn().mockResolvedValue({ _max: { position: 3 } }),
       findMany: vi.fn().mockResolvedValue([]),
-      // Hàng trả về đủ shape channel server (toChannelDto đọc createdAt).
       update: vi.fn().mockImplementation(async ({ where, data }) => ({
         ...serverChannel(),
         id: where.id,
@@ -52,7 +46,6 @@ function makePrisma() {
     ),
     channel: {
       ...tx.channel,
-      // getChannel() ở ngoài transaction (chạy trước + sau move).
       findUnique: vi.fn().mockResolvedValue(serverChannel()),
     },
     channelCategory: tx.channelCategory,
@@ -60,7 +53,6 @@ function makePrisma() {
   return {
     prisma: prisma as unknown as PrismaService,
     tx,
-    // Bản raw (vi.fn() thật) để test đè findUnique mà không lọt qua kiểu PrismaService.
     raw: prisma,
   };
 }
@@ -80,8 +72,6 @@ function makeService() {
 describe('ChannelsService.move (TG.10)', () => {
   it('không có positionKey → chèn CUỐI category đích: rank sau kênh cuối của nhóm', async () => {
     const { service, tx, realtime } = makeService();
-    // Lần 1 (trong tx): kênh khác trong nhóm đích có rank 'm' (chính kênh đang di chuyển bị loại).
-    // Lần 2 (sau tx): danh sách nhóm đích sau khi move — gồm cả kênh vừa vào.
     tx.channel.findMany
       .mockResolvedValueOnce([{ id: 'x1', positionKey: 'm' }])
       .mockResolvedValueOnce([
@@ -93,7 +83,6 @@ describe('ChannelsService.move (TG.10)', () => {
       where: { id: CHANNEL },
       data: { categoryId: CATEGORY, positionKey: 'n' },
     });
-    // Event room server: thứ tự mới của nhóm đích (x1 trước, kênh vừa vào sau).
     expect(realtime.emitToServer).toHaveBeenCalledWith(SERVER, 'channel.reordered', {
       serverId: SERVER,
       scope: 'category',
@@ -109,8 +98,6 @@ describe('ChannelsService.move (TG.10)', () => {
       where: { id: CHANNEL },
       data: { categoryId: CATEGORY, positionKey: 'k' },
     });
-    // Không tra "kênh cuối" khi client đã đưa rank (query sau tx chỉ lấy danh sách nhóm để
-    // phát event — không có filter positionKey).
     const traKênhCuối = tx.channel.findMany.mock.calls.some(
       (call) => (call[0] as { where: { positionKey?: unknown } }).where.positionKey !== undefined,
     );
@@ -121,7 +108,6 @@ describe('ChannelsService.move (TG.10)', () => {
     const { service, tx } = makeService();
     tx.channel.findMany.mockResolvedValue([{ id: 'x1', positionKey: '' }]);
     await service.move(CHANNEL, ACTOR, { categoryId: CATEGORY });
-    // assignRanks(2) = i,r: x1 nhận i, kênh đang di chuyển nối cuối với r.
     expect(tx.channel.update).toHaveBeenCalledWith({
       where: { id: 'x1' },
       data: { positionKey: 'i' },
@@ -135,9 +121,9 @@ describe('ChannelsService.move (TG.10)', () => {
   it('categoryId null → về vùng mặc định: position nối cuối (max + 1) dưới khóa create channel', async () => {
     const { service, tx, realtime } = makeService();
     tx.channel.aggregate.mockResolvedValue({ _max: { position: 3 } });
-    tx.channel.findMany.mockResolvedValue([{ id: 'd1' }]); // vùng mặc định sau khi move
+    tx.channel.findMany.mockResolvedValue([{ id: 'd1' }]);
     const result = await service.move(CHANNEL, ACTOR, { categoryId: null });
-    expect(tx.$executeRaw).toHaveBeenCalled(); // advisory lock như POST /channels
+    expect(tx.$executeRaw).toHaveBeenCalled();
     expect(tx.channel.update).toHaveBeenCalledWith({
       where: { id: CHANNEL },
       data: { categoryId: null, positionKey: null, position: 4 },

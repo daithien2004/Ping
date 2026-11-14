@@ -21,19 +21,16 @@ import {
  */
 export function LocaleProvider({ children }: { children: ReactNode }) {
   use(browser('Ngôn ngữ đọc từ cookie trong trình duyệt.'));
-  // Không reload: `switchLocale` phát cho store này, provider đổi locale/messages tại chỗ.
   const locale = useSyncExternalStore<AppLocale>(
     subscribeLocale,
     currentLocale,
     () => defaultLocale,
   );
 
-  // Lỗi validate (schema @ping/shared) theo cùng ngôn ngữ.
   z.config(locale === 'en' ? z.locales.en() : z.locales.vi());
 
   useEffect(() => {
     document.documentElement.lang = locale;
-    // antd đọc locale của dayjs cho DatePicker/định dạng ngày; gọi lại mỗi lần đổi ngôn ngữ.
     dayjs.locale(locale);
   }, [locale]);
 

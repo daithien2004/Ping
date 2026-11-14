@@ -4,12 +4,6 @@ import { useEffect, useRef, useState } from 'react';
 import { useLoadNewer, useResetWindow, useSeedAround } from '../../hooks';
 import type { ClientMessage, MessagesWindow } from '../../message-cache';
 
-/**
- * Tìm tin nhắn được permalink trỏ tới trong danh sách; nếu chưa có thì tải đoạn quanh tin đó.
- * Trả trạng thái để giao diện hiển thị/định vị tin đích và nút tải tin mới hơn.
- * Ví dụ: focusId = 'm8', messages có m8 → focusIndex là vị trí của m8, focusPending = false.
- * Nếu chưa tải thấy m8 → focusPending = true; nếu server báo không tìm thấy → focusMissing = true.
- */
 export function usePermalinkWindow({
   channelId,
   focusId,

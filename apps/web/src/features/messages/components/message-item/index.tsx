@@ -29,11 +29,6 @@ interface Props {
   mine?: boolean;
 }
 
-/**
- * Nhận dữ liệu một tin nhắn cùng trạng thái hiển thị và callback thao tác.
- * Trả giao diện cho tin đó: nội dung (text/GIF/sticker), tác giả, thời gian, phản ứng và tệp đính kèm.
- * Ví dụ: `grouped = true` → nối tin với tin ngay trước; `status = 'failed'` → hiện nút thử gửi lại.
- */
 export const MessageItem = memo(function MessageItem({
   message,
   channelId,
@@ -79,10 +74,6 @@ export const MessageItem = memo(function MessageItem({
         className={`group relative px-4 pb-(--ping-message-py) leading-(--ping-message-leading) ${grouped ? 'pt-0.5' : 'pt-(--ping-message-gap)'} ${highlighted ? 'bg-accent ring-1 ring-ring/40' : ''}`}
         aria-busy={message.status === 'sending' || undefined}
       >
-        {/* Cụm thao tác kiểu Discord: nổi ở góc trên-phải, chỉ hiện khi hover/focus; không còn nút icon dưới tin.
-            Khi ẩn thì tắt pointer-events — thanh nhô lên đè tin phía trên sẽ không "cướp" hover của tin đó.
-            `focus-visible` (không phải `focus-within`) để click chuột không ghim thanh của tin cũ khi
-            đang hover tin khác; overlay mở thì giữ thanh hiện bằng `data-open` như Discord. */}
         {!message.status && (
           <div
             data-open={overlayOpen || undefined}

@@ -14,14 +14,12 @@ async function bootstrap() {
 
   const config = app.get(ConfigService<Env, true>);
   const logger = app.get(Logger);
-  // Metrics/health của worker nằm trên cổng riêng (ADR-0031); compose dùng nó làm healthcheck.
   const metricsPort = config.get('METRICS_PORT', { infer: true });
   if (metricsPort) await app.get(MetricsService).listen(metricsPort);
   logger.log(
     { port: config.get('PORT', { infer: true }), metricsPort: metricsPort ?? null },
     'worker started (outbox relay)',
   );
-  // Giữ process sống; relay service đã chạy qua onModuleInit.
   await new Promise<void>(() => {});
 }
 

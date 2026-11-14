@@ -18,7 +18,6 @@ import type {
 import { bootApp } from './helpers/boot.js';
 
 const runId = Date.now().toString(36);
-// Ảnh PNG thật sinh bằng sharp (worker kiểm định file-type — ảnh tự chế bị rejected).
 const pngPromise: Promise<Buffer> = import('sharp').then((sharp) =>
   sharp
     .default({ create: { width: 20, height: 12, channels: 3, background: 'red' } })
@@ -32,15 +31,6 @@ interface TestUser {
   token: string;
 }
 
-/**
- * TG.9 (ADR-0070): DM 1:1 + chặn người dùng — get-or-create idempotent (kể cả hai request
- * SONG SONG), điều kiện cho phép (chung server, dmAllow, UserBlock hai chiều), trần 10 DM
- * mới/giờ, IDOR người thứ ba → 404 mọi route, sticker/custom emoji chặn trong DM,
- * unread qua DmParticipant, realtime badge serverId null, DM không vào index AI.
- *
- * Người đối tác thuần (u1..u11) chèn thẳng DB: họ không gọi API nên không cần token —
- * tiết kiệm request cho trần rate limit toàn cục 100/phút/IP của e2e.
- */
 describe('DM 1:1 + user blocks (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
@@ -55,17 +45,17 @@ describe('DM 1:1 + user blocks (e2e)', () => {
   let carol: TestUser;
   let dave: TestUser;
   let spammer: TestUser;
-  let u1 = ''; // đối tác của test SONG SONG (cần chung server với bob)
-  let u2 = ''; // đối tác tắt DM (dmAllow = 'none')
-  const partners: string[] = []; // u1..u10 cho trần 10 DM/giờ
-  let u11 = ''; // đối tác thứ 11 → 429
+  let u1 = '';
+  let u2 = '';
+  const partners: string[] = [];
+  let u11 = '';
 
-  let serverId = ''; // server của alice (bob, carol, u1 chung)
-  let serverGeneral = ''; // kênh general của serverId
-  let spamServerId = ''; // server của spammer (u2..u11 chung)
-  let dmId = ''; // DM alice↔bob
-  let dmMessageId = ''; // tin text đầu tiên trong DM
-  let dmAttachmentId = ''; // attachment ready trong DM (cho test IDOR download)
+  let serverId = '';
+  let serverGeneral = '';
+  let spamServerId = '';
+  let dmId = '';
+  let dmMessageId = '';
+  let dmAttachmentId = '';
 
   const unique = () => Math.random().toString(36).slice(2, 8);
 
@@ -84,7 +74,6 @@ describe('DM 1:1 + user blocks (e2e)', () => {
     return { id: res.body.user.id, token: res.body.accessToken };
   }
 
-  /** Chèn user trực tiếp qua DB — chỉ cần id cho tạo DM, không gọi API. */
   async function seedUser(label: string): Promise<string> {
     const row = await prisma.user.create({
       data: {
@@ -128,7 +117,6 @@ describe('DM 1:1 + user blocks (e2e)', () => {
     });
   }
 
-  /** Trừ khi nhận event trong `waitMs` — trả true khi event BẠT (test tự assert). */
   async function assertNoEvent(socket: Socket, event: string, waitMs = 1000): Promise<boolean> {
     const seen = await Promise.race([
       new Promise<boolean>((resolve) => socket.once(event, () => resolve(true))),
@@ -159,7 +147,6 @@ describe('DM 1:1 + user blocks (e2e)', () => {
     });
   }
 
-  /** Pipeline upload đầy đủ tới `ready` (pattern attachments.e2e-spec). */
   async function readyAttachment(token: string, channelId: string): Promise<string> {
     const bytes = await pngPromise;
     const res = await api('post', '/api/v1/uploads', token)
@@ -209,21 +196,18 @@ describe('DM 1:1 + user blocks (e2e)', () => {
       .expect(201);
     spamServerId = spamServer.body.id;
 
-    // Người đối tác thuần: u1 chung server với bob (test SONG SONG), u2 tắt DM,
-    // u1..u10 là 10 đối tác của spammer (trần 10/giờ), u11 là đối tác thứ 11.
     for (let i = 1; i <= 10; i += 1) {
       const id = await seedUser(`u${i}`);
       partners.push(id);
       await seedMember(spamServerId, id);
     }
     u1 = partners[0];
-    await seedMember(serverId, u1); // bob và u1 chung server cho test song song
+    await seedMember(serverId, u1);
     u2 = await seedUser('u2');
     await seedMember(spamServerId, u2);
     u11 = await seedUser('u11');
     await seedMember(spamServerId, u11);
 
-    // Emoji tùy chỉnh của server S — chèn thẳng DB như idor.e2e-spec (cho test chặn token trong DM).
     const emojiAttachment = await prisma.attachment.create({
       data: {
         uploaderId: alice.id,
@@ -260,8 +244,6 @@ describe('DM 1:1 + user blocks (e2e)', () => {
       select: { id: true },
     });
     const ids = [...users.map((row) => row.id), ...partners, u2, u11].filter(Boolean);
-    // Tin nhắn trước (author là FK Restrict), emoji → attachment (Restrict), DM channel
-    // (participant cascade), server (cascade member/role/channel), user cuối cùng.
     await prisma.message.deleteMany({ where: { authorId: { in: ids } } });
     await prisma.customEmoji.deleteMany({ where: { serverId } });
     await prisma.attachment.deleteMany({ where: { id: { in: attachmentIds } } });
@@ -270,7 +252,6 @@ describe('DM 1:1 + user blocks (e2e)', () => {
     }
     await prisma.server.deleteMany({ where: { ownerId: { in: ids } } });
     await prisma.user.deleteMany({ where: { id: { in: ids } } });
-    // Dọn tệp vật lý của attachment ready (best-effort như attachments.e2e-spec).
     const storage = app.get(LocalStorage);
     for (const id of attachmentIds) {
       for (const suffix of ['raw', 'ready', 'thumb']) await storage.remove(`${id}.${suffix}`);
@@ -295,7 +276,7 @@ describe('DM 1:1 + user blocks (e2e)', () => {
     const second = await api('post', '/api/v1/dms', bob.token)
       .send({ userId: alice.id })
       .expect(200);
-    expect(second.body.channelId).toBe(dmId); // cặp chuẩn hóa min|max — ai gọi trước cũng vậy
+    expect(second.body.channelId).toBe(dmId);
 
     const list = await api('get', '/api/v1/dms', alice.token).expect(200);
     const row = (list.body.dms as Array<{ channelId: string; partner: { id: string } }>).find(
@@ -316,7 +297,6 @@ describe('DM 1:1 + user blocks (e2e)', () => {
       select: { id: true, type: true, serverId: true, name: true },
     });
     expect(channels).toHaveLength(1);
-    // Channel DM: type DM, không thuộc server nào, name rỗng.
     expect(channels[0]).toMatchObject({ type: 'DM', serverId: null, name: '' });
   });
 
@@ -327,13 +307,11 @@ describe('DM 1:1 + user blocks (e2e)', () => {
   });
 
   it('gửi tin text + GIF + attachment trong DM OK; sticker và token custom emoji bị chặn', async () => {
-    // Text.
     const text = await api('post', `/api/v1/channels/${dmId}/messages`, alice.token)
       .send({ content: 'xin chào DM', nonce: randomUUID() })
       .expect(201);
     dmMessageId = text.body.id as string;
 
-    // GIF (TG.25): URL host allowlist; schema bắt buộc content rỗng với tin GIF.
     await api('post', `/api/v1/channels/${dmId}/messages`, alice.token)
       .send({
         content: '',
@@ -348,22 +326,17 @@ describe('DM 1:1 + user blocks (e2e)', () => {
       .expect(201)
       .then((res) => expect(res.body.kind).toBe('gif'));
 
-    // Attachment: pipeline đầy đủ tới ready rồi gửi tin kèm tệp.
     dmAttachmentId = await readyAttachment(alice.token, dmId);
     await api('post', `/api/v1/channels/${dmId}/messages`, alice.token)
       .send({ content: '', attachmentIds: [dmAttachmentId], nonce: randomUUID() })
       .expect(201)
       .then((res) => expect(res.body.attachments[0]).toMatchObject({ id: dmAttachmentId }));
 
-    // Sticker (kể cả id không tồn tại): chặn sớm trong DM — tài sản server (ADR-0070 mục 10).
-    // Bob gửi để dàn trải ngân sách rate-limit tin nhắn (10/10s/user/channel — attempt 400
-    // cũng tính một slot vì limiter chạy trước kiểm DM).
+    // Bob gửi để dàn trải ngân sách rate-limit tin nhắn (10/10s/user/channel): attempt 400 cũng tính một slot.
     await api('post', `/api/v1/channels/${dmId}/messages`, bob.token)
       .send({ content: '', stickerId: randomUUID(), nonce: randomUUID() })
       .expect(400);
 
-    // Token custom emoji sống của server: điều kiện `emoji.serverId !== channel.serverId`
-    // luôn đúng khi serverId NULL → 400 (lựa chọn ADR-0070 mục 10: từ chối tường minh).
     const emoji = await prisma.customEmoji.findFirstOrThrow({
       where: { serverId, deletedAt: null },
       select: { id: true },
@@ -376,23 +349,19 @@ describe('DM 1:1 + user blocks (e2e)', () => {
   it('block: DM mới 403, tin mới trong DM có sẵn 403, tin cũ đọc được, unblock gửi lại OK', async () => {
     await api('post', `/api/v1/users/${alice.id}/block`, bob.token).expect(204);
 
-    // Cặp đã có → vẫn 200 với channel cũ (đọc tin cũ là chủ đích).
     const existing = await api('post', '/api/v1/dms', alice.token)
       .send({ userId: bob.id })
       .expect(200);
     expect(existing.body.channelId).toBe(dmId);
 
-    // Tin MỚI bị chặn với cùng mã DM_BLOCKED.
     const blocked = await api('post', `/api/v1/channels/${dmId}/messages`, alice.token)
       .send({ content: 'bị chặn rồi', nonce: randomUUID() })
       .expect(403);
     expect(blocked.body.code).toBe(ErrorCodes.DM_BLOCKED);
 
-    // Tin cũ vẫn đọc được.
     const history = await api('get', `/api/v1/channels/${dmId}/messages`, alice.token).expect(200);
     expect(history.body.messages.length).toBeGreaterThan(0);
 
-    // Unblock idempotent rồi gửi lại được ngay.
     await api('delete', `/api/v1/users/${alice.id}/block`, bob.token).expect(204);
     await api('delete', `/api/v1/users/${alice.id}/block`, bob.token).expect(204);
     await api('post', `/api/v1/channels/${dmId}/messages`, alice.token)
@@ -420,8 +389,6 @@ describe('DM 1:1 + user blocks (e2e)', () => {
         select: { id: true },
       });
 
-    // Bob đọc tới tin mới nhất hiện có, rồi ALICE gửi 3 tin mới → unreadCount của bob đúng 3.
-    // (alice là người gửi để ngân sách rate-limit tin của mỗi user trong DM dàn đều hai phía.)
     const before = await latestMessage();
     await api('put', `/api/v1/channels/${dmId}/read`, bob.token)
       .send({ messageId: before.id })
@@ -439,7 +406,6 @@ describe('DM 1:1 + user blocks (e2e)', () => {
     );
     expect(row?.unreadCount).toBe(3);
 
-    // MarkRead tới tin mới nhất → 0; cursor cũ hơn không làm lùi.
     const latest = await latestMessage();
     await api('put', `/api/v1/channels/${dmId}/read`, bob.token)
       .send({ messageId: latest.id })
@@ -461,14 +427,12 @@ describe('DM 1:1 + user blocks (e2e)', () => {
     const bobSocket = await connectClient(bob.token);
     const carolSocket = await connectClient(carol.token);
 
-    // Participant join room DM được (client emit như channel thường); người thứ ba bị từ chối.
     expect(await socketJoin(aliceSocket, dmId)).toEqual({ ok: true });
     expect(await socketJoin(bobSocket, dmId)).toEqual({ ok: true });
     const carolJoin = await socketJoin(carolSocket, dmId);
     expect(carolJoin.ok).toBe(false);
 
     const bobReceived = waitEvent<MessageCreatedPayload>(bobSocket, 'message.created');
-    // alice gửi → đối tác BOB nhận badge qua room user:<bob>; tác giả không tự nhận badge.
     const bobActivity = waitEvent<ChannelActivityPayload>(bobSocket, 'channel.activity');
     const carolReceived = assertNoEvent(carolSocket, 'message.created', 1200);
     const aliceActivity = assertNoEvent(aliceSocket, 'channel.activity', 1200);
@@ -488,7 +452,6 @@ describe('DM 1:1 + user blocks (e2e)', () => {
     expect(await aliceActivity).toBe(false);
     expect(await carolReceived).toBe(false);
 
-    // Bob gửi → alice nhận badge ChannelActivity với serverId null (ADR-0070 mục 6).
     const aliceActivity2 = waitEvent<ChannelActivityPayload>(aliceSocket, 'channel.activity');
     const aliceCreated = waitEvent<MessageCreatedPayload>(aliceSocket, 'message.created');
     const bobActivity2 = assertNoEvent(bobSocket, 'channel.activity', 1200);
@@ -505,7 +468,6 @@ describe('DM 1:1 + user blocks (e2e)', () => {
   });
 
   it('IDOR người thứ ba (chung server, không phải participant): 404 mọi route DM', async () => {
-    // GET /dms của carol không thấy DM alice↔bob.
     const list = await api('get', '/api/v1/dms', carol.token).expect(200);
     expect(
       (list.body.dms as Array<{ channelId: string }>).some((item) => item.channelId === dmId),
@@ -529,7 +491,6 @@ describe('DM 1:1 + user blocks (e2e)', () => {
       carol.token,
     ).expect(404);
 
-    // Attachment DM: người ngoài không tải được dù biết id (lỗ IDOR ADR chỉ đích danh).
     await api('get', `/api/v1/attachments/${dmAttachmentId}/download`, carol.token).expect(404);
     await api('get', `/api/v1/attachments/${dmAttachmentId}/download`, alice.token).expect(200);
   });
@@ -558,7 +519,6 @@ describe('DM 1:1 + user blocks (e2e)', () => {
         .expect(200);
       dmChannelIds.push(res.body.channelId);
     }
-    // 10 cặp đã có → trả existing (không tính trần); đối tác MỚI thứ 11 → 429.
     await api('post', '/api/v1/dms', spammer.token).send({ userId: partners[0] }).expect(200);
     const res = await api('post', '/api/v1/dms', spammer.token).send({ userId: u11 }).expect(429);
     expect(res.body.code).toBe(ErrorCodes.TOO_MANY_REQUESTS);
@@ -566,7 +526,6 @@ describe('DM 1:1 + user blocks (e2e)', () => {
   });
 
   it('DM không vào index AI (syncMessage bỏ qua serverId NULL), tin server thì có', async () => {
-    // Tin server làm đối chứng: cùng core, cùng cách gọi — upsert chứng minh wiring đúng.
     const serverMessage = await api(
       'post',
       `/api/v1/channels/${serverGeneral}/messages`,
@@ -603,7 +562,6 @@ describe('DM 1:1 + user blocks (e2e)', () => {
     expect(store.upserts).toHaveLength(1);
     expect(store.upserts[0]!.points[0]!.payload.serverId).toBe(serverId);
 
-    // Tin DM: bỏ qua trước khi embed — không thêm point nào.
     const before = store.upserts.length;
     await core.syncMessage(dmMessageId);
     expect(store.upserts).toHaveLength(before);

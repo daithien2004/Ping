@@ -12,7 +12,6 @@ import { REFRESH_COOKIE_NAME, REFRESH_COOKIE_PATH } from './auth.constants.js';
 import { AuthService, type AuthRequestContext, type RefreshCookieValue } from './auth.service.js';
 
 @Controller('auth')
-// Cửa khẩu chưa/không cần access token: khoá theo IP (ADR-0080), không theo danh tính người gọi.
 @RateLimitByIp()
 export class AuthController {
   constructor(
@@ -20,10 +19,6 @@ export class AuthController {
     private readonly config: ConfigService<Env, true>,
   ) {}
 
-  /**
-   * Rate limit riêng 5 lần/phút/IP (ADR-0080, bucket auth-register) — chặt hơn lưới hứng
-   * 100/phút vì mỗi lần đăng ký là một lần argon2.hash tốn CPU. Khoá 60 giây khi vượt.
-   */
   @Post('register')
   @RateLimitFailClosed()
   @Throttle({ default: RATE_LIMIT_BUCKETS.authRegister })
@@ -59,7 +54,6 @@ export class AuthController {
     return { user, accessToken };
   }
 
-  /** Không cần JwtAuthGuard: tự xác thực hoàn toàn bằng cookie httpOnly. */
   @Post('refresh')
   @UseGuards(CsrfGuard)
   @RateLimitFailClosed()
@@ -94,10 +88,9 @@ export class AuthController {
   private setRefreshCookie(res: Response, cookie: RefreshCookieValue): void {
     res.cookie(REFRESH_COOKIE_NAME, cookie.token, {
       httpOnly: true,
-      // Secure = chỉ gửi qua https. Dev chạy http://localhost nên bật sẵn sẽ mất cookie.
+      // Secure tắt ở dev (http://localhost) nếu không mất cookie.
       secure: this.config.getOrThrow('NODE_ENV', { infer: true }) === 'production',
-      // localhost:3000 → localhost:4000 vẫn same-site (port không tính),
-      // nên SameSite=Lax hoạt động trong dev lẫn production cùng-site (guide 9.3).
+      // SameSite=Lax đủ vì localhost:3000→4000 vẫn same-site.
       sameSite: 'lax',
       path: REFRESH_COOKIE_PATH,
       expires: cookie.expiresAt,

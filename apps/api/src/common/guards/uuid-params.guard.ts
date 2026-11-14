@@ -10,13 +10,7 @@ import { ErrorCodes } from '@ping/shared';
 
 const uuid = z.uuid();
 
-/**
- * Mọi tham số route tên `*Id` phải là UUID. Cột id là kiểu `uuid` của Postgres:
- * chuỗi rác lọt xuống Prisma sẽ thành lỗi 500 thay vì 400.
- *
- * Là guard toàn cục (không phải pipe) vì pipe chạy SAU guard, mà AbilityGuard
- * đã dùng `params.serverId/channelId/...` để query DB trước khi tới controller.
- */
+// Guard toàn cục, không phải pipe: pipe chạy SAU guard mà AbilityGuard đã dùng params để query DB; id rác sẽ thành 500.
 @Injectable()
 export class UuidParamsGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {

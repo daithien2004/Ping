@@ -9,6 +9,5 @@ export const dmsPath = () => ownerUrl(ME_SEGMENT);
 
 export const dmPath = (channelId: string) => channelUrl(ME_SEGMENT, channelId);
 
-/** Permalink của một tin trong DM (TG.5 — mở cửa sổ quanh tin đích). */
 export const dmMessagePath = (channelId: string, messageId: string) =>
   messageUrl(ME_SEGMENT, channelId, messageId);

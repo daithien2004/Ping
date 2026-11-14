@@ -15,7 +15,6 @@ import {
   type SidebarGroup,
 } from '../../sidebar-model';
 
-/** Vùng mặc định (channel ngoài category) dùng sentinel riêng trong localStorage. */
 export const DEFAULT_GROUP_KEY = '__default';
 
 interface DragPayload {
@@ -23,17 +22,11 @@ interface DragPayload {
   id: string;
 }
 
-/** Ô đang là đích thả: đường chỉ màu accent vẽ trên/dưới hàng (`edge`). */
 interface DropTarget {
   slot: string;
   edge: 'before' | 'after';
 }
 
-/**
- * Kéo thả (HTML5 DnD thuần) + bàn phím (roving tabindex, Alt+Arrow di chuyển) cho sidebar
- * channel (TG.10): cùng một đường cho cả hai — bàn phím gọi lại đúng `moveChannelTo`/
- * `moveCategoryTo` mà chuột kéo thả dùng.
- */
 export function useChannelSidebarDnd({
   serverId,
   channels,
@@ -52,10 +45,9 @@ export function useChannelSidebarDnd({
   const moveMutation = useMoveChannel(serverId);
   const positionsMutation = useUpdateChannelPositions(serverId);
   const reorderMutation = useReorderCategories(serverId);
-  // Di chuyển là optimistic — lỗi mạng/server phải báo để người dùng biết thứ tự đã hoàn nguyên.
   const onMoveError = (error: unknown) => pingToast.error(errorMessage(error));
 
-  // --- Kéo thả: payload giữ trong ref vì dataTransfer.getData chỉ đọc được ở drop.
+  // Payload giữ trong ref vì dataTransfer.getData chỉ đọc được ở drop.
   const dragRef = useRef<DragPayload | null>(null);
   const [dragKind, setDragKind] = useState<'channel' | 'category' | null>(null);
   const [dropTarget, setDropTarget] = useState<DropTarget | null>(null);
@@ -66,7 +58,6 @@ export function useChannelSidebarDnd({
     setDropTarget(null);
   }
 
-  /** Thả channel vào `categoryId` tại `index` trong nhóm đích — cùng một đường với bàn phím. */
   function moveChannelTo(channelId: string, categoryId: string | null, index: number) {
     const plan = planChannelMove(channels, channelId, categoryId, index);
     if (!plan) return;
@@ -117,12 +108,10 @@ export function useChannelSidebarDnd({
     const edge = dropTarget?.slot === `cat:${key}` ? dropTarget.edge : 'before';
     clearDrag();
     if (!payload) return;
-    // Thả channel lên header: vào CUỐI nhóm đó (chỉ số lớn hơn chiều dài được model kẹp lại).
     if (payload.kind === 'channel') {
       moveChannelTo(payload.id, categoryId, Number.MAX_SAFE_INTEGER);
       return;
     }
-    // Kéo category: trước/sau header đích; vùng mặc định không phải category — bỏ qua.
     if (categoryId === null || payload.id === categoryId) return;
     const baseIndex = sortCategories(categories)
       .map((category) => category.id)
@@ -138,7 +127,6 @@ export function useChannelSidebarDnd({
     if (payload?.kind === 'channel') moveChannelTo(payload.id, categoryId, Number.MAX_SAFE_INTEGER);
   }
 
-  // --- Bàn phím: roving tabindex + Alt+Arrow di chuyển (a11y TG.10).
   const slots = groups.flatMap((group) => {
     const key = group.categoryId ?? DEFAULT_GROUP_KEY;
     const headerSlot = `cat:${key}`;
@@ -171,7 +159,6 @@ export function useChannelSidebarDnd({
     if (!current) return;
     const direction = event.key === 'ArrowUp' ? 'up' : 'down';
     if (event.altKey) {
-      // Alt+Arrow: di chuyển channel/category theo nghĩa thứ tự, giữ nguyên focus.
       if (current.startsWith('ch:')) {
         const channelId = current.slice(3);
         const target = keyboardChannelMove(channels, categories, channelId, direction);

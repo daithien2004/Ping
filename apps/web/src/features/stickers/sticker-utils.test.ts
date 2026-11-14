@@ -34,7 +34,7 @@ describe('sticker-utils (TG.22)', () => {
     expect(recent[0]).toBe('s29');
     expect(recent.at(-1)).toBe('s6');
     const again = pushRecentSticker(recent, 's29');
-    expect(again).toEqual(recent); // chọn lại không tạo bản sao
+    expect(again).toEqual(recent);
     const repositioned = pushRecentSticker(recent, 's10');
     expect(repositioned[0]).toBe('s10');
     expect(repositioned.filter((id) => id === 's10')).toHaveLength(1);

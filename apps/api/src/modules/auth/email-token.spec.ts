@@ -6,7 +6,7 @@ describe('token một lần cho xác minh/đặt lại mật khẩu (TG.8)', () 
     const { raw, tokenHash } = newEmailToken();
     expect(raw).not.toBe(tokenHash);
     expect(tokenHash).toBe(hashEmailToken(raw));
-    expect(tokenHash).toMatch(/^[0-9a-f]{64}$/); // SHA-256 hex
+    expect(tokenHash).toMatch(/^[0-9a-f]{64}$/);
   });
 
   it('hai token sinh ra không trùng nhau', () => {
@@ -22,13 +22,10 @@ describe('token một lần cho xác minh/đặt lại mật khẩu (TG.8)', () 
     });
 
     expect(emailTokenUsable(usable(), now)).toBe(true);
-    // Đã dùng → không usable, dù còn hạn.
     expect(emailTokenUsable(usable({ usedAt: new Date('2026-01-15T11:00:00Z') }), now)).toBe(false);
-    // Hết hạn → không usable, dù chưa dùng.
     expect(emailTokenUsable(usable({ expiresAt: new Date('2026-01-15T11:59:59Z') }), now)).toBe(
       false,
     );
-    // Không có hàng (token không tồn tại) → không usable.
     expect(emailTokenUsable(null, now)).toBe(false);
     expect(emailTokenUsable(undefined, now)).toBe(false);
   });

@@ -6,20 +6,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ClientMessage } from '../../message-cache';
 import { HEADER_HEIGHT } from './message-list-parts';
 
-/**
- * Quản lý vùng cuộn danh sách tin nhắn: cuộn tới tin cần xem, tải tin cũ khi cuộn lên đầu,
- * và cuộn xuống cuối sau khi người dùng gửi tin mới.
- * Ví dụ: truyền `focusIndex = 5` thì cuộn để tin thứ 6 nằm giữa màn hình;
- * hook trả `{ scrollRef, virtualizer, scrollToEndOnNextAppend, atEnd, scrollToEnd }`: hai giá trị
- * đầu để gắn vào vùng cuộn và hiển thị danh sách ảo hóa; hàm thứ ba báo "lần thêm tin kế tiếp
- * thì cuộn xuống cuối"; `atEnd` cho biết đang ở đáy để hiện nút "Tin mới", `scrollToEnd` cuộn
- * xuống đó.
- */
-
-/**
- * Mốc cuộn theo channel, sống ngoài component: rời kênh rồi quay lại là đúng vị trí cũ
- * (như Discord giữ chỗ đọc của từng kênh), trừ khi mở permalink — khi đó tin đích mới là mốc.
- */
 const anchors = new Map<string, { id: string; atBottom: boolean }>();
 
 export function useMessageScroll({
@@ -34,7 +20,6 @@ export function useMessageScroll({
 }: {
   channelId: string;
   messages: ClientMessage[];
-  /** Số trang đã tải; dùng để phát hiện lần tải bị hủy mà không thêm trang nào. */
   pageCount: number;
   focusId: string | null;
   focusIndex: number;
@@ -48,7 +33,6 @@ export function useMessageScroll({
   const scrollRef = useRef<HTMLDivElement>(null);
   const didInitialScroll = useRef(false);
   const scrollOnAppend = useRef(false);
-  /** Tăng sau mỗi lần tải tin cũ bị hủy để effect thử lại dù các giá trị phụ thuộc không đổi. */
   const [loadOlderRetry, setLoadOlderRetry] = useState(0);
   const scrollToEndOnNextAppend = useCallback(() => {
     scrollOnAppend.current = true;
@@ -77,11 +61,9 @@ export function useMessageScroll({
     if (didInitialScroll.current || messages.length === 0) return;
     const frame = requestAnimationFrame(() => {
       didInitialScroll.current = true;
-      // Permalink: tin đích là mốc, không khôi phục chỗ đọc cũ.
       const saved = focusId ? undefined : anchors.get(channelId);
       const savedIndex = saved ? messages.findIndex((message) => message.id === saved.id) : -1;
       if (saved && !saved.atBottom && savedIndex >= 0) {
-        // Khôi phục chỗ đọc: tin neo đứng ở đầu vùng nhìn như lúc rời đi.
         virtualizer.scrollToIndex(savedIndex, { align: 'start' });
         setAtEnd(false);
         requestAnimationFrame(() => setLoadOlderEnabled(true));
@@ -99,8 +81,6 @@ export function useMessageScroll({
     setLoadOlderEnabled(true);
   }, [focusIndex, virtualizer]);
 
-  // Theo dõi cuộn để lưu mốc (tin đầu vùng nhìn + có đang ở đáy không). Gộp mỗi frame:
-  // sự kiện scroll bắn liên tục khi lăn chuột, không cần xử lý từng cái.
   useEffect(() => {
     const element = scrollRef.current;
     if (!element) return;
@@ -133,11 +113,6 @@ export function useMessageScroll({
       hasNextPage &&
       !isFetchingNextPage
     ) {
-      // Một lần tải có thể bị hủy ngay trong cùng frame (useChannelSync hủy query lúc join room):
-      // fetch không thêm trang nào, còn `isFetchingNextPage` bật rồi tắt trước khi React render.
-      // Khi đó mọi giá trị của deps giữ nguyên, effect không chạy lại và danh sách kẹt ở đầu.
-      // `cancelQueries` mặc định `revert: true` nên lần tải bị hủy *resolve* với dữ liệu cũ chứ
-      // không reject: phải so số trang để nhận ra và đánh thức effect thử lại.
       const pagesBefore = pageCount;
       void fetchNextPage()
         .then((result) => {
@@ -159,11 +134,17 @@ export function useMessageScroll({
     pageCount,
   ]);
 
+  const lastSettled = messages.length > 0 && !messages[messages.length - 1]?.status;
   useEffect(() => {
     if (!scrollOnAppend.current) return;
-    scrollOnAppend.current = false;
     virtualizer.scrollToIndex(messages.length - 1, { align: 'end' });
-  }, [messages.length, virtualizer]);
+    if (!lastSettled) return;
+    const frame = requestAnimationFrame(() => {
+      scrollOnAppend.current = false;
+      virtualizer.scrollToIndex(messages.length - 1, { align: 'end' });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [messages.length, lastSettled, virtualizer]);
 
   return { scrollRef, virtualizer, scrollToEndOnNextAppend, atEnd, scrollToEnd };
 }

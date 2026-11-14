@@ -1,7 +1,5 @@
 import { messagesByLocale, type AppLocale } from '@/i18n/config';
 
-// Thay THẾ cả root layout khi nó lỗi: không có Providers, IntlProvider hay token Tailwind, nên chữ
-// lấy thẳng từ messages/*.json và style viết inline.
 export function GlobalErrorView({
   locale,
   reference,
@@ -48,7 +46,7 @@ export function GlobalErrorView({
                 padding: '8px 16px',
                 borderRadius: 8,
                 border: 0,
-                background: '#6a5be2', // trắng trên nền này ≥ 4,5:1
+                background: '#6a5be2',
                 color: '#fff',
                 fontSize: 15,
                 cursor: 'pointer',

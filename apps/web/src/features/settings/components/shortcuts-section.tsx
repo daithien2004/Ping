@@ -4,11 +4,6 @@ import { useTranslations } from 'use-intl';
 import { PingKbd } from '@/components/ui/ping-kbd';
 import { SettingsSection } from './settings-section';
 
-/**
- * Phím tắt (TG.13) — bảng TĨNH, chỉ liệt kê những tổ hợp thực sự xử lý trong code:
- * composer (message-composer.tsx: Enter/Shift+Enter/mũi tên/Tab/Esc cho gợi ý emoji) và
- * quick switcher + hộp thoại (Ctrl/Cmd+K, Esc). Không chế phím chưa có.
- */
 const ROWS = [
   { keys: ['Enter'], action: 'send' },
   { keys: ['Shift', 'Enter'], action: 'newline' },

@@ -1,5 +1,3 @@
-// Đọc các báo cáo Lighthouse CI trong .lighthouseci/ và in các kiểm tra chưa đạt (cùng phần tử vi phạm) dưới dạng
-// annotation của GitHub Actions. Log đầy đủ của job cần đăng nhập mới đọc được; annotation thì xem công khai được.
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 
 const dir = '.lighthouseci';
@@ -32,5 +30,5 @@ for (const file of readdirSync(dir).filter((f) => /^lhr-.*\.json$/.test(f))) {
   }
 }
 
-// GitHub giới hạn 10 annotation mỗi loại cho mỗi bước: gộp thành MỘT annotation nhiều dòng (%0A).
+// GitHub giới hạn 10 annotation mỗi loại mỗi bước: gộp thành MỘT annotation nhiều dòng (%0A).
 if (lines.length) console.log(`::warning title=Lighthouse::${lines.join('%0A')}`);

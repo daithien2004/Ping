@@ -12,7 +12,6 @@ interface FakeMessage {
   deletedAt: Date | null;
   createdAt: Date;
   author: { displayName: string; username: string };
-  // TG.9: serverId NULL với channel DM.
   channel: { serverId: string | null };
 }
 
@@ -78,7 +77,6 @@ function buildCore(
       findUnique: vi.fn(async ({ where }: { where: { id: string } }) => {
         const row = rows.find((candidate) => candidate.id === where.id);
         if (!row) return null;
-        // Lời gọi chỉ select channelId (delete) vẫn trả object đủ field.
         return row;
       }),
       findMany: vi.fn(async (args: { where: { id?: { lt?: string; gt?: string } } }) => {
@@ -155,7 +153,6 @@ describe('MessageIndexerCore', () => {
 
     await core.syncMessage('m1');
 
-    // Không embed passage nào ngoài câu thăm dò khởi tạo, không upsert point.
     expect(embedder.texts).toEqual(['khởi tạo chỉ mục']);
     expect(store.upserts).toHaveLength(0);
   });

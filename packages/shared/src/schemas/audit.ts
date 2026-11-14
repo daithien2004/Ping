@@ -1,9 +1,6 @@
 import { z } from 'zod';
 
-/**
- * Hành động ghi trong nhật ký audit — mirror enum `AuditAction` của Prisma.
- * Dùng object (không phải mảng) để `z.enum` nhận được và để UI lấy danh sách giá trị.
- */
+/** Mirror enum `AuditAction` của Prisma. */
 export const AuditActions = {
   ROLE_CREATE: 'ROLE_CREATE',
   ROLE_UPDATE: 'ROLE_UPDATE',
@@ -20,24 +17,18 @@ export const AuditActions = {
   MESSAGE_UNPIN: 'MESSAGE_UNPIN',
   STICKER_DELETE: 'STICKER_DELETE',
   EMOJI_DELETE: 'EMOJI_DELETE',
-  // TG.11: ban/unban thành viên (metadata: userId, reason?, deletedMessages?).
+  // Ban/unban (metadata: userId, reason?, deletedMessages?).
   SERVER_BAN: 'SERVER_BAN',
   SERVER_UNBAN: 'SERVER_UNBAN',
-  // TG.10: sắp xếp lại category hoặc di chuyển channel sang nhóm khác (metadata:
-  // categoryIds khi reorder; channelId + fromCategoryId/toCategoryId khi move).
+  // Reorder/move (metadata: categoryIds khi reorder; channelId + fromCategoryId/toCategoryId khi move).
   CHANNEL_REORDER: 'CHANNEL_REORDER',
 } as const;
 
 export const auditActionSchema = z.enum(AuditActions);
 export type AuditAction = z.infer<typeof auditActionSchema>;
 
-/** Danh sách giá trị hành động (dùng cho bộ lọc trong UI). */
 export const auditActionValues = Object.values(AuditActions) as AuditAction[];
 
-/**
- * GET /servers/:id/audit-log — lọc theo hành động hoặc người thực hiện, phân trang cursor.
- * `after` = id bản ghi cuối của trang trước (UUIDv7 tăng dần theo thời điểm ghi).
- */
 export const listAuditLogQuerySchema = z.object({
   action: auditActionSchema.optional(),
   actorId: z.uuid().optional(),
@@ -46,21 +37,17 @@ export const listAuditLogQuerySchema = z.object({
 });
 export type ListAuditLogQuery = z.infer<typeof listAuditLogQuerySchema>;
 
-/** Một dòng nhật ký. Ngày giờ là chuỗi ISO 8601 qua JSON. */
 export interface AuditLogEntryDto {
   id: string;
   action: AuditAction;
-  /** Người thực hiện; null khi tài khoản đã bị xoá (bản ghi audit vẫn còn). */
+  /** null khi tài khoản đã bị xoá (bản ghi audit vẫn còn). */
   actor: { id: string; username: string; displayName: string } | null;
   targetId: string | null;
-  /** Chi tiết tuỳ hành động (JSON tự do do API ghi). */
   metadata: unknown;
-  /** requestId để đối chiếu với log của API. */
   requestId: string | null;
   createdAt: string;
 }
 
-/** Một trang nhật ký (cursor `after` = id bản ghi cuối trang trước). */
 export interface AuditLogPage {
   entries: AuditLogEntryDto[];
   hasMore: boolean;

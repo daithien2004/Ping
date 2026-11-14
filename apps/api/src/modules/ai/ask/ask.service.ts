@@ -52,7 +52,6 @@ export class AskService {
     private readonly metrics: MetricsService,
   ) {}
 
-  /** Kiểm tra membership/quyền trước khi mở stream SSE. */
   async authorize(input: AskInput): Promise<void> {
     const ability = await this.abilityFactory.createForUserFresh(input.serverId, input.userId);
     if (!ability.can('view', 'Message')) {
@@ -74,7 +73,7 @@ export class AskService {
         return;
       }
 
-      // Quota được giữ trước retrieval để không đốt CPU embedding khi user đã hết lượt.
+      // Giữ quota trước retrieval để không đốt CPU embedding khi user đã hết lượt.
       try {
         await this.usage.reserveQuota(input.userId);
       } catch (error) {
@@ -121,9 +120,8 @@ export class AskService {
         return;
       }
 
-      // Các chunk truy xuất chồng lấn nhau (cửa sổ hội thoại) nên cùng một tin có thể xuất hiện
-      // nhiều lần: khử trùng theo id, xếp theo thời gian rồi mới lấy MAX_CONTEXT_MESSAGES tin mới
-      // nhất. `limit` của retrieval đếm theo chunk, không chặn ở đây sẽ vượt ngân sách token.
+      // `limit` của retrieval đếm theo chunk, các chunk chồng lấn: khử trùng theo id rồi cắt
+      // MAX_CONTEXT_MESSAGES, nếu không sẽ vượt ngân sách token.
       const messages = [
         ...new Map(
           chunks.flatMap((chunk) => chunk.messages).map((message) => [message.id, message]),
@@ -154,7 +152,6 @@ export class AskService {
       const cached = await this.cache.get(cacheKey);
       const cachedCitations = cached ? this.extractCitations(cached.answer, allowedIds) : [];
       if (cached && cachedCitations.length > 0) {
-        // Cache đã qua kiểm trích dẫn; vẫn trả `meta/delta/done` để UI không cần nhánh riêng.
         outcome = 'cache_hit';
         yield {
           type: 'meta',
@@ -172,8 +169,7 @@ export class AskService {
         return;
       }
 
-      // Kill-switch ngân sách đặt SAU cache: đã hết tiền vẫn phục vụ câu trả lời có sẵn,
-      // nhưng không phát sinh lời gọi LLM mới.
+      // Kill-switch ngân sách đặt SAU cache: hết tiền vẫn phục vụ câu trả lời có sẵn.
       try {
         await this.usage.assertWithinBudget();
       } catch (error) {
@@ -230,7 +226,7 @@ export class AskService {
       }
 
       const elapsedSeconds = (performance.now() - startedAt) / 1_000;
-      // Ghi chi phí/token kể cả khi câu trả lời bị từ chối vì thiếu trích dẫn: token đã tiêu.
+      // Ghi chi phí kể cả khi bị từ chối vì thiếu trích dẫn: token đã tiêu.
       const costUsd = await this.usage.record(input.userId, completion.usage);
       this.metrics.aiLlmCompleted(elapsedSeconds, completion.usage, costUsd);
 
@@ -280,9 +276,8 @@ export class AskService {
 
   private extractCitations(answer: string, allowedIds: Set<string>): string[] {
     const found = new Set<string>();
-    // Every UUID reference must be bracketed and belong to the hydrated context.
-    // Reject the entire answer on invented/bare references; filtering only the chip
-    // list would leave fabricated IDs in the text shown to the user (T5.9).
+    // Reject the whole answer on invented/bare UUID references; filtering only the chip list
+    // would leave fabricated IDs in the shown text.
     const uuidPattern = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/gi;
     for (const match of answer.matchAll(uuidPattern)) {
       const id = match[0].toLowerCase();

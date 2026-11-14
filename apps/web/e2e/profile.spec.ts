@@ -9,7 +9,6 @@ import { pacedLogin } from './login-pace';
 import { openServerSettings } from './open-server-settings';
 
 const API = 'http://localhost:4000/api/v1';
-// PNG nhỏ sinh cục bộ; không dùng tài nguyên ngoài hay dữ liệu người dùng thật.
 const png = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAACgAAAAeCAIAAADRv8uKAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAN0lEQVRIie3VwQkAQAgDwe2/6VwZ3mPAvyAx0+pksjinnnDlnVIgU5lBIiyGxbA4LIbFsLivWHw+nauNqku18gAAAABJRU5ErkJggg==',
   'base64',
@@ -36,8 +35,7 @@ test('profile: avatar and display name update everywhere without reload, nicknam
   let serverId = '';
   let headers: Record<string, string> = {};
   try {
-    // Tài khoản RIÊNG cho spec này: spec đổi displayName/avatar — không được đụng account seed
-    // (alice/bob) vì spec khác (reaction, permalink...) trông chờ tên gốc của account seed.
+    // Tài khoản RIÊNG: spec đổi displayName/avatar, không được đụng account seed mà spec khác trông chờ tên gốc.
     const suffix = randomUUID().slice(0, 8);
     const registered = await owner.request.post(`${API}/auth/register`, {
       data: {
@@ -49,7 +47,6 @@ test('profile: avatar and display name update everywhere without reload, nicknam
     expect(registered.ok()).toBeTruthy();
     const login = (await registered.json()) as AuthResponse;
     headers = { Authorization: `Bearer ${login.accessToken}` };
-    // TG.8: tài khoản vừa đăng ký phải xác minh email trước khi tạo server khi có SMTP_URL.
     await ensureUserVerified(`profile-e2e-${suffix}@ping.dev`);
     const created = await owner.request.post(`${API}/servers`, {
       headers,
@@ -75,11 +72,9 @@ test('profile: avatar and display name update everywhere without reload, nicknam
     await expect(page.getByTestId('message-composer')).toBeVisible({ timeout: 45_000 });
     await expect(second.getByTestId('message-composer')).toBeVisible({ timeout: 45_000 });
 
-    // 1. Đổi tên hiển thị + avatar từ thẻ hồ sơ (modal): rail đổi ngay, tab của bob cũng đổi (user.updated).
     await page.getByTestId('self-avatar').click();
     const selfDialog = page.getByRole('dialog');
     await expect(page.getByTestId('self-profile')).toBeVisible();
-    // Chờ đúng PATCH gắn avatar (phản hồi có avatarUrl) thay vì đoán theo <img> trong dialog.
     const bindPatch = page.waitForResponse(
       (res) => res.url().includes('/users/me') && res.request().method() === 'PATCH',
     );
@@ -91,10 +86,8 @@ test('profile: avatar and display name update everywhere without reload, nicknam
     await page.getByTestId('display-name-input').fill('Alice Kiêu Hãnh');
     await page.getByRole('button', { name: 'Lưu' }).click();
     await expect(selfDialog).toContainText('Alice Kiêu Hãnh');
-    // TF.12: antd dùng locale vi_VN nên nút đóng của Modal là "Đóng", không còn "Close".
     await selfDialog.getByRole('button', { name: 'Đóng' }).click();
     await expect(selfDialog).toHaveCount(0);
-    // Tab của bob: member panel hiện tên mới + avatar mới không cần reload (event user.updated).
     await expect(
       second.getByTestId('member-row').filter({ hasText: 'Alice Kiêu Hãnh' }),
     ).toBeVisible({
@@ -107,7 +100,6 @@ test('profile: avatar and display name update everywhere without reload, nicknam
       path: resolve(__dirname, '../../../docs/v0.2.0/evidence/TG.7/avatar-rail.png'),
     });
 
-    // 2. Biệt danh của chính mình qua thẻ thành viên (modal); hàng panel đổi ngay.
     await page.getByTestId('member-row').filter({ hasText: 'Alice Kiêu Hãnh' }).click();
     const memberDialog = page.getByRole('dialog');
     await expect(page.getByTestId('member-profile')).toBeVisible();
@@ -116,7 +108,6 @@ test('profile: avatar and display name update everywhere without reload, nicknam
     await memberDialog.getByRole('button', { name: 'Đóng' }).click();
     await expect(page.getByTestId('member-row').filter({ hasText: 'Alice Q' })).toBeVisible();
 
-    // 3. Icon server qua bề mặt quản trị; rail đổi sang icon ngay.
     await openServerSettings(page);
     await expect(page.getByTestId('server-icon-input')).toBeAttached({ timeout: 30_000 });
     await page

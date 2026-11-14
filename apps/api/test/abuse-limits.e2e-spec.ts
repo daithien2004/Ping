@@ -10,10 +10,6 @@ import { RedisProvider } from '../src/infra/redis/redis.module.js';
 import { LoginAttemptsService } from '../src/modules/auth/login-attempts.service.js';
 import { bootApp } from './helpers/boot.js';
 
-/**
- * Chống lạm dụng (hướng dẫn 16.5, ADR-0027): khóa tạm khi đăng nhập sai, chống flood tin nhắn,
- * giới hạn event/kết nối/kích thước gói của Socket.IO. Chạy trên app thật, Postgres + Redis thật.
- */
 const runId = Date.now().toString(36);
 const PASSWORD = 'password123';
 
@@ -90,7 +86,7 @@ describe('abuse limits (e2e)', () => {
       }
       await login(user.email, PASSWORD).expect(200);
       for (let attempt = 0; attempt < 4; attempt += 1) {
-        await login(user.email, 'wrong-password').expect(401); // chưa bị khóa: bộ đếm đã về 0
+        await login(user.email, 'wrong-password').expect(401);
       }
       await login(other.email, PASSWORD).expect(200);
     });
@@ -206,7 +202,7 @@ describe('abuse limits (e2e)', () => {
 
       const eleventh = await connect(user.token).catch(() => undefined);
       if (eleventh) expect(await disconnected(eleventh)).toBe(true);
-      expect(open.every((socket) => socket.connected)).toBe(true); // socket cũ không bị ảnh hưởng
+      expect(open.every((socket) => socket.connected)).toBe(true);
     });
 
     it('drops a socket that floods events (typing is already rate-limited, the flood is not)', async () => {

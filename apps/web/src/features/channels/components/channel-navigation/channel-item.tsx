@@ -7,11 +7,6 @@ import { prefetchMessages } from '@/features/messages/hooks/use-messages';
 import { channelPath } from '@/features/servers/navigation';
 import { useUnreadChannel } from '@/features/unread/hooks';
 
-/**
- * Một channel trong sidebar kèm badge unread (T4.3): mention > 0 → badge đỏ; unread > 0 →
- * chữ đậm + badge số tin. Kênh đang xem luôn sạch (mark-read chạy khi có tin mới).
- * TG.10: kéo thả được khi người dùng có quyền quản lý channel; hàng là đích thả với đường chỉ.
- */
 export function ChannelItem({
   serverId,
   channelId,
@@ -51,8 +46,6 @@ export function ChannelItem({
   const unreadCount = active ? 0 : (row?.unreadCount ?? 0);
   const mentionCount = active ? 0 : (row?.mentionCount ?? 0);
   const queryClient = useQueryClient();
-  // Hover/focus/bấm xuống là tải trước tin mới nhất (cache còn tươi trong 30s thì prefetch
-  // không bắn request): gần như mọi cú chuyển kênh có ý định đều đã có cache sẵn.
   const prefetch = () => void prefetchMessages(queryClient, channelId);
 
   return (
@@ -77,9 +70,7 @@ export function ChannelItem({
       onDrop={onDrop}
       onDragEnd={onDragEnd}
       aria-current={active ? 'page' : undefined}
-      // Tên tiếp cận LUÔN ổn định "# tên": số unread nằm trong badge con (có title riêng),
-      // không đổi tên link theo trạng thái — trình đọc màn hình và mọi locator không bị
-      // "nhảy tên" khi badge xuất hiện/biến mất.
+      // Tên tiếp cận luôn là "# tên": số unread nằm ở badge con, không đổi tên link.
       aria-label={`# ${name}`}
       className={`group flex h-8 items-center gap-2 rounded-md px-2 text-base transition-colors hover:bg-sidebar-accent focus-ring ${
         dropBefore

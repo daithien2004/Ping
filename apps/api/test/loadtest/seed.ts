@@ -1,15 +1,4 @@
-/**
- * Dữ liệu cho load test (H7, ADR-0033). Tạo CSDL riêng `ping_load` (không đụng dữ liệu dev), chạy migration,
- * rồi nạp: N người dùng, một server có M channel, mọi người là member (mang @everyone) và vài triệu tin
- * nhắn phân bố lệch (vài channel rất nóng). Ghi thẳng DB bằng INSERT hàng loạt: đi qua API sẽ đo nhầm
- * rate limit và argon2 thay vì thứ cần đo.
- *
- *   pnpm --filter api exec tsx test/loadtest/seed.ts
- *   LT_USERS=5000 LT_MESSAGES=3000000 LT_CHANNELS=50 (mặc định)
- *
- * Ra: tools/loadtest/data/{tokens.json,meta.json} (bị git bỏ qua). JWT ký sẵn thời hạn 6 giờ: login là
- * argon2.verify, một phép đo CPU băm mật khẩu chứ không phải thứ ta muốn đo.
- */
+/** Ghi thẳng DB bằng INSERT hàng loạt: đi qua API sẽ đo nhầm rate limit và argon2. JWT ký sẵn 6 giờ vì login là argon2.verify. */
 import { execFileSync } from 'node:child_process';
 import { createHmac, randomBytes } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -32,7 +21,6 @@ const loadUrl = new URL(baseUrl);
 loadUrl.pathname = `/${DB_NAME}`;
 export const LOAD_DATABASE_URL = loadUrl.toString();
 
-/** UUIDv7 với timestamp cho trước: id phải tăng theo thời gian (cursor phân trang sắp theo id). */
 function uuidv7(ms: number): string {
   const bytes = randomBytes(16);
   bytes.writeUIntBE(ms, 0, 6);
@@ -43,7 +31,6 @@ function uuidv7(ms: number): string {
 }
 
 const b64url = (value: Buffer | string) => Buffer.from(value).toString('base64url');
-/** JWT HS256 y hệt @nestjs/jwt ký: payload { sub, username }. */
 function signJwt(userId: string, username: string): string {
   const now = Math.floor(Date.now() / 1000);
   const header = b64url(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
@@ -75,15 +62,13 @@ async function main() {
   await createDatabase();
   const db = new pg.Pool({ connectionString: LOAD_DATABASE_URL, max: 4 });
 
-  // Làm sạch lần chạy trước: xóa server (cascade channel, tin nhắn, member, role) rồi user.
   await db.query(`DELETE FROM "Server" WHERE name = 'loadtest'`);
   await db.query(`DELETE FROM "User" WHERE email LIKE 'lt-%@loadtest.local'`);
 
   const t0 = Date.now();
-  const start = Date.now() - 60 * 24 * 3600 * 1000; // lịch sử trải trên 60 ngày
+  const start = Date.now() - 60 * 24 * 3600 * 1000;
   const stepMs = Math.max(1, Math.floor((60 * 24 * 3600 * 1000) / Math.max(MESSAGES, USERS + 10)));
 
-  // Người dùng.
   const users = Array.from({ length: USERS }, (_, i) => ({
     id: uuidv7(start + i),
     email: `lt-${i}@loadtest.local`,
@@ -99,7 +84,6 @@ async function main() {
     );
   }
 
-  // Server, role @everyone (VIEW_CHANNEL | SEND_MESSAGES), channel, member.
   const owner = users[0]!;
   const serverId = uuidv7(start + USERS);
   await db.query(
@@ -107,7 +91,6 @@ async function main() {
     [serverId, owner.id, randomBytes(6).toString('hex')],
   );
   const everyoneId = uuidv7(start + USERS + 1);
-  // Permissions.VIEW_CHANNEL (1) | SEND_MESSAGES (2): cùng giá trị server thật gán cho @everyone khi tạo server.
   const everyonePermissions = '3';
   await db.query(
     `INSERT INTO "Role"(id, "serverId", name, permissions, position, "isDefault")
@@ -140,7 +123,6 @@ async function main() {
   }
   console.log(`seed: users/server/members done in ${((Date.now() - t0) / 1000).toFixed(1)}s`);
 
-  // Tin nhắn: id tăng theo thời gian, channel lệch (channel 0 nóng nhất), tác giả ngẫu nhiên.
   const t1 = Date.now();
   const counts = new Array<number>(CHANNELS).fill(0);
   for (let done = 0; done < MESSAGES; done += BATCH) {

@@ -7,7 +7,6 @@ const read = (path: string) => readFileSync(fileURLToPath(new URL(path, import.m
 const generated = read('../../styles/tokens.generated.css');
 const globals = read('../../app/globals.css');
 
-/** Độ sáng tương đối WCAG của một màu hex. */
 function luminance(hex: string) {
   const n = Number.parseInt(hex.slice(1), 16);
   const channel = (value: number) => {
@@ -31,7 +30,6 @@ describe('thang bo góc (ADR-0075)', () => {
     expect(radius.lg).toBe(12);
   });
 
-  // Lỗi cũ: token lg = 12 px (antd) nhưng rounded-lg của Tailwind ra 8 px.
   it('Tailwind đọc radius từ token chứ không tự suy ra', () => {
     for (const step of ['sm', 'md', 'lg', 'xl', '2xl', '3xl']) {
       expect(globals).toContain(`--radius-${step}: var(--ping-radius-${step});`);
@@ -40,8 +38,6 @@ describe('thang bo góc (ADR-0075)', () => {
 });
 
 describe('tầng nền (2.6)', () => {
-  // Ba mặt phẳng phải giữ đúng thứ tự ở cả hai nền: rail tối nhất, sidebar giữa, nội dung sáng
-  // nhất. Bằng nhau hoặc đảo thứ tự là mất phân tầng.
   it.each<ThemeMode>(['light', 'dark'])('%s: rail < sidebar < nội dung', (mode) => {
     const colors = semanticColors(mode);
     const rail = luminance(colors.rail);

@@ -1,9 +1,5 @@
 import { useRef, useState } from 'react';
 
-/**
- * Thanh mục dọc bên trái kiểu Discord (emoji/sticker picker): bấm icon → bỏ tìm kiếm rồi cuộn
- * tới tiêu đề mục đó; cuộn tay → mục đang sáng đổi theo tiêu đề đang đọc (scroll-spy).
- */
 export function useSectionRail<T extends string>({
   initialTab,
   clearQuery,
@@ -11,7 +7,6 @@ export function useSectionRail<T extends string>({
 }: {
   initialTab: T;
   clearQuery: () => void;
-  /** Mục không có khung cuộn riêng (vd tab GIF của sticker picker) — bỏ qua cuộn tới. */
   skipScroll?: (name: T) => boolean;
 }) {
   const [tab, setTab] = useState<T>(initialTab);
@@ -21,7 +16,6 @@ export function useSectionRail<T extends string>({
     clearQuery();
     setTab(name);
     if (skipScroll?.(name)) return;
-    // Chờ commit rồi mới cuộn: đang tìm kiếm thì danh sách mục chỉ được render lại sau đó.
     requestAnimationFrame(() => {
       const container = scrollRef.current;
       if (!container) return;
@@ -30,7 +24,6 @@ export function useSectionRail<T extends string>({
     });
   }
 
-  /** `skip`: không có khung cuộn đang hiện (vd đang ở tab GIF) — không đọc vị trí cuộn. */
   function syncActive(defaultTab: T, skip?: boolean) {
     if (skip) return;
     const container = scrollRef.current;

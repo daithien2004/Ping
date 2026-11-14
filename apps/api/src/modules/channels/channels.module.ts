@@ -9,7 +9,6 @@ import { ReadStateService } from './read-state.service.js';
   imports: [AuthModule, RealtimeModule],
   controllers: [ChannelsController],
   providers: [ChannelsService, ReadStateService],
-  // ADR-0077: UsersModule dùng lại để phục vụ GET /users/me/unread (unread gộp).
   exports: [ReadStateService],
 })
 export class ChannelsModule {}

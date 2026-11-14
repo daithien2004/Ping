@@ -7,11 +7,6 @@ import { EmailVerificationRow } from './email-verification-row';
 import { SessionsList } from './sessions-list';
 import { SettingsSection } from './settings-section';
 
-/**
- * Tài khoản (TG.8): hồ sơ tái dùng thẻ TG.7 (`SelfProfileCard`), thêm email + trạng thái xác
- * minh, đổi mật khẩu và danh sách phiên đăng nhập — thay placeholder «sắp có» của TG.13.
- * Mọi thay đổi áp dụng ngay (toast + cache được hook invalidate) và có bản dịch vi/en.
- */
 export function AccountSection() {
   const t = useTranslations('settings.account');
 

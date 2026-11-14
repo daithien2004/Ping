@@ -26,7 +26,6 @@ describe('custom emoji contracts (TG.24, ADR-0068)', () => {
     const matches = [...text.matchAll(CUSTOM_EMOJI_TOKEN_PATTERN)];
     expect(matches).toHaveLength(1);
     expect(matches[0]![2]).toBe(id);
-    // Token thiếu id KHÔNG được nhận là custom (tránh nuốt emoji shortcode thường).
     expect([...':parrot:'.matchAll(CUSTOM_EMOJI_TOKEN_PATTERN)]).toHaveLength(0);
   });
 

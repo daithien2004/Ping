@@ -21,14 +21,6 @@ export interface IncomingOptions {
   countsUnread?: boolean;
 }
 
-/**
- * Một tin mới vừa đến channel: tăng unread (không tính tin của chính mình) và mentionCount
- * nếu mình được nhắc. Channel đang xem do nơi gọi lọc trước (đã được đánh dấu đã đọc).
- *
- * `countsUnread: false` cho event `mention.created`: tin đó KHÔNG tăng unread lần hai —
- * `channel.activity` của cùng tin đã đếm rồi (server đếm một tin là một unread; TG.12 dùng
- * tổng unread làm badge nên đếm đôi ở đây sẽ lộ thẳng lên title/favicon).
- */
 export function applyIncoming(
   unread: ChannelUnreadDto[],
   channelId: string,
@@ -36,7 +28,6 @@ export function applyIncoming(
 ): ChannelUnreadDto[] {
   const index = unread.findIndex((row) => row.channelId === channelId);
   if (index < 0) {
-    // Channel chưa có trong danh sách (mới tạo giữa chừng): đợi lần fetch sau, không đoán.
     return unread;
   }
   const row = unread[index]!;
@@ -48,10 +39,6 @@ export function applyIncoming(
   return [...unread.slice(0, index), next, ...unread.slice(index + 1)];
 }
 
-/**
- * `read.updated` từ CHÍNH mình (tab khác vừa đọc): cursor mới đã ổn định ở server, bộ đếm
- * của channel đó về 0 và cursor cục bộ khớp để vạch "tin mới" không nhảy.
- */
 export function applyRead(
   unread: ChannelUnreadDto[],
   channelId: string,
@@ -98,7 +85,6 @@ export function applyReadAll(
   return [...servers.slice(0, index), next, ...servers.slice(index + 1)];
 }
 
-/** Tổng để hiển thị badge server và số trên tab title (mention). */
 export function totals(unread: ChannelUnreadDto[]): UnreadTotals {
   return unread.reduce<UnreadTotals>(
     (acc, row) => ({
@@ -109,10 +95,6 @@ export function totals(unread: ChannelUnreadDto[]): UnreadTotals {
   );
 }
 
-/**
- * Vạch "tin mới": id của tin chưa đọc ĐẦU TIÊN trong danh sách đã tải, hoặc null nếu
- * chưa đọc lần nào (không vạch) / đã đọc hết. So sánh chuỗi UUIDv7 tăng dần theo thời gian.
- */
 export function firstUnreadId(
   unread: ChannelUnreadDto[] | undefined,
   channelId: string,

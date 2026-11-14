@@ -5,11 +5,7 @@ import type { Redis } from 'ioredis';
 import { ServerOptions, type Server } from 'socket.io';
 import { warnRedisDown } from '../redis/redis-policy.js';
 
-/**
- * @socket.io/redis-adapter gọi `pubClient.publish(...)` mà KHÔNG await và không bắt lỗi. Redis chết
- * thì lệnh bị từ chối → unhandled rejection → Node thoát. Bọc `publish` để lỗi chỉ được log:
- * event không tới instance khác (suy giảm có kiểm soát, ADR-0026), tiến trình vẫn sống.
- */
+// redis-adapter gọi publish không await/bắt lỗi: Redis chết → unhandled rejection → Node thoát. Bọc để chỉ log.
 export function withSafePublish(client: Redis, logger: Logger): Redis {
   return new Proxy(client, {
     get(target, property) {
@@ -29,17 +25,8 @@ export function withSafePublish(client: Redis, logger: Logger): Redis {
   });
 }
 
-/**
- * Socket.IO đa instance: pub/sub qua Redis để `emit` từ instance A đến được
- * client đang nối instance B. Cần HAI kết nối riêng (pub và sub) vì Redis
- * không cho một connection vừa subscribe vừa chạy lệnh thường.
- *
- * Truyền `app` vào super() để Socket.IO gắn vào HTTP server có sẵn — client
- * websocket nối cùng cổng REST, không mở thêm cổng riêng.
- *
- * CORS lấy từ ConfigService ở main.ts (đã validate), không đọc process.env trong
- * decorator của gateway — decorator chạy lúc import, trước khi .env được nạp.
- */
+// Cần hai kết nối pub/sub riêng: một connection Redis không vừa subscribe vừa chạy lệnh thường.
+// CORS lấy từ ConfigService, không đọc process.env trong decorator: decorator chạy lúc import, trước khi .env nạp.
 export class RedisIoAdapter extends IoAdapter {
   private readonly policyLogger = new Logger(RedisIoAdapter.name);
 
@@ -56,9 +43,7 @@ export class RedisIoAdapter extends IoAdapter {
     const withCors = {
       ...options,
       cors: { origin: this.corsOrigin, credentials: true },
-      // Socket chỉ mang gói rất nhỏ (join/leave/typing, ack); tin nhắn đi qua REST. Gói client
-      // lớn nhất chỉ có một channelId, nên 4 KB (bằng Discord) là dư; chặn kẻ gửi gói khổng lồ
-      // (mặc định của Socket.IO là 1 MB). Vượt thì Socket.IO tự đóng kết nối.
+      // Gói socket rất nhỏ; 4 KB chặn gói khổng lồ (mặc định Socket.IO 1 MB).
       maxHttpBufferSize: 4 * 1024,
     };
     const server = super.createIOServer(port, withCors as ServerOptions) as unknown as Server;
@@ -70,7 +55,7 @@ export class RedisIoAdapter extends IoAdapter {
     return server;
   }
 
-  /** pubClient là RedisProvider (tự đóng khi shutdown); subClient do main.ts duplicate ra thì adapter tự đóng. */
+  // pubClient là RedisProvider (tự đóng khi shutdown); subClient do adapter tự đóng.
   async dispose(): Promise<void> {
     await this.subClient.quit();
   }

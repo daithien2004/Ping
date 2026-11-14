@@ -4,7 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import type { Env } from '../../../config/env.schema.js';
 import { RedisProvider } from '../../../infra/redis/redis.module.js';
 
-/** Tăng khi đổi prompt/định dạng trả lời để không trộn câu trả lời cũ với prompt mới. */
+// Tăng khi đổi prompt/định dạng trả lời để không trộn câu trả lời cũ.
 export const ASK_PROMPT_VERSION = 'ask-v2-strict-citations';
 
 export interface CachedAskAnswer {
@@ -13,13 +13,6 @@ export interface CachedAskAnswer {
   model: string;
 }
 
-/**
- * Cache câu trả lời hỏi AI theo (server, channel, khoảng tin, model, câu hỏi) — T5.7.
- *
- * Redis chỉ giữ câu trả lời đã qua kiểm trích dẫn; TTL ngắn để tin mới/xoá tin sớm được
- * phản ánh. Cache fail-open: Redis chết thì coi như trượt cache, không chặn câu trả lời.
- * Khoá chứa id tin đã sắp xếp nên cùng một ngữ cảnh luôn cho cùng khoá.
- */
 @Injectable()
 export class AskCacheService {
   private readonly ttlSeconds: number;
@@ -66,7 +59,7 @@ export class AskCacheService {
     try {
       await this.redis.set(key, JSON.stringify(value), 'EX', this.ttlSeconds);
     } catch {
-      // Cache là tối ưu: lỗi Redis không được làm hỏng câu trả lời.
+      // fail-open: lỗi Redis không được làm hỏng câu trả lời.
     }
   }
 }

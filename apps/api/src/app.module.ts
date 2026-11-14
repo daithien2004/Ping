@@ -9,7 +9,6 @@ import { LoggerModule } from 'nestjs-pino';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { AttachmentsModule } from './modules/attachments/attachments.module.js';
-// Side-effect: dạy JSON.stringify serialize BigInt (Role.permissions) thành string.
 import './common/bigint-json.js';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter.js';
 import { HttpThrottlerGuard } from './common/guards/http-throttler.guard.js';
@@ -45,13 +44,11 @@ import { UsersModule } from './modules/users/users.module.js';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      // cwd is apps/api when started via pnpm, while .env lives at the repo root.
+      // cwd là apps/api khi chạy qua pnpm, còn .env ở gốc repo.
       envFilePath: ['../../.env'],
       validate: (config) => envSchema.parse(config),
     }),
-    // LoggerModule must be imported before ClsModule so pino-http's middleware
-    // runs first and sets `req.id`, which the CLS id generator reuses. That
-    // keeps the log requestId, the CLS id and the X-Request-Id header equal.
+    // LoggerModule phải import trước ClsModule: middleware pino-http đặt req.id mà CLS dùng lại.
     LoggerModule.forRoot({
       pinoHttp: {
         level: 'info',
@@ -79,14 +76,10 @@ import { UsersModule } from './modules/users/users.module.js';
     PrismaModule,
     RedisModule,
     EventsModule,
-    // Cổng Mailer toàn cục (TG.8): chọn SmtpMailer/ConsoleMailer theo env SMTP_URL.
     MailerModule,
     ThrottlerModule.forRootAsync({
       inject: [RedisProvider],
       useFactory: (redis: RedisProvider) => ({
-        // ADR-0080: đây chỉ là lưới hứng cho route chưa khai bucket; từng nhóm route khai
-        // `@Throttle` với hạn mức riêng (xem common/rate-limit-buckets.ts). Khóa 5 giây thay vì
-        // 60 giây để một đợt burst không biến thành cả phút ngưng trệ.
         throttlers: [{ ttl: 60_000, limit: 100, blockDuration: 5_000 }],
         storage: new RedisThrottlerStorage(redis),
       }),
@@ -94,14 +87,10 @@ import { UsersModule } from './modules/users/users.module.js';
     AuthModule,
     HealthModule,
     UsersModule,
-    // AbilityModule toàn cục: AbilityGuard ở mọi module server-scoped resolve
-    // AbilityFactory từ đây, không phải provider riêng của từng module.
     AbilityModule,
-    // Toàn cục: service nào làm hành động nhạy cảm cũng ghi AuditLog được.
     AuditModule,
     ServersModule,
     ChannelsModule,
-    // TG.10: category channel — routes /servers/:serverId/categories*.
     CategoriesModule,
     DmsModule,
     RolesModule,
@@ -110,7 +99,6 @@ import { UsersModule } from './modules/users/users.module.js';
     EmojisModule,
     GifsModule,
     AttachmentsModule,
-    // TG.12: prefs thông báo (chỉ lưu + đọc; badge do client tính).
     NotificationsModule,
     RealtimeModule,
     AiModule,
@@ -119,9 +107,8 @@ import { UsersModule } from './modules/users/users.module.js';
   providers: [
     AppService,
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
-    // Rate limit áp cho MỌI route — health controller tự @SkipThrottler().
     { provide: APP_GUARD, useClass: HttpThrottlerGuard },
-    // Chạy trước mọi guard của controller (AbilityGuard query DB bằng các id này).
+    // Chạy trước mọi guard: AbilityGuard query DB bằng các id này.
     { provide: APP_GUARD, useClass: UuidParamsGuard },
   ],
 })

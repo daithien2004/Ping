@@ -25,8 +25,6 @@ export function AuthGate({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (me) return;
-    // Effect chạy SAU commit đã gỡ `children` khỏi cây: AppShell và các observer của nó đã
-    // unmount, nên removeQueries không kích hoạt refetch (xem clearSessionQueries).
     clearSessionQueries(queryClient);
     router.replace(loginRedirectPath(pathname));
   }, [me, queryClient, router, pathname]);

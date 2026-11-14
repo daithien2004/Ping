@@ -18,7 +18,6 @@ export function PinnedPanel({
 }: {
   channelId: string;
   onOpen: (messageId: string) => void;
-  /** `panel` = cột phải của kênh server; `popover` = nội dung popover dưới nút ghim (DM). */
   variant?: 'panel' | 'popover';
 }) {
   const t = useTranslations('messages');

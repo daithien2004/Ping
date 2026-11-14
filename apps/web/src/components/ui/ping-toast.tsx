@@ -4,7 +4,6 @@ import { App } from 'antd';
 import { useEffect } from 'react';
 import { isProduction } from '@/lib/env';
 
-// `message` tĩnh của antd không thấy ConfigProvider nên lệch theme; lấy instance có context từ <App>.
 type MessageInstance = ReturnType<typeof App.useApp>['message'];
 
 let toastApi: MessageInstance | null = null;

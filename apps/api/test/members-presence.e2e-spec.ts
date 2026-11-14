@@ -7,8 +7,6 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { RedisProvider } from '../src/infra/redis/redis.module.js';
 import { bootApp } from './helpers/boot.js';
 
-// H10 (ADR-0030): GET /servers/:id/members báo từng thành viên đang online hay không, tính từ các
-// socket đang mở (room user:<id>) ở MỌI instance; Redis chết thì chỉ đếm instance này, không 500.
 describe('members presence snapshot (e2e)', () => {
   let app: INestApplication;
   let port: number;
@@ -59,7 +57,7 @@ describe('members presence snapshot (e2e)', () => {
 
   beforeAll(async () => {
     app = await bootApp({ websocket: true });
-    await app.get(RedisProvider).flushdb(); // bộ đếm rate limit của spec khác
+    await app.get(RedisProvider).flushdb();
     const address = app.getHttpServer().address();
     port = typeof address === 'object' && address !== null ? address.port : 0;
     owner = await register('own');
@@ -88,7 +86,7 @@ describe('members presence snapshot (e2e)', () => {
 
     const socket = await connect(friend.token);
     expect(onlineOf(await members(owner.token), friend.id)).toBe(true);
-    expect(onlineOf(await members(owner.token), owner.id)).toBe(false); // owner chưa mở socket
+    expect(onlineOf(await members(owner.token), owner.id)).toBe(false);
 
     const closed = new Promise<void>((resolve) => socket.once('disconnect', () => resolve()));
     socket.disconnect();

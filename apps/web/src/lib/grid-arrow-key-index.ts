@@ -1,7 +1,3 @@
-/**
- * Index mục tiêu khi bấm mũi tên trong một lưới nút phẳng (emoji/sticker/GIF picker).
- * `undefined` khi không phải phím mũi tên hoặc đích nằm ngoài lưới — caller giữ nguyên focus.
- */
 export function gridArrowKeyIndex(
   key: string,
   index: number,

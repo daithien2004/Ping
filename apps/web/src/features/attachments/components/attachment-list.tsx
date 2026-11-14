@@ -13,16 +13,10 @@ import { useAttachmentLink } from '../hooks';
  * còn `refetchInterval` — link ký sống 24 giờ, ảnh lỗi do hết hạn thì refetch một lần.
  */
 
-/** Khung ảnh tối đa 366×240 — trừ p-2 + viền của khung `max-w-sm` ngoài cùng. */
 const IMAGE_MAX_WIDTH = 366;
 const IMAGE_MAX_HEIGHT = 240;
 const IMAGE_FALLBACK = { width: 240, height: 160 };
 
-/**
- * Kích thước hiển thị tính từ width/height API đã ghi lúc xử lý tệp — đặt trước đúng ô này
- * thì thumbnail về muộn cũng không đẩy tin nhắn bên dưới nhảy (Discord cũng dùng width/height
- * của attachment để chừa chỗ trước khi ảnh tải xong).
- */
 function imageBox(width: number | null, height: number | null) {
   if (!width || !height) return IMAGE_FALLBACK;
   const scale = Math.min(1, IMAGE_MAX_WIDTH / width, IMAGE_MAX_HEIGHT / height);
@@ -36,7 +30,6 @@ function Attachment({ attachment }: { attachment: AttachmentDto }) {
   const box = imageBox(attachment.width, attachment.height);
   const { ref, inView } = useInView<HTMLDivElement>();
   const [open, setOpen] = useState(false);
-  // Ảnh: bấm tên tệp khi link chưa có thì đợi link xong rồi tải xuống (effect bên dưới).
   const [downloadRequested, setDownloadRequested] = useState(false);
   const thumb = useAttachmentLink(attachment.id, { thumbnail: true, enabled: image && inView });
   const link = useAttachmentLink(attachment.id, {
@@ -46,7 +39,6 @@ function Attachment({ attachment }: { attachment: AttachmentDto }) {
   const downloadTriggered = useRef(false);
 
   // Không reset state trong effect (tránh setState đồng bộ khi render); cờ ref bảo đảm chỉ
-  // kích hoạt tải xuống đúng một lần, còn `downloadRequested` giữ link gốc trong cache.
   useEffect(() => {
     if (!downloadRequested || !link.data || downloadTriggered.current) return;
     downloadTriggered.current = true;
@@ -81,8 +73,6 @@ function Attachment({ attachment }: { attachment: AttachmentDto }) {
           }}
         >
           {thumb.data ? (
-            /* Ảnh lỗi tải (link hết hạn) không phải thao tác của người dùng nên bỏ qua luật
-               "phần tử không tương tác"; ảnh ký từ API nên không dùng next/image. */
             /* eslint-disable-next-line @next/next/no-img-element, jsx-a11y/no-noninteractive-element-interactions */
             <img
               src={thumb.data.url}
@@ -93,7 +83,6 @@ function Attachment({ attachment }: { attachment: AttachmentDto }) {
               referrerPolicy="no-referrer"
               className="size-full rounded object-contain"
               onError={() => {
-                // Link thumbnail hết hạn/bị thu hồi: xin link mới đúng một lần cho mỗi lần mount.
                 if (retriedThumb.current) return;
                 retriedThumb.current = true;
                 void thumb.refetch();
@@ -145,7 +134,6 @@ function Attachment({ attachment }: { attachment: AttachmentDto }) {
         {open &&
           image &&
           (link.data ? (
-            // Canonical signed images come from the API; no Next image optimizer cache.
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={link.data.url}

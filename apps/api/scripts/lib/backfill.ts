@@ -6,9 +6,7 @@ export interface BackfillOptions {
   core: MessageIndexerCore;
   /** Số tin/giây; 0 = không nghỉ (rebuild offline). */
   ratePerSecond: number;
-  /** Chỉ xử lý tin có id > after (cursor resume). */
   after?: string;
-  /** Trần số tin của lần chạy này. */
   limit?: number;
   pageSize?: number;
   onProgress?: (processed: number, lastId: string) => void;
@@ -26,11 +24,6 @@ export function parseRate(raw: string | undefined): number {
   return Math.min(value, 1000);
 }
 
-/**
- * Backfill tin nhắn theo id tăng dần. Cùng `MessageIndexerCore` với consumer nên
- * chunk/payload khớp tuyệt đối với indexer realtime; `ratePerSecond` chặn tải
- * embedding và DB khi chạy trên dữ liệu lớn. Cursor `after` cho phép chạy tiếp.
- */
 export async function backfillMessages(options: BackfillOptions): Promise<BackfillResult> {
   const started = performance.now();
   const pageSize = options.pageSize ?? 50;

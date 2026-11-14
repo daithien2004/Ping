@@ -26,7 +26,7 @@ describe('ShutdownService', () => {
     await service.beforeApplicationShutdown('SIGTERM');
     expect(service.draining).toBe(true);
     expect(Date.now() - started).toBeGreaterThanOrEqual(110);
-    service.onApplicationShutdown(); // dọn watchdog
+    service.onApplicationShutdown();
   });
 
   it('forces exit(1) when the whole shutdown exceeds SHUTDOWN_TIMEOUT_MS', async () => {

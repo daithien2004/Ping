@@ -14,10 +14,8 @@ import { useSectionRail } from '@/lib/use-section-rail';
 
 export type StickerTab = 'recent' | 'system' | 'server' | 'gif';
 
-/** Lưới 4 cột — bước nhảy của ArrowUp/ArrowDown. */
 const STICKER_COLUMNS = 4;
 
-/** Icon cho thanh mục dọc bên trái — cùng kiểu emoji picker, nhãn chữ ở title/aria. */
 const TAB_ICONS: Record<StickerTab, ReactNode> = {
   recent: <History className="size-4" />,
   system: <StickerIcon className="size-4" />,
@@ -25,13 +23,6 @@ const TAB_ICONS: Record<StickerTab, ReactNode> = {
   gif: <Film className="size-4" />,
 };
 
-/**
- * Sticker picker (TG.22, ADR-0067; tab GIF thêm bởi TG.25 ADR-0069). Bố cục theo Discord:
- * ô tìm kiếm trên cùng, thanh icon dọc bên trái (Gần đây / Hệ thống / Của server / GIF),
- * danh sách cuộn có tiêu đề từng gói sticker. Bấm một sticker/GIF là GỬI ngay
- * (tin `kind='sticker'`/`kind='gif'`), không chèn vào ô soạn. Tab GIF chuyển hẳn sang panel GIF
- * và dùng chung ô tìm kiếm (debounce trong panel).
- */
 export function StickerPicker({
   serverId,
   recent,
@@ -40,20 +31,15 @@ export function StickerPicker({
   onPickGif,
 }: {
   serverId: string;
-  /** Danh sách id gần đây do composer giữ state (để picker render lại khi chọn). */
   recent: string[];
-  /** TG.25: GIF gần đây của user (state ở composer vì khóa localStorage theo user). */
   recentGifs: GifPayload[];
   onPick: (sticker: StickerDto) => void;
-  /** TG.25: chọn GIF trong tab GIF là gửi ngay một tin `kind='gif'` (payload đủ để gửi). */
   onPickGif: (gif: GifPayload) => void;
 }) {
   const t = useTranslations('stickers');
   const tg = useTranslations('gifs');
   const tc = useTranslations('common');
   const { data, isPending, isError, refetch, isFetching } = useStickers(serverId);
-  // Làm ấm tab GIF ngay khi picker mở: bấm sang tab GIF là ảnh đã có trong cache thay vì
-  // chờ request (cache 5 phút, panel GIF dùng lại đúng key này).
   useGifTrending();
   const [query, setQuery] = useState('');
   const { tab, scrollRef, jumpTo, syncActive } = useSectionRail<StickerTab>({
@@ -83,7 +69,6 @@ export function StickerPicker({
   }
 
   function onGridKeyDown(event: React.KeyboardEvent<HTMLButtonElement>) {
-    // Chỉ điều hướng trong lưới hiện tại — mỗi gói là một lưới riêng.
     const grid = event.currentTarget.closest('[data-grid]');
     const buttons = Array.from(grid?.querySelectorAll<HTMLButtonElement>('button') ?? []);
     const index = buttons.indexOf(event.currentTarget);
@@ -164,8 +149,6 @@ export function StickerPicker({
           ))}
         </div>
         {tab === 'gif' ? (
-          // TG.25: panel GIF tự lo loading/rỗng/lỗi 503/ghi công; truy vấn dùng chung ô tìm kiếm
-          // phía trên (debounce trong panel), không phụ thuộc trạng thái tải sticker.
           <div className="h-80 max-h-full min-w-0 flex-1 overflow-y-auto pr-1">
             <GifPanel query={query} recentGifs={recentGifs} onPickGif={onPickGif} />
           </div>

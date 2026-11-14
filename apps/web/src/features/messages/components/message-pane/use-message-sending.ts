@@ -7,12 +7,6 @@ import type { ClientMessage } from '../../message-cache';
 import { toSendVariables, type OutgoingMessage } from '../message-composer/outgoing-message';
 import { retryVariables } from './retry-variables';
 
-/**
- * Gom thao tác gửi tin mới và thử gửi lại tin lỗi trong channel.
- * Ví dụ: gọi `sendOwn(message)` để gửi tin; hook kiểm tra quyền, báo `onWillAppend` (để danh sách
- * cuộn xuống khi tin tạm xuất hiện), rồi gọi `onSubmit`. Gọi `retry(message)` để thử gửi lại tin lỗi.
- * Trả về `{ sendOwn, retry }` cho giao diện gọi.
- */
 export function useMessageSending({
   channelId,
   onSendError,

@@ -1,6 +1,4 @@
-// Đọc file --summary-export của k6 và in các chỉ số chính, để dán vào báo cáo.
-//   k6 run tools/loadtest/rest-history.js --summary-export=tools/loadtest/data/rest-1x.json ...
-//   node tools/loadtest/summarize.mjs tools/loadtest/data/rest-1x.json
+// node tools/loadtest/summarize.mjs tools/loadtest/data/rest-1x.json  (file từ k6 --summary-export)
 import { readFileSync } from 'node:fs';
 
 const summary = JSON.parse(readFileSync(process.argv[2], 'utf8'));

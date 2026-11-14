@@ -17,16 +17,15 @@ interface TestUser {
 
 type HttpMethod = 'get' | 'post' | 'put' | 'delete';
 
-/** Kick member: DELETE /servers/:serverId/members/:memberId. */
 describe('Kick member (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
   const emails: string[] = [];
 
   let owner: TestUser;
-  let kicker: TestUser; // KICK_MEMBERS
-  let victim: TestUser; // chỉ @everyone
-  let strong: TestUser; // ADMINISTRATOR ở server A, owner server B
+  let kicker: TestUser;
+  let victim: TestUser;
+  let strong: TestUser;
   let serverA: string;
   let inviteA: string;
   let serverB: string;
@@ -120,15 +119,12 @@ describe('Kick member (e2e)', () => {
 
   it('IDOR: không kick được member của server khác', async () => {
     const strongInB = await memberIdOf(serverB, strong, strong);
-    // Không phải member server B.
     await kick(serverB, strongInB, kicker).expect(403);
-    // memberId của server B nhưng gắn vào URL server A.
     await kick(serverA, strongInB, kicker).expect(404);
   });
 
   it('kick thành công: mất quyền ngay, có AuditLog, vẫn vào lại được bằng invite', async () => {
     const victimMemberId = await memberIdOf(serverA, victim, owner);
-    // Làm nóng cache ability của victim để chắc chắn kick có xóa cache.
     await api('get', `/api/v1/servers/${serverA}/channels`, victim.token).expect(200);
 
     await kick(serverA, victimMemberId, kicker).expect(204);
@@ -144,7 +140,6 @@ describe('Kick member (e2e)', () => {
       }),
     ]);
 
-    // Kick không phải ban.
     await api('post', '/api/v1/servers/join', victim.token)
       .send({ inviteCode: inviteA })
       .expect(201);

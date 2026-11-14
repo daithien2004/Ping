@@ -1,6 +1,4 @@
-// Kiểm tra khói trên stack production dựng bằng docker-compose.prod.example.yml (ADR-0035):
-// đăng ký → tạo server → nối socket QUA reverse proxy → gửi tin → nhận event realtime → presence.
-// Dùng:  BASE_URL=http://localhost:8080 node test/smoke/prod-stack.mjs   (thoát 0 nếu đạt)
+// Dùng: BASE_URL=http://localhost:8080 node test/smoke/prod-stack.mjs (thoát 0 nếu đạt)
 import { io } from 'socket.io-client';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
@@ -38,7 +36,6 @@ const web = await fetch(`${BASE}/login`, { signal: globalThis.AbortSignal.timeou
 if (web.status !== 200) fail(`web /login returned ${web.status}`);
 if (!web.headers.get('content-security-policy')) fail('web response has no CSP');
 
-// Proxy không được cắt /api hay làm mất hợp đồng lỗi và mã requestId hợp lệ.
 const requestId = randomUUID();
 const health = await call('/api/v1/health', { headers: { 'x-request-id': requestId } });
 assert.equal(health.status, 200);

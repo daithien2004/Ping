@@ -4,37 +4,22 @@ export const AttachmentLimits = {
   PER_MESSAGE: 5,
   FILE_BYTES: 10 * 1024 * 1024,
   IMAGE_PIXELS: 16_000_000,
-  /**
-   * ADR-0079: nâng từ 60 giây (ADR-0053) lên 24 giờ. Client chỉ xin link khi ảnh vào vùng nhìn
-   * hoặc khi mở/tải, giữ cache lâu; link vẫn là bearer capability ràng buộc user và mỗi lần tải
-   * đều đọc lại quyền/membership từ Postgres.
-   */
+  /** Link là bearer ràng buộc user; mỗi lần tải đọc lại quyền/membership từ Postgres. */
   URL_SECONDS: 24 * 60 * 60,
-  /** URL hồ sơ (avatar/icon) sống lâu để event `user.updated` render được ở mọi client (TG.7). */
   PROFILE_URL_SECONDS: 30 * 24 * 60 * 60,
 } as const;
 
-/** TG.7: đích của một upload. `message` là luồng TG.6; avatar/icon tái dùng pipeline (ADR-0053);
- *  `sticker` là tài nguyên biểu cảm của server (TG.22, ADR-0067); `customEmoji` là emoji theo
- *  server (TG.24, ADR-0068). */
 export type UploadScope = 'message' | 'avatar' | 'serverIcon' | 'sticker' | 'customEmoji';
 
 export const uploadScopes = ['message', 'avatar', 'serverIcon', 'sticker', 'customEmoji'] as const;
 export const uploadScopeSchema = z.enum(uploadScopes);
 
-/** Ảnh hồ sơ nhỏ hơn tệp tin nhắn: vẫn đi qua cùng giới hạn 10 MiB của pipeline. */
 export const PROFILE_FILE_BYTES = 5 * 1024 * 1024;
 
-/** Sticker nhỏ hơn nữa (ADR-0067): tệp gốc tối đa 512 KiB, worker xuất WebP ≤ 512×512. */
 export const STICKER_FILE_BYTES = 512 * 1024;
 
-/** Custom emoji (ADR-0068): tệp gốc tối đa 256 KiB, worker xuất WebP ≤ 128×128. */
 export const EMOJI_FILE_BYTES = 256 * 1024;
 
-/**
- * Luồng TG.6: `message` bắt buộc channelId (không kèm serverId — server suy từ channel);
- * `avatar` không thuộc server/channel nào; `serverIcon`/`sticker`/`customEmoji` gắn server.
- */
 export const createUploadSchema = z
   .object({
     scope: uploadScopeSchema.default('message'),
@@ -103,7 +88,6 @@ export interface AttachmentLink {
 }
 export const downloadQuerySchema = z.object({ thumbnail: z.enum(['1']).optional() });
 export const signedFileQuerySchema = z.object({
-  /** Có `user` = URL tin nhắn (ràng buộc người xem, 60 giây); không có = URL hồ sơ TG.7. */
   user: z.uuid().optional(),
   expires: z.coerce.number().int().positive(),
   signature: z.string().regex(/^[a-f0-9]{64}$/),

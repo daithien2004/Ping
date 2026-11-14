@@ -5,17 +5,11 @@ import { PingCheckbox } from '@/components/ui/ping-checkbox';
 import { permissionGroups } from '../permissions';
 
 interface Props {
-  /** Bitmask quyền hiện tại của vai trò. */
   value: bigint;
-  /** Gọi khi người dùng bật/tắt một quyền. */
   onChange: (next: bigint) => void;
   disabled?: boolean;
 }
 
-/**
- * Trình sửa quyền của vai trò: nhóm quyền (nhóm `PingCheckbox`) — mỗi quyền một ô
- * tick, không dùng switch để tránh hiểu nhầm "bật sẽ mất quyền".
- */
 export function PermissionGroupEditor({ value, onChange, disabled = false }: Props) {
   const t = useTranslations('admin.permissions');
   const tg = useTranslations('admin.permissionGroups');

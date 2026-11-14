@@ -235,7 +235,6 @@ describe('Retrieval ACL (e2e)', () => {
     const message = await createMessage(channel.id, ownerId, 'tin của server');
     store.hits = [hit(server.id, message)];
 
-    // Cache 30 giây có context member; retrieval vẫn phải đọc Postgres.
     await expect(abilityFactory.contextFor(server.id, memberId)).resolves.toBeDefined();
     await prisma.member.delete({
       where: { serverId_userId: { serverId: server.id, userId: memberId } },
@@ -333,7 +332,6 @@ describe('Retrieval ACL (e2e)', () => {
     const message = await createMessage(channel.id, ownerId, 'tin hợp lệ');
     store.hits = [
       hit(server.id, message, ['không-phải-uuid', message.id]),
-      // Point id không khớp tin neo cuối cửa sổ: payload hỏng, phải bỏ.
       { ...hit(server.id, message), id: randomUUID() },
     ];
 

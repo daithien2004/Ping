@@ -40,7 +40,7 @@ import { ServersService } from './servers.service.js';
 export class ServersController {
   constructor(private readonly serversService: ServersService) {}
 
-  /** Chỉ cần đăng nhập — chưa có bối cảnh server nên không có @CheckAbility. */
+  /** Chỉ cần đăng nhập: chưa có bối cảnh server nên không có @CheckAbility. */
   @Post()
   @Throttle({ default: RATE_LIMIT_BUCKETS.writeStructure })
   @UseInterceptors(IdempotencyInterceptor)
@@ -73,7 +73,6 @@ export class ServersController {
     return this.serversService.detail(serverId);
   }
 
-  /** Đổi tên/icon server: cần `update Server` (MANAGE_SERVER); service ghi audit trong transaction. */
   @Patch(':serverId')
   @Throttle({ default: RATE_LIMIT_BUCKETS.writeStructure })
   @CheckAbility(['update', 'Server'])
@@ -85,10 +84,6 @@ export class ServersController {
     return this.serversService.update(serverId, user.userId, body);
   }
 
-  /**
-   * TG.7: tự đặt biệt danh của chính mình — cần `update Member` (CHANGE_NICKNAME);
-   * service chỉ chạm member của caller và phát `member.updated` tới room server.
-   */
   @Patch(':serverId/members/me')
   @Throttle({ default: RATE_LIMIT_BUCKETS.writeStructure })
   @CheckAbility(['update', 'Member'])
@@ -100,10 +95,6 @@ export class ServersController {
     return this.serversService.updateMyNickname(serverId, user.userId, body.nickname);
   }
 
-  /**
-   * Tạo mã mời mới, vô hiệu mã cũ (T3.6): cần `update Server` (MANAGE_SERVER) — cùng
-   * mức quyền với đổi tên; service thu hồi/cấp mã + ghi audit trong một transaction.
-   */
   @Post(':serverId/invite/regenerate')
   @Throttle({ default: RATE_LIMIT_BUCKETS.writeStructure })
   @CheckAbility(['update', 'Server'])
@@ -116,7 +107,6 @@ export class ServersController {
     return this.serversService.regenerate(serverId, user.userId, body);
   }
 
-  /** Quyền hiệu lực của chính người gọi: frontend dựng CASL ability từ đây để ẩn/hiện nút. */
   @Get(':serverId/me/permissions')
   @Throttle({ default: RATE_LIMIT_BUCKETS.readLight })
   @CheckAbility(['view', 'Server'])
@@ -141,7 +131,6 @@ export class ServersController {
     return this.serversService.leave(serverId, user.userId);
   }
 
-  /** Kick member. Guard: cần `delete Member` (KICK_MEMBERS); service: so quyền với người bị kick. */
   @Delete(':serverId/members/:memberId')
   @Throttle({ default: RATE_LIMIT_BUCKETS.writeStructure })
   @HttpCode(204)

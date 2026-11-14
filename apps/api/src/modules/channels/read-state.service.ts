@@ -4,15 +4,9 @@ import { Prisma } from '../../generated/prisma/client.js';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
 import { RealtimeService } from '../realtime/realtime.service.js';
 
-/** Trần đếm (ADR-0043): quá 100 hiển thị "99+" phía UI; truy vấn dừng quét ở 100 hàng khớp. */
 const COUNT_CAP = 100;
 
-/**
- * Trạng thái đã đọc theo thành viên-kênh (T4.2, ADR-0043).
- *
- * Cursor `lastReadMessageId` chỉ tiến không lùi: hai tab ghi đồng thời không làm badge
- * "chạy lùi". Chưa có hàng read state = toàn bộ channel là chưa đọc.
- */
+// Cursor chỉ tiến; chưa có hàng read state = toàn bộ channel chưa đọc.
 @Injectable()
 export class ReadStateService {
   constructor(
@@ -20,7 +14,6 @@ export class ReadStateService {
     private readonly realtime: RealtimeService,
   ) {}
 
-  /** PUT /channels/:channelId/read — guard đã xác nhận người gọi xem được channel. */
   async markRead(channelId: string, userId: string, messageId: string): Promise<void> {
     const channel = await this.prisma.channel.findUnique({
       where: { id: channelId },
@@ -29,7 +22,7 @@ export class ReadStateService {
     if (!channel) {
       throw new NotFoundException('Channel not found');
     }
-    // Cursor phải là tin của đúng channel này — không cho đặt mốc tùy ý.
+    // Cursor phải là tin của đúng channel này.
     const message = await this.prisma.message.findUnique({
       where: { id: messageId },
       select: { channelId: true },
@@ -37,9 +30,7 @@ export class ReadStateService {
     if (!message || message.channelId !== channelId) {
       throw new NotFoundException('Message not found');
     }
-    // TG.9 (ADR-0070 mục 7): DM không có Member — cursor đọc ghi thẳng lên DmParticipant,
-    // cùng ngữ nghĩa "chỉ tiến" với ChannelReadState. markRead gọi sau khi AbilityGuard
-    // xác nhận participant nên hàng chắc chắn tồn tại; updateMany là phòng hờ + lọc cursor.
+    // DM không có Member: cursor ghi lên DmParticipant; updateMany lọc cursor chỉ tiến.
     if (channel.type === 'DM') {
       const advanced = await this.prisma.dmParticipant.updateMany({
         where: {
@@ -57,7 +48,6 @@ export class ReadStateService {
       }
       return;
     }
-    // Channel server luôn có serverId (chỉ DM mới NULL — ADR-0070); nhánh DM đã return.
     if (channel.serverId === null) {
       throw new NotFoundException('Channel not found');
     }
@@ -69,8 +59,7 @@ export class ReadStateService {
       throw new NotFoundException('Member not found');
     }
 
-    // Hai lệnh idempotent, an toàn khi 2 tab ghi song song: insert-if-absent, sau đó chỉ
-    // update khi cursor hiện tại cũ hơn (UUIDv7 so sánh theo byte = theo thời gian).
+    // Hai lệnh idempotent: insert-if-absent rồi chỉ update khi cursor cũ hơn (an toàn khi 2 tab ghi song song).
     const inserted = await this.prisma.channelReadState.createMany({
       data: [{ memberId: member.id, channelId, lastReadMessageId: messageId }],
       skipDuplicates: true,
@@ -91,19 +80,8 @@ export class ReadStateService {
     }
   }
 
-  /**
-   * Hai biểu thức đếm dùng chung cho cả hai endpoint unread (đếm theo channel `c`, cursor
-   * `rs`): unread = tin chưa xóa mềm sau cursor (không tính tin của chính người gọi — họ đã
-   * thấy mình gửi), mentionCount = hàng MessageMention sau cursor khớp mình trực tiếp / role
-   * của mình / everyone. Trần 100 chặn NGAY trong truy vấn (`LIMIT` trong truy vấn con) nên
-   * Postgres dừng quét sau 100 hàng khớp thay vì đếm hết lịch sử rồi mới `LEAST`: kênh 10k
-   * tin đo được 0,13 ms / 15 buffer so với 3,48 ms / 1012 buffer của `count(*)` toàn bộ.
-   * Đúng ghi chú T4.1 về `message.deletedAt IS NULL`.
-   *
-   * `memberIdRef` là tham chiếu tới thành viên đang xét: literal `member.id` ở truy vấn một
-   * server, `m.id` (alias Member) ở truy vấn gộp — nhờ vậy một tin được đếm đúng mention của
-   * từng thành viên trong cùng một câu SQL.
-   */
+  // Trần 100 đặt trong truy vấn con (LIMIT) để Postgres dừng quét sớm thay vì count(*) toàn bộ.
+  // memberIdRef: literal member.id ở truy vấn một server, m.id (alias Member) ở truy vấn gộp.
   private unreadCounts(userId: string, memberIdRef: Prisma.Sql): Prisma.Sql {
     const zero = '00000000-0000-0000-0000-000000000000';
     return Prisma.sql`
@@ -132,7 +110,6 @@ export class ReadStateService {
     `;
   }
 
-  /** GET /servers/:serverId/unread — một dòng mỗi channel của server. */
   async unreadForServer(serverId: string, userId: string): Promise<ChannelUnreadDto[]> {
     const member = await this.prisma.member.findUnique({
       where: { serverId_userId: { serverId, userId } },
@@ -155,13 +132,7 @@ export class ReadStateService {
     `);
   }
 
-  /**
-   * GET /users/me/unread (ADR-0077) — unread của MỌI server người gọi là thành viên trong
-   * một truy vấn, nhóm theo server. Rail trước đây gọi `/servers/:id/unread` cho từng server
-   * (69 request, 38 bị 429 trên tài khoản 69 server — docs/discord-practices.md mục 1).
-   * Server không có channel vẫn trả về với `channels: []` (LEFT JOIN) để client biết mình
-   * còn thuộc server đó.
-   */
+  // Server không có channel vẫn trả về với channels: [] (LEFT JOIN).
   async unreadForUser(userId: string): Promise<ServerUnreadDto[]> {
     const rows = await this.prisma.$queryRaw<
       Array<{

@@ -7,7 +7,6 @@ import type { ServerDetail } from '@ping/shared';
 import { pacedLogin } from './login-pace';
 
 const API = 'http://localhost:4000/api/v1';
-// PNG fixture is generated locally; no external assets or user data.
 const png = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAACgAAAAeCAIAAADRv8uKAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAN0lEQVRIie3VwQkAQAgDwe2/6VwZ3mPAvyAx0+pksjinnnDlnVIgU5lBIiyGxbA4LIbFsLivWHw+nauNqku18gAAAABJRU5ErkJggg==',
   'base64',

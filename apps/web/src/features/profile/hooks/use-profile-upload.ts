@@ -3,23 +3,14 @@ import { useRef, useState } from 'react';
 import { api, ApiError } from '@/lib/api-client';
 
 export interface ProfileUpload {
-  /** Đang có một tệp được chọn; người dùng chưa thể chọn tệp khác. */
   busy: boolean;
   progress: number;
-  /** attachment `ready` — dùng làm avatarAttachmentId/iconAttachmentId. */
   attachmentId: string | null;
   error: unknown;
-  /** Chọn tệp (input type=file) và bắt đầu luồng reserve → PUT → complete → chờ ready. */
   choose: (file: File | undefined) => void;
   reset: () => void;
 }
 
-/**
- * Upload một tệp hồ sơ qua pipeline TG.6 (ADR-0053): reserve → PUT nhị phân → complete →
- * poll tới `ready`. Luồng đi qua cùng khoá hạn mức, cùng worker kiểm định như tệp tin nhắn.
- * TG.22: scope `sticker` tái dùng đúng luồng này cho màn quản trị sticker của server.
- * TG.24: scope `customEmoji` tương tự cho màn quản trị emoji (WebP ≤ 128×128, trần 50+50).
- */
 export function useProfileUpload(
   scope: 'avatar' | 'serverIcon' | 'sticker' | 'customEmoji',
   serverId?: string,
@@ -30,8 +21,7 @@ export function useProfileUpload(
     attachmentId: string | null;
     error: unknown;
   }>({ busy: false, progress: 0, attachmentId: null, error: undefined });
-  // Không abort khi component unmount: modal đóng giữa chừng thì upload vẫn hoàn tất và
-  // tệp không gắn sẽ được worker dọn như mồ côi (ADR-0053). Controller chỉ để hủy PUT/progress.
+  // Không abort khi unmount: upload vẫn hoàn tất, tệp không gắn được worker dọn như mồ côi.
   const controllerRef = useRef<AbortController | null>(null);
 
   const choose = (file: File | undefined) => {

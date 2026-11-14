@@ -5,7 +5,6 @@ import { RealtimeModule } from '../realtime/realtime.module.js';
 import { StickersController } from './stickers.controller.js';
 import { StickersService } from './stickers.service.js';
 
-// AuditModule toàn cục (@Global) nên không cần import — StickersService ghi AuditLog trực tiếp.
 @Module({
   imports: [AuthModule, AttachmentsModule, RealtimeModule],
   controllers: [StickersController],

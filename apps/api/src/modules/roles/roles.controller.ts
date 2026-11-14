@@ -45,7 +45,6 @@ export class RolesController {
     return this.rolesService.create(serverId, user.userId, body);
   }
 
-  /** Màn quản trị role — cần manage Role, member thường xem role qua chi tiết server. */
   @Get('servers/:serverId/roles')
   @Throttle({ default: RATE_LIMIT_BUCKETS.readLight })
   @CheckAbility(['manage', 'Role'])

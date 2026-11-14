@@ -32,7 +32,6 @@ export class RealtimeService {
     void room.emit(event, payload);
   }
 
-  /** Room `server:<id>`: mọi client đang xem một channel của server. */
   emitToServer<T extends EventName>(serverId: string, event: T, payload: Payload<T>): void {
     if (!this.server) {
       return;
@@ -43,10 +42,6 @@ export class RealtimeService {
     void room.emit(event, payload);
   }
 
-  /**
-   * Room `user:<id>`: mọi socket của MỘT user (nhiều tab/thiết bị). Dùng cho sự kiện cá
-   * nhân — trạng thái đã đọc (T4.2) hay mình vừa được mention — không qua room channel.
-   */
   emitToUser<T extends EventName>(userId: string, event: T, payload: Payload<T>): void {
     if (!this.server) {
       return;
@@ -57,25 +52,16 @@ export class RealtimeService {
     void room.emit(event, payload);
   }
 
-  /**
-   * Số socket đang mở của user trên MỌI instance (Redis adapter hỏi các instance khác).
-   * Đếm socket thật thay cho bộ đếm INCR/DECR: không lệch khi key hết TTL hay instance chết.
-   */
   async countUserSockets(userId: string): Promise<number> {
     if (!this.server) {
       return 0;
     }
     const room = this.server.in(`user:${userId}`);
     // Redis chết: fetchSockets() hỏi các instance khác qua pub/sub và sẽ chờ tới 5 giây rồi lỗi.
-    // Đếm riêng instance này thay vì chờ (presence suy giảm, không chậm; ADR-0026).
+    // Đếm riêng instance này thay vì chờ (presence suy giảm, không chậm).
     return (await (this.redis.isUp ? room : room.local).fetchSockets()).length;
   }
 
-  /**
-   * Trong `userIds`, ai đang có socket mở (trên mọi instance). Một lần hỏi adapter cho cả danh sách
-   * room `user:<id>` (một trang member ≤ 100) thay vì một lần mỗi người. Redis chết: chỉ đếm
-   * instance này (presence suy giảm, không chậm; ADR-0026).
-   */
   async onlineUserIds(userIds: string[]): Promise<Set<string>> {
     if (!this.server || userIds.length === 0) {
       return new Set();
@@ -85,14 +71,7 @@ export class RealtimeService {
     return new Set(sockets.map((socket) => socket.data.userId as string));
   }
 
-  /**
-   * Quyền chỉ được kiểm tra lúc `channel.join`, nên khi quyền đổi (rời server, bị kick, bị ban,
-   * đổi role) phải chủ động đá socket ra khỏi room — nếu không họ vẫn nhận tin tới khi ngắt
-   * kết nối — và báo riêng cho user để client tải lại quyền hoặc rời server khỏi giao diện.
-   * Không truyền `userIds` = xét mọi member của server (role đổi quyền ảnh hưởng nhiều người).
-   * `opts.banned` (TG.11): kèm cờ `banned: true` vào `member.removed` riêng của người bị ban
-   * để client phân biệt với kick/tự rời/server xóa.
-   */
+  // Quyền chỉ kiểm lúc `channel.join` nên khi quyền đổi phải chủ động đá socket khỏi room.
   async refreshAccess(
     serverId: string,
     userIds?: string[],
@@ -132,7 +111,6 @@ export class RealtimeService {
     }
   }
 
-  /** Server bị xóa: không còn channel hay member để tra, chỉ báo cho những người từng ở trong đó. */
   notifyServerDeleted(serverId: string, userIds: string[]): void {
     if (!this.server) {
       return;
@@ -152,7 +130,7 @@ export class RealtimeService {
       return ability.can('view', 'Message') ? 'view' : 'no-view';
     } catch (error) {
       if (error instanceof ForbiddenException) {
-        return 'removed'; // không còn là member
+        return 'removed';
       }
       throw error;
     }

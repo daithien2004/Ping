@@ -28,12 +28,10 @@ describe('attachment contracts', () => {
   it('sticker uploads require a serverId, forbid channelId and cap at 512 KiB (TG.22)', () => {
     const base = { scope: 'sticker', filename: 's.webp', sizeBytes: 100, nonce };
     expect(createUploadSchema.safeParse({ ...base, serverId: nonce }).success).toBe(true);
-    // Không serverId → từ chối; kèm channelId → từ chối (sticker thuộc server).
     expect(createUploadSchema.safeParse(base).success).toBe(false);
     expect(
       createUploadSchema.safeParse({ ...base, serverId: nonce, channelId: nonce }).success,
     ).toBe(false);
-    // Trần riêng 512 KiB chặt hơn trần hồ sơ 5 MiB.
     const oversized = {
       ...base,
       serverId: nonce,

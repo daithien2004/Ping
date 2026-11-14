@@ -1,16 +1,6 @@
 /**
- * Seed demo tiếng Việt (T4.7): ≥ 3 server, ≥ 20.000 tin có chủ đề rõ ràng, chạy lặp lại cho
- * KẾT QUẢ NHƯ NHAU (id cố định, RNG seed cố định, thời điểm cố định — không Date.now).
- * Ghi thẳng DB; KHÔNG chứa dữ liệu người dùng thật.
- *
- *   pnpm seed:demo
- *   (hoặc) pnpm --filter api exec tsx prisma/seed-demo.ts
- *
- * Dùng chung tài khoản seed dev (alice/bob/carol) + thêm david@ping.dev. Mọi id demo nằm
- * trong dải `019b0000-…` (12 ký tự hex cuối do hàm `demoId` dựng) — không đụng dải seed dev
- * (`0199…`) nên chạy song song an toàn; upsert theo id nên chạy lại bao nhiêu lần cũng cho
- * cùng trạng thái. Thứ tự id trong một kênh tăng theo chỉ số tin = thứ tự thời gian, khớp
- * hành vi cursor phân trang.
+ * pnpm seed:demo. Id demo nằm trong dải `019b0000-…`, không đụng dải seed dev (`0199…`);
+ * RNG và thời điểm cố định nên chạy lại cho cùng kết quả.
  */
 import { PrismaPg } from '@prisma/adapter-pg';
 import { argon2id, hash } from 'argon2';
@@ -18,7 +8,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PrismaClient } from '../src/generated/prisma/client.js';
 
-// Chạy trực tiếp qua tsx (không qua Prisma CLI) nên tự nạp .env gốc của repo.
+// Chạy qua tsx (không qua Prisma CLI) nên tự nạp .env gốc.
 const repoRoot = path.resolve(fileURLToPath(new URL('../../..', import.meta.url)));
 process.loadEnvFile(path.join(repoRoot, '.env'));
 
@@ -29,12 +19,11 @@ if (!connectionString) {
 const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
 
 const PASSWORD = 'password123';
-const ID_BASE = '019b0000-0000-7000-8000-'; // 24 ký tự đầu; phần cuối 12 hex do demoId dựng
-const EPOCH_MS = Date.UTC(2026, 8, 1); // 2026-09-01T00:00:00Z — thời điểm tin đầu
-const STEP_MS = 47_000; // bước đều giữa hai tin liên tiếp
+const ID_BASE = '019b0000-0000-7000-8000-';
+const EPOCH_MS = Date.UTC(2026, 8, 1);
+const STEP_MS = 47_000;
 const MESSAGES_PER_CHANNEL = 2_400;
 
-/** Ghép 12 ký tự hex cuối: các đoạn pad đúng để tổng luôn 12 (UUID hợp lệ, duy nhất). */
 function demoId(...parts: Array<string | number>): string {
   const joined = parts.join('');
   if (joined.length > 12 || !/^[0-9a-f]+$/.test(joined)) {
@@ -43,7 +32,6 @@ function demoId(...parts: Array<string | number>): string {
   return ID_BASE + joined.padStart(12, '0');
 }
 
-/** mulberry32 — PRNG nhỏ, cùng seed cho cùng dãy (dữ liệu demo lặp lại như nhau). */
 function mulberry32(seed: number): () => number {
   let a = seed;
   return () => {
@@ -57,8 +45,6 @@ function mulberry32(seed: number): () => number {
 const rng = mulberry32(42);
 const pick = <T>(items: readonly T[]): T => items[Math.floor(rng() * items.length)]!;
 
-// ── Dữ liệu demo ────────────────────────────────────────────────────────
-// user index: 1=alice, 2=bob, 3=carol, 4=david; server index: 1..3; channel index: 1..3.
 const USERS = [
   { n: 1, email: 'alice@ping.dev', username: 'alice', displayName: 'Alice Nguyen' },
   { n: 2, email: 'bob@ping.dev', username: 'bob', displayName: 'Bob Tran' },
@@ -202,9 +188,7 @@ const SERVERS = [
 async function main(): Promise<void> {
   const passwordHash = await hash(PASSWORD, { type: argon2id });
 
-  // ── Users (chia sẻ với seed dev bằng upsert theo email) ───────────────
-  // alice/bob/carol có thể đã tồn tại từ seed dev với id `0199…` — upsert không đổi id.
-  // Lấy lại id THẬT sau upsert để mọi khóa ngoại (server/member/message) dùng đúng id đó.
+  // Lấy lại id THẬT sau upsert để mọi khóa ngoại dùng đúng id đó.
   const userIdOf = new Map<number, string>();
   for (const user of USERS) {
     await prisma.user.upsert({
@@ -224,7 +208,7 @@ async function main(): Promise<void> {
     });
     userIdOf.set(user.n, actual.id);
   }
-  const everyonePermissions = 1027n; // VIEW_CHANNEL | SEND_MESSAGES | ADD_REACTIONS (TG.2)
+  const everyonePermissions = 1027n;
 
   for (const server of SERVERS) {
     const serverId = demoId('2', server.n);
@@ -239,7 +223,6 @@ async function main(): Promise<void> {
       },
     });
 
-    // Role @everyone + member cho cả 4 người dùng.
     const everyoneRoleId = demoId('3', server.n);
     await prisma.role.upsert({
       where: { id: everyoneRoleId },
@@ -271,10 +254,6 @@ async function main(): Promise<void> {
     });
     const aliceMemberId = aliceMember.id;
 
-    // ── Tin nhắn theo chủ đề ────────────────────────────────────────────
-    // Mỗi kênh MESSAGES_PER_CHANNEL tin; thời điểm tăng đều từ EPOCH; tác giả và câu chọn
-    // bằng PRNG seed cố định → chạy lại cho cùng nội dung, cùng thứ tự. Mỗi 60 tin một tin
-    // nhắc alice để demo badge mention có dữ liệu.
     let messageIndex = 0;
     for (const channel of server.channels) {
       const channelId = demoId('5', server.n, channel.n);
@@ -302,8 +281,7 @@ async function main(): Promise<void> {
           },
         });
         if (isMention) {
-          // Mention có id tường minh (compound unique chứa cột NULL nên không upsert theo
-          // khóa đó được — Prisma không nhận null trong where của compound unique).
+          // Mention cần id tường minh: compound unique chứa cột NULL nên không upsert được.
           await prisma.messageMention.upsert({
             where: { id: demoId('7', server.n, channel.n, i.toString(16).padStart(4, '0')) },
             update: {},
@@ -320,7 +298,6 @@ async function main(): Promise<void> {
     }
   }
 
-  // UUID không dùng được startsWith — đếm theo khoảng id của dải demo (gte/lte như cursor).
   const demoRange = { gte: `${ID_BASE}000000000000`, lte: `${ID_BASE}ffffffffffff` };
   const [servers, channels, messages, mentions] = await Promise.all([
     prisma.server.count({ where: { id: demoRange } }),

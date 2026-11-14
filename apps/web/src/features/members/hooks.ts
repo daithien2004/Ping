@@ -8,7 +8,6 @@ import { qk } from '@/lib/query-keys';
 import { listMembers } from './api';
 import { setPresence, type MembersCache } from './member-cache';
 
-/** Danh sách thành viên theo trang (không suspend: panel tự hiện trạng thái tải/lỗi). */
 export function useMembers(serverId: string) {
   return useInfiniteQuery({
     queryKey: qk.members(serverId),
@@ -20,10 +19,6 @@ export function useMembers(serverId: string) {
 
 const isMembersKey = (key: readonly unknown[]) => key[0] === 'servers' && key[2] === 'members';
 
-/**
- * `presence.updated` vá trạng thái online vào mọi danh sách thành viên đã có trong cache (user có
- * thể ở nhiều server). Event không bền: sau khi nối lại, làm mới để bù những gì đã lỡ.
- */
 export function useMemberPresence(session: RealtimeSession) {
   const queryClient = useQueryClient();
   useEffect(() => {
@@ -33,7 +28,6 @@ export function useMemberPresence(session: RealtimeSession) {
         (old) => setPresence(old, userId, status === 'online'),
       );
     };
-    // Lần connect đầu: panel chưa có gì để làm mới. Chỉ các lần nối lại mới cần.
     let connectedBefore = false;
     const connected = () => {
       if (connectedBefore) {

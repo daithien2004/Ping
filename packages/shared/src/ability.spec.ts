@@ -77,7 +77,6 @@ describe('defineAbilityFor', () => {
     expect(moderator.can('delete', 'Pin')).toBe(true);
     expect(plain.can('create', 'Pin')).toBe(false);
     expect(plain.can('delete', 'Pin')).toBe(false);
-    // Ghim KHÔNG mở quyền sửa tin của người khác.
     expect(moderator.can('update', subject('Message', { authorId: 'user-B' }))).toBe(false);
   });
 
@@ -180,7 +179,6 @@ describe('defineAbilityFor', () => {
     expect(noView.can('create', 'Reaction')).toBe(false);
     expect(noBit.can('create', 'Reaction')).toBe(false);
     expect(reactor.can('create', 'Reaction')).toBe(true);
-    // Thả cảm xúc không kéo theo quyền sửa/xóa tin của người khác.
     expect(reactor.can('delete', subject('Message', { authorId: 'user-B' }))).toBe(false);
     expect(
       defineAbilityFor({ userId: 'o', isOwner: true, permissions: 0n }).can('create', 'Reaction'),
@@ -202,7 +200,6 @@ describe('defineAbilityFor', () => {
 
     expect(member.can('view', 'AuditLog')).toBe(false);
     expect(auditor.can('view', 'AuditLog')).toBe(true);
-    // Xem nhật ký không kéo theo quyền quản trị khác.
     expect(auditor.can('manage', 'Role')).toBe(false);
     expect(owner.can('view', 'AuditLog')).toBe(true);
   });
@@ -318,8 +315,6 @@ describe('TG.7 nickname', () => {
     });
     expect(without.can('update', 'Member')).toBe(false);
     expect(withBit.can('update', 'Member')).toBe(true);
-    // Endpoint /members/me chỉ chạm member của chính caller (service tự chặn); rule không
-    // kéo theo kick/xóa member của người khác.
     expect(withBit.can('delete', 'Member')).toBe(false);
   });
 });
@@ -332,8 +327,6 @@ describe('TG.22 sticker (ADR-0067)', () => {
     expect(member.can('view', 'Sticker')).toBe(true);
     expect(member.can('create', 'Sticker')).toBe(false);
     expect(member.can('delete', 'Sticker')).toBe(false);
-    // Member đã xác nhận membership luôn xem được sticker (như view Server/Member) —
-    // kể cả không có bit nào; MANAGE_EXPRESSIONS KHÔNG mặc định cho @everyone (ADR-0067).
     expect(abilityFor(0n).can('view', 'Sticker')).toBe(true);
     expect(abilityFor(0n).can('create', 'Sticker')).toBe(false);
   });
@@ -342,7 +335,6 @@ describe('TG.22 sticker (ADR-0067)', () => {
     const manager = abilityFor(memberPermissions | Permissions.MANAGE_EXPRESSIONS);
     expect(manager.can('create', 'Sticker')).toBe(true);
     expect(manager.can('delete', 'Sticker')).toBe(true);
-    // Cấp quản lý sticker không kéo theo quyền khác.
     expect(manager.can('manage', 'Channel')).toBe(false);
     expect(manager.can('update', 'Server')).toBe(false);
   });

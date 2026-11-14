@@ -10,11 +10,8 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 
-/** Khe hở ngang cố định giữa nút neo và panel (khớp offset 4 px antd dùng cho popover khác). */
 const GAP = 4;
-/** Lề an toàn tới mép khung nhìn — như `padding` của floating-ui. */
 const PADDING = 8;
-/** Nút neo nằm ở khoảng 1/3 chiều cao panel, giống picker cảm xúc của Discord. */
 const ANCHOR_RATIO = 1 / 3;
 const Z_INDEX = 1070;
 
@@ -29,11 +26,6 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(value, Math.max(min, max)));
 }
 
-/**
- * Panel nổi neo vào một nút, hành xử như floating-ui: khe hở cố định, tự chọn bên trái/phải,
- * luôn nằm trọn khung nhìn, và co lại khi khung quá thấp (phần thừa dồn cho vùng cuộn bên trong).
- * Khác antd Popover ở chỗ vị trí dọc tính từ chiều cao panel, không dựa vào shift của nó.
- */
 export function AnchoredPopover({
   anchorRef,
   onDismiss,
@@ -41,9 +33,7 @@ export function AnchoredPopover({
   children,
 }: {
   anchorRef: RefObject<HTMLElement | null>;
-  /** Bấm ra ngoài hoặc Esc. */
   onDismiss: () => void;
-  /** Bề rộng mong muốn; tự co khi khung hẹp hơn. */
   width?: number;
   children: ReactNode;
 }) {
@@ -60,13 +50,11 @@ export function AnchoredPopover({
       const vw = window.innerWidth;
       const vh = window.innerHeight;
       const rect = panel.getBoundingClientRect();
-      // Nội dung (chunk picker) mount muộn — chờ có kích thước thật rồi mới đặt.
       if (rect.height === 0) return;
       const panelWidth = rect.width;
       const panelHeight = rect.height;
       const roomLeft = trigger.left - GAP;
       const roomRight = vw - trigger.right - GAP;
-      // Ưu tiên bên trái như Discord; hết chỗ bên trái mới sang phải, không đủ cả hai thì lấy phía rộng hơn.
       const useLeft =
         roomLeft >= panelWidth || (!(roomRight >= panelWidth) && roomLeft >= roomRight);
       const left = useLeft ? trigger.left - GAP - panelWidth : trigger.right + GAP;
@@ -88,7 +76,6 @@ export function AnchoredPopover({
     };
 
     place();
-    // Picker nạp theo chunk và ảnh có thể đổi chiều cao nội dung — đo lại khi panel đổi cỡ.
     const observer = new ResizeObserver(place);
     observer.observe(panel);
     window.addEventListener('resize', place);
@@ -110,7 +97,6 @@ export function AnchoredPopover({
 
   return createPortal(
     <>
-      {/* Chặn phần còn lại như lớp phủ: panel nằm trên, mọi bấm ngoài chỉ đóng panel. */}
       <button
         type="button"
         aria-hidden

@@ -6,13 +6,7 @@ import { PrismaService } from '../src/infra/prisma/prisma.service.js';
 import { RedisProvider } from '../src/infra/redis/redis.module.js';
 import { bootApp } from './helpers/boot.js';
 
-/**
- * ADR-0080: rate limit chia bucket theo nhóm route, khoá theo người dùng đã xác thực (IP cho
- * route chưa xác thực), khóa 2–10 giây thay vì 60 giây.
- *
- * Mỗi ca dùng user mới và `flushdb` trước khi chạy: bộ đếm là cửa sổ cố định trên Redis thật, dùng
- * lại user/window của ca trước sẽ làm kết quả phụ thuộc thứ tự.
- */
+/** Mỗi ca dùng user mới và `flushdb`: bộ đếm là cửa sổ cố định trên Redis thật. */
 const runId = Date.now().toString(36);
 const PASSWORD = 'password123';
 
@@ -82,8 +76,6 @@ describe('rate limit buckets (e2e)', () => {
     const user = await registerUser('search');
     const server = await createServer(user.token, 'search bucket');
 
-    // Handler override thắng bucket mức class: RolesController khai writeStructure ở class nhưng
-    // GET danh sách role là readLight (240/phút).
     const roles = await http()
       .get(api(`/servers/${server.id}/roles`))
       .set(bearer(user.token))
@@ -101,9 +93,6 @@ describe('rate limit buckets (e2e)', () => {
 
     const blocked = responses.filter((res) => res.status === 429);
     expect(blocked.length).toBeGreaterThan(0);
-    // 429 đầu tiên đến từ SearchRateLimiter trong service (30/phút, cửa sổ 60 giây) nên
-    // Retry-After của nó dài. Sau khi vượt 40 request, guard chặn cả bucket route: 429 cuối kèm
-    // `X-RateLimit-Limit` của bucket và Retry-After không vượt blockDuration (10 giây).
     const last = responses.at(-1);
     expect(last?.status).toBe(429);
     expect(last?.headers['x-ratelimit-limit']).toBe('40');
@@ -112,7 +101,6 @@ describe('rate limit buckets (e2e)', () => {
     expect(retryAfter).toBeGreaterThan(0);
     expect(retryAfter).toBeLessThanOrEqual(10);
 
-    // Bucket khác của cùng người dùng không bị ảnh hưởng.
     await http().get(api('/users/me/unread')).set(bearer(user.token)).expect(200);
     await http()
       .get(api(`/servers/${server.id}/me/permissions`))
@@ -126,7 +114,6 @@ describe('rate limit buckets (e2e)', () => {
     const patch = (token: string) =>
       http().patch(api('/users/me/settings')).set(bearer(token)).send({ theme: 'dark' });
 
-    // write-structure: 20/phút cho mỗi user; cùng IP 127.0.0.1 nhưng hai bộ đếm riêng.
     const statuses: number[] = [];
     for (let count = 0; count < 20; count += 1) {
       statuses.push((await patch(first.token)).status);
@@ -157,7 +144,6 @@ describe('rate limit buckets (e2e)', () => {
         .set(bearer(user.token))
         .send({ content: 'burst', nonce: randomUUID() }),
     );
-    // Đọc nhẹ chạy xen trong lúc burst ghi: nếu bucket dùng chung thì chúng sẽ ăn 429 theo.
     const reads = Array.from({ length: 10 }, (_unused, index) =>
       index % 2 === 0
         ? http().get(api('/users/me/unread')).set(bearer(user.token))
@@ -169,8 +155,6 @@ describe('rate limit buckets (e2e)', () => {
     const [sendResults, readResults] = await Promise.all([Promise.all(sends), Promise.all(reads)]);
 
     const sendBlocked = sendResults.filter((res) => res.status === 429);
-    // Đo trên máy dev 2026-11-06: 10/10 tin trả 201, 0×429 (service limiter 10 tin/10 giây vừa
-    // đủ). Giữ ngưỡng ≤ 1 theo yêu cầu nghiệm thu để không đỏ vì một lần đếm lệch.
     expect(sendBlocked.length).toBeLessThanOrEqual(1);
     for (const res of sendBlocked) {
       expect(Number(res.headers['retry-after'])).toBeLessThanOrEqual(10);

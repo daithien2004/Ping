@@ -216,7 +216,6 @@ describe('TG.6 attachments (real Postgres + disk)', () => {
       .expect(200);
     await auth(http().post(`/api/v1/uploads/${id}/complete`)).expect(201);
     const storage = app.get(LocalStorage);
-    // Drain earlier maintenance before failing the read of this queued file.
     for (let i = 0; i < 20; i++) {
       const earlier = await db.attachment.count({
         where: { id: { not: id }, status: { in: ['queued', 'deleting'] } },
@@ -283,11 +282,9 @@ describe('TG.6 attachments (real Postgres + disk)', () => {
           new RegExp(`^attachment_jobs_total\\{outcome="${outcome}"\\}\\s+(\\d+)`, 'm'),
         )?.[1] ?? 0,
       );
-    // 1 ảnh + 1 PDF ready; 2 tệp giả rejected; xóa tin + dọn pending = ít nhất 2 deleted.
     expect(counter('ready')).toBeGreaterThanOrEqual(2);
     expect(counter('rejected')).toBe(2);
     expect(counter('deleted')).toBeGreaterThanOrEqual(2);
     expect(body).toMatch(/^dependency_up\{name="attachment_storage"\} 1$/m);
-    // Máy chủ metrics được afterAll đóng qua onModuleDestroy của MetricsService.
   });
 });

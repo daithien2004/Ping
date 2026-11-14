@@ -18,11 +18,6 @@ interface TestUser {
 
 type HttpMethod = 'get' | 'post' | 'patch' | 'put' | 'delete';
 
-/**
- * T4.1: mention được server parse khi tạo/sửa tin, @everyone/@role chỉ ghi khi người gửi
- * có MENTION_EVERYONE (ADR-0043). Kiểm tra trực tiếp bảng MessageMention vì T4.1 chưa đưa
- * mention ra DTO/event (thuộc T4.2). Dùng đúng 4 user (trần register 5/phút/IP).
- */
 describe('Mentions (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
@@ -31,7 +26,7 @@ describe('Mentions (e2e)', () => {
   let owner: TestUser;
   let plain: TestUser;
   let privileged: TestUser;
-  let outsider: TestUser; // tồn tại nhưng KHÔNG thuộc server
+  let outsider: TestUser;
   let serverId: string;
   let channelId: string;
   let roleId: string;
@@ -148,7 +143,6 @@ describe('Mentions (e2e)', () => {
     const rows = await mentionsOf(messageId);
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({ kind: 'user' });
-    // mention user do member id đánh dấu, không phải user ngoài server.
     const mentioned = await prisma.messageMention.findFirstOrThrow({
       where: { messageId },
       select: { mentionedMember: { select: { userId: true } } },
@@ -190,14 +184,12 @@ describe('Mentions (e2e)', () => {
     const messageId = await send(owner.token, `@${privilegedName} ơi`);
     expect(await mentionsOf(messageId)).toHaveLength(1);
 
-    // Sửa thành nhắc @everyone (owner có quyền): hàng user biến mất, hàng everyone xuất hiện.
     await api('patch', `/api/v1/messages/${messageId}`, owner.token)
       .send({ content: '@everyone thay đổi' })
       .expect(200);
     const afterUpdate = await mentionsOf(messageId);
     expect(afterUpdate.map((row) => row.kind)).toEqual(['everyone']);
 
-    // Sửa tiếp thành nội dung không có mention: sạch hàng.
     await api('patch', `/api/v1/messages/${messageId}`, owner.token)
       .send({ content: 'không còn mention' })
       .expect(200);
@@ -208,8 +200,6 @@ describe('Mentions (e2e)', () => {
     const messageId = await send(owner.token, '@everyone sẽ bị xóa');
     expect(await mentionsOf(messageId)).toHaveLength(1);
     await api('delete', `/api/v1/messages/${messageId}`, owner.token).expect(200);
-    // Soft delete (moderation cần lịch sử): hàng mention không bị xoá vật lý, nhưng
-    // mọi phép đếm unread/mention sau này phải ràng buộc `message.deletedAt = null`.
     const message = await prisma.message.findUniqueOrThrow({
       where: { id: messageId },
       select: { deletedAt: true },
@@ -219,7 +209,7 @@ describe('Mentions (e2e)', () => {
   });
 
   it('reply luôn ping tác giả tin gốc; tự trả lời thì không; sửa tin vẫn giữ', async () => {
-    // Channel riêng: rate limit 10 tin/10s/(user, channel), test này gửi nhiều lượt.
+    // Channel riêng: rate limit 10 tin/10s/(user, channel).
     const channel = await api('post', `/api/v1/servers/${serverId}/channels`, owner.token)
       .send({ name: 'reply-ping' })
       .expect(201);
@@ -240,16 +230,13 @@ describe('Mentions (e2e)', () => {
     const originalId = await sendIn(owner.token, { content: 'tin gốc' });
     expect(await mentionsOf(originalId)).toHaveLength(0);
 
-    // Client Discord không có công tắc: mọi reply đều ping chủ tin gốc.
     const replyId = await sendIn(plain.token, { content: 'trả lời', replyToId: originalId });
     expect(await mentionsOf(replyId)).toHaveLength(1);
     expect(await mentionedUserId(replyId)).toBe(owner.id);
 
-    // Tự trả lời chính mình → không ping.
     const selfId = await sendIn(plain.token, { content: 'tự trả lời', replyToId: replyId });
     expect(await mentionsOf(selfId)).toHaveLength(0);
 
-    // Sửa nội dung khiến mention bị parse lại: reply ping không được rơi mất.
     await api('patch', `/api/v1/messages/${replyId}`, plain.token)
       .send({ content: 'trả lời (đã sửa)' })
       .expect(200);

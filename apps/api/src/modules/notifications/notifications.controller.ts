@@ -12,21 +12,11 @@ import { CurrentUser, type AuthenticatedUser } from '../auth/current-user.decora
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { NotificationsService } from './notifications.service.js';
 
-/**
- * TG.12: prefs thông báo của CHÍNH người gọi (/users/me/...). Bối cảnh luôn là người gọi
- * (userId từ JWT, không có id user trên path) nên chỉ cần JwtAuthGuard — không có ability
- * server; quyền trên target không được kiểm vì prefs là dữ liệu user-scoped, vô hại với
- * target (lý do đầy đủ ở NotificationsService.setServerPref).
- *
- * PUT trả 200 với dòng prefs (hình dạng response theo docs/api-conventions.md: sửa = 200),
- * DELETE idempotent 204 (reset về mặc định, gỡ lần nữa vẫn 204).
- */
 @Controller('users/me/notification-prefs')
 @UseGuards(JwtAuthGuard)
 export class NotificationsController {
   constructor(private readonly notifications: NotificationsService) {}
 
-  /** Mọi dòng prefs của người gọi — client fetch một lần khi boot, tính badge tại chỗ. */
   @Get()
   @Throttle({ default: RATE_LIMIT_BUCKETS.readLight })
   list(@CurrentUser() user: AuthenticatedUser): Promise<NotificationPrefsResponse> {
@@ -51,7 +41,6 @@ export class NotificationsController {
     return this.notifications.setChannelPref(user.userId, channelId, body);
   }
 
-  /** Reset về mặc định — idempotent: gỡ target chưa cấu hình vẫn 204. */
   @Delete('server/:serverId')
   @HttpCode(204)
   async deleteServer(
@@ -61,7 +50,6 @@ export class NotificationsController {
     await this.notifications.deleteServerPref(user.userId, serverId);
   }
 
-  /** Như server — idempotent 204. */
   @Delete('channel/:channelId')
   @HttpCode(204)
   async deleteChannel(

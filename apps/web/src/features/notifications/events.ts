@@ -31,10 +31,8 @@ import {
 import { readIgnoreEveryone, readSoundEnabled } from './notify-storage';
 import { playNotifyBeep } from './sound';
 
-/** Trần số messageId nhớ trong phiên — chống bắn hai lần cho cùng một tin (activity + mention). */
 const PROCESSED_CAP = 500;
 
-/** Nhãn i18n cần khi dựng body/title — tách object để helper không phụ thuộc hook. */
 interface NotifyLabels {
   bodyFallback: string;
   stickerLabel: string;
@@ -43,33 +41,18 @@ interface NotifyLabels {
   fallbackTitle: string;
 }
 
-/** Lấy nội dung tin để dựng body/isEveryone: API không có GET một tin, dùng cửa sổ `around` limit 1. */
 async function fetchMessage(channelId: string, messageId: string): Promise<MessageDto | null> {
   try {
     const page = await listMessagesAround(channelId, messageId, 1);
     return page.messages.find((message) => message.id === messageId) ?? null;
   } catch {
-    // Tin vừa xóa / mất mạng: vẫn báo với nội dung chung chung thay vì bỏ sót một ping thật.
     return null;
   }
 }
 
-/**
- * Sự kiện realtime → thông báo trình duyệt (TG.12). Hai nguồn, cùng nguồn sự thật với badge
- * hiện có (features/unread):
- * - `channel.activity` (room server; DM đi room user với `serverId: null`): MỌI tin mới,
- *   KHÔNG mang nội dung hay cờ mention — chỉ đủ để quyết mức 'all'.
- * - `mention.created` (room user, CHỈ tới người được nhắc, đã kiểm quyền phía server): nguồn
- *   sự thật của "mình bị nhắc" — mức 'mentions' chỉ quyết theo event này.
- *
- * Tiêu chí nghiệm thu: KHÔNG BAO GIỜ báo khi tab đang focus (`document.hidden === true` mới
- * bắn) và quyền Notification phải granted (xin quyền là thao tác người dùng — nút ở rail).
- * DM: mọi tin là mention-style (ADR-0070 mục 7) nên coi như có event mention.
- */
 export function useNotificationEvents(session: RealtimeSession, userId: string) {
   const queryClient = useQueryClient();
   const router = useRouter();
-  // Nạp prefs một lần khi boot (staleTime 30s) để lúc có tin không phải chờ fetch.
   useNotificationPrefs();
   const t = useTranslations('notifications');
 
@@ -85,21 +68,19 @@ export function useNotificationEvents(session: RealtimeSession, userId: string) 
 
     const handle = async (event: ChannelActivityPayload, gotMentionEvent: boolean) => {
       if (processed.has(event.messageId)) return;
-      if (event.authorId === userId) return; // tin của chính mình (tab khác gửi) — không tự báo
-      // Tiêu chí TG.12: chỉ bắn khi tab KHÔNG hiển thị; đang focus thì badge/title tự lo.
+      if (event.authorId === userId) return;
       if (document.hidden !== true) return;
       if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
 
       const prefs =
         queryClient.getQueryData<NotificationPrefsResponse>(qk.notificationPrefs)?.prefs ?? [];
       const level = effectiveLevel(prefs, event.serverId, event.channelId);
-      // channel.activity không mang cờ mention: mức 'mentions' phải chờ mention.created
-      // (đi sau, phát riêng cho người được nhắc) — không đoán từ nội dung để khỏi lệch quyền ping.
+      // channel.activity không mang cờ mention: mức 'mentions' chờ mention.created, không đoán từ nội dung.
       if (!gotMentionEvent && level === 'mentions') return;
       const mutedUntil = effectiveMutedUntil(prefs, event.serverId, event.channelId);
 
       const message = await fetchMessage(event.channelId, event.messageId);
-      if (message && message.authorId === userId) return; // tự nhắc chính mình trong tin của mình
+      if (message && message.authorId === userId) return;
       const ignoreEveryone = readIgnoreEveryone();
       const flags = mentionFlags(
         gotMentionEvent,
@@ -154,7 +135,6 @@ interface FireDeps {
   labels: NotifyLabels;
 }
 
-/** Dựng title `#kênh · server` (DM: tên đối tác) + body "tác giả: trích dẫn" rồi bắn Notification. */
 function fireNotification(
   event: ChannelActivityPayload,
   message: MessageDto | null,
@@ -163,7 +143,6 @@ function fireNotification(
   const title = titleOf(event, deps.queryClient, deps.labels.fallbackTitle);
   const body = bodyOf(message, deps.labels);
   try {
-    // `tag` theo channel: tin mới của cùng kênh GOM vào một thông báo thay vì chồng chất.
     const notification = new Notification(title, {
       tag: event.channelId,
       body,
@@ -174,7 +153,7 @@ function fireNotification(
       deps.router.push(permalinkOf(event));
     };
   } catch {
-    // Ngữ cảnh không hỗ trợ Notification (thiếu secure context…) — bỏ qua, badge vẫn chạy.
+    // Notification không dùng được (thiếu secure context): bỏ qua.
   }
 }
 

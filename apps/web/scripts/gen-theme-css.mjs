@@ -1,13 +1,4 @@
-/**
- * Sinh `src/styles/tokens.generated.css` từ `src/lib/theme/tokens.ts` (ADR-0075).
- *
- * Vì sao: trước đây token màu tồn tại hai nơi (globals.css viết tay + tokens.ts cho antd) và
- * đã lệch nhau (nền sáng trắng vs ink-50, rail sáng ink-200 vs ink-950, muted-fg ink-500 vs 550).
- * Từ giờ chỉ sửa tokens.ts rồi chạy `pnpm --filter web gen:theme`.
- *
- * CI chạy `--check`: file sinh khác bản trong repo là đỏ, buộc commit lại.
- * Chạy: `node scripts/gen-theme-css.mjs [--check]`.
- */
+/** `node scripts/gen-theme-css.mjs [--check]`; CI chạy `--check`. Chỉ sửa tokens.ts rồi `pnpm --filter web gen:theme`. */
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -52,8 +43,7 @@ const radiusDeclarations = Object.entries(radius)
   .map(([key, value]) => `  --ping-radius-${key}: ${value}px;`)
   .join('\n');
 
-// Bóng + easing không đổi theo theme ở easing, còn bóng thì có (alpha nền tối khác nền sáng).
-// Tiền tố `--ping-` để không đè lên biến cùng tên của Tailwind; globals.css mới nối vào @theme.
+// Tiền tố `--ping-` để không đè lên biến cùng tên của Tailwind.
 const easingDeclarations = Object.entries(easing)
   .map(([key, value]) => `  --ping-ease-${key}: ${value};`)
   .join('\n');

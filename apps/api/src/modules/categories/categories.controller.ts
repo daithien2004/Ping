@@ -28,18 +28,12 @@ import { CurrentUser, type AuthenticatedUser } from '../auth/current-user.decora
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { CategoriesService } from './categories.service.js';
 
-/**
- * Category channel (TG.10): nhóm kênh trong sidebar. Guard: cần `manage Channel`
- * (MANAGE_CHANNELS) — cùng quyền với tạo/sửa/xóa channel vì category chỉ là cách nhóm kênh.
- * Thứ bậc/đối tượng không cần kiểm thêm: category không mang dữ liệu riêng của ai.
- */
 @Controller('servers/:serverId/categories')
 @Throttle({ default: RATE_LIMIT_BUCKETS.writeStructure })
 @UseGuards(JwtAuthGuard, AbilityGuard)
 export class CategoriesController {
   constructor(private readonly categoriesService: CategoriesService) {}
 
-  /** Tạo category (nối cuối danh sách): 201 kèm DTO; Idempotency-Key cho client retry. */
   @Post()
   @CheckAbility(['manage', 'Channel'])
   @UseInterceptors(IdempotencyInterceptor)
@@ -50,7 +44,6 @@ export class CategoriesController {
     return this.categoriesService.create(serverId, body.name);
   }
 
-  /** Đổi tên category; 200 kèm DTO mới (position không đổi). */
   @Patch(':categoryId')
   @CheckAbility(['manage', 'Channel'])
   rename(
@@ -61,7 +54,6 @@ export class CategoriesController {
     return this.categoriesService.rename(serverId, categoryId, body.name);
   }
 
-  /** Xóa category — kênh về vùng mặc định (không mất kênh nào): 200 `{ id }` như xóa channel. */
   @Delete(':categoryId')
   @CheckAbility(['manage', 'Channel'])
   remove(
@@ -71,7 +63,6 @@ export class CategoriesController {
     return this.categoriesService.remove(serverId, categoryId);
   }
 
-  /** Sắp lại thứ tự toàn bộ category theo mảng id; 200 kèm danh sách mới (position mới). */
   @Put('reorder')
   @CheckAbility(['manage', 'Channel'])
   reorder(

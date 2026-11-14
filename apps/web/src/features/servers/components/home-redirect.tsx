@@ -8,7 +8,6 @@ import { useServers } from '../hooks';
 import { homePath } from '../navigation';
 import { OnboardingWizard, type OnboardingMode } from './onboarding-wizard';
 
-/** "/servers": vào server đầu tiên; chưa có server thì mở wizard tạo/tham gia. */
 export function HomeRedirect() {
   const router = useRouter();
   const { data: servers } = useServers();

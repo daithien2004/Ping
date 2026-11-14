@@ -7,7 +7,6 @@ const VIEWPORTS = [
 ] as const;
 const SCHEMES = ['light', 'dark'] as const;
 
-// Màn đăng nhập phải ở trạng thái chưa đăng nhập, ngược với `visual.spec.ts`.
 test.use({ storageState: { cookies: [], origins: [] } });
 
 for (const viewport of VIEWPORTS) {

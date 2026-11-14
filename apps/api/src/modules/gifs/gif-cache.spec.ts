@@ -19,7 +19,7 @@ describe('GifCache (TG.25, ADR-0069)', () => {
     expect(cache.get('search:mèo:24')).toEqual([gif]);
     now += 4_999;
     expect(cache.get('search:mèo:24')).toEqual([gif]);
-    now += 1; // quá 5 giây
+    now += 1;
     expect(cache.get('search:mèo:24')).toBeUndefined();
   });
 
@@ -29,7 +29,7 @@ describe('GifCache (TG.25, ADR-0069)', () => {
 
     cache.set('a', [gif]);
     cache.set('b', [gif]);
-    cache.set('c', [gif]); // 'a' là cũ nhất → bị thay
+    cache.set('c', [gif]);
 
     expect(cache.get('a')).toBeUndefined();
     expect(cache.get('b')).toEqual([gif]);
@@ -38,12 +38,11 @@ describe('GifCache (TG.25, ADR-0069)', () => {
 
   it('khóa quá dài bị trim nhưng get/set vẫn khớp nhau', () => {
     const cache = new GifCache();
-    const longKey = 'x'.repeat(600); // vượt trần 512
+    const longKey = 'x'.repeat(600);
 
     cache.set(longKey, [gif]);
 
     expect(cache.get(longKey)).toEqual([gif]);
-    // 511 ký tự 'x' khác khóa đã trim (512 ký tự 'x') → trượt là đúng.
     expect(cache.get('x'.repeat(511))).toBeUndefined();
   });
 });

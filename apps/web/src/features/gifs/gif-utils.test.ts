@@ -24,7 +24,6 @@ describe('gif-utils (TG.25)', () => {
     expect(recent).toHaveLength(GIF_RECENT_MAX);
     expect(recent[0]?.id).toBe('g29');
     expect(recent.at(-1)?.id).toBe('g6');
-    // Chọn lại GIF đã có: đưa lên đầu chứ không tạo bản sao (so sánh theo id).
     const again = pushRecentGif(recent, gif('g29'));
     expect(again.map((item) => item.id)).toEqual(recent.map((item) => item.id));
     const repositioned = pushRecentGif(recent, gif('g10'));

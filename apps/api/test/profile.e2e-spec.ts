@@ -24,7 +24,6 @@ describe('TG.7 profile (real Postgres + disk)', () => {
   const auth = (call: request.Test, bearer = token) =>
     call.set('Authorization', `Bearer ${bearer}`);
 
-  /** Đưa một upload tới `ready` qua đúng pipeline TG.6 (reserve → PUT → complete → worker). */
   async function ready(
     bytes = png,
     filename = 'avatar.png',
@@ -99,11 +98,9 @@ describe('TG.7 profile (real Postgres + disk)', () => {
       .expect(200);
     expect(patched.body.avatarUrl).toContain(`/api/v1/attachments/${id}/file`);
     expect(patched.body.avatarUrl).toContain('thumbnail=1');
-    // URL hồ sơ là bearer capability: <img> không mang token vẫn tải được ảnh đã reencode.
     const file = await http().get(patched.body.avatarUrl).expect(200);
     expect(file.headers['content-type']).toContain('image/webp');
     expect((await sharp(file.body).metadata()).exif).toBeUndefined();
-    // Một tệp hồ sơ chỉ gắn một lần.
     await auth(http().patch('/api/v1/users/me'), outsider)
       .send({ avatarAttachmentId: id })
       .expect(400);
@@ -160,7 +157,6 @@ describe('TG.7 profile (real Postgres + disk)', () => {
     await auth(http().patch(`/api/v1/servers/${serverId}/members/me`))
       .send({ nickname: null })
       .expect(200);
-    // Người không thuộc server không tự đặt biệt danh được (IDOR có trong idor.e2e-spec).
     await auth(http().patch(`/api/v1/servers/${serverId}/members/me`), outsider)
       .send({ nickname: 'x' })
       .expect(403);
@@ -180,7 +176,6 @@ describe('TG.7 profile (real Postgres + disk)', () => {
           entry.action === 'SERVER_UPDATE' && entry.metadata.iconChanged === true,
       ),
     ).toBe(true);
-    // Thành viên thường không có `update Server` → không gắn icon được.
     await auth(http().post('/api/v1/uploads'), outsider)
       .send({
         scope: 'serverIcon',

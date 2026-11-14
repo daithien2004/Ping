@@ -7,7 +7,6 @@ import { toAntdSize, type PingSize } from './size';
 
 type AntdPasswordProps = ComponentProps<typeof Input.Password>;
 
-/** API đóng: chỉ các prop `Form.Item` và form đăng nhập cần. */
 export type PingPasswordInputProps = Pick<
   AntdPasswordProps,
   | 'value'

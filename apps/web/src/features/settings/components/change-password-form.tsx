@@ -15,21 +15,14 @@ import { pingToast } from '@/components/ui/ping-toast';
 import { useErrorMessage } from '@/lib/error-message';
 import { useChangePassword } from '@/features/auth/hooks';
 
-/** Tên trường cố định của form (dùng khi xoá lúc trang bị ẩn). */
 const CHANGE_PASSWORD_FIELDS = ['currentPassword', 'password', 'confirmPassword'] as const;
 
-/** Giá trị form: schema shared chỉ gồm mật khẩu hiện tại + mới — ô đối chiếu kiểm ở dưới. */
 type ChangePasswordValues = {
   currentPassword: string;
   password: string;
   confirmPassword: string;
 };
 
-/**
- * Đổi mật khẩu (TG.8): PATCH /users/me/password với mật khẩu hiện tại. Server giữ phiên này
- * và thu hồi MỌI phiên khác — ghi chú dưới tiêu đề nói rõ điều đó trước khi người dùng bấm.
- * Thành công: toast + xoá form (không giữ lại mật khẩu trong DOM).
- */
 export function ChangePasswordForm() {
   const t = useTranslations('settings.account');
   const errorMessage = useErrorMessage();
@@ -37,7 +30,6 @@ export function ChangePasswordForm() {
   // <Activity> giữ trang ẩn khi rời /settings: mật khẩu gõ dở phải bị xoá (CLAUDE.md Frontend).
   const containerRef = useResetOnHide(form, CHANGE_PASSWORD_FIELDS);
   const change = useChangePassword();
-  // Luật từ schema shared cho 2 ô chính; ô đối chiếu kiểm khớp tại onFinish (câu i18n).
   const rules = zodFormRules(
     changePasswordSchema.pick({ currentPassword: true, password: true }),
     () => form.getFieldsValue(),
@@ -47,9 +39,7 @@ export function ChangePasswordForm() {
     <div ref={containerRef}>
       <PingForm
         form={form}
-        // Tên form làm tiền tố id các ô: trang /settings cũ vẫn nằm trong DOM (<Activity>) khi mở
-        // modal, nếu không có name thì ô `password` trùng id với form đặt lại mật khẩu và label
-        // "Mật khẩu mới" gắn nhầm vào ô ẩn.
+        // Tên form làm tiền tố id: trang /settings ẩn vẫn nằm trong DOM (<Activity>), thiếu name thì ô `password` trùng id với form đặt lại mật khẩu.
         name="settingsChangePassword"
         layout="vertical"
         noValidate

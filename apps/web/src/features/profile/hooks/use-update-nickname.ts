@@ -5,7 +5,6 @@ import { qk } from '@/lib/query-keys';
 import { updateMyNickname } from '../api';
 import { applyMemberUpdated } from '../profile-cache';
 
-/** PATCH /servers/:id/members/me — cập nhật cache members qua hàm thuần (có test). */
 export function useUpdateNickname(serverId: string) {
   const queryClient = useQueryClient();
   return useMutation({

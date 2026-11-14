@@ -6,14 +6,9 @@ import type { AuthResponse, ChannelDto, ServerDetail } from '@ping/shared';
 export const API = 'http://localhost:4000/api/v1';
 const HEALTH = 'http://localhost:4000/api/v1/health';
 const MAILPIT = 'http://127.0.0.1:8025/api/v1';
-// apps/web là CommonJS: Playwright biên dịch file này sang CJS nên có __dirname, không có import.meta.
 const repoRoot = path.resolve(__dirname, '../../..');
 
-/**
- * Chờ API sẵn sàng trước khi seed. Mỗi run Playwright bật API mới (compile nguội rồi `listen`)
- * nên có thể chưa nghe cổng lúc bắt đầu; không chờ thì test fail với lỗi mạng khó hiểu thay vì
- * thông báo rõ ràng.
- */
+/** Mỗi run Playwright bật API mới (compile nguội rồi listen): chờ API sẵn sàng trước khi seed. */
 async function waitForApi(timeoutMs = 30_000): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   let lastError = 'chưa phản hồi';
@@ -32,11 +27,6 @@ async function waitForApi(timeoutMs = 30_000): Promise<void> {
   );
 }
 
-/**
- * Dữ liệu riêng cho mỗi lần chạy (không đụng dữ liệu dev): một user mới, một server, channel
- * #long có 300 tin. Truyền cho test qua process.env (Playwright chuyển env của globalSetup sang
- * worker).
- */
 export default async function globalSetup() {
   await waitForApi();
 
@@ -50,15 +40,13 @@ export default async function globalSetup() {
     password,
   });
   const token = auth.accessToken;
-  // Chốt chặn: máy dev không cấu hình SMTP_URL thì API dùng ConsoleMailer (không có thư
-  // trong Mailpit) — đặt cờ thẳng DB để seed vẫn chạy được, chi tiết ở hàm bên dưới.
   await ensureVerifiedForSeed(email, token);
   const server = await post<ServerDetail>('/servers', { name: `E2E ${id}` }, token);
   const channel = await post<ChannelDto>(`/servers/${server.id}/channels`, { name: 'long' }, token);
 
-  // Ghi thẳng DB bằng script dev: gửi 300 tin qua API sẽ chạm rate limit.
+  // Ghi thẳng DB: gửi 300 tin qua API sẽ chạm rate limit.
   process.loadEnvFile(path.join(repoRoot, '.env'));
-  // shell: Windows chạy pnpm qua pnpm.cmd. Hai id do server sinh (UUID) nên ghép chuỗi an toàn.
+  // shell: Windows chạy pnpm qua pnpm.cmd.
   const seed = spawnSync(
     `pnpm --filter api exec tsx prisma/seed-messages.ts ${channel.id} ${auth.user.id} 300`,
     { cwd: repoRoot, stdio: 'inherit', shell: true },
@@ -67,8 +55,7 @@ export default async function globalSetup() {
     throw new Error('seed-messages failed');
   }
 
-  // Script seed ghi thẳng DB; nếu nó vô tình khởi động lại tiến trình API (ví dụ sinh lại Prisma
-  // client), chờ API nghe cổng lại trước khi chạy test thay vì để test gặp ECONNREFUSED.
+  // Seed có thể khởi động lại API: chờ API nghe cổng lại để khỏi ECONNREFUSED.
   await waitForApi(60_000);
 
   process.env.E2E_EMAIL = email;
@@ -92,7 +79,6 @@ async function post<T>(path: string, body: unknown, token?: string): Promise<T> 
   return (await response.json()) as T;
 }
 
-/** POST chỉ cần biết thành công hay không — endpoint 204 không body (verify-email). */
 async function postNoBody(path: string, body: unknown): Promise<boolean> {
   const response = await fetch(`${API}${path}`, {
     method: 'POST',
@@ -102,23 +88,12 @@ async function postNoBody(path: string, body: unknown): Promise<boolean> {
   return response.ok;
 }
 
-/**
- * Xác minh email của tài khoản vừa đăng ký (spec tự tạo user rồi tạo server): ưu tiên token
- * thật từ Mailpit, fallback ghi cờ thẳng DB khi môi trường không có mailer. Chính sách
- * VERIFY_REQUIRED (TG.8) bật ở mọi môi trường có SMTP_URL — kể cả web-e2e trên CI.
- */
 export async function ensureUserVerified(email: string): Promise<void> {
   if (await verifyEmailFromMailpit(email)) return;
   verifyUserInDb(email);
 }
 
-/**
- * Chốt chặn seed e2e (TG.8): nếu sau Mailpit user VẪN chưa xác minh (API dev không cấu
- * hình SMTP_URL → ConsoleMailer chỉ ghi log, Mailpit không bao giờ có thư) thì đặt
- * `emailVerified` thẳng DB bằng script dev — cùng pattern seed-messages.ts phía dưới.
- * Không phải đường "thật" nhưng seed phải chạy được trên mọi máy dev, kể cả không bật
- * Mailpit; khi SMTP_URL có cấu hình thì hàm này chỉ là một GET /users/me no-op.
- */
+/** Fallback khi API dev không có SMTP_URL (ConsoleMailer, Mailpit không có thư): đặt emailVerified thẳng DB. */
 async function ensureVerifiedForSeed(email: string, token: string): Promise<void> {
   const me = await fetch(`${API}/users/me`, {
     headers: { authorization: `Bearer ${token}` },
@@ -130,13 +105,12 @@ async function ensureVerifiedForSeed(email: string, token: string): Promise<void
 }
 
 function verifyUserInDb(email: string): void {
-  // verify-user cần DATABASE_URL: nạp .env gốc sớm hơn seed-messages (nạp hai lần vô hại).
   try {
     process.loadEnvFile(path.join(repoRoot, '.env'));
   } catch {
-    // Không có .env (CI truyền env qua biến) — script tự báo thiếu DATABASE_URL nếu thế.
+    // Không có .env (CI truyền env qua biến).
   }
-  // shell: Windows chạy pnpm qua pnpm.cmd; email do API sinh (an toàn khi ghép chuỗi).
+  // shell: Windows chạy pnpm qua pnpm.cmd.
   const script = spawnSync(`pnpm --filter api exec tsx scripts/verify-user.ts ${email}`, {
     cwd: repoRoot,
     stdio: 'inherit',
@@ -147,19 +121,11 @@ function verifyUserInDb(email: string): void {
   }
 }
 
-/**
- * TG.8: user chưa xác minh email bị chặn tạo server/mã mời (VERIFY_REQUIRED) — seed e2e tạo
- * server ngay sau đăng ký nên phải xác minh luôn. Lấy token từ thư Mailpit gửi cho đúng địa
- * chỉ rồi POST /auth/verify-email. Best-effort (đợi tối đa 15s): khi API máy này chưa gửi
- * thư (TG.8 của API chưa về) thì bỏ qua để seed vẫn chạy được như trước.
- */
 async function verifyEmailFromMailpit(email: string): Promise<boolean> {
   const deadline = Date.now() + 15_000;
   while (Date.now() < deadline) {
     const mailToken = await findMailToken(email, '/verify');
     if (mailToken) {
-      // /auth/verify-email trả 204 KHÔNG body — post() parse JSON sẽ văng trên 204, dùng
-      // fetch riêng chỉ cần biết ok hay không (token hỏng → false → thử lại tới hết hạn).
       if (await postNoBody('/auth/verify-email', { token: mailToken })) {
         return true;
       }
@@ -172,13 +138,7 @@ async function verifyEmailFromMailpit(email: string): Promise<boolean> {
   return false;
 }
 
-/**
- * Tìm token trong link `path?token=...` của thư gửi cho `email` (Mailpit API). Danh sách
- * /messages không kèm body — phải đọc từng thư qua /message/:id; chọn thư MỚI NHẤT khớp
- * trước vì token một-lần-dùng, thư cũ của lần chạy trước không dùng lại được. `sinceMs`
- * (tuỳ chọn) bỏ qua thư cũ hơn mốc này: cần khi email ĐÃ nhận thư cùng loại trước đó và
- * thư mới chưa kịp tới — không vậy poller trả token cũ đã dùng (flakes giữa hai lần chạy).
- */
+/** Chọn thư mới nhất khớp: token dùng một lần, thư cũ của run trước không dùng lại được. */
 export async function findMailToken(
   email: string,
   path: '/verify' | '/reset-password',
@@ -208,7 +168,7 @@ export async function findMailToken(
       if (mailToken) return mailToken;
     }
   } catch {
-    // Mailpit chưa sẵn sàng: trả undefined để caller thử lại.
+    /* bỏ qua */
   }
   return undefined;
 }

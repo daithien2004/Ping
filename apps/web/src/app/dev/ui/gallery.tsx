@@ -37,11 +37,6 @@ import { PingTextArea } from '@/components/ui/ping-textarea';
 import { pingToast } from '@/components/ui/ping-toast';
 import { PingTooltip } from '@/components/ui/ping-tooltip';
 
-/**
- * Kho giao diện dev (0.2): mỗi wrapper `Ping*` xuất hiện ít nhất một lần để mắt người và
- * `audit:design` nhìn thấy đủ bộ. Trang chỉ dựng khi `next dev` (xem page.tsx) — e2e và visual
- * chạy bản production nên không phụ thuộc trang này.
- */
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="flex flex-col gap-3 border-t border-border pt-6 first:border-t-0 first:pt-0">

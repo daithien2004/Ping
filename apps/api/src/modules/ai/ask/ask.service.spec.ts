@@ -15,8 +15,6 @@ import { AskService, type AskEvent, type AskInput } from './ask.service.js';
 const SERVER_ID = '11111111-1111-4111-8111-111111111111';
 const USER_ID = '22222222-2222-4222-8222-222222222222';
 const CHANNEL_ID = '33333333-3333-4333-8333-333333333333';
-// Id thật của Prisma là UUIDv7 (`@default(uuid(7))`) — dùng đúng dạng này trong test để không
-// vô tình giả định id là v4.
 const MESSAGE_ID = '019a1bdf-8959-7186-aee6-9554201d3365';
 const OTHER_MESSAGE_ID = '019a1bdf-9516-71fb-875e-16d5d62ae85e';
 
@@ -202,7 +200,6 @@ describe('AskService', () => {
     const prompt = complete.mock.calls[0]![0];
     const userPrompt = prompt[1]!.content;
     expect(userPrompt).toContain('&lt;/context&gt;');
-    // Chỉ còn đúng thẻ đóng do AskService tự thêm ở cuối prompt.
     expect(userPrompt.match(/<\/context>/g)).toHaveLength(1);
   });
 
@@ -218,7 +215,6 @@ describe('AskService', () => {
   });
 
   it('khử trùng tin giữa các chunk chồng lấn và xếp theo thời gian', async () => {
-    // Cửa sổ hội thoại của retrieval chồng lấn: cùng một tin nằm trong nhiều chunk.
     const earlier = chunk('tin cũ', '00000000-0000-4000-8000-000000000001');
     const later = chunk('tin mới', '00000000-0000-4000-8000-000000000002');
     later.messages[0]!.createdAt = new Date('2026-10-24T11:00:00.000Z');
@@ -229,7 +225,6 @@ describe('AskService', () => {
     expect(events[0]).toMatchObject({ type: 'meta', data: { messageCount: 2 } });
     const userPrompt = complete.mock.calls[0]![0][1]!.content;
     expect(userPrompt.match(/00000000-0000-4000-8000-000000000002/g)).toHaveLength(1);
-    // Tin cũ đứng trước tin mới trong ngữ cảnh.
     expect(userPrompt.indexOf('tin cũ')).toBeLessThan(userPrompt.indexOf('tin mới'));
   });
 
@@ -293,8 +288,6 @@ describe('AskService', () => {
     expect(complete).not.toHaveBeenCalled();
     expect(usage.record).not.toHaveBeenCalled();
     expect(cache.set).not.toHaveBeenCalled();
-    // Cache hit vẫn phải qua cửa ngân sách? Không: cache phục vụ trước kill-switch để
-    // câu trả lời có sẵn vẫn dùng được khi hết tiền.
     expect(usage.assertWithinBudget).not.toHaveBeenCalled();
     expect(metrics.aiRequestFinished).toHaveBeenCalledWith('cache_hit', expect.any(Number));
   });

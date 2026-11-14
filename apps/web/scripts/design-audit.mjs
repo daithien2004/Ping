@@ -1,15 +1,4 @@
-/**
- * TF.14: audit thiết kế tĩnh cho checklist `acceptance/design-review.md`.
- *
- * Đọc token thật từ `src/lib/theme/tokens.ts` (thang spacing/radius/typography/motion) và
- * `src/app/globals.css` (bảng màu oklch + token nghĩa sáng/tối), rồi:
- *  - tính tương phản WCAG cho các cặp chữ/nền và viền/focus thực dùng;
- *  - kiểm lưới 4 px, thang chữ, trần chuyển động;
- *  - quét nguồn: hex ngoài token, `!important`, khoảng cách/cỡ chữ tuỳ ý, import antd/icon sai chỗ.
- *
- * Chỉ đọc — không sửa gì. Chạy: `node apps/web/scripts/design-audit.mjs`.
- * Exit 1 khi có vi phạm cứng (tương phản dưới ngưỡng, hex/antd ngoài danh sách cho phép).
- */
+/** Chỉ đọc. Chạy: `node apps/web/scripts/design-audit.mjs`; exit 1 khi có vi phạm cứng. */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -20,7 +9,6 @@ const srcDir = join(root, 'src');
 const failures = [];
 const notes = [];
 
-// ---------- oklch → sRGB → độ sáng tương đối ----------
 function oklchToSrgb({ l, c, h }) {
   const a = c * Math.cos((h * Math.PI) / 180);
   const b = c * Math.sin((h * Math.PI) / 180);
@@ -99,7 +87,6 @@ function parseBlock(css, selector) {
   return map;
 }
 
-// Token màu/radius sinh từ tokens.ts (ADR-0075): đọc file sinh để đo đúng giá trị đang phục vụ.
 const tokensCss = readFileSync(join(srcDir, 'styles/tokens.generated.css'), 'utf8');
 const roots = [...tokensCss.matchAll(/:root\s*\{([^}]*)\}/g)].map((m) => m[1]);
 const palette = new Map();
@@ -114,7 +101,6 @@ for (const [index, body] of roots.entries()) {
 }
 const dark = parseBlock(tokensCss, "html\\[data-theme='dark'\\]");
 
-// Token nghĩa trỏ tới palette: gom hai scope lại để phân giải var().
 function resolve(mode, name) {
   const scope = new Map([...palette, ...(mode === 'dark' ? dark : light)]);
   const { rgb, alpha } = parseColor(scope.get(name) ?? `không có ${name}`, scope);
@@ -146,13 +132,11 @@ const TEXT_PAIRS = [
   ['--sidebar-foreground', '--sidebar', 4.5],
   ['--sidebar-accent-foreground', '--sidebar-accent', 4.5],
 ];
-// Ranh giới điều khiển (WCAG 1.4.11) — dưới ngưỡng là đỏ, không miễn trừ.
 const UI_PAIRS = [
   ['--ring', '--background', 3],
   ['--sidebar-primary', '--sidebar', 3],
   ['--input', '--card', 3],
 ];
-// Đường phân cách thuần trang trí: được miễn 1.4.11, ghi chú thay vì đỏ.
 const DECORATIVE_PAIRS = [['--border', '--card', 3]];
 
 function printContrast(mode) {
@@ -182,7 +166,6 @@ function printContrast(mode) {
       kết: pass ? 'đạt' : 'KHÔNG ĐẠT',
     });
   }
-  // Viền phân cách thuần trang trí được miễn 1.4.11; ghi chú thay vì đỏ cả checklist.
   for (const [fg, bg, min] of DECORATIVE_PAIRS) {
     const value = ratio(mode, fg, bg);
     const pass = value >= min;
@@ -205,7 +188,6 @@ function printContrast(mode) {
 printContrast('light');
 printContrast('dark');
 
-// Antd đọc màu từ tokens.ts (hex), không đọc globals.css — phải đo riêng để hai nguồn không lệch.
 const ANT_PAIRS = [
   ['primaryForeground', 'primary', 4.5],
   ['foreground', 'card', 4.5],
@@ -213,7 +195,6 @@ const ANT_PAIRS = [
   ['link', 'card', 4.5],
   ['destructive', 'card', 4.5],
   ['railForeground', 'rail', 4.5],
-  // antd ghim colorBorder = borderStrong, nên phải đo ranh giới điều khiển thật.
   ['borderStrong', 'card', 3],
 ];
 for (const mode of ['light', 'dark']) {
@@ -244,9 +225,6 @@ for (const mode of ['light', 'dark']) {
   console.table(rows);
 }
 
-// ---------- tầng nền (2.6) ----------
-// Ba mặt phẳng: rail (tối nhất) → sidebar → nội dung (sáng nhất). Giữ nguyên thứ tự ở cả hai
-// nền; đảo thứ tự là mất phân tầng, hai tầng bằng nhau là mất ranh giới.
 for (const mode of ['light', 'dark']) {
   const tiers = ['--rail', '--sidebar', '--background'].map((name) => ({
     name,
@@ -265,7 +243,6 @@ for (const mode of ['light', 'dark']) {
   );
 }
 
-// ---------- thang đo ----------
 console.log('\nThang thiết kế (nguồn: src/lib/theme/tokens.ts)');
 const spacingValues = Object.values(spacing).filter((v) => v > 0);
 const spacingOffGrid = spacingValues.filter((v) => v % 4 !== 0);
@@ -288,7 +265,6 @@ console.log(
     .join(', ')} — trần 200 ms`,
 );
 
-// ---------- quét nguồn ----------
 function walk(dir) {
   return readdirSync(dir).flatMap((entry) => {
     const full = join(dir, entry);
@@ -298,12 +274,12 @@ function walk(dir) {
 const files = walk(srcDir).filter((f) => /\.(ts|tsx|css)$/.test(f));
 const ALLOW_HEX = new Set([
   'app/globals.css',
-  'styles/tokens.generated.css', // file sinh từ tokens.ts — hex ở đây là kết quả, không phải nguồn
+  'styles/tokens.generated.css',
   'lib/theme/tokens.ts',
   'lib/theme/antd-theme.ts',
-  'components/global-error-view.tsx', // root-level fallback, chạy khi CSS/app đã hỏng
-  'components/ui/ping-avatar.tsx', // màu chấm presence cho prop color của antd Badge
-  'features/notifications/favicon.ts', // vẽ favicon bằng canvas
+  'components/global-error-view.tsx',
+  'components/ui/ping-avatar.tsx',
+  'features/notifications/favicon.ts',
 ]);
 const ALLOW_IMPORTANT = new Set(['app/globals.css']);
 const hexHits = [];
@@ -314,7 +290,6 @@ const antdHits = [];
 const iconHits = [];
 const hoverFiles = new Set();
 const stateFiles = new Set();
-// Thang độ đậm (2.3): ba bậc trong token, ngoài ra Tailwind còn thin/light/bold/black.
 const ALLOWED_WEIGHTS = new Set(['normal', 'medium', 'semibold']);
 const weightCounts = new Map();
 const offWeightHits = [];
@@ -329,7 +304,6 @@ for (const file of files) {
   for (const match of source.matchAll(/\[[0-9.]+(?:px|rem)\]|text-\[\d+px\]/g)) {
     arbitraryHits.push({ file: rel, value: match[0] });
   }
-  // Sàn chữ 12 px: dưới ngưỡng này chữ tiếng Việt có dấu mất chân/dấu, không đọc được ở 125%.
   for (const match of source.matchAll(/text-\[([0-9.]+)px\]/g)) {
     if (Number(match[1]) < 12) tinyTextHits.push({ file: rel, value: match[0] });
   }
@@ -345,7 +319,6 @@ for (const file of files) {
     iconHits.push(`${rel}: ${match[1]}`);
   if (/hover:/.test(source)) hoverFiles.add(rel);
   if (/disabled:|disabled=/.test(source)) stateFiles.add(rel);
-  // Thang độ đậm (2.3): đếm theo bậc để thấy phân cấp thật đang dùng.
   for (const match of source.matchAll(
     /font-(thin|extralight|light|normal|medium|semibold|bold|extrabold|black)\b/g,
   )) {
@@ -354,8 +327,6 @@ for (const file of files) {
   }
 }
 
-// 303 px (cột kênh) và 49 px (header) đo từ Discord web đã thành token Tailwind
-// (`--spacing-sidebar` / `--spacing-header` trong globals.css) — không còn giá trị tuỳ ý.
 const ALLOW_ARBITRARY = new Set([]);
 const arbitraryOff = arbitraryHits.filter(
   (hit) => !ALLOW_ARBITRARY.has(`${hit.file}: ${hit.value}`),

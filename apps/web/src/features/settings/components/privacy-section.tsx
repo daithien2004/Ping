@@ -11,10 +11,9 @@ import { useErrorMessage } from '@/lib/error-message';
 import { useBlockedUsers } from '../hooks';
 import { SettingsSection } from './settings-section';
 
-/** Mức DM khi chưa tải xong — khớp mặc định phía API (dmAllow cột User, TG.9). */
+/** Mức DM khi chưa tải xong — khớp mặc định phía API (dmAllow cột User). */
 const DM_ALLOW_DEFAULT = 'server_members';
 
-/** Switch mức nhận DM: GET giá trị đã lưu, PATCH /users/me/privacy khi đổi (mọi thiết bị). */
 function DmAllowSwitch() {
   const t = useTranslations('settings.privacy');
   const tc = useTranslations('common');
@@ -63,11 +62,6 @@ function DmAllowSwitch() {
   );
 }
 
-/**
- * Riêng tư (TG.13): mức nhận DM từ thành viên server + danh sách người đang chặn với nút bỏ
- * chặn (tái dùng DELETE /users/:id/block của TG.9 qua `useToggleBlock` — hook đó cập nhật
- * store DM của TG.9 và invalidate danh sách này).
- */
 export function PrivacySection() {
   const t = useTranslations('settings.privacy');
   const tc = useTranslations('common');
