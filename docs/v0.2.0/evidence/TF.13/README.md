@@ -99,12 +99,24 @@ dateTime=…>` — vừa đúng ngữ nghĩa, vừa ẩn được bằng CSS tha
   sau khi push: lúc đó job `visual` phải xanh, không upload artifact, mới tính là gác hồi quy trên
   Linux.
 
+## So sánh thật trên Linux (2026-11-14)
+
+- Run [43591162867](https://github.com/daithien2004/Ping/actions/runs/43591162867) trên `d926e27`
+  (push `main`): job `visual` **xanh 2 phút 59 giây**, 12/12 test, **không** upload
+  `visual-baselines-linux` (hai bước `upload-artifact` đều `skipped`) — tức đã đi nhánh so sánh
+  với 36 ảnh `linux/` trong repo, không bootstrap.
+- Cùng run: `verify`, `security`, `docker`, `lighthouse`, cả 3 shard `web-e2e` và `web-e2e-gate`
+  xanh; `api-e2e`, `migrations`, `drills` skip theo bộ lọc đường dẫn.
+- Trước run này, hai run trước đó (c4c1690, 9c54c65) có job `visual` xanh nhưng cả run đỏ vì flake
+  axe đo giữa animation mở hộp thoại và giữa lúc antd đổi bảng màu; đã sửa bằng cách chờ
+  animation hữu hạn + chờ `data-theme-mode` (xem commit `9c54c65`, `55a751e`, `d926e27`).
+
 ## Review, giới hạn và tiếp tục
 
 - **Bootstrap Linux là lỗ hổng tiềm ẩn**: nếu ai đó xoá hoặc thêm test mới mà thiếu
-  `__screenshots__/linux`, job tự sinh ảnh, đạt kèm cảnh báo và không so sánh gì (đã commit bộ
-  36 ảnh ngày 2026-11-01 nên hiện tượng này không còn xảy ra). Cách phát hiện: run có artifact
-  `visual-baselines-linux` nghĩa là lượt đó không gác.
+  `__screenshots__/linux`, job tự sinh ảnh, đạt kèm cảnh báo và không so sánh gì (bộ 36 ảnh đã
+  commit lại ở `3eda1a2` ngày 2026-11-14, nên hiện tượng này không còn xảy ra). Cách phát hiện:
+  run có artifact `visual-baselines-linux` nghĩa là lượt đó không gác.
 - **Phạm vi ảnh**: chỉ chụp viewport đầu của mỗi màn; phần dưới (bảng audit, danh sách thành
   viên) không được gác. Không dùng full-page vì chiều cao phụ thuộc dữ liệu.
 - **Nền tảng**: chưa có baseline macOS; chỉ Chromium (không Firefox/WebKit).
