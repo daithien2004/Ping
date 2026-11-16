@@ -32,7 +32,12 @@ export const ClientEvents = {
   ChannelJoin: 'channel.join',
   ChannelLeave: 'channel.leave',
   Typing: 'typing.start',
+  PresenceWatch: 'presence.watch',
+  PresenceUnwatch: 'presence.unwatch',
 } as const;
+
+export const PRESENCE_WATCH_BATCH_MAX = 100;
+export const PRESENCE_WATCH_PER_SOCKET_MAX = 200;
 
 export interface MessageAuthor {
   id: string;
@@ -182,6 +187,14 @@ export type ChannelJoinResult = { ok: true } | { ok: false; code: ErrorCode };
 export type ChannelLeavePayload = z.infer<typeof channelEventSchema>;
 export type TypingPayload = z.infer<typeof channelEventSchema>;
 
+const presenceUserIds = z.array(z.uuid()).min(1).max(PRESENCE_WATCH_BATCH_MAX);
+export const presenceWatchSchema = z.object({ serverId: z.uuid(), userIds: presenceUserIds });
+export const presenceUnwatchSchema = z.object({ userIds: presenceUserIds });
+export type PresenceWatchPayload = z.infer<typeof presenceWatchSchema>;
+export type PresenceUnwatchPayload = z.infer<typeof presenceUnwatchSchema>;
+/** `online`: những userId vừa được đăng ký mà đang online (ảnh chụp lúc đăng ký, bù cho event đã lỡ). */
+export type PresenceWatchResult = { ok: true; online: string[] } | { ok: false; code: ErrorCode };
+
 export interface ServerToClientEvents {
   [ServerEvents.MessageCreated]: (payload: MessageCreatedPayload) => void;
   [ServerEvents.MessageUpdated]: (payload: MessageUpdatedPayload) => void;
@@ -215,4 +228,9 @@ export interface ClientToServerEvents {
   ) => void;
   [ClientEvents.ChannelLeave]: (payload: ChannelLeavePayload) => void;
   [ClientEvents.Typing]: (payload: TypingPayload) => void;
+  [ClientEvents.PresenceWatch]: (
+    payload: PresenceWatchPayload,
+    ack: (result: PresenceWatchResult) => void,
+  ) => void;
+  [ClientEvents.PresenceUnwatch]: (payload: PresenceUnwatchPayload) => void;
 }

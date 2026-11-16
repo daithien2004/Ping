@@ -12,10 +12,14 @@ import {
 } from '@nestjs/websockets';
 import {
   ClientEvents,
+  PRESENCE_WATCH_PER_SOCKET_MAX,
   ServerEvents,
   channelEventSchema,
   ErrorCodes,
+  presenceUnwatchSchema,
+  presenceWatchSchema,
   type ChannelJoinResult,
+  type PresenceWatchResult,
   type ServerToClientEvents,
 } from '@ping/shared';
 import { ConfigService } from '@nestjs/config';
@@ -25,7 +29,7 @@ import { MetricsService } from '../../infra/metrics/metrics.service.js';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
 import { AbilityFactory } from '../ability/ability.factory.js';
 import { AuthService } from '../auth/auth.service.js';
-import { RealtimeService } from './realtime.service.js';
+import { RealtimeService, presenceRoom } from './realtime.service.js';
 
 const TYPING_INTERVAL_MS = 1000;
 
@@ -49,6 +53,8 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
   private readonly roomCommands = new WeakMap<AuthSocket, Promise<unknown>>();
   private readonly presencePending = new Map<string, Map<string, 'online' | 'offline'>>();
   private readonly presenceTimers = new Map<string, NodeJS.Timeout>();
+  private readonly scopedPending = new Map<string, 'online' | 'offline'>();
+  private scopedTimer: NodeJS.Timeout | undefined;
   @WebSocketServer()
   server!: Server<ServerToClientEvents>;
 
@@ -251,6 +257,75 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
     }
   }
 
+  @SubscribeMessage(ClientEvents.PresenceWatch)
+  async handlePresenceWatch(
+    @ConnectedSocket() socket: AuthSocket,
+    @MessageBody() body: unknown,
+  ): Promise<PresenceWatchResult> {
+    if (this.overBudget(socket)) {
+      return { ok: false, code: ErrorCodes.TOO_MANY_REQUESTS };
+    }
+    if (!this.presenceScoped) {
+      return { ok: true, online: [] };
+    }
+    return this.enqueueRoomCommand(socket, () => this.watchPresence(socket, body));
+  }
+
+  private async watchPresence(socket: AuthSocket, body: unknown): Promise<PresenceWatchResult> {
+    const userId = socket.data.userId;
+    const parsed = presenceWatchSchema.safeParse(body);
+    if (!parsed.success) {
+      return { ok: false, code: ErrorCodes.VALIDATION_ERROR };
+    }
+    if (!userId) {
+      return { ok: false, code: ErrorCodes.FORBIDDEN };
+    }
+    const { serverId, userIds } = parsed.data;
+    const rows = await this.prisma.member.findMany({
+      where: { serverId, userId: { in: [userId, ...userIds] } },
+      select: { userId: true },
+    });
+    const memberIds = new Set(rows.map((row) => row.userId));
+    if (!memberIds.has(userId)) {
+      return { ok: false, code: ErrorCodes.FORBIDDEN };
+    }
+    // Id ngoài server bị bỏ qua thay vì báo lỗi: không cho dò xem ai là thành viên.
+    const granted = [...new Set(userIds)].filter((id) => memberIds.has(id));
+    const fresh = granted.filter((id) => !socket.rooms.has(presenceRoom(id)));
+    const watching = [...socket.rooms].filter((room) => room.startsWith('presence:')).length;
+    if (watching + fresh.length > PRESENCE_WATCH_PER_SOCKET_MAX) {
+      return { ok: false, code: ErrorCodes.TOO_MANY_REQUESTS };
+    }
+    if (!socket.connected) {
+      return { ok: false, code: ErrorCodes.FORBIDDEN };
+    }
+    if (fresh.length > 0) {
+      await socket.join(fresh.map(presenceRoom));
+    }
+    try {
+      return { ok: true, online: [...(await this.realtimeService.onlineUserIds(granted))] };
+    } catch {
+      // Ảnh chụp chỉ là best-effort; client làm mới danh sách thành viên khi nối lại.
+      return { ok: true, online: [] };
+    }
+  }
+
+  @SubscribeMessage(ClientEvents.PresenceUnwatch)
+  async handlePresenceUnwatch(
+    @ConnectedSocket() socket: AuthSocket,
+    @MessageBody() body: unknown,
+  ): Promise<void> {
+    if (this.overBudget(socket)) {
+      return;
+    }
+    const parsed = presenceUnwatchSchema.safeParse(body);
+    if (parsed.success) {
+      await this.enqueueRoomCommand(socket, () =>
+        Promise.all(parsed.data.userIds.map((id) => socket.leave(presenceRoom(id)))),
+      );
+    }
+  }
+
   private overBudget(socket: AuthSocket): boolean {
     const now = Date.now();
     const window = socket.data.eventWindow;
@@ -325,12 +400,38 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
     return undefined;
   }
 
+  private get presenceScoped(): boolean {
+    return this.config.get('PRESENCE_SCOPED', { infer: true }) === true;
+  }
+
+  private emitScopedPresence(userId: string, status: 'online' | 'offline'): void {
+    this.metrics.presenceEmittedOnce();
+    this.server.to(presenceRoom(userId)).emit(ServerEvents.PresenceUpdated, { userId, status });
+  }
+
+  private flushScopedPresence(): void {
+    clearTimeout(this.scopedTimer);
+    this.scopedTimer = undefined;
+    const pending = [...this.scopedPending];
+    this.scopedPending.clear();
+    for (const [userId, status] of pending) this.emitScopedPresence(userId, status);
+  }
+
   private async broadcastPresence(userId: string, status: 'online' | 'offline'): Promise<void> {
+    const batchMs = this.config.get('PRESENCE_BATCH_MS', { infer: true }) ?? 1000;
+    if (this.presenceScoped) {
+      if (batchMs === 0) {
+        this.emitScopedPresence(userId, status);
+        return;
+      }
+      this.scopedPending.set(userId, status);
+      this.scopedTimer ??= setTimeout(() => this.flushScopedPresence(), batchMs);
+      return;
+    }
     const memberships = await this.prisma.member.findMany({
       where: { userId },
       select: { serverId: true },
     });
-    const batchMs = this.config.get('PRESENCE_BATCH_MS', { infer: true }) ?? 1000;
     if (batchMs === 0) {
       for (const membership of memberships) {
         this.metrics.presenceEmittedOnce();

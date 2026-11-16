@@ -5,6 +5,8 @@ import { PrismaService } from '../../infra/prisma/prisma.service.js';
 import { RedisProvider } from '../../infra/redis/redis.module.js';
 import { AbilityFactory } from '../ability/ability.factory.js';
 
+export const presenceRoom = (userId: string) => `presence:${userId}`;
+
 type EventName = keyof ServerToClientEvents;
 type Payload<K extends EventName> = Parameters<ServerToClientEvents[K]>[0];
 
@@ -93,11 +95,17 @@ export class RealtimeService {
 
     // ponytail: một lần dựng ability cho mỗi member (có cache Redis); server rất đông thì
     // chỉ xét member mang role vừa đổi, hoặc đẩy việc này vào hàng đợi.
+    let memberPresenceRooms: string[] | undefined;
     for (const userId of targets) {
       const access = await this.accessOf(serverId, userId);
       const sockets = this.server.in(`user:${userId}`);
       if (access === 'removed') {
-        sockets.socketsLeave([...channelRooms, `server:${serverId}`]);
+        // Người bị loại không còn được theo dõi presence của các thành viên server này.
+        // ponytail: O(số member) lúc kick/ban (hiếm); server rất đông thì lưu serverId trong tên room.
+        memberPresenceRooms ??= (
+          await this.prisma.member.findMany({ where: { serverId }, select: { userId: true } })
+        ).map((member) => presenceRoom(member.userId));
+        sockets.socketsLeave([...channelRooms, `server:${serverId}`, ...memberPresenceRooms]);
         this.server.to(`user:${userId}`).emit(ServerEvents.MemberRemoved, {
           serverId,
           ...(opts?.banned ? { banned: true } : {}),
@@ -115,8 +123,9 @@ export class RealtimeService {
     if (!this.server) {
       return;
     }
+    const presenceRooms = userIds.map(presenceRoom);
     for (const userId of userIds) {
-      this.server.in(`user:${userId}`).socketsLeave(`server:${serverId}`);
+      this.server.in(`user:${userId}`).socketsLeave([`server:${serverId}`, ...presenceRooms]);
       this.server.to(`user:${userId}`).emit(ServerEvents.MemberRemoved, { serverId });
     }
   }

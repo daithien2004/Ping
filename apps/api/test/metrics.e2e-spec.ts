@@ -25,6 +25,8 @@ describe('metrics (e2e)', () => {
 
   beforeAll(async () => {
     app = await bootApp({ websocket: true });
+    // Hạn mức đăng ký 5/phút theo IP nằm trong Redis dùng chung: xóa để không dính 429 từ spec/lần chạy trước.
+    await app.get(RedisProvider).flushdb();
     const address = app.getHttpServer().address();
     wsPort = typeof address === 'object' && address !== null ? address.port : 0;
     port = await app.get(MetricsService).listen(0);

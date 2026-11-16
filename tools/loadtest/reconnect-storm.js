@@ -9,6 +9,8 @@ const PORTS = (__ENV.PORTS || '4001').split(',');
 const SOCKETS = Number(__ENV.SOCKETS || 1000);
 const ROUNDS = Number(__ENV.ROUNDS || 3);
 const HOLD_MS = Number(__ENV.HOLD_S || 15) * 1000;
+// WATCH=N: mỗi socket đăng ký presence của N thành viên server (cần PRESENCE_SCOPED=true ở API).
+const WATCH = Number(__ENV.WATCH || 0);
 
 const recovery = new Trend('reconnect_ms', true);
 const failures = new Counter('reconnect_failures');
@@ -55,6 +57,10 @@ export default function () {
             return;
           }
           joined.add(1);
+          if (WATCH > 0) {
+            const userIds = tokens.slice(0, Math.min(WATCH, 100)).map((entry) => entry.userId);
+            socket.emit('presence.watch', { serverId: meta.serverId, userIds }, () => {});
+          }
           if (lostAt) recovery.add(Date.now() - lostAt);
           lostAt = 0;
           setTimeout(() => {

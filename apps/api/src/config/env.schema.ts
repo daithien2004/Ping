@@ -26,6 +26,11 @@ export const envSchema = z.object({
   PG_POOL_MAX: z.coerce.number().int().min(1).max(100).default(10),
   // Cửa sổ gộp presence (ms); 0 = phát ngay.
   PRESENCE_BATCH_MS: z.coerce.number().int().min(0).max(5_000).default(1_000),
+  // true = presence chỉ tới socket đã `presence.watch` (ADR-0091); bật sau khi web có hook watch, nếu không client cũ mất presence.
+  PRESENCE_SCOPED: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
   REDIS_COMMAND_TIMEOUT_MS: z.coerce.number().int().min(50).default(1_000),
   // GRACE (ms): /ready đã 503 nhưng vẫn nhận request để LB kịp loại instance; TIMEOUT: trần tắt, quá hạn thì buộc thoát.
   SHUTDOWN_GRACE_MS: z.coerce.number().int().min(0).default(0),

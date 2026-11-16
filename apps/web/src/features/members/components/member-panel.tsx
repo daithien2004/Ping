@@ -12,7 +12,7 @@ import { UserAvatar } from '@/features/profile/components/user-avatar';
 import { errorReference } from '@/lib/error-reference';
 import { useErrorMessage } from '@/lib/error-message';
 import { groupByPresence } from '../member-cache';
-import { useMembers } from '../hooks';
+import { useMembers, usePresenceWatch } from '../hooks';
 
 function MemberRow({
   member,
@@ -108,6 +108,10 @@ export function MemberPanel({ serverId }: { serverId: string }) {
   const { data: me } = useMe();
   const members = query.data?.pages.flatMap((page) => page.members) ?? [];
   const { online, offline } = groupByPresence(members);
+  usePresenceWatch(
+    serverId,
+    members.map((member) => member.userId),
+  );
   const message = query.isError ? errorMessage(query.error) : '';
   const reference = query.isError ? errorReference(query.error) : undefined;
 
