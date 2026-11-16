@@ -333,6 +333,7 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
     const batchMs = this.config.get('PRESENCE_BATCH_MS', { infer: true }) ?? 1000;
     if (batchMs === 0) {
       for (const membership of memberships) {
+        this.metrics.presenceEmittedOnce();
         this.server.to(`server:${membership.serverId}`).emit(ServerEvents.PresenceUpdated, {
           userId,
           status,
@@ -363,6 +364,7 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
     this.presenceTimers.delete(serverId);
     if (!pending) return;
     for (const [userId, status] of pending) {
+      this.metrics.presenceEmittedOnce();
       this.server.to(`server:${serverId}`).emit(ServerEvents.PresenceUpdated, {
         userId,
         status,

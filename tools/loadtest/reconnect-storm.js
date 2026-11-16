@@ -15,6 +15,7 @@ const failures = new Counter('reconnect_failures');
 const connectFailed = new Counter('connect_failed');
 const joinFailed = new Counter('join_failed');
 const joined = new Counter('joins_ok');
+const presenceReceived = new Counter('presence_received');
 
 export const options = {
   scenarios: {
@@ -68,6 +69,9 @@ export default function () {
             client.close();
           }, HOLD_MS);
         });
+      },
+      onEvent(name) {
+        if (name === 'presence.updated') presenceReceived.add(1);
       },
       onClose() {
         if (ending) return;

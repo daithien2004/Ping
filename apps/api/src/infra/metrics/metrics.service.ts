@@ -50,6 +50,11 @@ export class MetricsService implements OnModuleDestroy {
     help: 'Số lần socket ngắt kết nối',
     registers: [this.registry],
   });
+  private readonly presenceEmitted = new Counter({
+    name: 'presence_emitted_total',
+    help: 'Số lệnh phát presence.updated tới một room (mỗi lệnh đến mọi socket trong room)',
+    registers: [this.registry],
+  });
   private server: Server | undefined;
   readonly outboxPending = new Gauge({
     name: 'outbox_pending',
@@ -202,6 +207,10 @@ export class MetricsService implements OnModuleDestroy {
   socketClosed(): void {
     this.wsConnections.dec();
     this.wsDisconnects.inc();
+  }
+
+  presenceEmittedOnce(): void {
+    this.presenceEmitted.inc();
   }
 
   aiRequestFinished(outcome: AiRequestOutcome, seconds: number): void {

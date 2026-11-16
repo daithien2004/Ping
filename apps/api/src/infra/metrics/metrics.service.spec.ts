@@ -30,6 +30,15 @@ async function setup(budget = 10) {
   };
 }
 
+describe('presence metrics', () => {
+  it('counts each presence emit without labels', async () => {
+    const { service, scrape } = await setup();
+    service.presenceEmittedOnce();
+    service.presenceEmittedOnce();
+    expect(await scrape()).toContain('presence_emitted_total 2');
+  });
+});
+
 describe('AI observability', () => {
   it('reads durable daily spend at scrape time, including the UTC day after midnight', async () => {
     const { aggregate, scrape } = await setup();
