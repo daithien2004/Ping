@@ -62,6 +62,10 @@ k6 run tools/loadtest/socket-fanout.js  -e BASE_URL=https://<host> -e LISTENERS=
 Rate limit theo người dùng vẫn bật: mỗi token chỉ có 120 request lịch sử/phút, nên 429 là chính sách
 chứ không phải VPS quá tải. Kết quả 2026-11-14: [2026-11-14-vps.md](2026-11-14-vps.md).
 
+So sánh bão presence giữa các cấu hình (tự dựng một instance, đo, tắt, in số `presence_emitted_total` và
+`presence_received`): `SOCKETS=300 bash tools/loadtest/storm-compare.sh <nhãn> <PRESENCE_BATCH_MS> <PRESENCE_SCOPED> <WATCH>`.
+Kết quả mẫu: [2026-11-16-presence-scope.md](2026-11-16-presence-scope.md).
+
 ## Các kịch bản đo gì
 
 | Kịch bản             | Làm gì                                                                                                                                | Chỉ số chính                                                |

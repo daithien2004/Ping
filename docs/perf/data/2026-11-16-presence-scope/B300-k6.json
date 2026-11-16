@@ -1,0 +1,99 @@
+{
+  "metrics": {
+    "connect_failed": {
+      "count": 53,
+      "rate": 0.7480640388491504
+    },
+    "ws_msgs_received": {
+      "count": 380673,
+      "rate": 5372.977016241936
+    },
+    "data_sent": {
+      "count": 683704,
+      "rate": 9650.082558817348
+    },
+    "data_received": {
+      "count": 35184489,
+      "rate": 496608.5084185567
+    },
+    "iteration_duration": {
+      "avg": 67779.26411866664,
+      "min": 62569.1977,
+      "med": 68643.19675,
+      "max": 70827.7203,
+      "p(90)": 68655.33554,
+      "p(95)": 68657.202865
+    },
+    "joins_ok": {
+      "count": 1200,
+      "rate": 16.937298992810952
+    },
+    "ws_session_duration": {
+      "min": 15188.0685,
+      "med": 15966.7493,
+      "max": 19533.0157,
+      "p(90)": 18635.59,
+      "p(95)": 18637.474,
+      "avg": 16900.39363983338
+    },
+    "reconnect_ms": {
+      "avg": 1684.7722980062958,
+      "min": 187,
+      "med": 980,
+      "max": 3746,
+      "p(90)": 3642,
+      "p(95)": 3643,
+      "thresholds": {
+        "p(95)<5000": false
+      }
+    },
+    "vus_max": {
+      "value": 300,
+      "min": 300,
+      "max": 300
+    },
+    "presence_received": {
+      "count": 377073,
+      "rate": 5322.165119263504
+    },
+    "ws_msgs_sent": {
+      "count": 3600,
+      "rate": 50.811896978432856
+    },
+    "reconnect_failures": {
+      "count": 53,
+      "rate": 0.7480640388491504,
+      "thresholds": {
+        "count<3": true
+      }
+    },
+    "ws_sessions": {
+      "count": 1253,
+      "rate": 17.685363031660103
+    },
+    "iterations": {
+      "rate": 4.234324748202738,
+      "count": 300
+    },
+    "ws_connecting": {
+      "max": 423.5237,
+      "p(90)": 347.8434,
+      "p(95)": 375.0909999999984,
+      "avg": 176.99378244213918,
+      "min": 0,
+      "med": 176.4635
+    },
+    "vus": {
+      "value": 6,
+      "min": 6,
+      "max": 300
+    }
+  },
+  "root_group": {
+    "path": "",
+    "id": "d41d8cd98f00b204e9800998ecf8427e",
+    "groups": {},
+    "checks": {},
+    "name": ""
+  }
+}

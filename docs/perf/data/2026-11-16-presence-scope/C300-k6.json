@@ -1,0 +1,99 @@
+{
+  "root_group": {
+    "path": "",
+    "id": "d41d8cd98f00b204e9800998ecf8427e",
+    "groups": {},
+    "checks": {},
+    "name": ""
+  },
+  "metrics": {
+    "ws_connecting": {
+      "avg": 147.70015620496403,
+      "min": 0,
+      "med": 119.8982,
+      "max": 425.2759,
+      "p(90)": 342.6269,
+      "p(95)": 347.9153
+    },
+    "vus": {
+      "value": 190,
+      "min": 190,
+      "max": 300
+    },
+    "vus_max": {
+      "value": 300,
+      "min": 300,
+      "max": 300
+    },
+    "iteration_duration": {
+      "max": 65643.134,
+      "p(90)": 65624.01995,
+      "p(95)": 65627.10912000001,
+      "avg": 64987.145691333375,
+      "min": 63169.0728,
+      "med": 65597.23495
+    },
+    "iterations": {
+      "count": 300,
+      "rate": 4.569750552062424
+    },
+    "data_received": {
+      "count": 5808619,
+      "rate": 88479.79960656763
+    },
+    "ws_sessions": {
+      "count": 1249,
+      "rate": 19.025394798419892
+    },
+    "ws_msgs_received": {
+      "rate": 561.6375753503122,
+      "count": 36871
+    },
+    "ws_msgs_sent": {
+      "count": 4800,
+      "rate": 73.11600883299879
+    },
+    "reconnect_ms": {
+      "p(95)": 2156.7999999999515,
+      "avg": 1152.4710221285563,
+      "min": 349,
+      "med": 1088,
+      "max": 2374,
+      "p(90)": 1825,
+      "thresholds": {
+        "p(95)<5000": false
+      }
+    },
+    "presence_received": {
+      "count": 32071,
+      "rate": 488.5215665173134
+    },
+    "data_sent": {
+      "count": 3135304,
+      "rate": 47758.52394961176
+    },
+    "connect_failed": {
+      "count": 49,
+      "rate": 0.746392590170196
+    },
+    "ws_session_duration": {
+      "min": 15349.5145,
+      "med": 16082.393,
+      "max": 16860.0137,
+      "p(90)": 16812.84593,
+      "p(95)": 16827.12495,
+      "avg": 16205.67571391666
+    },
+    "joins_ok": {
+      "count": 1200,
+      "rate": 18.279002208249697
+    },
+    "reconnect_failures": {
+      "count": 49,
+      "rate": 0.746392590170196,
+      "thresholds": {
+        "count<3": true
+      }
+    }
+  }
+}

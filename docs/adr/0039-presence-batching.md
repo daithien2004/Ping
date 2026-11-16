@@ -1,6 +1,6 @@
 # ADR-0039: Gộp (batch) presence và giới hạn phạm vi đăng ký
 
-Status: proposed — chờ OWNER duyệt
+Status: accepted — số đo 2026-11-16 ủng hộ ở mức khiêm tốn (laptop, 300 socket, một mẫu): số lệnh phát −37,8%, số event nhận −22,5%; xem [báo cáo](../perf/2026-11-16-presence-scope.md). Phần 3 (đăng ký theo thành viên đang xem) do [ADR-0091](0091-presence-theo-thanh-vien-dang-xem.md) làm.
 Date: 2026-10-22
 
 ## Context

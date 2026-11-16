@@ -1,6 +1,6 @@
 # ADR-0091: Presence chỉ tới socket đã đăng ký thành viên đang xem
 
-Status: proposed — chờ số đo B3 (kế hoạch `PLAN-SCALE-PING.md`); chuyển `accepted` nếu `presence_received` giảm đúng kỳ vọng.
+Status: accepted — số đo B3 ủng hộ (laptop, một mẫu mỗi cấu hình, xem [báo cáo](../perf/2026-11-16-presence-scope.md)); cờ giữ mặc định tắt cho tới khi deploy web mới.
 Date: 2026-11-16
 
 ## Context
@@ -50,8 +50,12 @@ Client chỉ hiển thị presence trong panel thành viên của **một** serv
 ## Consequences
 
 - Số event presence mỗi socket nhận tỉ lệ với số thành viên đang hiển thị (≤ 200), không phải kích
-  thước server. Con số thực phải đo bằng `tools/loadtest/reconnect-storm.js -e WATCH=50` so với
-  `WATCH=0` ở cờ tắt (`presence_received` phía client, `presence_emitted_total` phía server). **Chưa đo.**
+  thước server. Đo ngày 2026-11-16 (300 socket, một server 500 thành viên, mỗi socket đăng ký 50 người,
+  một instance, k6 cùng máy, một mẫu): `presence_received` **377.073 → 32.071 (−91,5%)** so với cờ tắt cùng
+  `PRESENCE_BATCH_MS=1000`; so với trước batching 486.644 → 32.071 (−93,4%). Số lệnh phát
+  (`presence_emitted_total`) gần như không đổi (1.494 so với 1.496) vì mỗi user chỉ ở một server.
+  Cả ba lần đo đều có 40–53 lần nối thất bại và vượt ngưỡng k6 của kịch bản, nên chưa kết luận về độ
+  trễ hồi phục; chưa lặp lại; chưa đo nhiều instance hay user ở nhiều server.
 - **Thứ tự triển khai bắt buộc:** deploy web có `usePresenceWatch` trước, bật `PRESENCE_SCOPED=true` sau.
   Bật cờ khi client cũ còn chạy thì client cũ không gửi `presence.watch` và mất presence.
   Khi cần quay lại, chỉ cần tắt cờ.

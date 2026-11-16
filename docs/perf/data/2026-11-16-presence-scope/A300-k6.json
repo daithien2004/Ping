@@ -1,0 +1,99 @@
+{
+  "root_group": {
+    "groups": {},
+    "checks": {},
+    "name": "",
+    "path": "",
+    "id": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "metrics": {
+    "reconnect_failures": {
+      "count": 40,
+      "rate": 0.5130051874533075,
+      "thresholds": {
+        "count<3": true
+      }
+    },
+    "data_received": {
+      "count": 46060827,
+      "rate": 590736.0797347341
+    },
+    "reconnect_ms": {
+      "avg": 3169.73085106383,
+      "min": 41,
+      "med": 2519,
+      "max": 5702,
+      "p(90)": 5484,
+      "p(95)": 5484,
+      "thresholds": {
+        "p(95)<5000": true
+      }
+    },
+    "ws_sessions": {
+      "count": 1240,
+      "rate": 15.903160811052532
+    },
+    "iterations": {
+      "count": 300,
+      "rate": 3.847538905899806
+    },
+    "joins_ok": {
+      "count": 1200,
+      "rate": 15.390155623599224
+    },
+    "data_sent": {
+      "count": 683704,
+      "rate": 8768.592467064404
+    },
+    "ws_connecting": {
+      "p(90)": 504.8489,
+      "p(95)": 844.7337,
+      "avg": 262.093328225807,
+      "min": 0,
+      "med": 245.41995,
+      "max": 902.3006
+    },
+    "iteration_duration": {
+      "avg": 73731.06887833336,
+      "min": 62371.6124,
+      "med": 74743.92565,
+      "max": 77952.8653,
+      "p(90)": 74893.83296,
+      "p(95)": 77364.99161000001
+    },
+    "connect_failed": {
+      "count": 40,
+      "rate": 0.5130051874533075
+    },
+    "vus_max": {
+      "value": 300,
+      "min": 300,
+      "max": 300
+    },
+    "ws_session_duration": {
+      "avg": 18399.049938333355,
+      "min": 15039.3317,
+      "med": 17516.76815,
+      "max": 20794.3389,
+      "p(90)": 20763.1176,
+      "p(95)": 20785.8819
+    },
+    "ws_msgs_received": {
+      "count": 490244,
+      "rate": 6287.4428779464815
+    },
+    "ws_msgs_sent": {
+      "count": 3600,
+      "rate": 46.17046687079767
+    },
+    "presence_received": {
+      "count": 486644,
+      "rate": 6241.2724110756835
+    },
+    "vus": {
+      "value": 14,
+      "min": 14,
+      "max": 300
+    }
+  }
+}

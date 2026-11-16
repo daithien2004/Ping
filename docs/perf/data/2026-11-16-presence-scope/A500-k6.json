@@ -1,0 +1,99 @@
+{
+  "root_group": {
+    "checks": {},
+    "name": "",
+    "path": "",
+    "id": "d41d8cd98f00b204e9800998ecf8427e",
+    "groups": {}
+  },
+  "metrics": {
+    "ws_sessions": {
+      "count": 797,
+      "rate": 3.7942362163245
+    },
+    "iterations": {
+      "count": 69,
+      "rate": 0.32848469125017626
+    },
+    "joins_ok": {
+      "count": 276,
+      "rate": 1.313938765000705
+    },
+    "ws_msgs_received": {
+      "rate": 1975.7735294497197,
+      "count": 415022
+    },
+    "vus": {
+      "value": 431,
+      "min": 431,
+      "max": 500
+    },
+    "ws_connecting": {
+      "avg": 195.42222383939756,
+      "min": 0,
+      "med": 106.7702,
+      "max": 622.2653,
+      "p(90)": 552.862,
+      "p(95)": 588.1859
+    },
+    "presence_received": {
+      "count": 409453,
+      "rate": 1949.261482412441
+    },
+    "data_received": {
+      "count": 38148096,
+      "rate": 181609.6454542331
+    },
+    "reconnect_failures": {
+      "count": 90,
+      "rate": 0.42845829293501253,
+      "thresholds": {
+        "count<5": true
+      }
+    },
+    "data_sent": {
+      "count": 427379,
+      "rate": 2034.600853069697
+    },
+    "connect_failed": {
+      "count": 90,
+      "rate": 0.42845829293501253
+    },
+    "iteration_duration": {
+      "max": 74753.8375,
+      "p(90)": 74709.80958,
+      "p(95)": 74726.2966,
+      "avg": 74070.43553623189,
+      "min": 69586.9794,
+      "med": 74699.2657
+    },
+    "ws_msgs_sent": {
+      "count": 5138,
+      "rate": 24.46020787888994
+    },
+    "ws_session_duration": {
+      "min": 15053.34,
+      "med": 17194.824399999998,
+      "max": 23479.7628,
+      "p(90)": 22477.1124,
+      "p(95)": 22487.358,
+      "avg": 18306.107551086963
+    },
+    "vus_max": {
+      "value": 500,
+      "min": 500,
+      "max": 500
+    },
+    "reconnect_ms": {
+      "avg": 3316.5169811320757,
+      "min": 51,
+      "med": 2200,
+      "max": 8474,
+      "p(90)": 8471,
+      "p(95)": 8472,
+      "thresholds": {
+        "p(95)<5000": true
+      }
+    }
+  }
+}

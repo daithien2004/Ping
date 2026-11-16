@@ -87,7 +87,14 @@ socket với mốc 25,3 giây. T1.2 (commit `62a7207`, base `6730aec`) chỉ ch�
 đợt này ([status](../status.md)).
 
 Chạy lại: lệnh trong [T0.6](../evidence/T0.6/README.md) và [runbook tải](../../perf/README.md).
-Số after cần cùng profile với `PRESENCE_BATCH_MS=1000`; lần đo đó **chưa thực hiện**.
+Số after cần cùng profile với `PRESENCE_BATCH_MS=1000`; lần đo đó **chưa thực hiện** ở các profile 500 và
+2.000 socket ở trên.
+
+Cập nhật 2026-11-16: đã đo ở profile khác (300 socket, một instance, một server 500 thành viên, một mẫu mỗi
+cấu hình, k6 cùng máy; [báo cáo](../../perf/2026-11-16-presence-scope.md)). Batching: lệnh phát −37,8%,
+event nhận −22,5%, đúng nhận định ở mục 4 là batching không giảm số người nhận. Đăng ký theo thành viên
+đang xem ([ADR-0091](../../adr/0091-presence-theo-thanh-vien-dang-xem.md)): event nhận −91,5% so với chỉ
+batching. Không so trực tiếp với các số 4,9 triệu và 919.318 ở trên vì khác profile.
 
 ## 6. Trade-off và rủi ro còn lại
 
