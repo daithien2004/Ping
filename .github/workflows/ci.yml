@@ -167,6 +167,10 @@ jobs:
         ports: ['6379:6379']
         options: >-
           --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 5s --health-retries 10
+      # ADR-0094: outbox đi qua Kafka; kafka-*.e2e-spec cần broker thật (image mặc định: KRaft một node ở 9092).
+      kafka:
+        image: apache/kafka:3.9.0
+        ports: ['9092:9092']
       # TG.8: account-lifecycle e2e đọc token từ Mailpit API (8025) và API gửi qua SMTP (1025).
       mailpit:
         image: axllent/mailpit:v1.20

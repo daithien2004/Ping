@@ -1,6 +1,6 @@
-# ADR-0094: Kafka là đường chuyển outbox → indexer (sau cờ `BUS_DRIVER`), Redis Stream vẫn là mặc định
+# ADR-0094: Kafka là đường chuyển outbox → indexer
 
-Status: proposed — code, test và đo ở mục "Bằng chứng"; chuyển `accepted` khi OWNER chọn bật `BUS_DRIVER=kafka` cho môi trường nào đó.
+Status: accepted — OWNER chọn Kafka làm đường duy nhất; cờ `BUS_DRIVER` và Redis Stream đã gỡ ở [ADR-0096](0096-bo-cho-cu-presence-va-redis-stream.md). Phần "Bằng chứng" bên dưới ghi lại lúc còn hai đường.
 Date: 2026-11-17
 
 ## Context

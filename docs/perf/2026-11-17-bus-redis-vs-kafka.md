@@ -1,5 +1,7 @@
 # Báo cáo hiệu năng — Redis Stream và Kafka trên luồng outbox → indexer (S1, 2026-11-17)
 
+> Lưu ý: bản ghi lịch sử. Sau [ADR-0096](../adr/0096-bo-cho-cu-presence-va-redis-stream.md) Redis Stream và công cụ `loadtest:bus` đã bị gỡ khỏi repo, nên không chạy lại được nguyên văn.
+
 Câu hỏi: cùng một luồng `message.*` (phát tuần tự như `OutboxRelayService`, consumer là runner thật của indexer với handler
 không làm gì), Redis Stream và Kafka khác nhau thế nào về thông lượng, độ trễ đầu cuối và bộ nhớ?
 ([ADR-0094](../adr/0094-kafka-lam-duong-chuyen-outbox.md))

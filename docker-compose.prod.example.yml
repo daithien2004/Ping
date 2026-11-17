@@ -1,4 +1,4 @@
-# Stack production mẫu (ADR-0035): nginx → web + api → postgres + redis, migration là service chạy MỘT LẦN.
+# Stack production mẫu (ADR-0035): nginx → web + api → postgres + redis + kafka, migration là service chạy MỘT LẦN.
 # Local: docker compose -p pingprod -f docker-compose.prod.example.yml --env-file .env.prod up -d --build
 # VPS: GitHub Actions publish image lên GHCR rồi chạy compose không có --build.
 # Một domain duy nhất: Nginx đưa /api và /socket.io về api, còn lại về web. Cùng origin nên cookie refresh
@@ -45,6 +45,36 @@ services:
       postgres: { condition: service_healthy }
     restart: 'no'
 
+  # ADR-0094: đường chuyển outbox → indexer. Chỉ nằm trong mạng compose, KHÔNG publish cổng. KRaft một node,
+  # heap giới hạn vì VPS 4 GB RAM. Nếu Kafka chết, tin vẫn lưu và phát realtime; event outbox chờ rồi được phát lại.
+  kafka:
+    image: apache/kafka:3.9.0
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_HEAP_OPTS: -Xms256m -Xmx512m
+    volumes: ['kafkadata:/var/lib/kafka/data']
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          '/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1',
+        ]
+      interval: 10s
+      timeout: 10s
+      start_period: 30s
+      retries: 10
+    restart: unless-stopped
+
   api:
     image: ghcr.io/${GHCR_OWNER}/ping-api:${IMAGE_TAG}
     build: { context: ., dockerfile: apps/api/Dockerfile, target: runner }
@@ -63,12 +93,14 @@ services:
       SHUTDOWN_TIMEOUT_MS: 25000
       SENTRY_DSN: ${SENTRY_DSN:-}
       QDRANT_URL: http://qdrant:6333
+      KAFKA_BROKERS: kafka:9092
       # METRICS_PORT cố ý không đặt: đặt thì chỉ mở trong mạng nội bộ của compose, KHÔNG publish ra ngoài.
     volumes: ['uploads:/app/uploads']
     depends_on:
       migrate: { condition: service_completed_successfully }
       redis: { condition: service_healthy }
       qdrant: { condition: service_healthy }
+      kafka: { condition: service_healthy }
     stop_grace_period: 40s # > SHUTDOWN_GRACE_MS + SHUTDOWN_TIMEOUT_MS thì docker mới không SIGKILL giữa chừng
     restart: unless-stopped
 
@@ -86,6 +118,7 @@ services:
       migrate: { condition: service_completed_successfully }
       redis: { condition: service_healthy }
       qdrant: { condition: service_healthy }
+      kafka: { condition: service_healthy }
     healthcheck:
       test:
         [
@@ -127,4 +160,5 @@ services:
 volumes:
   pgdata:
   qdrantdata:
+  kafkadata:
   uploads:

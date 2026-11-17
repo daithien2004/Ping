@@ -38,12 +38,10 @@ services:
     image: axllent/mailpit:v1.20
     ports: ['127.0.0.1:8025:8025', '127.0.0.1:1025:1025']
 
-  # ADR-0094: đường chuyển outbox → indexer khi BUS_DRIVER=kafka. Profile riêng nên `docker compose up -d`
-  # mặc định KHÔNG bật; chạy `docker compose --profile kafka up -d kafka`. KRaft một node (không Zookeeper),
-  # heap giới hạn 512 MB để đo RAM cỡ VPS. Chỉ mở trên loopback.
+  # ADR-0094: đường chuyển outbox → indexer. KRaft một node (không Zookeeper), heap giới hạn 512 MB cỡ VPS.
+  # Chỉ mở trên loopback.
   kafka:
     image: apache/kafka:3.9.0
-    profiles: ['kafka']
     ports: ['127.0.0.1:9092:9092']
     environment:
       KAFKA_NODE_ID: 1

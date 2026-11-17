@@ -3,14 +3,9 @@ import { ErrorCodes, type MemberPage, type PresenceWatchResult } from '@ping/sha
 import { randomUUID } from 'node:crypto';
 import request from 'supertest';
 import { io, type Socket } from 'socket.io-client';
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { RedisProvider } from '../src/infra/redis/redis.module.js';
 import { bootApp } from './helpers/boot.js';
-
-// ConfigModule chụp env lúc import AppModule nên phải đặt trước mọi import.
-vi.hoisted(() => {
-  process.env.PRESENCE_SCOPED = 'true';
-});
 
 type User = { id: string; token: string };
 type Presence = { userId: string; status: 'online' | 'offline' };

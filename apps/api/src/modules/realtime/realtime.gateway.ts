@@ -51,10 +51,8 @@ type AuthSocket = Socket & {
 export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
   // Serialize room commands per socket. Promises must never enter serializable socket.data.
   private readonly roomCommands = new WeakMap<AuthSocket, Promise<unknown>>();
-  private readonly presencePending = new Map<string, Map<string, 'online' | 'offline'>>();
-  private readonly presenceTimers = new Map<string, NodeJS.Timeout>();
-  private readonly scopedPending = new Map<string, 'online' | 'offline'>();
-  private scopedTimer: NodeJS.Timeout | undefined;
+  private readonly presencePending = new Map<string, 'online' | 'offline'>();
+  private presenceTimer: NodeJS.Timeout | undefined;
   @WebSocketServer()
   server!: Server<ServerToClientEvents>;
 
@@ -142,7 +140,7 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
 
       // Phát online ở MỌI lần kết nối để tránh đua khi hai tab nối cùng lúc; best-effort, pool Postgres cạn thì bỏ qua.
       try {
-        await this.broadcastPresence(userId, 'online');
+        this.broadcastPresence(userId, 'online');
       } catch (error) {
         this.logger.warn(
           { sid: socket.id, userId, err: (error as Error).message },
@@ -167,7 +165,7 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
     }
     try {
       if ((await this.realtimeService.countUserSockets(userId)) === 0) {
-        await this.broadcastPresence(userId, 'offline');
+        this.broadcastPresence(userId, 'offline');
       }
       this.logger.debug({ sid: socket.id, userId }, 'ws: disconnected');
     } catch (error) {
@@ -264,9 +262,6 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
   ): Promise<PresenceWatchResult> {
     if (this.overBudget(socket)) {
       return { ok: false, code: ErrorCodes.TOO_MANY_REQUESTS };
-    }
-    if (!this.presenceScoped) {
-      return { ok: true, online: [] };
     }
     return this.enqueueRoomCommand(socket, () => this.watchPresence(socket, body));
   }
@@ -400,76 +395,26 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
     return undefined;
   }
 
-  private get presenceScoped(): boolean {
-    return this.config.get('PRESENCE_SCOPED', { infer: true }) === true;
-  }
-
-  private emitScopedPresence(userId: string, status: 'online' | 'offline'): void {
+  private emitPresence(userId: string, status: 'online' | 'offline'): void {
     this.metrics.presenceEmittedOnce();
     this.server.to(presenceRoom(userId)).emit(ServerEvents.PresenceUpdated, { userId, status });
   }
 
-  private flushScopedPresence(): void {
-    clearTimeout(this.scopedTimer);
-    this.scopedTimer = undefined;
-    const pending = [...this.scopedPending];
-    this.scopedPending.clear();
-    for (const [userId, status] of pending) this.emitScopedPresence(userId, status);
+  private flushPresence(): void {
+    clearTimeout(this.presenceTimer);
+    this.presenceTimer = undefined;
+    const pending = [...this.presencePending];
+    this.presencePending.clear();
+    for (const [userId, status] of pending) this.emitPresence(userId, status);
   }
 
-  private async broadcastPresence(userId: string, status: 'online' | 'offline'): Promise<void> {
+  private broadcastPresence(userId: string, status: 'online' | 'offline'): void {
     const batchMs = this.config.get('PRESENCE_BATCH_MS', { infer: true }) ?? 1000;
-    if (this.presenceScoped) {
-      if (batchMs === 0) {
-        this.emitScopedPresence(userId, status);
-        return;
-      }
-      this.scopedPending.set(userId, status);
-      this.scopedTimer ??= setTimeout(() => this.flushScopedPresence(), batchMs);
-      return;
-    }
-    const memberships = await this.prisma.member.findMany({
-      where: { userId },
-      select: { serverId: true },
-    });
     if (batchMs === 0) {
-      for (const membership of memberships) {
-        this.metrics.presenceEmittedOnce();
-        this.server.to(`server:${membership.serverId}`).emit(ServerEvents.PresenceUpdated, {
-          userId,
-          status,
-        });
-      }
+      this.emitPresence(userId, status);
       return;
     }
-    for (const membership of memberships) {
-      const serverId = membership.serverId;
-      let pending = this.presencePending.get(serverId);
-      if (!pending) {
-        pending = new Map();
-        this.presencePending.set(serverId, pending);
-      }
-      pending.set(userId, status);
-      if (!this.presenceTimers.has(serverId)) {
-        const timer = setTimeout(() => this.flushPresence(serverId), batchMs);
-        this.presenceTimers.set(serverId, timer);
-      }
-    }
-  }
-
-  private flushPresence(serverId: string): void {
-    const pending = this.presencePending.get(serverId);
-    this.presencePending.delete(serverId);
-    const timer = this.presenceTimers.get(serverId);
-    if (timer) clearTimeout(timer);
-    this.presenceTimers.delete(serverId);
-    if (!pending) return;
-    for (const [userId, status] of pending) {
-      this.metrics.presenceEmittedOnce();
-      this.server.to(`server:${serverId}`).emit(ServerEvents.PresenceUpdated, {
-        userId,
-        status,
-      });
-    }
+    this.presencePending.set(userId, status);
+    this.presenceTimer ??= setTimeout(() => this.flushPresence(), batchMs);
   }
 }

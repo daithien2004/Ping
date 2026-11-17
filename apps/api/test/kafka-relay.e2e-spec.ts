@@ -8,20 +8,17 @@ import { OutboxRelayService } from '../src/infra/events/outbox-relay.service.js'
 import { PrismaService } from '../src/infra/prisma/prisma.service.js';
 import { bootApp } from './helpers/boot.js';
 
-// ConfigModule chụp env lúc import AppModule: phải đặt trước mọi import. Chỉ khi có broker, để spec tự bỏ qua được.
-const brokers = process.env.KAFKA_BROKERS;
+// ConfigModule chụp env lúc import AppModule: phải đặt trước mọi import. Cần broker thật (docker compose up -d kafka).
+const brokers = process.env.KAFKA_BROKERS ?? 'localhost:9092';
 const topic = vi.hoisted(() => `ping.outbox.relay.${Math.random().toString(36).slice(2, 8)}`);
 vi.hoisted(() => {
-  if (process.env.KAFKA_BROKERS) {
-    process.env.BUS_DRIVER = 'kafka';
-    process.env.KAFKA_TOPIC = topic;
-  }
+  process.env.KAFKA_TOPIC = topic;
 });
 
 const AGGREGATE = `kafka-relay-e2e-${Date.now().toString(36)}`;
 const TYPES = ['message.created', 'message.updated', 'message.deleted'] as const;
 
-describe.skipIf(!brokers)('outbox relay → Kafka (e2e, ADR-0094)', () => {
+describe('outbox relay → Kafka (e2e, ADR-0094)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
   const ids = Array.from({ length: 4 }, () => randomUUID());

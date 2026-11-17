@@ -9,7 +9,7 @@ const PORTS = (__ENV.PORTS || '4001').split(',');
 const SOCKETS = Number(__ENV.SOCKETS || 1000);
 const ROUNDS = Number(__ENV.ROUNDS || 3);
 const HOLD_MS = Number(__ENV.HOLD_S || 15) * 1000;
-// WATCH=N: mỗi socket đăng ký presence của N thành viên server (cần PRESENCE_SCOPED=true ở API).
+// WATCH=N: mỗi socket đăng ký presence của N thành viên server.
 const WATCH = Number(__ENV.WATCH || 0);
 
 const recovery = new Trend('reconnect_ms', true);

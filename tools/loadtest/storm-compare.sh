@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Một lần đo bão presence cho một cấu hình (cần `pnpm build`, seed ping_load, k6, Docker đang chạy).
-#   bash tools/loadtest/storm-compare.sh <nhãn> <PRESENCE_BATCH_MS> <PRESENCE_SCOPED true|false> <WATCH>
+#   bash tools/loadtest/storm-compare.sh <nhãn> <PRESENCE_BATCH_MS> <WATCH>
 # Kết quả ở tools/loadtest/data/storm-<nhãn>/ (git bỏ qua). Chỉ đổi MỘT thứ giữa hai lần so sánh.
 set -u
 cd "$(dirname "$0")/../.."
-label=$1 batch=$2 scoped=$3 watch=${4:-0}
+label=$1 batch=$2 watch=${3:-0}
 sockets=${SOCKETS:-500}
 out=tools/loadtest/data/storm-$label
 mkdir -p "$out"
@@ -15,7 +15,7 @@ stop_port() {
   [ -n "$pid" ] && taskkill //F //T //PID "$pid" >/dev/null 2>&1
 }
 
-PRESENCE_BATCH_MS=$batch PRESENCE_SCOPED=$scoped node tools/loadtest/run-instances.mjs 1 >"$out/instance.log" 2>&1 &
+PRESENCE_BATCH_MS=$batch node tools/loadtest/run-instances.mjs 1 >"$out/instance.log" 2>&1 &
 launcher=$!
 for _ in $(seq 1 90); do grep -q "^ready:" "$out/instance.log" && break; sleep 1; done
 if ! grep -q "^ready:" "$out/instance.log"; then
@@ -35,7 +35,7 @@ stop_port 4001
 stop_port 9101
 
 emitted() { grep -E '^presence_emitted_total ' "$1" | awk '{print $2}'; }
-echo "nhãn=$label batch=$batch scoped=$scoped watch=$watch sockets=$sockets"
+echo "nhãn=$label batch=$batch watch=$watch sockets=$sockets"
 echo "presence_emitted_total trước=$(emitted "$out/metrics-before.txt") sau=$(emitted "$out/metrics-after.txt")"
 node -e "
 const m = require('./$out/k6.json').metrics;

@@ -6,7 +6,7 @@ Date: 2026-11-13
 ## Context
 
 [ADR-0044](0044-gap-recovery.md) và T1.3 dựng outbox: `OutboxEvent` ghi cùng transaction
-với dữ liệu nghiệp vụ, `OutboxRelayService` quét bảng và `XADD` vào Redis Stream `stream:outbox`.
+với dữ liệu nghiệp vụ, `OutboxRelayService` quét bảng và phát event sang đường chuyển outbox (lúc viết ADR là `XADD` vào Redis Stream `stream:outbox`; nay là Kafka, xem [ADR-0096](0096-bo-cho-cu-presence-va-redis-stream.md)).
 Ghi chú cục bộ W3 (2026-10-23, không commit) liệt kê giới hạn của relay. Đối chiếu code ngày 2026-11-13:
 
 - **Đã sửa từ trước** (commit `f3f3d5e`): `publishedAt` không còn được đặt khi Redis chết — relay ném

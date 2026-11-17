@@ -29,7 +29,6 @@
     "typecheck": "tsc --noEmit",
     "loadtest:seed": "tsx test/loadtest/seed.ts",
     "loadtest:rolling": "tsx test/loadtest/rolling-restart.ts",
-    "loadtest:bus": "tsx test/loadtest/bus-bench.ts",
     "loadtest:replica": "tsx test/loadtest/replica-lag.ts",
     "loadtest:search": "tsx test/loadtest/search-eval.ts",
     "drill:redis": "tsx test/drill/redis-outage.drill.ts",
@@ -39,8 +38,6 @@
     "ai:smoke": "tsx scripts/smoke-llm.ts",
     "ai:rebuild": "tsx scripts/rebuild-vector-index.ts",
     "ai:backfill": "tsx scripts/backfill-messages.ts",
-    "drill:indexer": "tsx test/drill/indexer-crash.drill.ts",
-    "drill:consumer-lag": "tsx test/drill/consumer-lag.drill.ts",
     "seed:demo": "tsx prisma/seed-demo.ts",
     "ai:eval:qa": "tsx scripts/eval-qa.ts"
   },

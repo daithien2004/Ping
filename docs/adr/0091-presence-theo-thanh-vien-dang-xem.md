@@ -1,6 +1,6 @@
 # ADR-0091: Presence chỉ tới socket đã đăng ký thành viên đang xem
 
-Status: accepted — số đo B3 ủng hộ (laptop, một mẫu mỗi cấu hình, xem [báo cáo](../perf/2026-11-16-presence-scope.md)); cờ giữ mặc định tắt cho tới khi deploy web mới.
+Status: accepted — số đo B3 ủng hộ (laptop, một mẫu mỗi cấu hình, xem [báo cáo](../perf/2026-11-16-presence-scope.md)); **cờ `PRESENCE_SCOPED` đã bị gỡ ở [ADR-0096](0096-bo-cho-cu-presence-va-redis-stream.md): presence theo thành viên là cách duy nhất.**
 Date: 2026-11-16
 
 ## Context

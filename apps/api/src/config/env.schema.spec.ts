@@ -8,36 +8,21 @@ const base = {
   WEB_ORIGIN: 'http://localhost:3000',
 };
 
-describe('envSchema BUS_DRIVER (ADR-0094)', () => {
-  it('mặc định là redis và không cần Kafka', () => {
+describe('envSchema Kafka (ADR-0094)', () => {
+  it('có mặc định cho môi trường dev', () => {
     const env = envSchema.parse(base);
-    expect(env.BUS_DRIVER).toBe('redis');
+    expect(env.KAFKA_BROKERS).toBe('localhost:9092');
     expect(env.KAFKA_TOPIC).toBe('ping.outbox');
     expect(env.KAFKA_PARTITIONS).toBe(3);
   });
 
-  it('kafka thiếu KAFKA_BROKERS thì báo lỗi đúng trường', () => {
-    const result = envSchema.safeParse({ ...base, BUS_DRIVER: 'kafka' });
-    expect(result.success).toBe(false);
-    expect(result.error?.issues[0]?.path).toEqual(['KAFKA_BROKERS']);
-  });
-
-  it('chuỗi rỗng coi như chưa đặt', () => {
-    expect(envSchema.safeParse({ ...base, BUS_DRIVER: 'kafka', KAFKA_BROKERS: '' }).success).toBe(
-      false,
+  it('nhận danh sách broker do production đặt', () => {
+    expect(envSchema.parse({ ...base, KAFKA_BROKERS: 'kafka:9092' }).KAFKA_BROKERS).toBe(
+      'kafka:9092',
     );
   });
 
-  it('kafka có broker thì hợp lệ', () => {
-    const env = envSchema.parse({
-      ...base,
-      BUS_DRIVER: 'kafka',
-      KAFKA_BROKERS: 'localhost:9092',
-    });
-    expect(env.KAFKA_BROKERS).toBe('localhost:9092');
-  });
-
-  it('từ chối driver lạ', () => {
-    expect(envSchema.safeParse({ ...base, BUS_DRIVER: 'rabbit' }).success).toBe(false);
+  it('từ chối broker rỗng', () => {
+    expect(envSchema.safeParse({ ...base, KAFKA_BROKERS: '' }).success).toBe(false);
   });
 });

@@ -366,6 +366,7 @@ describe('Realtime across two instances (e2e)', () => {
   it('presence online phát sang instance khác khi user mới kết nối', async () => {
     const watcherB = await connectClient(portB, owner.token);
     watcherB.emit('channel.join', { channelId });
+    watcherB.emit('presence.watch', { serverId, userIds: [bystander.id] });
     await settle();
 
     // Chờ đúng event của bystander: cửa sổ gộp presence 1 giây có thể mang event của user khác.

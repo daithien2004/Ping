@@ -4,15 +4,15 @@ import { createKafka, parseBrokers, type KafkaSettings } from '../src/infra/even
 import { KafkaPublisher } from '../src/infra/events/kafka.publisher.js';
 import { KafkaIndexerRunner } from '../src/modules/ai/indexer/kafka-indexer.runner.js';
 
-// Cần broker thật: `docker compose --profile kafka up -d kafka` rồi KAFKA_BROKERS=localhost:9092. Không có thì bỏ qua.
-const brokers = process.env.KAFKA_BROKERS;
+// Cần broker thật: `docker compose up -d kafka` (mặc định localhost:9092).
+const brokers = process.env.KAFKA_BROKERS ?? 'localhost:9092';
 const TYPES = ['message.created', 'message.updated', 'message.deleted'] as const;
 
 type Call = { type: string; messageId: string; consumer: string; seq: number };
 
-describe.skipIf(!brokers)('kafka outbox bus (e2e, ADR-0094)', () => {
+describe('kafka outbox bus (e2e, ADR-0094)', () => {
   const settings: KafkaSettings = {
-    brokers: parseBrokers(brokers ?? 'localhost:9092'),
+    brokers: parseBrokers(brokers),
     clientId: 'ping-test',
     topic: `ping.outbox.test.${randomUUID().slice(0, 8)}`,
     partitions: 3,

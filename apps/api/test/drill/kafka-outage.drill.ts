@@ -1,12 +1,11 @@
 /**
- * Dừng container kafka khi API chạy BUS_DRIVER=kafka: REST vẫn ghi được, event outbox nằm yên (không đốt attempts)
- * và được phát khi Kafka về lại. Cần `docker compose --profile kafka up -d kafka` và `pnpm --filter api build`.
+ * Dừng container kafka khi API chạy: REST vẫn ghi được, event outbox nằm yên (không đốt attempts)
+ * và được phát khi Kafka về lại. Cần `docker compose up -d kafka` và `pnpm --filter api build`.
  * Không chạy trong `test:e2e`.
  */
 import pg from 'pg';
 import { call, compose, finish, record, seedChat, startApi, waitFor } from './lib.js';
 
-process.env.BUS_DRIVER = 'kafka';
 process.env.KAFKA_BROKERS ??= 'localhost:9092';
 process.env.KAFKA_TOPIC = `ping.outbox.drill.${Date.now().toString(36)}`;
 process.env.METRICS_PORT = '9109';

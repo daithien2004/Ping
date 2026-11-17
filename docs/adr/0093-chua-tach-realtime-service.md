@@ -18,7 +18,7 @@ rớt socket gây hại thật. Hai phép đo có trong tay:
 
 1. **Chưa tách realtime.** Phần lớn nhiễu đến từ fan-out presence mà B3 đã giải quyết bằng một thay đổi nhỏ trong gateway,
    không thêm đơn vị triển khai. Deploy làm nối lại socket là có thật nhưng đã được vá bằng cursor.
-2. **Làm trước các bước rẻ hơn tách service**, theo thứ tự: bật `PRESENCE_SCOPED` ở môi trường thật (sau khi web mới chạy),
+2. **Làm trước các bước rẻ hơn tách service**, theo thứ tự: presence theo thành viên (đã là mặc định duy nhất từ ADR-0096),
    rồi thử nghiệm pool: tăng `PG_POOL_MAX` hoặc dùng pool riêng cho gateway (giả thuyết cơ chế, chưa kiểm chứng).
 3. **Điều kiện để mở lại B4:** ở môi trường khỏe (REST một mình đạt p95 < 200 ms), lặp lại phép đo trên, sau khi B3 và bước pool
    đã bật; nếu REST p95 khi có storm vẫn > 1,25× REST một mình ở ít nhất hai lần chạy lặp, hoặc số kết nối socket đồng thời một
