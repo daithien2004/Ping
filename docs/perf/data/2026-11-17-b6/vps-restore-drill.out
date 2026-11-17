@@ -1,0 +1,16 @@
+vps_db: 10 MB
+dump_and_transfer_ms=2310
+dump_bytes=131861
+ERROR:  database "ping" already exists
+restore_ms=513
+IDENTICAL_TO_LIVE
+AuditLog|18
+Channel|4
+Member|3
+MemberRole|3
+Message|164
+_prisma_migrations|33
+Role|1
+Server|1
+Session|122
+User|4
