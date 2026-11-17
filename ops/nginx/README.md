@@ -21,10 +21,11 @@ Không cần cài Nginx trên Windows; Docker chạy nó trong container.
 
 ## Nhiều bản sao API
 
-`docker compose ... up -d --scale api=3` đủ để có ba bản sao: `api` không publish cổng và `server api:4000 resolve;` nhận mọi
-bản ghi A của Docker DNS. Không cần sticky session (chỉ WebSocket). Ngân sách kết nối Postgres: số bản sao × `PG_POOL_MAX`
-(cộng worker) phải nằm dưới `max_connections`. Kết quả đo restart cuốn chiếu và giết đột ngột:
-[ADR-0092](../../docs/adr/0092-nhieu-ban-sao-api-sau-nginx.md). Chạy lại thí nghiệm: `tools/loadtest/scale-stack.mjs`.
+Stack prod mẫu chạy hai bản sao: service `api-1` và `api-2` có chung alias mạng `api`, và `server api:4000 resolve;` nhận mọi bản ghi A của
+Docker DNS ([ADR-0097](../../docs/adr/0097-hai-ban-sao-api-trong-compose-prod.md)). Không cần sticky session (chỉ WebSocket). Cập nhật bằng
+`deploy/deploy.sh`, thay từng bản sao một (`compose up` thay mọi bản sao của một service cùng lúc nên không dùng `--scale`). Ngân sách kết nối
+Postgres: số bản sao × `PG_POOL_MAX` (cộng worker) phải nằm dưới `max_connections`. Kết quả đo restart cuốn chiếu và giết đột ngột:
+[ADR-0092](../../docs/adr/0092-nhieu-ban-sao-api-sau-nginx.md). Chạy lại thí nghiệm: `tools/loadtest/scale-stack.mjs`; đo cập nhật compose: `tools/loadtest/compose-rollout.ps1`.
 
 ## Local HTTP
 

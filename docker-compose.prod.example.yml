@@ -75,7 +75,10 @@ services:
       retries: 10
     restart: unless-stopped
 
-  api:
+  # ADR-0097: hai bản sao API là HAI service có cùng alias mạng `api` (Nginx `server api:4000 resolve` nhận cả hai IP, không sticky).
+  # Tách service thay vì `deploy.replicas` để deploy.sh cập nhật tuần tự: `compose up` thay mọi bản sao của một service cùng lúc.
+  # Ngân sách Postgres: số bản sao × PG_POOL_MAX (+ worker) < max_connections. Thêm bản sao: thêm service `api-3` như `api-2`.
+  api-1: &api-service
     image: ghcr.io/${GHCR_OWNER}/ping-api:${IMAGE_TAG}
     build: { context: ., dockerfile: apps/api/Dockerfile, target: runner }
     environment: &api-environment
@@ -101,8 +104,14 @@ services:
       redis: { condition: service_healthy }
       qdrant: { condition: service_healthy }
       kafka: { condition: service_healthy }
+    networks:
+      default:
+        aliases: [api]
     stop_grace_period: 40s # > SHUTDOWN_GRACE_MS + SHUTDOWN_TIMEOUT_MS thì docker mới không SIGKILL giữa chừng
     restart: unless-stopped
+
+  api-2:
+    <<: *api-service
 
   worker:
     image: ghcr.io/${GHCR_OWNER}/ping-api:${IMAGE_TAG}
@@ -154,7 +163,7 @@ services:
       - ./ops/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./ops/nginx:/etc/nginx/ping:ro
       - ./ops/nginx/http.conf.template:/etc/nginx/templates/default.conf.template:ro
-    depends_on: [api, web]
+    depends_on: [api-1, api-2, web]
     restart: unless-stopped
 
 volumes:

@@ -118,7 +118,7 @@ xác minh chuỗi chứng chỉ với `NODE_EXTRA_CA_CERTS`; không đặt `NODE
 ## 4. Xem log, dừng và chạy lại
 
 ```powershell
-docker compose @dc logs --tail 80 api nginx
+docker compose @dc logs --tail 80 api-1 api-2 nginx
 docker compose @dc stop
 docker compose @dc up -d --no-build --wait
 ```
@@ -136,7 +136,7 @@ trong container rồi `docker cp` ra máy; không đưa dump nhị phân qua to�
 $backupDir = Join-Path $deploymentRoot 'backups'
 New-Item -ItemType Directory -Path $backupDir -Force | Out-Null
 $backupFile = Join-Path $backupDir ('ping-' + (Get-Date -Format 'yyyyMMdd-HHmmss') + '.dump')
-docker compose @dc stop api
+docker compose @dc stop api-1 api-2
 $dbContainer = (docker compose @dc ps -q postgres).Trim()
 docker exec $dbContainer pg_dump -U ping -Fc -f /tmp/ping-backup.dump ping
 if ($LASTEXITCODE -ne 0) { throw 'Backup thất bại' }
@@ -157,7 +157,7 @@ $restoredRows = @(docker exec $dbContainer psql -U ping -d $restoreDb -At -F ','
 if ($LASTEXITCODE -ne 0) { throw 'Không đọc được DB khôi phục' }
 if (Compare-Object $sourceRows $restoredRows) { throw 'DB khôi phục chưa khớp DB gốc' }
 Write-Output 'PASS: số hàng và fingerprint 10 bảng khớp, gồm migration'
-docker compose @dc up -d --no-deps --no-build --wait api
+docker compose @dc up -d --no-deps --no-build --wait api-1 api-2
 ```
 
 DB gốc vẫn là `ping`. DB mới chỉ để kiểm restore, chưa chuyển ứng dụng sang đó. SQL đối chiếu dành
@@ -177,12 +177,12 @@ cơ chế chọn image khi chưa có thay đổi code, tạo `practice-b` từ c
 docker image tag ping-local-api:practice-a ping-local-api:practice-b
 docker image tag ping-local-web:practice-a ping-local-web:practice-b
 $env:PING_RELEASE = 'practice-b'
-docker compose @dc up -d --no-deps --no-build --pull never --wait api web
+docker compose @dc up -d --no-deps --no-build --pull never --wait api-1 api-2 web
 if ($LASTEXITCODE -ne 0) { throw 'Chưa chạy được practice-b' }
 node apps/api/test/smoke/prod-stack.mjs
 # Quay lại image đã lưu, không build, không chạy migrate:
 $env:PING_RELEASE = 'practice-a'
-docker compose @dc up -d --no-deps --no-build --pull never --wait api web
+docker compose @dc up -d --no-deps --no-build --pull never --wait api-1 api-2 web
 if ($LASTEXITCODE -ne 0) { throw 'Rollback thất bại' }
 node apps/api/test/smoke/prod-stack.mjs
 Remove-Item Env:PING_RELEASE

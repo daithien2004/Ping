@@ -21,6 +21,16 @@ compose() {
     --env-file .env.prod --env-file images.env "$@"
 }
 
+# ADR-0097: `compose up` thay mọi bản sao của MỘT service cùng lúc, nên hai bản sao API là hai service (api-1, api-2) và được thay lần lượt;
+# bản sao còn lại giữ phục vụ (readiness + SHUTDOWN_GRACE_MS lo việc rút bản sao cũ khỏi Nginx).
+roll_up() {
+  local wait=(--wait --wait-timeout 180)
+  compose up -d "${wait[@]}" migrate worker web
+  compose up -d "${wait[@]}" --no-deps api-1
+  compose up -d "${wait[@]}" --no-deps api-2
+  compose up -d "${wait[@]}" nginx
+}
+
 previous="$(sed -n 's/^IMAGE_TAG=//p' images.env | tail -n 1)"
 set_tag() {
   local value="$1"
@@ -31,15 +41,15 @@ set_tag() {
 rollback() {
   local failed_status="$1"
   echo "deployment of $tag failed; previous image tag was ${previous:-<none>}" >&2
-  compose logs --tail 80 migrate api worker web nginx >&2 || true
+  compose logs --tail 80 migrate api-1 api-2 worker web nginx >&2 || true
   if [ -n "$previous" ]; then
     set_tag "$previous"
     if [ "$previous" != bootstrap ]; then
-      compose pull migrate api web || true
-      compose up -d --wait --wait-timeout 180 || true
+      compose pull migrate api-1 web || true
+      roll_up || true
       compose exec -T nginx nginx -t || true
     else
-      compose stop api worker web nginx || true
+      compose stop api-1 api-2 worker web nginx || true
     fi
   fi
   exit "$failed_status"
@@ -51,10 +61,10 @@ if ! grep -q '^PUBLIC_URL=https://' .env.prod; then
 fi
 set_tag "$tag"
 compose config -q || rollback $?
-compose pull migrate api web || rollback $?
+compose pull migrate api-1 web || rollback $?
 # Validate the new Nginx template and certificate mount before replacing running services.
 compose run --rm --no-deps nginx nginx -t || rollback $?
-compose up -d --wait --wait-timeout 180 || rollback $?
+roll_up || rollback $?
 compose exec -T nginx nginx -t || rollback $?
 docker image prune -f >/dev/null
 echo "deployed $tag"

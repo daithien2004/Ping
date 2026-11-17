@@ -506,10 +506,12 @@ jobs:
         run: node apps/api/test/smoke/prod-stack.mjs
       - name: Graceful shutdown on SIGTERM
         run: |
-          docker compose -p pingprod -f docker-compose.prod.example.yml -f docker-compose.prod.tls.yml --env-file .env.prod stop api
-          code=$(docker inspect pingprod-api-1 --format '{{.State.ExitCode}}')
-          echo "api exit code: $code"
-          test "$code" = "0"
+          docker compose -p pingprod -f docker-compose.prod.example.yml -f docker-compose.prod.tls.yml --env-file .env.prod stop api-1 api-2
+          for name in pingprod-api-1-1 pingprod-api-2-1; do
+            code=$(docker inspect "$name" --format '{{.State.ExitCode}}')
+            echo "$name exit code: $code"
+            test "$code" = "0"
+          done
       - name: Logs on failure
         if: failure()
         # Log job chỉ admin đọc được qua API; annotations để người không admin đối chiếu khi job đỏ.
@@ -523,7 +525,7 @@ jobs:
             echo "--- worker ---"
             $dc logs --tail 20 worker 2>&1 | tail -6
             echo "--- api ---"
-            $dc logs --tail 20 api 2>&1 | tail -6
+            $dc logs --tail 20 api-1 api-2 2>&1 | tail -6
           } > ping-docker-logs.txt 2>&1
           cat ping-docker-logs.txt
           python3 - <<'PY'

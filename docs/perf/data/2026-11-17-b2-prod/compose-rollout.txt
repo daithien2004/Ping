@@ -1,0 +1,7 @@
+Stack pingprod local (compose prod mẫu + TLS + local), Docker Desktop VM 3,1 GB, 2 bản sao API (api-1, api-2), nginx resolve.
+Poll /api/v1/health qua nginx HTTPS liên tục từ máy chủ trong khi thay cả hai bản sao (đổi biến môi trường để compose recreate).
+(Lần đo đầu bằng /api/v1/ready cho 295/2690 lỗi 503 ở chế độ tuần tự: đó là /ready trả 503 CÓ CHỦ ĐÍCH lúc bản sao đang rút, không phải gián đoạn; bỏ.)
+
+[rolling]  compose up 37 giây; ok=2858 bad=0
+[parallel] compose up 25 giây; ok=2043 bad=345 (502=345)
+Một lần chạy mỗi chế độ.
