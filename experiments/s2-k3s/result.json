@@ -1,0 +1,19 @@
+{
+  "importImageMs": 88693,
+  "firstReadyMs": 4091,
+  "replicas": 2,
+  "rolling": {
+    "rolloutMs": 5448,
+    "requests": {
+      "ok": 14830,
+      "bad": 61
+    }
+  },
+  "podKill": {
+    "backToTwoReadyMs": 3013,
+    "requests": {
+      "ok": 9012,
+      "bad": 0
+    }
+  }
+}
