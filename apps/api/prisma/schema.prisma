@@ -597,6 +597,8 @@ model OutboxEvent {
   attempts      Int       @default(0)
   nextRetryAt   DateTime  @default(now())
   createdAt     DateTime  @default(now())
+  /// W3C traceparent của request tạo event (ADR-0100); null khi tracing tắt.
+  traceparent   String?
 
   // Quét relay: WHERE publishedAt IS NULL AND nextRetryAt <= now() ORDER BY createdAt.
   @@index([publishedAt, nextRetryAt, createdAt])

@@ -11,7 +11,7 @@ import sharp from 'sharp';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
 import { AuditService } from '../audit/audit.service.js';
 import { AttachmentsService } from '../attachments/attachments.service.js';
-import { Storage } from '../attachments/local-storage.js';
+import { Storage } from '../attachments/object-storage.js';
 import { RealtimeService } from '../realtime/realtime.service.js';
 
 type CustomEmojiRow = {

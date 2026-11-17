@@ -3,6 +3,8 @@ export interface OutboxMessage {
   type: string;
   aggregateType: string;
   payload: unknown;
+  /** W3C traceparent của request tạo event; đi theo header Kafka để consumer nối tiếp trace. */
+  traceparent?: string | null;
 }
 
 /** Đường chuyển outbox → consumer. Postgres vẫn là nguồn sự thật; mất đường chuyển thì relay phát lại. */

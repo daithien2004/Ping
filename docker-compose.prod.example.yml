@@ -10,11 +10,46 @@ services:
       POSTGRES_USER: ping
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ping
-    volumes: ['pgdata:/var/lib/postgresql/data']
+    command:
+      [
+        'postgres',
+        '-c',
+        'hba_file=/etc/postgresql/pg_hba.conf',
+        '-c',
+        'wal_level=replica',
+        '-c',
+        'max_wal_senders=5',
+      ]
+    volumes:
+      [
+        'pgdata:/var/lib/postgresql/data',
+        './ops/postgres/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro',
+      ]
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U ping']
       interval: 5s
       retries: 10
+    restart: unless-stopped
+
+  # ADR-0102: replica streaming chỉ đọc, chỉ trong mạng compose. API đọc tìm kiếm và trang tin cũ từ đây (REPLICA_DATABASE_URL).
+  postgres-replica:
+    image: postgres:17
+    entrypoint: ['bash', '/replica-entrypoint.sh']
+    environment:
+      PRIMARY_HOST: postgres
+      POSTGRES_USER: ping
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      [
+        'replicadata:/var/lib/postgresql/data',
+        './ops/postgres/replica-entrypoint.sh:/replica-entrypoint.sh:ro',
+      ]
+    depends_on:
+      postgres: { condition: service_healthy }
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ping']
+      interval: 5s
+      retries: 20
     restart: unless-stopped
 
   redis:
@@ -78,12 +113,36 @@ services:
   # ADR-0097: hai bản sao API là HAI service có cùng alias mạng `api` (Nginx `server api:4000 resolve` nhận cả hai IP, không sticky).
   # Tách service thay vì `deploy.replicas` để deploy.sh cập nhật tuần tự: `compose up` thay mọi bản sao của một service cùng lúc.
   # Ngân sách Postgres: số bản sao × PG_POOL_MAX (+ worker) < max_connections. Thêm bản sao: thêm service `api-3` như `api-2`.
+  # ADR-0099: object storage cho file đính kèm; chỉ trong mạng compose, KHÔNG publish cổng. Mọi API, worker, realtime dùng chung qua mạng.
+  minio:
+    # Ảnh minio/minio không còn trên Docker Hub; bitnamilegacy là bản dừng cập nhật bảo mật (xem ADR-0099).
+    image: bitnamilegacy/minio:2025.4.22
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY}
+    volumes: ['miniodata:/bitnami/minio/data']
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -fs http://localhost:9000/minio/health/live || exit 1']
+      interval: 5s
+      retries: 10
+    restart: unless-stopped
+
+  # ADR-0100: nơi nhận và xem trace (bộ nhớ trong, mất khi restart). UI http://127.0.0.1:16686 (không publish ở prod).
+  jaeger:
+    image: jaegertracing/all-in-one:1.65.0
+    environment:
+      COLLECTOR_OTLP_ENABLED: 'true'
+      MEMORY_MAX_TRACES: '2000'
+    restart: unless-stopped
+
   api-1: &api-service
     image: ghcr.io/${GHCR_OWNER}/ping-api:${IMAGE_TAG}
     build: { context: ., dockerfile: apps/api/Dockerfile, target: runner }
     environment: &api-environment
       NODE_ENV: production
-      ATTACHMENT_STORAGE_DIR: /app/uploads
+      S3_ENDPOINT: http://minio:9000
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
       ATTACHMENT_USER_QUOTA_BYTES: ${ATTACHMENT_USER_QUOTA_BYTES:-104857600}
       ATTACHMENT_SERVER_QUOTA_BYTES: ${ATTACHMENT_SERVER_QUOTA_BYTES:-1073741824}
       PORT: 4000
@@ -97,13 +156,15 @@ services:
       SENTRY_DSN: ${SENTRY_DSN:-}
       QDRANT_URL: http://qdrant:6333
       KAFKA_BROKERS: kafka:9092
+      REPLICA_DATABASE_URL: postgresql://ping:${POSTGRES_PASSWORD}@postgres-replica:5432/ping
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
       REALTIME_ROLE: api # ADR-0098: API không giữ socket; service realtime giữ kết nối
       # METRICS_PORT cố ý không đặt: đặt thì chỉ mở trong mạng nội bộ của compose, KHÔNG publish ra ngoài.
-    volumes: ['uploads:/app/uploads']
     depends_on:
       migrate: { condition: service_completed_successfully }
       redis: { condition: service_healthy }
       qdrant: { condition: service_healthy }
+      minio: { condition: service_healthy }
       kafka: { condition: service_healthy }
     networks:
       default:
@@ -141,11 +202,11 @@ services:
       # Healthcheck thật (compose --wait coi service không có healthcheck là lỗi): worker mở
       # cổng metrics nội bộ (ADR-0031), không publish ra ngoài; cổng 4000 của image không dùng.
       METRICS_PORT: 4001
-    volumes: ['uploads:/app/uploads']
     depends_on:
       migrate: { condition: service_completed_successfully }
       redis: { condition: service_healthy }
       qdrant: { condition: service_healthy }
+      minio: { condition: service_healthy }
       kafka: { condition: service_healthy }
     healthcheck:
       test:
@@ -189,4 +250,5 @@ volumes:
   pgdata:
   qdrantdata:
   kafkadata:
-  uploads:
+  miniodata:
+  replicadata:

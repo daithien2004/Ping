@@ -51,7 +51,7 @@ export class MessagesController {
     @Query(new ZodValidationPipe(searchQuerySchema)) query: SearchQuery,
   ) {
     await this.searchRateLimiter.consume(user.userId);
-    return this.searchService.search(serverId, query);
+    return this.searchService.search(serverId, query, user.userId);
   }
 
   @Get('channels/:channelId/messages')

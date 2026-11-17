@@ -51,6 +51,8 @@ docker compose up -d
 pnpm --filter api build
 pnpm --filter api drill:redis      # dừng container redis vài giây
 pnpm --filter api drill:postgres   # dừng container postgres vài giây
+pnpm --filter api drill:kafka      # dừng container kafka: REST vẫn ghi, event outbox chờ rồi được phát lại
+pnpm --filter api drill:kafka-worker  # SIGKILL worker indexer giữa chừng: event treo được giao lại (~30 giây = session timeout)
 ```
 
 Mỗi drill tự chạy API đã build ở cổng 4100 (Redis DB 2), in từng bước PASS/FAIL, và luôn bật lại

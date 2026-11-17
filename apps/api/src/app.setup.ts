@@ -4,6 +4,7 @@ import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { assignRequestId } from './common/request-id.js';
 import { MetricsService } from './infra/metrics/metrics.service.js';
+import { tracingMiddleware } from './infra/tracing/tracing.js';
 import type { Env } from './config/env.schema.js';
 
 export function configureApp(app: NestExpressApplication): void {
@@ -12,6 +13,7 @@ export function configureApp(app: NestExpressApplication): void {
 
   app.set('trust proxy', config.getOrThrow('TRUST_PROXY', { infer: true }));
   app.use(assignRequestId);
+  app.use(tracingMiddleware);
   app.use(app.get(MetricsService).middleware);
   app.use(helmet());
   // 32 KB đủ cho mọi body hợp lệ (tin nhắn tối đa 4000 ký tự).

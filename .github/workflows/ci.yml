@@ -167,6 +167,13 @@ jobs:
         ports: ['6379:6379']
         options: >-
           --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 5s --health-retries 10
+      # ADR-0099: file đính kèm nằm trong object storage S3; ảnh bitnamilegacy tự chạy `minio server` (minio/minio không còn trên Docker Hub).
+      minio:
+        image: bitnamilegacy/minio:2025.4.22
+        env: { MINIO_ROOT_USER: minioadmin, MINIO_ROOT_PASSWORD: minioadmin }
+        ports: ['9000:9000']
+        options: >-
+          --health-cmd "curl -fs http://localhost:9000/minio/health/live" --health-interval 5s --health-timeout 5s --health-retries 10
       # ADR-0094: outbox đi qua Kafka; kafka-*.e2e-spec cần broker thật (image mặc định: KRaft một node ở 9092).
       kafka:
         image: apache/kafka:3.9.0
@@ -219,6 +226,13 @@ jobs:
         ports: ['6379:6379']
         options: >-
           --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 5s --health-retries 10
+      # ADR-0099: file đính kèm nằm trong object storage S3; ảnh bitnamilegacy tự chạy `minio server` (minio/minio không còn trên Docker Hub).
+      minio:
+        image: bitnamilegacy/minio:2025.4.22
+        env: { MINIO_ROOT_USER: minioadmin, MINIO_ROOT_PASSWORD: minioadmin }
+        ports: ['9000:9000']
+        options: >-
+          --health-cmd "curl -fs http://localhost:9000/minio/health/live" --health-interval 5s --health-timeout 5s --health-retries 10
       # TG.8: global-setup verify seed + account.spec đọc token từ Mailpit (8025).
       mailpit:
         image: axllent/mailpit:v1.20
@@ -323,6 +337,13 @@ jobs:
         ports: ['6379:6379']
         options: >-
           --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 5s --health-retries 10
+      # ADR-0099: file đính kèm nằm trong object storage S3; ảnh bitnamilegacy tự chạy `minio server` (minio/minio không còn trên Docker Hub).
+      minio:
+        image: bitnamilegacy/minio:2025.4.22
+        env: { MINIO_ROOT_USER: minioadmin, MINIO_ROOT_PASSWORD: minioadmin }
+        ports: ['9000:9000']
+        options: >-
+          --health-cmd "curl -fs http://localhost:9000/minio/health/live" --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -593,6 +614,13 @@ jobs:
         ports: ['6379:6379']
         options: >-
           --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 5s --health-retries 10
+      # ADR-0099: file đính kèm nằm trong object storage S3; ảnh bitnamilegacy tự chạy `minio server` (minio/minio không còn trên Docker Hub).
+      minio:
+        image: bitnamilegacy/minio:2025.4.22
+        env: { MINIO_ROOT_USER: minioadmin, MINIO_ROOT_PASSWORD: minioadmin }
+        ports: ['9000:9000']
+        options: >-
+          --health-cmd "curl -fs http://localhost:9000/minio/health/live" --health-interval 5s --health-timeout 5s --health-retries 10
     # Báo cáo, chưa chặn merge (quyết định B): ngưỡng cần vài lần chạy để ổn định.
     continue-on-error: true
     steps:

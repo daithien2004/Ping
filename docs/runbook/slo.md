@@ -35,9 +35,12 @@ Quy tắc ở `ops/alerts.yml` (nhóm `ping-slo`), xử lý ở [alerts.md](aler
 - Khi viết test, một kỳ vọng sai của tác giả đã bị `promtool` bắt: tỉ lệ của hai `rate` không phụ thuộc độ dài cửa sổ khi đã có dữ liệu, nên
   cảnh báo đốt nhanh bật ngay khi cả hai cửa sổ có mẫu (sau `for: 2m`), không phải chờ đủ 1 giờ.
 
+- `node ops/monitoring/alert-drill.mjs` (Docker): exporter giả báo 10% request 5xx, Prometheus đánh giá `ops/alerts.yml`, Alertmanager giao `PingErrorBudgetFastBurn:firing`
+  tới một webhook sau 182 giây (một lần chạy; gồm `for: 2m` + hai chu kỳ đánh giá). Khi làm drill, Prometheus 3 từ chối target không có `Content-Type`.
+
 ## Chưa làm
 
-- Chưa có Prometheus/Alertmanager chạy thật nhận các quy tắc này, nên chưa kiểm cảnh báo tới được người nhận.
+- Cảnh báo tới được webhook: Prometheus và Alertmanager thật nhận các quy tắc này. Nơi nhận thật (Slack, email, PagerDuty) chưa cấu hình.
 - Chưa có lưu lượng production: mục tiêu 99,5% và 95% dưới 500 ms chưa được đối chiếu với thực tế. Số đo cục bộ trong
   [báo cáo cô lập gateway](../perf/2026-11-17-gateway-isolation.md) (p95 vài trăm ms tới vài giây dưới tải thử, trong Docker VM nhỏ) không phải
   căn cứ cho mục tiêu production.

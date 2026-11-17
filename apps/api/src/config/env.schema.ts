@@ -1,7 +1,18 @@
 import { z } from 'zod';
 
 export const envSchema = z.object({
-  ATTACHMENT_STORAGE_DIR: z.string().min(1).default('../../.uploads'),
+  // Object storage tương thích S3 cho file đính kèm (ADR-0099). Mặc định là MinIO của docker compose dev.
+  // Replica đọc (ADR-0102): bỏ trống = mọi đọc đi primary. Ngưỡng WAL đã nhận nhưng chưa áp dụng; vượt thì rơi về primary.
+  REPLICA_DATABASE_URL: z.preprocess(
+    (v) => (v === '' ? undefined : v),
+    z.string().url().optional(),
+  ),
+  REPLICA_MAX_LAG_BYTES: z.coerce.number().int().min(0).default(1_048_576),
+  S3_ENDPOINT: z.string().url().default('http://localhost:9000'),
+  S3_REGION: z.string().min(1).default('us-east-1'),
+  S3_BUCKET: z.string().min(1).default('ping-attachments'),
+  S3_ACCESS_KEY: z.string().min(1).default('minioadmin'),
+  S3_SECRET_KEY: z.string().min(1).default('minioadmin'),
   ATTACHMENT_USER_QUOTA_BYTES: z.coerce
     .number()
     .int()

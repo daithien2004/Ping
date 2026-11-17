@@ -18,7 +18,7 @@ import type { Env } from '../../config/env.schema.js';
 import type { Prisma } from '../../generated/prisma/client.js';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
 import { AbilityFactory } from '../ability/ability.factory.js';
-import { Storage } from './local-storage.js';
+import { Storage } from './object-storage.js';
 
 export const attachmentSelect = {
   id: true,

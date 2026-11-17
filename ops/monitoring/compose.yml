@@ -11,6 +11,14 @@ services:
     command:
       - --config.file=/etc/prometheus/prometheus.yml
       - --storage.tsdb.retention.time=3d
+  alertmanager:
+    image: prom/alertmanager:v0.28.1
+    ports: ['127.0.0.1:19093:9093']
+    extra_hosts: ['host.docker.internal:host-gateway']
+    volumes:
+      - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
   grafana:
     image: grafana/grafana:13.2.4
     ports: ['127.0.0.1:13030:3000']

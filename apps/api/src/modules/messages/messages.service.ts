@@ -26,6 +26,7 @@ import {
 import { isUniqueConstraintError } from '../../common/utils/prisma-errors.js';
 import type { Prisma } from '../../generated/prisma/client.js';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
+import { ReadDbService } from '../../infra/prisma/read-db.service.js';
 import { OutboxService } from '../../infra/events/outbox.service.js';
 import { AbilityFactory } from '../ability/ability.factory.js';
 import { AuditService } from '../audit/audit.service.js';
@@ -196,6 +197,7 @@ function toMessageDto<
 export class MessagesService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly readDb: ReadDbService,
     private readonly realtime: RealtimeService,
     private readonly audit: AuditService,
     private readonly rateLimiter: MessageRateLimiter,
@@ -250,7 +252,9 @@ export class MessagesService {
       };
     }
 
-    const messages = await this.prisma.message.findMany({
+    // Trang đầu phải thấy tin vừa gửi (primary); các trang cũ phía sau con trỏ chấp nhận trễ nên đọc replica (ADR-0102).
+    const reader = query.before ? this.readDb.client : this.prisma;
+    const messages = await reader.message.findMany({
       where: {
         channelId,
         deletedAt: null,

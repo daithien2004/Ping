@@ -1,0 +1,11 @@
+# Chồng lên compose.yml cho alert-drill: exporter giả nằm trong mạng compose nên Prometheus scrape được (không phụ thuộc firewall của host).
+services:
+  fake-exporter:
+    image: node:22-alpine
+    command: ['node', '/exporter.mjs']
+    volumes: ['./fake-exporter.mjs:/exporter.mjs:ro']
+  prometheus:
+    volumes:
+      - ./prometheus.drill.yml:/etc/prometheus/prometheus.yml:ro
+      - ../alerts.yml:/etc/prometheus/alerts.yml:ro
+    depends_on: [fake-exporter]

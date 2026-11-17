@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import type { Env } from '../../config/env.schema.js';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
 import { MetricsService } from '../../infra/metrics/metrics.service.js';
-import { Storage } from './local-storage.js';
+import { Storage } from './object-storage.js';
 import {
   InvalidFile,
   validateCustomEmojiFile,

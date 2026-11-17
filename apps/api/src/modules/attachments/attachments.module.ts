@@ -3,7 +3,7 @@ import { AuthModule } from '../auth/auth.module.js';
 import { AttachmentsController } from './attachments.controller.js';
 import { AttachmentsService } from './attachments.service.js';
 import { AttachmentWorker } from './attachment-worker.js';
-import { LocalStorage, Storage } from './local-storage.js';
+import { ObjectStorage, Storage } from './object-storage.js';
 
 @Module({
   imports: [AuthModule],
@@ -11,8 +11,8 @@ import { LocalStorage, Storage } from './local-storage.js';
   providers: [
     AttachmentsService,
     AttachmentWorker,
-    LocalStorage,
-    { provide: Storage, useExisting: LocalStorage },
+    ObjectStorage,
+    { provide: Storage, useExisting: ObjectStorage },
   ],
   exports: [AttachmentsService, Storage],
 })

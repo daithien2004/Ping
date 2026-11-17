@@ -7,7 +7,7 @@ import { ErrorCodes, type ChannelActivityPayload, type MessageCreatedPayload } f
 import { PrismaService } from '../src/infra/prisma/prisma.service.js';
 import { RedisProvider } from '../src/infra/redis/redis.module.js';
 import { AttachmentWorker } from '../src/modules/attachments/attachment-worker.js';
-import { LocalStorage } from '../src/modules/attachments/local-storage.js';
+import { ObjectStorage } from '../src/modules/attachments/object-storage.js';
 import { MessageIndexerCore } from '../src/modules/ai/indexer/message-indexer.core.js';
 import { FakeEmbedder } from '../src/modules/ai/fake-embedder.js';
 import type {
@@ -252,7 +252,7 @@ describe('DM 1:1 + user blocks (e2e)', () => {
     }
     await prisma.server.deleteMany({ where: { ownerId: { in: ids } } });
     await prisma.user.deleteMany({ where: { id: { in: ids } } });
-    const storage = app.get(LocalStorage);
+    const storage = app.get(ObjectStorage);
     for (const id of attachmentIds) {
       for (const suffix of ['raw', 'ready', 'thumb']) await storage.remove(`${id}.${suffix}`);
     }

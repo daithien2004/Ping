@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { currentTraceparent } from '../tracing/tracing.js';
 
 export interface OutboxEventInput {
   aggregateType: string;
@@ -20,6 +21,7 @@ export class OutboxService {
         aggregateId: event.aggregateId,
         type: event.type,
         payload: event.payload as object,
+        traceparent: currentTraceparent(),
       },
     });
   }

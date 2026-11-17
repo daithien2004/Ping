@@ -8,7 +8,7 @@ import { bootApp } from './helpers/boot.js';
 import { PrismaService } from '../src/infra/prisma/prisma.service.js';
 import { MetricsService } from '../src/infra/metrics/metrics.service.js';
 import { AttachmentWorker } from '../src/modules/attachments/attachment-worker.js';
-import { LocalStorage } from '../src/modules/attachments/local-storage.js';
+import { ObjectStorage } from '../src/modules/attachments/object-storage.js';
 import type { Env } from '../src/config/env.schema.js';
 import { RedisProvider } from '../src/infra/redis/redis.module.js';
 
@@ -79,7 +79,7 @@ describe('TG.6 attachments (real Postgres + disk)', () => {
   });
   afterAll(async () => {
     if (!db) return;
-    const storage = app.get(LocalStorage);
+    const storage = app.get(ObjectStorage);
     for (const id of ids)
       for (const suffix of ['raw', 'ready', 'thumb']) await storage.remove(`${id}.${suffix}`);
     await db.attachment.deleteMany({ where: { uploaderId: ownerId } });
@@ -152,7 +152,7 @@ describe('TG.6 attachments (real Postgres + disk)', () => {
     )
       await worker.runOnce();
     expect((await db.attachment.findUniqueOrThrow({ where: { id } })).status).toBe('deleted');
-    await expect(app.get(LocalStorage).read(`${id}.ready`)).rejects.toThrow();
+    await expect(app.get(ObjectStorage).read(`${id}.ready`)).rejects.toThrow();
   });
   it('rejects disguised active files in worker and never exposes their contents', async () => {
     for (const bytes of [
@@ -215,7 +215,7 @@ describe('TG.6 attachments (real Postgres + disk)', () => {
       .send(png)
       .expect(200);
     await auth(http().post(`/api/v1/uploads/${id}/complete`)).expect(201);
-    const storage = app.get(LocalStorage);
+    const storage = app.get(ObjectStorage);
     for (let i = 0; i < 20; i++) {
       const earlier = await db.attachment.count({
         where: { id: { not: id }, status: { in: ['queued', 'deleting'] } },

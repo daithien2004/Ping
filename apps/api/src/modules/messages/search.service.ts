@@ -8,7 +8,9 @@ import {
 } from '@ping/shared';
 import { Prisma } from '../../generated/prisma/client.js';
 import { MetricsService } from '../../infra/metrics/metrics.service.js';
-import { PrismaService } from '../../infra/prisma/prisma.service.js';
+import { ReadDbService } from '../../infra/prisma/read-db.service.js';
+import { RetrievalService } from '../ai/retrieval/retrieval.service.js';
+import { reciprocalRankFusion } from './rrf.js';
 
 interface SearchRow {
   id: string;
@@ -26,15 +28,16 @@ const SEARCH_PROBE_CAP = 1000;
 @Injectable()
 export class SearchService {
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly readDb: ReadDbService,
     private readonly metrics: MetricsService,
+    private readonly retrieval: RetrievalService,
   ) {}
 
-  async search(serverId: string, query: SearchQuery): Promise<SearchResultPage> {
+  async search(serverId: string, query: SearchQuery, userId: string): Promise<SearchResultPage> {
     const started = performance.now();
     let outcome: 'ok' | 'error' = 'error';
     try {
-      const result = await this.searchResults(serverId, query);
+      const result = await this.searchResults(serverId, query, userId);
       outcome = 'ok';
       return result;
     } finally {
@@ -42,7 +45,11 @@ export class SearchService {
     }
   }
 
-  private async searchResults(serverId: string, query: SearchQuery): Promise<SearchResultPage> {
+  private async searchResults(
+    serverId: string,
+    query: SearchQuery,
+    userId: string,
+  ): Promise<SearchResultPage> {
     const q = query.q?.trim() ?? '';
     if (q.length === 0 || q.length > Limits.SEARCH_QUERY_MAX) {
       throw new BadRequestException({
@@ -51,13 +58,21 @@ export class SearchService {
       });
     }
 
+    const rows = await this.keywordRows(serverId, query, q);
+    if (query.mode === 'hybrid') return this.hybrid(serverId, query, q, userId, rows);
+    return toPage(rows, query.limit);
+  }
+
+  private async keywordRows(serverId: string, query: SearchQuery, q: string): Promise<SearchRow[]> {
     const matches = Prisma.sql`(
           m.search @@ websearch_to_tsquery('simple', public.f_unaccent(${q}))
           OR public.f_unaccent(m.content) ILIKE ('%' || public.f_unaccent(${q}) || '%')
         )`;
     // ADR-0095: với từ hiếm, `ORDER BY id LIMIT` khiến planner quét ngược pkey và lọc cả bảng (75-112 s ở 10 triệu tin).
     // Thăm dò có trần: ít khớp thì lấy hàng khớp qua index trước rồi mới sắp xếp.
-    const [probe] = await this.prisma.$queryRaw<{ n: number }[]>(Prisma.sql`
+    // Tìm kiếm chấp nhận dữ liệu cũ vài trăm ms: đọc từ replica khi có (ADR-0102).
+    const db = this.readDb.client;
+    const [probe] = await db.$queryRaw<{ n: number }[]>(Prisma.sql`
       SELECT count(*)::int AS n FROM (
         SELECT 1 FROM "Message" m WHERE m."deletedAt" IS NULL AND ${matches} LIMIT ${SEARCH_PROBE_CAP}
       ) probe
@@ -72,7 +87,7 @@ export class SearchService {
     const from = rare ? Prisma.sql`hits m` : Prisma.sql`"Message" m`;
     const recheck = rare ? Prisma.empty : Prisma.sql`AND ${matches}`;
 
-    const rows = await this.prisma.$queryRaw<SearchRow[]>(Prisma.sql`
+    return db.$queryRaw<SearchRow[]>(Prisma.sql`
       ${source}
       SELECT
         m.id::text AS "id",
@@ -98,19 +113,77 @@ export class SearchService {
       ORDER BY m.id DESC
       LIMIT ${query.limit + 1}
     `);
-
-    const hasMore = rows.length > query.limit;
-    const results: SearchResultItem[] = (hasMore ? rows.slice(0, query.limit) : rows).map(
-      (row) => ({
-        id: row.id,
-        content: row.content,
-        channelId: row.channelId,
-        channelName: row.channelName,
-        createdAt: row.createdAt.toISOString(),
-        authorId: row.authorId,
-        author: row.author,
-      }),
-    );
-    return { results, hasMore };
   }
+
+  /**
+   * Hybrid (ADR-0103): FTS bắt từ khóa chính xác (mã lỗi, tên riêng), vector bắt nghĩa (không trùng từ). Gộp bằng RRF.
+   * Vector hỏng (embedder hoặc Qdrant chết) thì rơi về kết quả từ khóa, không làm lỗi tìm kiếm.
+   */
+  private async hybrid(
+    serverId: string,
+    query: SearchQuery,
+    q: string,
+    userId: string,
+    keyword: SearchRow[],
+  ): Promise<SearchResultPage> {
+    const chunks = await this.retrieval
+      .retrieve({
+        userId,
+        serverId,
+        query: q,
+        limit: Math.min(20, query.limit),
+        channelId: query.channelId,
+      })
+      .catch(() => []);
+    const semantic = new Map<string, SearchRow>();
+    const semanticOrder: string[] = [];
+    const names = new Map<string, string>();
+    const unknownChannels = [
+      ...new Set(chunks.flatMap((c) => c.messages.map((m) => m.channelId))),
+    ].filter((id) => !keyword.some((row) => row.channelId === id));
+    if (unknownChannels.length > 0) {
+      for (const channel of await this.readDb.client.channel.findMany({
+        where: { id: { in: unknownChannels }, serverId },
+        select: { id: true, name: true },
+      })) {
+        names.set(channel.id, channel.name);
+      }
+    }
+    for (const row of keyword) names.set(row.channelId, row.channelName);
+    for (const chunk of chunks) {
+      for (const message of chunk.messages) {
+        const channelName = names.get(message.channelId);
+        if (channelName === undefined) continue; // kênh không thuộc server này: bỏ
+        if (query.authorId && message.authorId !== query.authorId) continue;
+        if (query.since && message.createdAt < query.since) continue;
+        if (semantic.has(message.id)) continue;
+        semantic.set(message.id, { ...message, channelName });
+        semanticOrder.push(message.id);
+      }
+    }
+    const byId = new Map<string, SearchRow>([
+      ...semantic,
+      ...keyword.map((r) => [r.id, r] as const),
+    ]);
+    const fused = reciprocalRankFusion([keyword.map((row) => row.id), semanticOrder]);
+    const rows = fused.slice(0, query.limit).flatMap((id) => byId.get(id) ?? []);
+    return { results: rows.map(toItem), hasMore: false };
+  }
+}
+
+function toItem(row: SearchRow): SearchResultItem {
+  return {
+    id: row.id,
+    content: row.content,
+    channelId: row.channelId,
+    channelName: row.channelName,
+    createdAt: row.createdAt.toISOString(),
+    authorId: row.authorId,
+    author: row.author,
+  };
+}
+
+function toPage(rows: SearchRow[], limit: number): SearchResultPage {
+  const hasMore = rows.length > limit;
+  return { results: (hasMore ? rows.slice(0, limit) : rows).map(toItem), hasMore };
 }

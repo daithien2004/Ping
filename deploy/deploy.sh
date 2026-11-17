@@ -60,6 +60,12 @@ if ! grep -q '^PUBLIC_URL=https://' .env.prod; then
   echo 'PUBLIC_URL must be an https origin in /opt/ping/.env.prod' >&2
   exit 2
 fi
+# ADR-0099: .env.prod có từ trước object storage thiếu khóa S3; sinh một lần, giữ nguyên các lần sau.
+if ! grep -q '^S3_ACCESS_KEY=' .env.prod; then
+  { printf 'S3_ACCESS_KEY=ping%s
+' "$(openssl rand -hex 6)"; printf 'S3_SECRET_KEY=%s
+' "$(openssl rand -hex 24)"; } >> .env.prod
+fi
 set_tag "$tag"
 compose config -q || rollback $?
 compose pull migrate api-1 web || rollback $?

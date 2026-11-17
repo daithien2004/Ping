@@ -37,6 +37,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { RealtimeModule } from './modules/realtime/realtime.module.js';
 import { RolesModule } from './modules/roles/roles.module.js';
 import { ServersModule } from './modules/servers/servers.module.js';
+import { StatsModule } from './modules/stats/stats.module.js';
 import { StickersModule } from './modules/stickers/stickers.module.js';
 import { UsersModule } from './modules/users/users.module.js';
 
@@ -102,6 +103,7 @@ import { UsersModule } from './modules/users/users.module.js';
     NotificationsModule,
     RealtimeModule.forRoot(),
     AiModule,
+    StatsModule,
   ],
   controllers: [AppController],
   providers: [

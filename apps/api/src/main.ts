@@ -10,8 +10,10 @@ import { MetricsService } from './infra/metrics/metrics.service.js';
 import { initSentry } from './infra/sentry/sentry.js';
 import { RedisProvider } from './infra/redis/redis.module.js';
 import { RedisIoAdapter } from './infra/socket/redis-io.adapter.js';
+import { initTracing } from './infra/tracing/tracing.js';
 
 async function bootstrap() {
+  initTracing('ping-api');
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { bufferLogs: true });
   app.useLogger(app.get(Logger));
   app.flushLogs();

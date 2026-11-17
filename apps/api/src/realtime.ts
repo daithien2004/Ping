@@ -6,10 +6,12 @@ import type { Env } from './config/env.schema.js';
 import { MetricsService } from './infra/metrics/metrics.service.js';
 import { RedisProvider } from './infra/redis/redis.module.js';
 import { RedisIoAdapter } from './infra/socket/redis-io.adapter.js';
+import { initTracing } from './infra/tracing/tracing.js';
 import { RealtimeAppModule } from './realtime-app.module.js';
 
 // Service Realtime (ADR-0098): giữ kết nối WebSocket; API phát tới đây qua Redis adapter.
 async function bootstrap() {
+  initTracing('ping-realtime');
   const app = await NestFactory.create<NestExpressApplication>(RealtimeAppModule, {
     bufferLogs: true,
   });

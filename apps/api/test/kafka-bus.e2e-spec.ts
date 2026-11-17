@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createKafka, parseBrokers, type KafkaSettings } from '../src/infra/events/kafka.client.js';
+import { KafkaEventRunner, dlqTopicOf } from '../src/infra/events/kafka-event-runner.js';
 import { KafkaPublisher } from '../src/infra/events/kafka.publisher.js';
 import { KafkaIndexerRunner } from '../src/modules/ai/indexer/kafka-indexer.runner.js';
 
@@ -65,7 +66,9 @@ describe('kafka outbox bus (e2e, ADR-0094)', () => {
     await publisher.onApplicationShutdown();
     const admin = kafka.admin();
     await admin.connect();
-    await admin.deleteTopics({ topics: [settings.topic] }).catch(() => undefined);
+    await admin
+      .deleteTopics({ topics: [settings.topic, dlqTopicOf(settings.topic)] })
+      .catch(() => undefined);
     await admin.disconnect();
   }, 60_000);
 
@@ -101,6 +104,53 @@ describe('kafka outbox bus (e2e, ADR-0094)', () => {
     await until(
       async () => (await runner.reportLag()) === 0 && calls.some((c) => c.consumer === 'lag'),
     );
+  }, 60_000);
+
+  it('event làm handler lỗi mãi được chuyển sang DLQ kèm lý do; event khác vẫn xử lý', async () => {
+    const poison = ids[1]!;
+    const done: string[] = [];
+    const runner = new KafkaEventRunner(
+      kafka,
+      settings,
+      async (body) => {
+        const id = (body.payload as { id: string }).id;
+        if (id === poison && body.type === 'message.created') throw new Error('poison event');
+        done.push(`${body.type}:${id}`);
+      },
+      {
+        groupId: `dlq-${randomUUID().slice(0, 6)}`,
+        fromBeginning: true,
+        maxAttempts: 2,
+        retryDelayMs: 10,
+      },
+    );
+    runners.push(runner);
+    runner.start();
+    await until(() => done.length >= ids.length * TYPES.length - 1);
+
+    const reader = kafka.consumer({ groupId: `dlq-read-${randomUUID().slice(0, 6)}` });
+    await reader.connect();
+    await reader.subscribe({ topic: dlqTopicOf(settings.topic), fromBeginning: true });
+    const got: { id: string; headers: Record<string, string> }[] = [];
+    await reader.run({
+      eachMessage: async ({ message }) => {
+        const body = JSON.parse(message.value!.toString()) as { payload: { id: string } };
+        got.push({
+          id: body.payload.id,
+          headers: Object.fromEntries(
+            Object.entries(message.headers ?? {}).map(([k, v]) => [k, String(v)]),
+          ),
+        });
+      },
+    });
+    await until(() => got.length >= 1);
+    await reader.disconnect();
+
+    expect(got).toHaveLength(1);
+    expect(got[0]!.id).toBe(poison);
+    expect(got[0]!.headers['dlq-error']).toContain('poison event');
+    expect(got[0]!.headers['dlq-attempts']).toBe('2');
+    expect(got[0]!.headers['dlq-source']).toContain(settings.topic);
   }, 60_000);
 
   it('group mới replay toàn bộ từ đầu mà không đụng offset của group cũ', async () => {

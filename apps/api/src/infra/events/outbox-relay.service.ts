@@ -7,6 +7,8 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { MetricsService } from '../metrics/metrics.service.js';
+import { SpanKind } from '@opentelemetry/api';
+import { contextFromTraceparent, withSpan } from '../tracing/tracing.js';
 import { EVENT_PUBLISHER, type EventPublisher } from './event-publisher.js';
 
 const POLL_MS = 500;
@@ -22,6 +24,7 @@ interface PendingRow {
   payload: unknown;
   attempts: number;
   createdAt: Date;
+  traceparent: string | null;
 }
 
 @Injectable()
@@ -59,7 +62,7 @@ export class OutboxRelayService implements OnModuleInit, OnApplicationShutdown {
           // Mọi process (API, worker, mỗi instance) đều chạy relay: SKIP LOCKED để hai relay không
           // lấy cùng một hàng, nên không phát trùng.
           const pending = await tx.$queryRaw<PendingRow[]>`
-            SELECT id, "aggregateType", type, payload, attempts, "createdAt"
+            SELECT id, "aggregateType", type, payload, attempts, "createdAt", traceparent
             FROM "OutboxEvent"
             WHERE "publishedAt" IS NULL
               AND "nextRetryAt" <= now()
@@ -73,7 +76,12 @@ export class OutboxRelayService implements OnModuleInit, OnApplicationShutdown {
 
           for (const event of pending) {
             try {
-              await this.publisher.publish(event);
+              await withSpan(
+                'outbox.publish',
+                { 'messaging.system': 'kafka', 'ping.event_type': event.type },
+                () => this.publisher.publish(event),
+                { parent: contextFromTraceparent(event.traceparent), kind: SpanKind.PRODUCER },
+              );
               await tx.outboxEvent.update({
                 where: { id: event.id },
                 data: { publishedAt: new Date(), attempts: event.attempts + 1 },

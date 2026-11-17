@@ -4,8 +4,10 @@ import { AppModule } from './app.module.js';
 import { ConfigService } from '@nestjs/config';
 import type { Env } from './config/env.schema.js';
 import { MetricsService } from './infra/metrics/metrics.service.js';
+import { initTracing } from './infra/tracing/tracing.js';
 
 async function bootstrap() {
+  initTracing('ping-worker');
   process.env.PING_PROCESS_ROLE = 'worker';
   const app = await NestFactory.createApplicationContext(AppModule, { bufferLogs: true });
   app.useLogger(app.get(Logger));

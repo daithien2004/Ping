@@ -6,8 +6,6 @@ import { Counter, Gauge, Histogram, Registry, collectDefaultMetrics } from 'prom
 import type { Env } from '../../config/env.schema.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { RedisProvider } from '../redis/redis.module.js';
-import { access, mkdir } from 'node:fs/promises';
-import { resolve } from 'node:path';
 
 // Tập hữu hạn: nhãn Prometheus không được nổ cardinality.
 export type AiRequestOutcome =
@@ -53,6 +51,12 @@ export class MetricsService implements OnModuleDestroy {
   private readonly presenceEmitted = new Counter({
     name: 'presence_emitted_total',
     help: 'Số lệnh phát presence.updated tới một room (mỗi lệnh đến mọi socket trong room)',
+    registers: [this.registry],
+  });
+  private readonly dbReads = new Counter({
+    name: 'db_reads_total',
+    help: 'Số lượt đọc định tuyến theo đích (primary hoặc replica), ADR-0102',
+    labelNames: ['target'],
     registers: [this.registry],
   });
   private server: Server | undefined;
@@ -180,14 +184,6 @@ export class MetricsService implements OnModuleDestroy {
         for (const [name, check] of this.dependencyChecks) {
           dependency.set({ name }, (await check().catch(() => false)) ? 1 : 0);
         }
-        try {
-          const root = resolve(config.get('ATTACHMENT_STORAGE_DIR', { infer: true }));
-          await mkdir(root, { recursive: true });
-          await access(root, 6);
-          dependency.set({ name: 'attachment_storage' }, 1);
-        } catch {
-          dependency.set({ name: 'attachment_storage' }, 0);
-        }
       },
     });
   }
@@ -216,6 +212,10 @@ export class MetricsService implements OnModuleDestroy {
   /** Hạ tầng tùy chọn (ví dụ Kafka) tự đăng ký để xuất hiện trong `dependency_up{name}`. */
   registerDependency(name: string, check: () => boolean | Promise<boolean>): void {
     this.dependencyChecks.set(name, async () => check());
+  }
+
+  dbReadOnce(target: 'primary' | 'replica'): void {
+    this.dbReads.inc({ target });
   }
 
   presenceEmittedOnce(): void {

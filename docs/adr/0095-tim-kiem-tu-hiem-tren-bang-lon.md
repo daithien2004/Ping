@@ -13,7 +13,7 @@ và lọc ~10 triệu hàng.
 
 1. **Không phân vùng `Message` theo `id`.** Phân vùng không làm truy vấn nhanh hơn (planning time còn tăng 8–25 ms) và không tạo được
    khóa duy nhất `(channelId, authorId, nonce)` mà quy tắc 12 cần. Xem lại khi cần xóa dữ liệu cũ hàng loạt.
-2. **Không dùng replica đọc lúc này.** Lag cận dưới cỡ mili giây trên một máy, nhưng chưa có tải đọc nào đòi hỏi; thêm replica kéo theo
+2. **Không dùng replica đọc lúc này** (về sau thay bởi [ADR-0102](0102-replica-doc-co-dinh-tuyen.md)). Lag cận dưới cỡ mili giây trên một máy, nhưng chưa có tải đọc nào đòi hỏi; thêm replica kéo theo
    vấn đề đọc-sau-ghi và vận hành.
 3. **Sửa tìm kiếm (đã áp vào `search.service.ts`):** thăm dò đếm tối đa 1000 hàng khớp (toàn bảng, 30–170 ms ở 10 triệu tin). Dưới
    ngưỡng thì lấy hàng khớp qua bitmap index vào CTE `MATERIALIZED` (kèm các cột cần dùng, **không** join lại `Message`) rồi mới sắp xếp:

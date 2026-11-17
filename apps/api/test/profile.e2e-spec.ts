@@ -6,7 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { bootApp } from './helpers/boot.js';
 import { PrismaService } from '../src/infra/prisma/prisma.service.js';
 import { AttachmentWorker } from '../src/modules/attachments/attachment-worker.js';
-import { LocalStorage } from '../src/modules/attachments/local-storage.js';
+import { ObjectStorage } from '../src/modules/attachments/object-storage.js';
 import { RedisProvider } from '../src/infra/redis/redis.module.js';
 
 describe('TG.7 profile (real Postgres + disk)', () => {
@@ -82,7 +82,7 @@ describe('TG.7 profile (real Postgres + disk)', () => {
 
   afterAll(async () => {
     if (!db) return;
-    const storage = app.get(LocalStorage);
+    const storage = app.get(ObjectStorage);
     for (const id of ids)
       for (const suffix of ['raw', 'ready', 'thumb']) await storage.remove(`${id}.${suffix}`);
     await db.attachment.deleteMany({ where: { uploaderId: ownerId } });

@@ -61,8 +61,6 @@ function startApi(index) {
     'SHUTDOWN_GRACE_MS=10000',
     '-e',
     'SHUTDOWN_TIMEOUT_MS=25000',
-    '-e',
-    'ATTACHMENT_STORAGE_DIR=/tmp/uploads',
     'ping-api:scale',
   );
   return name;

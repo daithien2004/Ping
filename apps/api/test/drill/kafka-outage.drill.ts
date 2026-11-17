@@ -29,7 +29,7 @@ async function outbox() {
   return rows[0]!;
 }
 
-const kafkaCompose = (...args: string[]) => compose('--profile', 'kafka', ...args);
+const kafkaCompose = (...args: string[]) => compose(...args);
 
 const api = startApi();
 try {

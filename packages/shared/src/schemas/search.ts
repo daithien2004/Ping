@@ -9,6 +9,8 @@ export const searchQuerySchema = z.object({
   since: z.coerce.date().optional(),
   before: z.uuid().optional(),
   limit: z.coerce.number().int().min(1).max(50).default(25),
+  // `hybrid`: gộp FTS (khớp từ) với tìm theo nghĩa bằng vector qua RRF (ADR-0103). Không phân trang: bỏ qua `before`.
+  mode: z.enum(['keyword', 'hybrid']).default('keyword'),
 });
 export type SearchQuery = z.infer<typeof searchQuerySchema>;
 

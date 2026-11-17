@@ -2,6 +2,7 @@ import { Logger, type OnApplicationShutdown, type OnModuleInit } from '@nestjs/c
 import type { Kafka, Producer } from 'kafkajs';
 import type { MetricsService } from '../metrics/metrics.service.js';
 import { orderingKey, type EventPublisher, type OutboxMessage } from './event-publisher.js';
+import { currentTraceparent } from '../tracing/tracing.js';
 import { createKafka, ensureTopic, type KafkaSettings } from './kafka.client.js';
 
 const RECONNECT_MS = 2_000;
@@ -75,7 +76,12 @@ export class KafkaPublisher implements EventPublisher, OnModuleInit, OnApplicati
             aggregateType: event.aggregateType,
             payload: event.payload,
           }),
-          headers: { type: event.type, eventId: event.id },
+          headers: {
+            type: event.type,
+            eventId: event.id,
+            // Span đang chạy (outbox.publish) làm cha của span consumer.
+            ...(currentTraceparent() ? { traceparent: currentTraceparent()! } : {}),
+          },
         },
       ],
     });
