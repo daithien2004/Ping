@@ -1,7 +1,7 @@
 # Đo lỗi phía client khi `docker compose up -d --wait` thay các bản sao API (stack pingprod local, HTTPS, CA local).
 #   powershell -File tools/loadtest/compose-rollout.ps1 -Seconds 90
 # Đổi biến ROLL_MARK trong file env tạm để buộc compose recreate api, rồi poll /api/v1/health qua nginx.
-param([int]$Seconds = 90, [ValidateSet('rolling','parallel')][string]$Mode = 'rolling')
+param([int]$Seconds = 90, [ValidateSet('rolling','parallel')][string]$Mode = 'rolling', [string]$ExtraOverride = '')
 $ErrorActionPreference = 'Continue'
 $root = Join-Path $env:LOCALAPPDATA 'Ping\local-deploy'
 $envSrc = Join-Path $root 'local.env'
@@ -21,6 +21,7 @@ services:
       ROLL_MARK: `${ROLL_MARK:-none}
 "@ | Set-Content -Encoding utf8 $override
 $dc += @('-f', $override)
+if ($ExtraOverride) { $dc += @('-f', $ExtraOverride) }
 
 $job = Start-Job -ArgumentList $Seconds -ScriptBlock {
   param($seconds)

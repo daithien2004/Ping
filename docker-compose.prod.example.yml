@@ -97,6 +97,7 @@ services:
       SENTRY_DSN: ${SENTRY_DSN:-}
       QDRANT_URL: http://qdrant:6333
       KAFKA_BROKERS: kafka:9092
+      REALTIME_ROLE: api # ADR-0098: API không giữ socket; service realtime giữ kết nối
       # METRICS_PORT cố ý không đặt: đặt thì chỉ mở trong mạng nội bộ của compose, KHÔNG publish ra ngoài.
     volumes: ['uploads:/app/uploads']
     depends_on:
@@ -112,6 +113,24 @@ services:
 
   api-2:
     <<: *api-service
+
+  # ADR-0098: service Realtime giữ kết nối WebSocket (cùng image, entrypoint khác). Một bản vì RAM VPS; thêm `realtime-2` như `api-2`
+  # (alias `realtime`) để thay từng bản mà không rớt hết socket. API phát tới đây qua Redis adapter.
+  realtime-1:
+    image: ghcr.io/${GHCR_OWNER}/ping-api:${IMAGE_TAG}
+    build: { context: ., dockerfile: apps/api/Dockerfile, target: runner }
+    command: ['node', 'dist/realtime.js']
+    environment:
+      <<: *api-environment
+      REALTIME_ROLE: gateway
+    networks:
+      default:
+        aliases: [realtime]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+    stop_grace_period: 40s
+    restart: unless-stopped
 
   worker:
     image: ghcr.io/${GHCR_OWNER}/ping-api:${IMAGE_TAG}
@@ -163,7 +182,7 @@ services:
       - ./ops/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./ops/nginx:/etc/nginx/ping:ro
       - ./ops/nginx/http.conf.template:/etc/nginx/templates/default.conf.template:ro
-    depends_on: [api-1, api-2, web]
+    depends_on: [api-1, api-2, realtime-1, web]
     restart: unless-stopped
 
 volumes:

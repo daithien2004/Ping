@@ -28,6 +28,7 @@ roll_up() {
   compose up -d "${wait[@]}" migrate worker web
   compose up -d "${wait[@]}" --no-deps api-1
   compose up -d "${wait[@]}" --no-deps api-2
+  compose up -d "${wait[@]}" --no-deps realtime-1
   compose up -d "${wait[@]}" nginx
 }
 
@@ -41,7 +42,7 @@ set_tag() {
 rollback() {
   local failed_status="$1"
   echo "deployment of $tag failed; previous image tag was ${previous:-<none>}" >&2
-  compose logs --tail 80 migrate api-1 api-2 worker web nginx >&2 || true
+  compose logs --tail 80 migrate api-1 api-2 realtime-1 worker web nginx >&2 || true
   if [ -n "$previous" ]; then
     set_tag "$previous"
     if [ "$previous" != bootstrap ]; then
@@ -49,7 +50,7 @@ rollback() {
       roll_up || true
       compose exec -T nginx nginx -t || true
     else
-      compose stop api-1 api-2 worker web nginx || true
+      compose stop api-1 api-2 realtime-1 worker web nginx || true
     fi
   fi
   exit "$failed_status"

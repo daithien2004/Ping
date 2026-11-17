@@ -4,6 +4,8 @@ services:
     image: ping-local-api:${PING_RELEASE:?Dat PING_RELEASE thanh tag phien ban local}
   api-2:
     image: ping-local-api:${PING_RELEASE:?Dat PING_RELEASE thanh tag phien ban local}
+  realtime-1:
+    image: ping-local-api:${PING_RELEASE:?Dat PING_RELEASE thanh tag phien ban local}
   web:
     image: ping-local-web:${PING_RELEASE:?Dat PING_RELEASE thanh tag phien ban local}
   migrate:

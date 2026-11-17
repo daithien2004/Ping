@@ -1,6 +1,6 @@
 # ADR-0093: Chưa tách realtime thành service riêng; giảm fan-out trước và đo lại
 
-Status: accepted — dựa trên [báo cáo cô lập gateway](../perf/2026-11-17-gateway-isolation.md) (laptop, một mẫu mỗi cấu hình, môi trường nhiễu).
+Status: accepted — dựa trên [báo cáo cô lập gateway](../perf/2026-11-17-gateway-isolation.md) (laptop, một mẫu mỗi cấu hình, môi trường nhiễu). — **được thay bởi [ADR-0098](0098-tach-realtime-service.md): service Realtime đã được tách theo plan học tập.**
 Date: 2026-11-17
 
 ## Context

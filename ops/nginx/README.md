@@ -19,6 +19,11 @@ Không cần cài Nginx trên Windows; Docker chạy nó trong container.
 6. Log proxy chỉ ghi method, status và mã tham chiếu (ưu tiên `X-Request-Id` từ API), không ghi URL,
    query, cookie hoặc body. HTTPS đọc thư mục chỉ chứa chứng chỉ của Ping, mount read-only từ ngoài repo.
 
+## Service Realtime riêng
+
+`/socket.io/` tới upstream `ping_realtime` (`server realtime:4000 resolve;`), không phải `ping_api`, và có `proxy_read_timeout 75s` lớn hơn
+`pingInterval + pingTimeout`. API không giữ socket nên deploy API không ngắt kết nối ([ADR-0098](../../docs/adr/0098-tach-realtime-service.md)).
+
 ## Nhiều bản sao API
 
 Stack prod mẫu chạy hai bản sao: service `api-1` và `api-2` có chung alias mạng `api`, và `server api:4000 resolve;` nhận mọi bản ghi A của

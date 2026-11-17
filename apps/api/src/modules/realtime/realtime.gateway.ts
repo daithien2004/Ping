@@ -15,7 +15,11 @@ import {
   PRESENCE_WATCH_PER_SOCKET_MAX,
   ServerEvents,
   channelEventSchema,
+  channelRoom,
   ErrorCodes,
+  presenceRoom,
+  serverRoom,
+  userRoom,
   presenceUnwatchSchema,
   presenceWatchSchema,
   type ChannelJoinResult,
@@ -28,8 +32,7 @@ import { Server, Socket } from 'socket.io';
 import { MetricsService } from '../../infra/metrics/metrics.service.js';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
 import { AbilityFactory } from '../ability/ability.factory.js';
-import { AuthService } from '../auth/auth.service.js';
-import { RealtimeService, presenceRoom } from './realtime.service.js';
+import { RealtimeService } from './realtime.service.js';
 
 const TYPING_INTERVAL_MS = 1000;
 
@@ -59,7 +62,6 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
   private readonly logger: Logger;
 
   constructor(
-    private readonly authService: AuthService,
     private readonly jwt: JwtService,
     private readonly prisma: PrismaService,
     private readonly abilityFactory: AbilityFactory,
@@ -80,9 +82,9 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
         next(new Error(ErrorCodes.UNAUTHORIZED));
         return;
       }
-      void this.authService.verifyAccessToken(token).then(
+      void this.jwt.verifyAsync<{ sub: string }>(token).then(
         (payload) => {
-          socket.data.userId = payload.userId;
+          socket.data.userId = payload.sub;
           next();
         },
         () => {
@@ -117,14 +119,14 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
         );
         socket.once('disconnect', () => clearTimeout(timer));
       }
-      await socket.join(`user:${userId}`);
+      await socket.join(userRoom(userId));
       try {
         const memberships = await this.prisma.member.findMany({
           where: { userId },
           select: { serverId: true },
         });
         if (memberships.length > 0) {
-          await socket.join(memberships.map((row) => `server:${row.serverId}`));
+          await socket.join(memberships.map((row) => serverRoom(row.serverId)));
         }
       } catch (error) {
         this.logger.warn(
@@ -213,11 +215,11 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
       });
       if (!participant) {
         // Cùng từ chối cho DM không tồn tại và không phải participant — không lộ tồn tại.
-        await socket.leave(`channel:${channelId}`);
+        await socket.leave(channelRoom(channelId));
         return denied;
       }
       if (!socket.connected) return denied;
-      await socket.join(`channel:${channelId}`);
+      await socket.join(channelRoom(channelId));
       return { ok: true };
     }
 
@@ -233,11 +235,11 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
       canView = false;
     }
     if (!canView) {
-      await socket.leave(`channel:${channelId}`);
+      await socket.leave(channelRoom(channelId));
       return denied;
     }
     if (!socket.connected) return denied;
-    await socket.join([`channel:${channelId}`, `server:${channel.serverId}`]);
+    await socket.join([channelRoom(channelId), serverRoom(channel.serverId)]);
     return { ok: true };
   }
 
@@ -251,7 +253,7 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
     }
     const parsed = channelEventSchema.safeParse(body);
     if (parsed.success) {
-      await this.enqueueRoomCommand(socket, () => socket.leave(`channel:${parsed.data.channelId}`));
+      await this.enqueueRoomCommand(socket, () => socket.leave(channelRoom(parsed.data.channelId)));
     }
   }
 
@@ -367,7 +369,7 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
     if (!userId || !parsed.success) {
       return;
     }
-    const room = `channel:${parsed.data.channelId}`;
+    const room = channelRoom(parsed.data.channelId);
     // Chỉ người đang ở trong room (đã qua kiểm tra quyền lúc join) mới được báo đang gõ.
     if (!socket.rooms.has(room)) {
       return;

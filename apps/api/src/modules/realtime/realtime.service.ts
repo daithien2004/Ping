@@ -1,11 +1,16 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
-import { ServerEvents, type ServerToClientEvents } from '@ping/shared';
+import {
+  ServerEvents,
+  channelRoom,
+  presenceRoom,
+  serverRoom,
+  userRoom,
+  type ServerToClientEvents,
+} from '@ping/shared';
 import { Server } from 'socket.io';
 import { PrismaService } from '../../infra/prisma/prisma.service.js';
 import { RedisProvider } from '../../infra/redis/redis.module.js';
 import { AbilityFactory } from '../ability/ability.factory.js';
-
-export const presenceRoom = (userId: string) => `presence:${userId}`;
 
 type EventName = keyof ServerToClientEvents;
 type Payload<K extends EventName> = Parameters<ServerToClientEvents[K]>[0];
@@ -28,7 +33,7 @@ export class RealtimeService {
     if (!this.server) {
       return;
     }
-    const room = this.server.to(`channel:${channelId}`) as unknown as {
+    const room = this.server.to(channelRoom(channelId)) as unknown as {
       emit: (e: unknown, p: unknown) => void;
     };
     void room.emit(event, payload);
@@ -38,7 +43,7 @@ export class RealtimeService {
     if (!this.server) {
       return;
     }
-    const room = this.server.to(`server:${serverId}`) as unknown as {
+    const room = this.server.to(serverRoom(serverId)) as unknown as {
       emit: (e: unknown, p: unknown) => void;
     };
     void room.emit(event, payload);
@@ -48,7 +53,7 @@ export class RealtimeService {
     if (!this.server) {
       return;
     }
-    const room = this.server.to(`user:${userId}`) as unknown as {
+    const room = this.server.to(userRoom(userId)) as unknown as {
       emit: (e: unknown, p: unknown) => void;
     };
     void room.emit(event, payload);
@@ -58,7 +63,7 @@ export class RealtimeService {
     if (!this.server) {
       return 0;
     }
-    const room = this.server.in(`user:${userId}`);
+    const room = this.server.in(userRoom(userId));
     // Redis chết: fetchSockets() hỏi các instance khác qua pub/sub và sẽ chờ tới 5 giây rồi lỗi.
     // Đếm riêng instance này thay vì chờ (presence suy giảm, không chậm).
     return (await (this.redis.isUp ? room : room.local).fetchSockets()).length;
@@ -68,7 +73,7 @@ export class RealtimeService {
     if (!this.server || userIds.length === 0) {
       return new Set();
     }
-    const rooms = this.server.in(userIds.map((id) => `user:${id}`));
+    const rooms = this.server.in(userIds.map((id) => userRoom(id)));
     const sockets = await (this.redis.isUp ? rooms : rooms.local).fetchSockets();
     return new Set(sockets.map((socket) => socket.data.userId as string));
   }
@@ -86,7 +91,7 @@ export class RealtimeService {
       where: { serverId },
       select: { id: true },
     });
-    const channelRooms = channels.map((channel) => `channel:${channel.id}`);
+    const channelRooms = channels.map((channel) => channelRoom(channel.id));
     const targets =
       userIds ??
       (await this.prisma.member.findMany({ where: { serverId }, select: { userId: true } })).map(
@@ -98,15 +103,15 @@ export class RealtimeService {
     let memberPresenceRooms: string[] | undefined;
     for (const userId of targets) {
       const access = await this.accessOf(serverId, userId);
-      const sockets = this.server.in(`user:${userId}`);
+      const sockets = this.server.in(userRoom(userId));
       if (access === 'removed') {
         // Người bị loại không còn được theo dõi presence của các thành viên server này.
         // ponytail: O(số member) lúc kick/ban (hiếm); server rất đông thì lưu serverId trong tên room.
         memberPresenceRooms ??= (
           await this.prisma.member.findMany({ where: { serverId }, select: { userId: true } })
         ).map((member) => presenceRoom(member.userId));
-        sockets.socketsLeave([...channelRooms, `server:${serverId}`, ...memberPresenceRooms]);
-        this.server.to(`user:${userId}`).emit(ServerEvents.MemberRemoved, {
+        sockets.socketsLeave([...channelRooms, serverRoom(serverId), ...memberPresenceRooms]);
+        this.server.to(userRoom(userId)).emit(ServerEvents.MemberRemoved, {
           serverId,
           ...(opts?.banned ? { banned: true } : {}),
         });
@@ -115,7 +120,7 @@ export class RealtimeService {
       if (access === 'no-view') {
         sockets.socketsLeave(channelRooms);
       }
-      this.server.to(`user:${userId}`).emit(ServerEvents.PermissionsChanged, { serverId });
+      this.server.to(userRoom(userId)).emit(ServerEvents.PermissionsChanged, { serverId });
     }
   }
 
@@ -125,8 +130,8 @@ export class RealtimeService {
     }
     const presenceRooms = userIds.map(presenceRoom);
     for (const userId of userIds) {
-      this.server.in(`user:${userId}`).socketsLeave([`server:${serverId}`, ...presenceRooms]);
-      this.server.to(`user:${userId}`).emit(ServerEvents.MemberRemoved, { serverId });
+      this.server.in(userRoom(userId)).socketsLeave([serverRoom(serverId), ...presenceRooms]);
+      this.server.to(userRoom(userId)).emit(ServerEvents.MemberRemoved, { serverId });
     }
   }
 

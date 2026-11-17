@@ -100,7 +100,7 @@ import { UsersModule } from './modules/users/users.module.js';
     GifsModule,
     AttachmentsModule,
     NotificationsModule,
-    RealtimeModule,
+    RealtimeModule.forRoot(),
     AiModule,
   ],
   controllers: [AppController],

@@ -1,0 +1,5 @@
+Stack pingprod local (Docker VM 3,1 GB). 30 socket nối qua Nginx HTTPS (3 người dùng x 10 socket), giữ trong lúc deploy cuốn chiếu
+api-1 rồi api-2 (tools/loadtest/compose-rollout.ps1 -Mode rolling), cùng lúc poll /api/v1/health. Một lần chạy mỗi mô hình.
+
+TRƯỚC (REALTIME_ROLE=all, /socket.io -> API):   sockets=30 dropped=30; REST ok=1441 bad=0; compose up 44 giây
+SAU   (service realtime riêng, API role api):   sockets=30 dropped=0;  REST ok=1461 bad=0; compose up 40 giây

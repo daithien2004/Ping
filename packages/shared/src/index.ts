@@ -21,3 +21,4 @@ export * from './emoji';
 export * from './http';
 export * from './limits';
 export * from './schemas/user';
+export * from './rooms';
