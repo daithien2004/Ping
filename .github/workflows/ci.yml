@@ -485,6 +485,8 @@ jobs:
           {
             echo "POSTGRES_PASSWORD=ci-password-ci-password"
             echo "JWT_ACCESS_SECRET=ci-only-secret-ci-only-secret-ci-only-0123456789"
+            echo "S3_ACCESS_KEY=ci-minio-access"
+            echo "S3_SECRET_KEY=ci-minio-secret-ci-minio-secret"
             echo "GHCR_OWNER=local"
             echo "IMAGE_TAG=ci"
             echo "PUBLIC_URL=https://localhost:8443"
