@@ -22,14 +22,14 @@ case "${args[0]:-}" in
     while IFS= read -r path; do
       case "$path" in
         docker-compose.prod.example.yml|docker-compose.prod.tls.yml|\
-        ops/|ops/nginx/|ops/nginx/nginx.conf|ops/nginx/routes.conf|ops/nginx/http.conf.template|ops/nginx/tls.conf.template|\
+        ops/|ops/nginx/|ops/postgres/|ops/nginx/nginx.conf|ops/nginx/routes.conf|ops/nginx/http.conf.template|ops/nginx/tls.conf.template|ops/postgres/pg_hba.conf|ops/postgres/replica-entrypoint.sh|\
         deploy/|deploy/omni-ci|deploy/deploy.sh|deploy/backup.sh|deploy/certbot-pre.sh|deploy/certbot-post.sh|deploy/certbot-sync.sh) ;;
         *) echo "rejected config path: $path" >&2; exit 2 ;;
       esac
     done < <(tar -tzf "$archive")
     tar -xzf "$archive" --no-same-owner --no-same-permissions -C "$temp_dir"
     for path in docker-compose.prod.example.yml docker-compose.prod.tls.yml \
-      ops/nginx/nginx.conf ops/nginx/routes.conf ops/nginx/http.conf.template ops/nginx/tls.conf.template \
+      ops/nginx/nginx.conf ops/nginx/routes.conf ops/nginx/http.conf.template ops/nginx/tls.conf.template ops/postgres/pg_hba.conf ops/postgres/replica-entrypoint.sh \
       deploy/omni-ci deploy/deploy.sh deploy/backup.sh deploy/certbot-pre.sh deploy/certbot-post.sh deploy/certbot-sync.sh; do
       [ -f "$temp_dir/$path" ] && [ ! -L "$temp_dir/$path" ] || continue
       mkdir -p "$APP_DIR/$(dirname "$path")"
