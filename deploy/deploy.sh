@@ -25,7 +25,7 @@ compose() {
 # bản sao còn lại giữ phục vụ (readiness + SHUTDOWN_GRACE_MS lo việc rút bản sao cũ khỏi Nginx).
 roll_up() {
   local wait=(--wait --wait-timeout 180)
-  compose up -d "${wait[@]}" migrate worker web
+  compose up -d "${wait[@]}" migrate postgres-replica jaeger worker web
   compose up -d "${wait[@]}" --no-deps api-1
   compose up -d "${wait[@]}" --no-deps api-2
   compose up -d "${wait[@]}" --no-deps realtime-1
