@@ -2,6 +2,7 @@ import { execFileSync, spawn, type ChildProcess } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import pg from 'pg';
 
 export const apiDir = path.resolve(fileURLToPath(new URL('../..', import.meta.url)));
 export const repoRoot = path.resolve(apiDir, '../..');
@@ -92,6 +93,11 @@ export async function seedChat() {
     body: { email, username: `drill${suffix}`.slice(0, 32), password: 'password123' },
   });
   const token = registered.body.accessToken as string;
+  // Server từ chối tài khoản chưa xác minh email (VERIFY_REQUIRED): đánh dấu thẳng trong DB, drill không đi qua thư.
+  const db = new pg.Client({ connectionString: process.env.DATABASE_URL });
+  await db.connect();
+  await db.query('UPDATE "User" SET "emailVerified" = true WHERE email = $1', [email]);
+  await db.end();
   const server = await call('POST', '/servers', { token, body: { name: `drill ${suffix}` } });
   const channels = await call('GET', `/servers/${server.body.id}/channels`, { token });
   const channelId = (channels.body as unknown as Array<{ id: string }>)[0]!.id;

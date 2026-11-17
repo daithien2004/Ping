@@ -56,6 +56,7 @@ export class MetricsService implements OnModuleDestroy {
     registers: [this.registry],
   });
   private server: Server | undefined;
+  private readonly dependencyChecks = new Map<string, () => Promise<boolean>>();
   readonly outboxPending = new Gauge({
     name: 'outbox_pending',
     help: 'So event outbox chua phat',
@@ -176,6 +177,9 @@ export class MetricsService implements OnModuleDestroy {
       collect: async () => {
         dependency.set({ name: 'postgres' }, (await this.postgresUp()) ? 1 : 0);
         dependency.set({ name: 'redis' }, (await this.redisUp()) ? 1 : 0);
+        for (const [name, check] of this.dependencyChecks) {
+          dependency.set({ name }, (await check().catch(() => false)) ? 1 : 0);
+        }
         try {
           const root = resolve(config.get('ATTACHMENT_STORAGE_DIR', { infer: true }));
           await mkdir(root, { recursive: true });
@@ -207,6 +211,11 @@ export class MetricsService implements OnModuleDestroy {
   socketClosed(): void {
     this.wsConnections.dec();
     this.wsDisconnects.inc();
+  }
+
+  /** Hạ tầng tùy chọn (ví dụ Kafka) tự đăng ký để xuất hiện trong `dependency_up{name}`. */
+  registerDependency(name: string, check: () => boolean | Promise<boolean>): void {
+    this.dependencyChecks.set(name, async () => check());
   }
 
   presenceEmittedOnce(): void {

@@ -1,4 +1,5 @@
 import type { Redis } from 'ioredis';
+import { indexerCallOf, type IndexerLoop } from './indexer-event.js';
 import type { MessageIndexerCore } from './message-indexer.core.js';
 
 export const INDEXER_STREAM = 'stream:outbox';
@@ -16,7 +17,7 @@ export interface IndexerRunnerOptions {
 }
 
 // Chỉ XACK sau khi xử lý xong; upsert theo id tin nên xử lý lại sau XAUTOCLAIM không tạo point trùng.
-export class IndexerRunner {
+export class IndexerRunner implements IndexerLoop {
   private readonly stream: string;
   private readonly group: string;
   private readonly claimIdleMs: number;
@@ -104,20 +105,14 @@ export class IndexerRunner {
   private async process(entries: readonly StreamEntry[]): Promise<void> {
     for (const [streamId, fields] of entries) {
       const event = toRecord(fields);
-      const type = event.type;
-      if (!type || !type.startsWith('message.')) {
-        await this.ack(streamId);
-        continue;
-      }
-
-      const messageId = messageIdOf(event.payload);
-      if (!messageId) {
+      const call = indexerCallOf(event.type, event.payload);
+      if (!call) {
         await this.ack(streamId);
         continue;
       }
 
       // Không ack: lỗi DB/embedding/Qdrant để entry pending và thử lại.
-      await this.core.handleEvent(type, messageId);
+      await this.core.handleEvent(call.type, call.messageId);
       await this.ack(streamId);
     }
   }
@@ -156,16 +151,6 @@ function toRecord(fields: readonly string[]): Record<string, string> {
     if (key !== undefined && value !== undefined) record[key] = value;
   }
   return record;
-}
-
-function messageIdOf(raw: string | undefined): string | undefined {
-  if (!raw) return undefined;
-  try {
-    const payload = JSON.parse(raw) as { id?: unknown };
-    return typeof payload.id === 'string' ? payload.id : undefined;
-  } catch {
-    return undefined;
-  }
 }
 
 function sleep(ms: number): Promise<void> {

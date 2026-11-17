@@ -1,0 +1,34 @@
+{
+  "runId": "7feffc0b",
+  "baseUrl": "http://127.0.0.1:8081",
+  "durationS": 100,
+  "rate": 20,
+  "listeners": 40,
+  "sent": 1645,
+  "confirmed": 1645,
+  "confirmedAfterRetry": 0,
+  "unconfirmed": 0,
+  "statusHistogram": {
+    "201": 1645
+  },
+  "errorWindowS": {},
+  "serverStored": 1645,
+  "confirmedMissingOnServer": 0,
+  "storedButUnconfirmed": 0,
+  "duplicateNoncesOnServer": 0,
+  "liveDeliveryRatio": {
+    "min": 0.98419452887538,
+    "p50": 0.9927051671732523
+  },
+  "afterGapRecoveryRatio": {
+    "min": 1,
+    "p50": 1
+  },
+  "liveDuplicates": 0,
+  "listenersThatReconnected": 40,
+  "rejoinMs": {
+    "p50": 467,
+    "p95": 763,
+    "max": 770
+  }
+}

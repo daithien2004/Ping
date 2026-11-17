@@ -1,0 +1,6 @@
+[2026-11-17T05:16:49.785Z] stopping ping-scale-api-0
+[2026-11-17T05:17:07.647Z] ping-scale-api-0 ready after 17862 ms
+[2026-11-17T05:17:07.647Z] stopping ping-scale-api-1
+[2026-11-17T05:17:26.775Z] ping-scale-api-1 ready after 19128 ms
+[2026-11-17T05:17:26.775Z] stopping ping-scale-api-2
+[2026-11-17T05:17:44.604Z] ping-scale-api-2 ready after 17829 ms

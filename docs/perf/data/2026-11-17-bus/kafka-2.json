@@ -1,0 +1,11 @@
+{
+  "bus": "kafka",
+  "events": 3000,
+  "handled": 3000,
+  "publishMs": 3675,
+  "publishPerSec": 816,
+  "totalMs": 3730,
+  "latencyMs": { "p50": 4, "p95": 7, "p99": 10, "max": 32 },
+  "redisUsedMemoryDeltaBytes": "n/a",
+  "bytesPerEvent": null
+}

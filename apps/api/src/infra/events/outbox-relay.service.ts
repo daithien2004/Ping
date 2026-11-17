@@ -1,12 +1,18 @@
-import { Injectable, type OnApplicationShutdown, type OnModuleInit, Logger } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  type OnApplicationShutdown,
+  type OnModuleInit,
+  Logger,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
-import { RedisProvider } from '../redis/redis.module.js';
 import { MetricsService } from '../metrics/metrics.service.js';
+import { EVENT_PUBLISHER, type EventPublisher } from './event-publisher.js';
 
 const POLL_MS = 500;
 const BATCH_SIZE = 50;
 export const OUTBOX_MAX_ATTEMPTS = 10;
-// XADD nằm trong transaction giữ khóa hàng; Prisma mặc định cắt interactive transaction ở 5 s.
+// Phát event nằm trong transaction giữ khóa hàng; Prisma mặc định cắt interactive transaction ở 5 s.
 const TX_TIMEOUT_MS = 15_000;
 
 interface PendingRow {
@@ -26,7 +32,7 @@ export class OutboxRelayService implements OnModuleInit, OnApplicationShutdown {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly redis: RedisProvider,
+    @Inject(EVENT_PUBLISHER) private readonly publisher: EventPublisher,
     private readonly metrics: MetricsService,
   ) {}
 
@@ -44,9 +50,9 @@ export class OutboxRelayService implements OnModuleInit, OnApplicationShutdown {
     this.running = true;
     try {
       await this.updateGauges();
-      // Redis chết là trạng thái hạ tầng, không phải lỗi của event: để event nằm yên, không đốt
-      // attempts (nếu không, một sự cố vài phút sẽ đẩy mọi event qua ngưỡng bỏ cuộc).
-      if (!this.redis.isUp) return;
+      // Đường chuyển chết (Redis hoặc Kafka) là trạng thái hạ tầng, không phải lỗi của event: để event nằm yên,
+      // không đốt attempts (nếu không, một sự cố vài phút sẽ đẩy mọi event qua ngưỡng bỏ cuộc).
+      if (!this.publisher.isUp) return;
 
       await this.prisma.$transaction(
         async (tx) => {
@@ -67,23 +73,21 @@ export class OutboxRelayService implements OnModuleInit, OnApplicationShutdown {
 
           for (const event of pending) {
             try {
-              await this.redis.xadd(
-                'stream:outbox',
-                '*',
-                'id',
-                event.id,
-                'type',
-                event.type,
-                'aggregateType',
-                event.aggregateType,
-                'payload',
-                JSON.stringify(event.payload),
-              );
+              await this.publisher.publish(event);
               await tx.outboxEvent.update({
                 where: { id: event.id },
                 data: { publishedAt: new Date(), attempts: event.attempts + 1 },
               });
             } catch (error) {
+              // Đường chuyển vừa chết giữa lô: lỗi hạ tầng, không phải lỗi của event. Không đốt attempts của event này
+              // và không thử tiếp phần còn lại (mỗi lần thử có thể tốn cả giây trong lúc giữ khóa hàng).
+              if (!this.publisher.isUp) {
+                this.logger.warn(
+                  { err: (error as Error).message },
+                  'outbox transport down, batch left as is',
+                );
+                return;
+              }
               const attempts = event.attempts + 1;
               const backoffMs = Math.min(60_000, 1000 * 2 ** Math.min(attempts, 6));
               await tx.outboxEvent.update({

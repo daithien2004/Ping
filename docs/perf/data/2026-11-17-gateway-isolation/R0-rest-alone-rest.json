@@ -1,0 +1,181 @@
+{
+  "metrics": {
+    "http_req_connecting": {
+      "avg": 0.04690595516113966,
+      "min": 0,
+      "med": 0,
+      "max": 5.044,
+      "p(90)": 0,
+      "p(95)": 0
+    },
+    "http_req_duration{kind:first_page}": {
+      "avg": 1555.6164800668887,
+      "min": 225.31,
+      "med": 1443.6726,
+      "max": 3340.4751,
+      "p(90)": 2148.64822,
+      "p(95)": 2298.65321,
+      "thresholds": {
+        "p(95)<200": true
+      }
+    },
+    "vus": {
+      "min": 6,
+      "max": 298,
+      "value": 6
+    },
+    "http_req_duration{kind:members}": {
+      "max": 2555.6856,
+      "p(90)": 1129.98975,
+      "p(95)": 1211.56365,
+      "avg": 860.5256398936175,
+      "min": 570.1923,
+      "med": 800.6309,
+      "thresholds": {
+        "p(95)<200": true
+      }
+    },
+    "http_req_waiting": {
+      "avg": 1304.2434789584279,
+      "min": 224.7919,
+      "med": 1243.56515,
+      "max": 3340.4751,
+      "p(90)": 1712.1399999999999,
+      "p(95)": 2051.657245
+    },
+    "vus_max": {
+      "value": 388,
+      "min": 220,
+      "max": 388
+    },
+    "http_req_duration{kind:deep_page}": {
+      "p(90)": 1573.23094,
+      "p(95)": 1772.29779,
+      "avg": 1314.7019759030145,
+      "min": 550.4954,
+      "med": 1249.4819499999999,
+      "max": 2985.3736,
+      "thresholds": {
+        "p(95)<200": true
+      }
+    },
+    "http_req_blocked": {
+      "avg": 0.05383262494161605,
+      "min": 0,
+      "med": 0,
+      "max": 5.044,
+      "p(90)": 0,
+      "p(95)": 0.5053849999999999
+    },
+    "http_req_duration": {
+      "avg": 1304.7576809201305,
+      "min": 225.31,
+      "med": 1244.20985,
+      "max": 3340.4751,
+      "p(90)": 1712.9778099999999,
+      "p(95)": 2053.25006
+    },
+    "http_req_tls_handshaking": {
+      "min": 0,
+      "med": 0,
+      "max": 0,
+      "p(90)": 0,
+      "p(95)": 0,
+      "avg": 0
+    },
+    "http_req_sending": {
+      "p(95)": 0,
+      "avg": 0.021351868285847748,
+      "min": 0,
+      "med": 0,
+      "max": 2.6707,
+      "p(90)": 0
+    },
+    "iteration_duration": {
+      "max": 9491.7952,
+      "p(90)": 8074.08513,
+      "p(95)": 8427.278519999998,
+      "avg": 6848.495569546581,
+      "min": 3026.6721,
+      "med": 6902.4625
+    },
+    "dropped_iterations": {
+      "count": 168,
+      "rate": 2.816673613986547
+    },
+    "iterations": {
+      "count": 1632,
+      "rate": 27.361972250155027
+    },
+    "data_sent": {
+      "rate": 62026.92531071678,
+      "count": 3699585
+    },
+    "http_req_failed": {
+      "passes": 0,
+      "fails": 8564,
+      "thresholds": {
+        "rate<0.001": false
+      },
+      "value": 0
+    },
+    "checks": {
+      "fails": 0,
+      "passes": 8564,
+      "value": 1
+    },
+    "data_received": {
+      "count": 201587200,
+      "rate": 3379793.7330799336
+    },
+    "http_req_duration{expected_response:true}": {
+      "p(90)": 1712.9778099999999,
+      "p(95)": 2053.25006,
+      "avg": 1304.7576809201305,
+      "min": 225.31,
+      "med": 1244.20985,
+      "max": 3340.4751
+    },
+    "http_reqs": {
+      "count": 8564,
+      "rate": 143.58329065583803
+    },
+    "http_req_receiving": {
+      "p(90)": 1.4059899999999999,
+      "p(95)": 1.9152049999999994,
+      "avg": 0.4928500934142923,
+      "min": 0,
+      "med": 0,
+      "max": 10.0662
+    }
+  },
+  "root_group": {
+    "checks": {
+      "first page 200": {
+        "name": "first page 200",
+        "path": "::first page 200",
+        "id": "4f9a8cb628a91972ea5b19cb9042efc8",
+        "passes": 1632,
+        "fails": 0
+      },
+      "deep page 200": {
+        "name": "deep page 200",
+        "path": "::deep page 200",
+        "id": "b090c2462605da74b915ff5315993782",
+        "passes": 6528,
+        "fails": 0
+      },
+      "members 200": {
+        "name": "members 200",
+        "path": "::members 200",
+        "id": "48944ba7ba9eb0ea1d18dd32a6497c9a",
+        "passes": 404,
+        "fails": 0
+      }
+    },
+    "name": "",
+    "path": "",
+    "id": "d41d8cd98f00b204e9800998ecf8427e",
+    "groups": {}
+  }
+}

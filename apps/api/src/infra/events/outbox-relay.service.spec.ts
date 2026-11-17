@@ -21,7 +21,7 @@ const row = (over: Partial<Row> = {}): Row => ({
   ...over,
 });
 
-function setup(options: { isUp: boolean; rows: Row[]; xaddError?: Error }) {
+function setup(options: { isUp: boolean; rows: Row[]; xaddError?: Error; downOnError?: boolean }) {
   const update = vi.fn(async (_args: unknown) => ({}));
   const tx = { $queryRaw: vi.fn(async () => options.rows), outboxEvent: { update } };
   const prisma = {
@@ -30,9 +30,11 @@ function setup(options: { isUp: boolean; rows: Row[]; xaddError?: Error }) {
   };
   const redis = {
     isUp: options.isUp,
-    xadd: vi.fn(async () => {
-      if (options.xaddError) throw options.xaddError;
-      return '1-0';
+    publish: vi.fn(async () => {
+      if (options.xaddError) {
+        if (options.downOnError) redis.isUp = false;
+        throw options.xaddError;
+      }
     }),
   };
   const metrics = {
@@ -47,19 +49,19 @@ function setup(options: { isUp: boolean; rows: Row[]; xaddError?: Error }) {
 describe('OutboxRelayService.tick', () => {
   afterEach(() => vi.restoreAllMocks());
 
-  it('Redis down: không đọc batch và không đụng attempts/nextRetryAt', async () => {
+  it('Đường chuyển down: không đọc batch và không đụng attempts/nextRetryAt', async () => {
     const { service, prisma, update, redis, metrics } = setup({ isUp: false, rows: [row()] });
 
     await service.tick();
 
     expect(prisma.$transaction).not.toHaveBeenCalled();
     expect(update).not.toHaveBeenCalled();
-    expect(redis.xadd).not.toHaveBeenCalled();
+    expect(redis.publish).not.toHaveBeenCalled();
     expect(metrics.outboxPending.set).toHaveBeenCalledWith(7);
     expect(metrics.outboxDead.set).toHaveBeenCalledWith(7);
   });
 
-  it('XADD lỗi khi Redis up: attempts+1, nextRetryAt trong tương lai, không đặt publishedAt', async () => {
+  it('publish lỗi khi đường chuyển up: attempts+1, nextRetryAt trong tương lai, không đặt publishedAt', async () => {
     vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
     const { service, update } = setup({ isUp: true, rows: [row()], xaddError: new Error('boom') });
 
@@ -76,17 +78,32 @@ describe('OutboxRelayService.tick', () => {
     expect(arg.data.publishedAt).toBeUndefined();
   });
 
-  it('XADD thành công: đặt publishedAt và attempts+1', async () => {
+  it('publish thành công: đặt publishedAt và attempts+1', async () => {
     const { service, update, redis } = setup({ isUp: true, rows: [row({ attempts: 2 })] });
 
     await service.tick();
 
-    expect(redis.xadd).toHaveBeenCalledTimes(1);
+    expect(redis.publish).toHaveBeenCalledTimes(1);
     const arg = update.mock.calls[0]![0] as unknown as {
       data: { attempts: number; publishedAt: Date };
     };
     expect(arg.data.attempts).toBe(3);
     expect(arg.data.publishedAt).toBeInstanceOf(Date);
+  });
+
+  it('đường chuyển chết giữa lô: không đốt attempts và không thử phần còn lại', async () => {
+    vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+    const { service, update, redis } = setup({
+      isUp: true,
+      rows: [row({ id: 'a' }), row({ id: 'b' })],
+      xaddError: new Error('Connection error'),
+      downOnError: true,
+    });
+
+    await service.tick();
+
+    expect(redis.publish).toHaveBeenCalledTimes(1);
+    expect(update).not.toHaveBeenCalled();
   });
 
   it('chạm OUTBOX_MAX_ATTEMPTS: log error đúng một lần', async () => {

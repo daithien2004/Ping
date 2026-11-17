@@ -1,0 +1,11 @@
+{
+  "bus": "redis",
+  "events": 3000,
+  "handled": 3000,
+  "publishMs": 963,
+  "publishPerSec": 3115,
+  "totalMs": 1365,
+  "latencyMs": { "p50": 200, "p95": 353, "p99": 369, "max": 372 },
+  "redisUsedMemoryDeltaBytes": 416584,
+  "bytesPerEvent": 139
+}

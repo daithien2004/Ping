@@ -19,6 +19,13 @@ Không cần cài Nginx trên Windows; Docker chạy nó trong container.
 6. Log proxy chỉ ghi method, status và mã tham chiếu (ưu tiên `X-Request-Id` từ API), không ghi URL,
    query, cookie hoặc body. HTTPS đọc thư mục chỉ chứa chứng chỉ của Ping, mount read-only từ ngoài repo.
 
+## Nhiều bản sao API
+
+`docker compose ... up -d --scale api=3` đủ để có ba bản sao: `api` không publish cổng và `server api:4000 resolve;` nhận mọi
+bản ghi A của Docker DNS. Không cần sticky session (chỉ WebSocket). Ngân sách kết nối Postgres: số bản sao × `PG_POOL_MAX`
+(cộng worker) phải nằm dưới `max_connections`. Kết quả đo restart cuốn chiếu và giết đột ngột:
+[ADR-0092](../../docs/adr/0092-nhieu-ban-sao-api-sau-nginx.md). Chạy lại thí nghiệm: `tools/loadtest/scale-stack.mjs`.
+
 ## Local HTTP
 
 Sao chép `.env.prod.example` thành `.env.prod`, thay mật khẩu và JWT secret. Giữ
