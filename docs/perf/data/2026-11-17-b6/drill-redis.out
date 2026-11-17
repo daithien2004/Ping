@@ -1,0 +1,22 @@
+
+> api@0.2.0 drill:redis D:\Ping\apps\api
+> tsx test/drill/redis-outage.drill.ts
+
+  PASS  API chạy, /ready = ok
+  PASS  Gửi tin khi Redis khỏe
+
+>>> docker compose stop redis
+  PASS  /ready báo "degraded" khi Redis chết
+  PASS  /ready vẫn 200 (instance ở lại pool, REST còn chạy)
+  PASS  Gửi tin khi Redis chết → 201  (37ms)
+  PASS  ...không chờ hết timeout từng lệnh Redis  (37ms)
+  PASS  Đọc lịch sử vẫn được, thấy tin vừa gửi
+  PASS  Đăng nhập bị từ chối 503 SERVICE_UNAVAILABLE kèm requestId (fail-closed)
+  PASS  Tiến trình API vẫn sống, không crash/unhandled
+
+>>> docker compose start redis
+  PASS  Redis về lại → /ready trở lại "ok" không cần restart API
+  PASS  Đăng nhập hoạt động lại
+  PASS  Gửi tin sau khi phục hồi
+
+12/12 bước đạt

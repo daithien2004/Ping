@@ -563,7 +563,7 @@ jobs:
         if: needs.changes.outputs.infra == 'true'
         run: |
           docker run --rm -v "$PWD/ops:/ops:ro" --entrypoint promtool prom/prometheus:v3.15.0 check rules /ops/alerts.yml
-          docker run --rm -v "$PWD/ops:/ops:ro" -w /ops/monitoring --entrypoint promtool prom/prometheus:v3.15.0 test rules alerts.test.yml
+          docker run --rm -v "$PWD/ops:/ops:ro" -w /ops/monitoring --entrypoint promtool prom/prometheus:v3.15.0 test rules alerts.test.yml slo.test.yml
 
   lighthouse:
     name: lighthouse

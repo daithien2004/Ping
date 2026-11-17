@@ -1,0 +1,42 @@
+{
+  "singleShardTransaction": "ok: tin nhắn và outbox cùng một transaction trong shard của server",
+  "writeThroughput": {
+    "1_shard": {
+      "seconds": 5.79,
+      "perSec": 6910
+    },
+    "2_shard": {
+      "seconds": 3.97,
+      "perSec": 10070
+    },
+    "4_shard": {
+      "seconds": 3.81,
+      "perSec": 10501
+    }
+  },
+  "crossShardQuery": {
+    "1_shard": {
+      "shardsTouched": 1,
+      "p50ms": 0.62,
+      "p95ms": 0.95
+    },
+    "2_shard": {
+      "shardsTouched": 2,
+      "p50ms": 0.66,
+      "p95ms": 0.88
+    },
+    "4_shard": {
+      "shardsTouched": 4,
+      "p50ms": 0.99,
+      "p95ms": 1.46
+    }
+  },
+  "globalUniqueness": "hỏng: username \"alice\" tồn tại ở cả hai shard (UNIQUE chỉ có tác dụng trong một shard); cần thư mục toàn cục hoặc ghi vào một shard trọng tài",
+  "crossShardAtomicity": "hỏng: xóa user ở 2 shard, shard 1 lỗi sau khi shard 0 đã commit => còn lại [0,1] (không có rollback chung); cần saga hoặc outbox cho từng bước",
+  "reshard": {
+    "moduloHash_2_to_3": 0.667,
+    "moduloHash_3_to_4": 0.746,
+    "jumpHash_2_to_3": 0.334,
+    "jumpHash_3_to_4": 0.248
+  }
+}

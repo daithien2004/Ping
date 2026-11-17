@@ -1,0 +1,46 @@
+== Số hàng của channel nóng và tổng số tin
+ hot_channel |  total   
+-------------+----------
+     2716577 | 10000000
+(1 row)
+
+== 1. Trang đầu lịch sử (ORDER BY id DESC LIMIT 51), channel nóng
+                                                                      QUERY PLAN                                                                      
+------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=0.43..14.48 rows=51 width=86) (actual time=1.463..2.274 rows=51 loops=1)
+   Buffers: shared hit=11 read=3
+   ->  Index Scan Backward using "Message_pkey" on "Message"  (cost=0.43..742421.18 rows=2696255 width=86) (actual time=1.461..2.268 rows=51 loops=1)
+         Filter: (("deletedAt" IS NULL) AND ("channelId" = '01a0b318-87fb-709e-9094-c08e4475c8c7'::uuid))
+         Rows Removed by Filter: 155
+         Buffers: shared hit=11 read=3
+ Planning:
+   Buffers: shared hit=26 read=9
+ Planning Time: 12.264 ms
+ Execution Time: 2.296 ms
+(10 rows)
+
+== 1b. Trang đầu, channel ÍT tin (lịch sử thật của đa số channel): phải dùng Message(channelId, id DESC)
+== 2. Trang sâu (cursor before = id ở giữa lịch sử của channel nóng)
+ERROR:  syntax error at or near ":"
+LINE 3: WHERE "channelId" = :'cold' AND "deletedAt" IS NULL
+                            ^
+                                                                      QUERY PLAN                                                                      
+------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=0.43..14.96 rows=51 width=86) (actual time=2.287..3.200 rows=51 loops=1)
+   Buffers: shared hit=2 read=11
+   ->  Index Scan Backward using "Message_pkey" on "Message"  (cost=0.43..656649.40 rows=2305298 width=86) (actual time=2.285..3.195 rows=51 loops=1)
+         Index Cond: (id < '01a1ba5c-9201-7bbb-941d-e1723c816d5c'::uuid)
+         Filter: (("deletedAt" IS NULL) AND ("channelId" = '01a0b318-87fb-709e-9094-c08e4475c8c7'::uuid))
+         Rows Removed by Filter: 117
+         Buffers: shared hit=2 read=11
+ Planning:
+   Buffers: shared read=3
+ Planning Time: 0.847 ms
+ Execution Time: 3.217 ms
+(11 rows)
+
+== 3. Danh sách thành viên theo cursor (Member(serverId, id))
+no rows returned for \gset
+ERROR:  syntax error at or near ":"
+LINE 3: ...= '01a0b318-87f9-7348-8d1b-f2366ebe4cf4' AND id > :'member_c...
+                                                             ^

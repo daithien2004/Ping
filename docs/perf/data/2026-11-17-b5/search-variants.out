@@ -1,0 +1,110 @@
+== V2 (CTE MATERIALIZED lấy id khớp trước, rồi sắp xếp): từ HIẾM
+                                                                QUERY PLAN                                                                 
+-------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=160653.28..160653.33 rows=21 width=16) (actual rows=1 loops=1)
+   Buffers: shared hit=55 read=1002
+   CTE hits
+     ->  Gather  (cost=5524.60..158110.07 rows=50994 width=32) (actual rows=1 loops=1)
+           Workers Planned: 2
+           Workers Launched: 2
+           Buffers: shared hit=51 read=1001
+           ->  Parallel Bitmap Heap Scan on "Message" m  (cost=4524.60..152010.67 rows=21248 width=32) (actual rows=0 loops=3)
+                 Recheck Cond: ((search @@ '''7654321'''::tsquery) OR (f_unaccent(content) ~~* '%7654321%'::text))
+                 Filter: ("deletedAt" IS NULL)
+                 Heap Blocks: exact=1
+                 Buffers: shared hit=51 read=1001
+                 ->  BitmapOr  (cost=4524.60..4524.60 rows=50999 width=0) (actual rows=0 loops=1)
+                       Buffers: shared hit=51 read=1000
+                       ->  Bitmap Index Scan on "Message_search_key"  (cost=0.00..2096.62 rows=49999 width=0) (actual rows=1 loops=1)
+                             Index Cond: (search @@ '''7654321'''::tsquery)
+                             Buffers: shared hit=1 read=414
+                       ->  Bitmap Index Scan on "Message_content_trgm_key"  (cost=0.00..2402.49 rows=1000 width=0) (actual rows=1 loops=1)
+                             Index Cond: (f_unaccent(content) ~~* '%7654321%'::text)
+                             Buffers: shared hit=50 read=586
+   ->  Sort  (cost=2543.22..2670.70 rows=50994 width=16) (actual rows=1 loops=1)
+         Sort Key: h.id DESC
+         Sort Method: quicksort  Memory: 25kB
+         Buffers: shared hit=55 read=1002
+         ->  Hash Join  (cost=3.25..1168.34 rows=50994 width=16) (actual rows=1 loops=1)
+               Hash Cond: (h."channelId" = c.id)
+               Buffers: shared hit=52 read=1002
+               ->  CTE Scan on hits h  (cost=0.00..1019.88 rows=50994 width=32) (actual rows=1 loops=1)
+                     Buffers: shared hit=51 read=1001
+               ->  Hash  (cost=2.62..2.62 rows=50 width=16) (actual rows=50 loops=1)
+                     Buckets: 1024  Batches: 1  Memory Usage: 11kB
+                     Buffers: shared hit=1 read=1
+                     ->  Seq Scan on "Channel" c  (cost=0.00..2.62 rows=50 width=16) (actual rows=50 loops=1)
+                           Filter: ("serverId" = '01a0b318-87f9-7348-8d1b-f2366ebe4cf4'::uuid)
+                           Buffers: shared hit=1 read=1
+ Planning:
+   Buffers: shared hit=297 read=75
+ Planning Time: 38.880 ms
+ JIT:
+   Functions: 31
+   Options: Inlining false, Optimization false, Expressions true, Deforming true
+ Execution Time: 300.859 ms
+(42 rows)
+
+== V3a (thăm dò có trần 1000): từ HIẾM, đếm tối đa 1000 hàng khớp
+                                                               QUERY PLAN                                                                
+-----------------------------------------------------------------------------------------------------------------------------------------
+ Aggregate  (cost=7583.92..7583.93 rows=1 width=8) (actual rows=1 loops=1)
+   Buffers: shared hit=1052
+   ->  Limit  (cost=4524.60..7571.42 rows=1000 width=4) (actual rows=1 loops=1)
+         Buffers: shared hit=1052
+         ->  Bitmap Heap Scan on "Message" m  (cost=4524.60..159894.26 rows=50994 width=4) (actual rows=1 loops=1)
+               Recheck Cond: ((search @@ '''7654321'''::tsquery) OR (f_unaccent(content) ~~* '%7654321%'::text))
+               Filter: ("deletedAt" IS NULL)
+               Heap Blocks: exact=1
+               Buffers: shared hit=1052
+               ->  BitmapOr  (cost=4524.60..4524.60 rows=50999 width=0) (actual rows=0 loops=1)
+                     Buffers: shared hit=1051
+                     ->  Bitmap Index Scan on "Message_search_key"  (cost=0.00..2096.62 rows=49999 width=0) (actual rows=1 loops=1)
+                           Index Cond: (search @@ '''7654321'''::tsquery)
+                           Buffers: shared hit=415
+                     ->  Bitmap Index Scan on "Message_content_trgm_key"  (cost=0.00..2402.49 rows=1000 width=0) (actual rows=1 loops=1)
+                           Index Cond: (f_unaccent(content) ~~* '%7654321%'::text)
+                           Buffers: shared hit=636
+ Planning:
+   Buffers: shared hit=5
+ Planning Time: 0.289 ms
+ Execution Time: 8.185 ms
+(21 rows)
+
+== V3b (thăm dò có trần 1000): từ PHỔ BIẾN lorem
+                                                            QUERY PLAN                                                             
+-----------------------------------------------------------------------------------------------------------------------------------
+ Aggregate  (cost=317.35..317.36 rows=1 width=8) (actual rows=1 loops=1)
+   Buffers: shared hit=16 read=31
+   ->  Limit  (cost=0.00..304.85 rows=1000 width=4) (actual rows=1000 loops=1)
+         Buffers: shared hit=16 read=31
+         ->  Seq Scan on "Message" m  (cost=0.00..3048384.89 rows=9999709 width=4) (actual rows=1000 loops=1)
+               Filter: (("deletedAt" IS NULL) AND ((search @@ '''lorem'''::tsquery) OR (f_unaccent(content) ~~* '%lorem%'::text)))
+               Buffers: shared hit=16 read=31
+ Planning:
+   Buffers: shared hit=2
+ Planning Time: 0.211 ms
+ Execution Time: 0.435 ms
+(11 rows)
+
+== V4 (chỉ nhánh FTS, bỏ ILIKE): từ HIẾM, truy vấn gốc
+                                                               QUERY PLAN                                                                
+-----------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=0.57..315.76 rows=21 width=16) (actual rows=1 loops=1)
+   Buffers: shared hit=41395 read=439826
+   ->  Nested Loop  (cost=0.57..750417.88 rows=49999 width=16) (actual rows=1 loops=1)
+         Buffers: shared hit=41395 read=439826
+         ->  Index Scan Backward using "Message_pkey" on "Message" m  (cost=0.43..742421.18 rows=49999 width=32) (actual rows=1 loops=1)
+               Filter: (("deletedAt" IS NULL) AND (search @@ '''7654321'''::tsquery))
+               Rows Removed by Filter: 9999999
+               Buffers: shared hit=41395 read=439824
+         ->  Index Scan using "Channel_pkey" on "Channel" c  (cost=0.14..0.16 rows=1 width=16) (actual rows=1 loops=1)
+               Index Cond: (id = m."channelId")
+               Filter: ("serverId" = '01a0b318-87f9-7348-8d1b-f2366ebe4cf4'::uuid)
+               Buffers: shared read=2
+ Planning:
+   Buffers: shared hit=21 read=2
+ Planning Time: 0.637 ms
+ Execution Time: 78184.570 ms
+(16 rows)
+

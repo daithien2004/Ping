@@ -1,0 +1,20 @@
+
+> api@0.2.0 drill:postgres D:\Ping\apps\api
+> tsx test/drill/postgres-outage.drill.ts
+
+  PASS  API chạy, /ready = ok
+  PASS  Gửi tin khi Postgres khỏe
+
+>>> docker compose stop postgres
+  PASS  /ready trả 503: load balancer loại instance
+  PASS  /health (liveness) vẫn 200: không bị restart vô ích
+  PASS  Request cần DB → 503 SERVICE_UNAVAILABLE kèm requestId (không phải 500)  (503 trong 10ms)
+  PASS  ...trả lời nhanh, không treo  (10ms)
+  PASS  Tiến trình API vẫn sống, không crash/unhandled
+
+>>> docker compose start postgres
+  PASS  Postgres về lại → /ready trở lại "ok" không cần restart API
+  PASS  Đọc lịch sử hoạt động lại
+  PASS  Gửi tin sau khi phục hồi
+
+10/10 bước đạt

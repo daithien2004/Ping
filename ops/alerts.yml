@@ -73,3 +73,76 @@ groups:
         annotations:
           summary: 'Cannot read daily AI spending from Postgres'
           runbook: docs/runbook/alerts.md#pingaibudgetmetricsunavailable
+
+  - name: ping-slo
+    # SLO đề xuất, chưa có lưu lượng production để hiệu chỉnh (docs/runbook/slo.md): 99,5% request không 5xx và 95%
+    # request dưới 500 ms, tính trên 30 ngày. Cảnh báo theo tốc độ đốt ngân sách lỗi, hai cửa sổ cùng vượt mới báo
+    # (mẫu "multiwindow, multi-burn-rate" của Google SRE Workbook): đốt nhanh gọi người, đốt chậm mở ticket.
+    # Không có request thì chia cho 0 ra NaN và không cảnh báo.
+    rules:
+      - record: ping:http_error_ratio:rate5m
+        expr: |
+          sum(rate(http_request_duration_seconds_count{status_class="5xx"}[5m]))
+            / sum(rate(http_request_duration_seconds_count[5m]))
+      - record: ping:http_error_ratio:rate30m
+        expr: |
+          sum(rate(http_request_duration_seconds_count{status_class="5xx"}[30m]))
+            / sum(rate(http_request_duration_seconds_count[30m]))
+      - record: ping:http_error_ratio:rate1h
+        expr: |
+          sum(rate(http_request_duration_seconds_count{status_class="5xx"}[1h]))
+            / sum(rate(http_request_duration_seconds_count[1h]))
+      - record: ping:http_error_ratio:rate6h
+        expr: |
+          sum(rate(http_request_duration_seconds_count{status_class="5xx"}[6h]))
+            / sum(rate(http_request_duration_seconds_count[6h]))
+      - record: ping:http_slow_ratio:rate5m
+        expr: |
+          1 - sum(rate(http_request_duration_seconds_bucket{le="0.5"}[5m]))
+            / sum(rate(http_request_duration_seconds_count[5m]))
+      - record: ping:http_slow_ratio:rate30m
+        expr: |
+          1 - sum(rate(http_request_duration_seconds_bucket{le="0.5"}[30m]))
+            / sum(rate(http_request_duration_seconds_count[30m]))
+      - record: ping:http_slow_ratio:rate1h
+        expr: |
+          1 - sum(rate(http_request_duration_seconds_bucket{le="0.5"}[1h]))
+            / sum(rate(http_request_duration_seconds_count[1h]))
+      - record: ping:http_slow_ratio:rate6h
+        expr: |
+          1 - sum(rate(http_request_duration_seconds_bucket{le="0.5"}[6h]))
+            / sum(rate(http_request_duration_seconds_count[6h]))
+
+      - alert: PingErrorBudgetFastBurn
+        # Ngân sách lỗi 0,5%: đốt 14,4 lần nhanh hơn mức cho phép trong 1 giờ là ăn 2% ngân sách tháng.
+        expr: ping:http_error_ratio:rate1h > (14.4 * 0.005) and ping:http_error_ratio:rate5m > (14.4 * 0.005)
+        for: 2m
+        labels: { severity: page }
+        annotations:
+          summary: 'Đang đốt ngân sách lỗi (5xx) nhanh gấp 14,4 lần mức cho phép'
+          runbook: docs/runbook/alerts.md#pingerrorbudgetfastburn
+
+      - alert: PingErrorBudgetSlowBurn
+        expr: ping:http_error_ratio:rate6h > (6 * 0.005) and ping:http_error_ratio:rate30m > (6 * 0.005)
+        for: 15m
+        labels: { severity: ticket }
+        annotations:
+          summary: 'Đang đốt ngân sách lỗi (5xx) nhanh gấp 6 lần mức cho phép trong 6 giờ'
+          runbook: docs/runbook/alerts.md#pingerrorbudgetslowburn
+
+      - alert: PingLatencyBudgetFastBurn
+        # Ngân sách chậm 5% (request quá 500 ms).
+        expr: ping:http_slow_ratio:rate1h > (14.4 * 0.05) and ping:http_slow_ratio:rate5m > (14.4 * 0.05)
+        for: 2m
+        labels: { severity: page }
+        annotations:
+          summary: 'Đang đốt ngân sách độ trễ nhanh gấp 14,4 lần mức cho phép'
+          runbook: docs/runbook/alerts.md#pinglatencybudgetfastburn
+
+      - alert: PingLatencyBudgetSlowBurn
+        expr: ping:http_slow_ratio:rate6h > (6 * 0.05) and ping:http_slow_ratio:rate30m > (6 * 0.05)
+        for: 15m
+        labels: { severity: ticket }
+        annotations:
+          summary: 'Đang đốt ngân sách độ trễ nhanh gấp 6 lần mức cho phép trong 6 giờ'
+          runbook: docs/runbook/alerts.md#pinglatencybudgetslowburn

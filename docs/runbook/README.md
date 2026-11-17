@@ -12,6 +12,7 @@ Tra cứu khi vận hành. Các runbook mới (tra lỗi, migration, sao lưu, r
 | Bản mới có vấn đề, cần quay lại               | [rollback.md](rollback.md)                       |
 | Postgres hoặc Redis hỏng, tắt instance        | [failure-modes.md](failure-modes.md)             |
 | Có cảnh báo từ Prometheus                     | [alerts.md](alerts.md)                           |
+| Cần biết mục tiêu độ tin cậy và ngân sách lỗi | [slo.md](slo.md)                                 |
 | Triển khai stack production chạy local        | [deploy.md](deploy.md)                           |
 | CI/CD từ GitHub Actions lên VPS               | [ci-cd-vps.md](ci-cd-vps.md)                     |
 | Cần biết dữ liệu demo trên production         | [demo-data.md](demo-data.md)                     |

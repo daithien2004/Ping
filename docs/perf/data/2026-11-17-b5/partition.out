@@ -1,0 +1,84 @@
+Timing is on.
+CREATE SCHEMA
+Time: 8.259 ms
+DROP TABLE
+Time: 1.595 ms
+NOTICE:  table "message_part" does not exist, skipping
+CREATE TABLE
+Time: 34.696 ms
+CREATE FUNCTION
+Time: 16.431 ms
+== Khoảng thời gian của dữ liệu
+Time: 3386.350 ms (00:03.386)
+           t0            |           t1            
+-------------------------+-------------------------
+ 2026-09-18 05:58:45.473 | 2026-11-17 04:52:04.955
+(1 row)
+
+Time: 1.196 ms
+CREATE TABLE
+Time: 6.984 ms
+CREATE TABLE
+Time: 4.477 ms
+CREATE TABLE
+Time: 3.166 ms
+CREATE TABLE
+Time: 4.796 ms
+CREATE TABLE
+Time: 2.494 ms
+CREATE TABLE
+Time: 2.311 ms
+CREATE TABLE
+Time: 2.482 ms
+CREATE TABLE
+Time: 2.605 ms
+CREATE TABLE
+Time: 3.430 ms
+CREATE TABLE
+Time: 1.865 ms
+CREATE TABLE
+Time: 2.095 ms
+CREATE TABLE
+Time: 2.596 ms
+Time: 8.742 ms
+== Nạp dữ liệu (cột search tự sinh nên không liệt kê)
+INSERT 0 10000000
+Time: 231891.862 ms (03:51.892)
+== Index (trừ khóa duy nhất nonce): cùng bộ index mà các truy vấn đo dùng
+CREATE INDEX
+Time: 81465.386 ms (01:21.465)
+CREATE INDEX
+Time: 83861.858 ms (01:23.862)
+CREATE INDEX
+Time: 109917.470 ms (01:49.917)
+ANALYZE
+Time: 12703.321 ms (00:12.703)
+== Phân bố hàng theo phân vùng
+    partition    |  rows  
+-----------------+--------
+ exp.message_p0  | 833334
+ exp.message_p1  | 833333
+ exp.message_p2  | 833333
+ exp.message_p3  | 833333
+ exp.message_p4  | 833334
+ exp.message_p5  | 833333
+ exp.message_p6  | 833333
+ exp.message_p7  | 833333
+ exp.message_p8  | 833334
+ exp.message_p9  | 833333
+ exp.message_p10 | 833333
+ exp.message_p11 | 833334
+(12 rows)
+
+Time: 6134.890 ms (00:06.135)
+ partitioned_total | original_total 
+-------------------+----------------
+ 0 bytes           | 6008 MB
+(1 row)
+
+Time: 5.393 ms
+== Thử đặt lại khóa duy nhất của idempotency (phải lỗi)
+Time: 4.490 ms
+ERROR:  unique constraint on partitioned table must include all partitioning columns
+DETAIL:  UNIQUE constraint on table "message_part" lacks column "id" which is part of the partition key.
+done

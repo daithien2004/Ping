@@ -1,0 +1,102 @@
+== Quy mô
+ messages | table_with_indexes |  heap   
+----------+--------------------+---------
+ 10000000 | 6008 MB            | 3113 MB
+(1 row)
+
+             indexrelname             |  size  
+--------------------------------------+--------
+ Message_channelId_id_idx             | 851 MB
+ Message_content_trgm_key             | 748 MB
+ Message_search_key                   | 610 MB
+ Message_pkey                         | 325 MB
+ Message_channelId_authorId_nonce_key | 169 MB
+ Message_channelId_pinnedAt_idx       | 65 MB
+ Message_replyToId_idx                | 63 MB
+ Message_stickerId_idx                | 63 MB
+(8 rows)
+
+== 4. Tìm từ HIẾM ("7654321") trong cả server, như search.service.ts (FTS OR ILIKE)
+                                                                            QUERY PLAN                                                                             
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=0.43..1361.42 rows=21 width=78) (actual time=5640.101..74562.303 rows=1 loops=1)
+   Buffers: shared hit=56926 read=424294
+   ->  Nested Loop  (cost=0.43..3304860.95 rows=50994 width=78) (actual time=5640.100..74562.295 rows=1 loops=1)
+         Join Filter: (m."channelId" = c.id)
+         Rows Removed by Join Filter: 37
+         Buffers: shared hit=56926 read=424294
+         ->  Index Scan Backward using "Message_pkey" on "Message" m  (cost=0.43..3267347.70 rows=50994 width=94) (actual time=5640.045..74561.917 rows=1 loops=1)
+               Filter: (("deletedAt" IS NULL) AND ((search @@ '''7654321'''::tsquery) OR (f_unaccent(content) ~~* '%7654321%'::text)))
+               Rows Removed by Filter: 9999999
+               Buffers: shared hit=56926 read=424293
+         ->  Materialize  (cost=0.00..2.88 rows=50 width=16) (actual time=0.042..0.049 rows=38 loops=1)
+               Buffers: shared read=1
+               ->  Seq Scan on "Channel" c  (cost=0.00..2.62 rows=50 width=16) (actual time=0.022..0.025 rows=38 loops=1)
+                     Filter: ("serverId" = '01a0b318-87f9-7348-8d1b-f2366ebe4cf4'::uuid)
+                     Buffers: shared read=1
+ Planning:
+   Buffers: shared hit=154 read=48 dirtied=1
+ Planning Time: 9.958 ms
+ Execution Time: 74562.546 ms
+(19 rows)
+
+== 5. Tìm từ PHỔ BIẾN ("lorem", khớp mọi hàng), cùng truy vấn
+                                                                          QUERY PLAN                                                                           
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=0.58..7.97 rows=21 width=78) (actual time=0.889..1.110 rows=21 loops=1)
+   Buffers: shared hit=28 read=5
+   ->  Nested Loop  (cost=0.58..3514466.29 rows=9999709 width=78) (actual time=0.887..1.107 rows=21 loops=1)
+         Buffers: shared hit=28 read=5
+         ->  Index Scan Backward using "Message_pkey" on "Message" m  (cost=0.43..3267347.70 rows=9999709 width=94) (actual time=0.874..1.072 rows=21 loops=1)
+               Filter: (("deletedAt" IS NULL) AND ((search @@ '''lorem'''::tsquery) OR (f_unaccent(content) ~~* '%lorem%'::text)))
+               Buffers: shared read=5
+         ->  Memoize  (cost=0.15..0.17 rows=1 width=16) (actual time=0.001..0.001 rows=1 loops=21)
+               Cache Key: m."channelId"
+               Cache Mode: logical
+               Hits: 7  Misses: 14  Evictions: 0  Overflows: 0  Memory Usage: 2kB
+               Buffers: shared hit=28
+               ->  Index Scan using "Channel_pkey" on "Channel" c  (cost=0.14..0.16 rows=1 width=16) (actual time=0.001..0.001 rows=1 loops=14)
+                     Index Cond: (id = m."channelId")
+                     Filter: ("serverId" = '01a0b318-87f9-7348-8d1b-f2366ebe4cf4'::uuid)
+                     Buffers: shared hit=28
+ Planning:
+   Buffers: shared hit=4 read=4
+ Planning Time: 4.157 ms
+ Execution Time: 1.127 ms
+(20 rows)
+
+== 6. Đếm chưa đọc (trần 100) ở channel nóng, con trỏ đọc nằm giữa lịch sử
+                                                                                   QUERY PLAN                                                                                    
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Aggregate  (cost=33.20..33.21 rows=1 width=8) (actual time=0.957..0.958 rows=1 loops=1)
+   Buffers: shared hit=14 read=4
+   ->  Limit  (cost=0.43..31.95 rows=100 width=4) (actual time=0.597..0.949 rows=100 loops=1)
+         Buffers: shared hit=14 read=4
+         ->  Index Scan using "Message_pkey" on "Message" msg  (cost=0.43..29725.68 rows=94322 width=4) (actual time=0.596..0.944 rows=100 loops=1)
+               Index Cond: (id > '01a1dc7d-2015-7578-a656-56194b71bfc6'::uuid)
+               Filter: (("deletedAt" IS NULL) AND ("authorId" <> '00000000-0000-0000-0000-000000000000'::uuid) AND ("channelId" = '01a0b318-87fb-709e-9094-c08e4475c8c7'::uuid))
+               Rows Removed by Filter: 227
+               Buffers: shared hit=14 read=4
+ Planning:
+   Buffers: shared hit=13 read=17
+ Planning Time: 3.090 ms
+ Execution Time: 0.978 ms
+(13 rows)
+
+== 7. Đếm chưa đọc khi con trỏ rất cũ (mọi hàng đều chưa đọc, trần 100 phải dừng sớm)
+                                                                                                               QUERY PLAN                                                                                                                
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Aggregate  (cost=22.53..22.54 rows=1 width=8) (actual time=0.153..0.154 rows=1 loops=1)
+   Buffers: shared read=31
+   ->  Limit  (cost=0.00..21.28 rows=100 width=4) (actual time=0.022..0.148 rows=100 loops=1)
+         Buffers: shared read=31
+         ->  Seq Scan on "Message" msg  (cost=0.00..573456.91 rows=2694915 width=4) (actual time=0.021..0.143 rows=100 loops=1)
+               Filter: (("deletedAt" IS NULL) AND ("authorId" <> '00000000-0000-0000-0000-000000000000'::uuid) AND (id > '00000000-0000-0000-0000-000000000000'::uuid) AND ("channelId" = '01a0b318-87fb-709e-9094-c08e4475c8c7'::uuid))
+               Rows Removed by Filter: 298
+               Buffers: shared read=31
+ Planning:
+   Buffers: shared hit=2 read=2
+ Planning Time: 1.010 ms
+ Execution Time: 0.172 ms
+(12 rows)
+

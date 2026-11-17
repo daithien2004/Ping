@@ -34,6 +34,27 @@ tin lỡ qua REST nên không mất dữ liệu; kiểm tra tỷ lệ nối lạ
 Không scrape được `/metrics` của một instance: process chết hoặc cổng `METRICS_PORT` không tới được. Xem
 `/health` của instance đó, log khởi động, và `kubectl describe` (hoặc tương đương).
 
+## PingErrorBudgetFastBurn
+
+Ngân sách lỗi 5xx (0,5% trong 30 ngày, [SLO](slo.md)) đang bị đốt nhanh gấp 14,4 lần mức cho phép: ở cả cửa sổ 1 giờ và 5 phút,
+tỉ lệ 5xx vượt 7,2%. Giữ nguyên tốc độ này thì ăn 2% ngân sách tháng sau mỗi giờ. Làm như [PingHighErrorRate](#pinghigherrorrate):
+Sentry, `dependency_up`, rồi nghĩ tới rollback. Hai cửa sổ cùng vượt để cảnh báo tự tắt nhanh khi lỗi đã hết.
+
+## PingErrorBudgetSlowBurn
+
+Tỉ lệ 5xx vượt 3% ở cả cửa sổ 6 giờ và 30 phút (gấp 6 lần mức cho phép). Không đủ gấp để gọi người nhưng sẽ hết ngân sách tháng
+trong vài ngày. Mở ticket, tìm nguyên nhân âm ỉ (một endpoint hỏng, một lô dữ liệu xấu, pool kết nối thiếu).
+
+## PingLatencyBudgetFastBurn
+
+Ngân sách độ trễ (95% request dưới 500 ms) bị đốt nhanh gấp 14,4 lần: hơn 72% request chậm quá 500 ms ở cả cửa sổ 1 giờ và 5 phút.
+Hay gặp: pool Postgres đầy (xem `PG_POOL_MAX` và số bản sao, [ADR-0092](../adr/0092-nhieu-ban-sao-api-sau-nginx.md)), một truy vấn mất index,
+hoặc bão reconnect trong cùng process ([ADR-0093](../adr/0093-chua-tach-realtime-service.md)).
+
+## PingLatencyBudgetSlowBurn
+
+Hơn 30% request chậm quá 500 ms ở cả cửa sổ 6 giờ và 30 phút. Mở ticket; so với `http_request_duration_seconds` theo `route` để biết route nào kéo chậm.
+
 ## Kiểm tra toàn tuyến (làm ở staging, việc của người vận hành)
 
 Gây một lỗi 500 có chủ đích, lấy mã lỗi từ giao diện, tìm ra log của request và lỗi tương ứng trên Sentry.

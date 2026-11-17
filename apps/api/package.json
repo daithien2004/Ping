@@ -30,6 +30,8 @@
     "loadtest:seed": "tsx test/loadtest/seed.ts",
     "loadtest:rolling": "tsx test/loadtest/rolling-restart.ts",
     "loadtest:bus": "tsx test/loadtest/bus-bench.ts",
+    "loadtest:replica": "tsx test/loadtest/replica-lag.ts",
+    "loadtest:search": "tsx test/loadtest/search-eval.ts",
     "drill:redis": "tsx test/drill/redis-outage.drill.ts",
     "drill:postgres": "tsx test/drill/postgres-outage.drill.ts",
     "drill:kafka": "tsx test/drill/kafka-outage.drill.ts",

@@ -1,0 +1,318 @@
+== Số hàng của channel nóng và tổng số tin
+== 1. Trang đầu lịch sử (ORDER BY id DESC LIMIT 51), channel nóng
+                                                                                  QUERY PLAN                                                                                  
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=5.10..20.42 rows=51 width=87) (actual time=0.283..1.606 rows=51 loops=1)
+   Buffers: shared read=12
+   ->  Append  (cost=5.10..818931.16 rows=2726925 width=87) (actual time=0.281..1.599 rows=51 loops=1)
+         Buffers: shared read=12
+         ->  Index Scan Backward using message_p11_pkey on message_p11 message_part_12  (cost=0.42..60764.74 rows=223277 width=87) (actual time=0.280..1.591 rows=51 loops=1)
+               Filter: (("deletedAt" IS NULL) AND ("channelId" = '01a0b318-87fb-709e-9094-c08e4475c8c7'::uuid))
+               Rows Removed by Filter: 155
+               Buffers: shared read=12
+         ->  Index Scan Backward using message_p10_pkey on message_p10 message_part_11  (cost=0.42..60764.72 rows=226749 width=87) (never executed)
+               Filter: (("deletedAt" IS NULL) AND ("channelId" = '01a0b318-87fb-709e-9094-c08e4475c8c7'::uuid))
+         ->  Index Scan Backward using message_p9_pkey on message_p9 message_part_10  (cost=0.42..60764.72 rows=225222 width=87) (never executed)
+               Filter: (("deletedAt" IS NULL) AND ("channelId" = '01a0b318-87fb-709e-9094-c08e4475c8c7'::uuid))
+         ->  Index Scan Backward using message_p8_pkey on message_p8 message_part_9  (cost=0.42..60764.74 rows=228555 width=87) (never executed)
+               Filter: (("deletedAt" IS NULL) AND ("channelId" = '01a0b318-87fb-709e-9094-c08e4475c8c7'::uuid))
+         ->  Index Scan Backward using message_p7_pkey on message_p7 message_part_8  (cost=0.42..60764.72 rows=227083 width=87) (never executed)
+               Filter: (("deletedAt" IS NULL) AND ("channelId" = '01a0b318-87fb-709e-9094-c08e4475c8c7'::uuid))
+         ->  Index Scan Backward using message_p6_pkey on message_p6 message_part_7  (cost=0.42..60764.72 rows=228610 width=87) (never executed)
+               Filter: (("deletedAt" IS NULL) AND ("channelId" = '01a0b318-87fb-709e-9094-c08e4475c8c7'::uuid))
+         ->  Index Scan Backward using message_p5_pkey on message_p5 message_part_6  (cost=0.42..60764.72 rows=230110 width=87) (never executed)
+               Filter: (("deletedAt" IS NULL) AND ("channelId" = '01a0b318-87fb-709e-9094-c08e4475c8c7'::uuid))
+         ->  Index Scan Backward using message_p4_pkey on message_p4 message_part_5  (cost=0.42..60764.74 rows=225972 width=87) (never executed)
+               Filter: (("deletedAt" IS NULL) AND ("channelId" = '01a0b318-87fb-709e-9094-c08e4475c8c7'::uuid))
+         ->  Index Scan Backward using message_p3_pkey on message_p3 message_part_4  (cost=0.42..60764.72 rows=229833 width=87) (never executed)
+               Filter: (("deletedAt" IS NULL) AND ("channelId" = '01a0b318-87fb-709e-9094-c08e4475c8c7'::uuid))
+         ->  Index Scan Backward using message_p2_pkey on message_p2 message_part_3  (cost=0.42..60764.72 rows=227888 width=87) (never executed)
+               Filter: (("deletedAt" IS NULL) AND ("channelId" = '01a0b318-87fb-709e-9094-c08e4475c8c7'::uuid))
+         ->  Index Scan Backward using message_p1_pkey on message_p1 message_part_2  (cost=0.42..60508.72 rows=226459 width=86) (never executed)
+               Filter: (("deletedAt" IS NULL) AND ("channelId" = '01a0b318-87fb-709e-9094-c08e4475c8c7'::uuid))
+         ->  Index Scan using "message_p0_channelId_id_idx" on message_p0 message_part_1  (cost=0.42..137140.59 rows=227167 width=85) (never executed)
+               Index Cond: ("channelId" = '01a0b318-87fb-709e-9094-c08e4475c8c7'::uuid)
+               Filter: ("deletedAt" IS NULL)
+ Planning:
+   Buffers: shared hit=1076 read=46
+ Planning Time: 8.436 ms
+ Execution Time: 1.679 ms
+(35 rows)
+
+== 1b. Trang đầu, channel ÍT tin (lịch sử thật của đa số channel): phải dùng Message(channelId, id DESC)
+                                                                                   QUERY PLAN                                                                                    
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=5.10..194.42 rows=51 width=87) (actual time=0.025..6.891 rows=51 loops=1)
+   Buffers: shared hit=3 read=49
+   ->  Append  (cost=5.10..254086.44 rows=68445 width=87) (actual time=0.025..6.881 rows=51 loops=1)
+         Buffers: shared hit=3 read=49
+         ->  Index Scan using "message_p11_channelId_id_idx" on message_p11 message_part_12  (cost=0.42..18619.90 rows=4972 width=87) (actual time=0.025..6.872 rows=51 loops=1)
+               Index Cond: ("channelId" = '01a0b318-882c-748c-b691-1ea2282e8934'::uuid)
+               Filter: ("deletedAt" IS NULL)
+               Buffers: shared hit=3 read=49
+         ->  Index Scan using "message_p10_channelId_id_idx" on message_p10 message_part_11  (cost=0.42..21797.07 rows=5889 width=87) (never executed)
+               Index Cond: ("channelId" = '01a0b318-882c-748c-b691-1ea2282e8934'::uuid)
+               Filter: ("deletedAt" IS NULL)
+         ->  Index Scan using "message_p9_channelId_id_idx" on message_p9 message_part_10  (cost=0.42..20912.49 rows=5639 width=87) (never executed)
+               Index Cond: ("channelId" = '01a0b318-882c-748c-b691-1ea2282e8934'::uuid)
+               Filter: ("deletedAt" IS NULL)
+         ->  Index Scan using "message_p8_channelId_id_idx" on message_p8 message_part_9  (cost=0.42..22925.75 rows=6222 width=87) (never executed)
+               Index Cond: ("channelId" = '01a0b318-882c-748c-b691-1ea2282e8934'::uuid)
+               Filter: ("deletedAt" IS NULL)
+         ->  Index Scan using "message_p7_channelId_id_idx" on message_p7 message_part_8  (cost=0.42..20466.51 rows=5500 width=87) (never executed)
+               Index Cond: ("channelId" = '01a0b318-882c-748c-b691-1ea2282e8934'::uuid)
+               Filter: ("deletedAt" IS NULL)
+         ->  Index Scan using "message_p6_channelId_id_idx" on message_p6 message_part_7  (cost=0.42..21883.20 rows=5917 width=87) (never executed)
+               Index Cond: ("channelId" = '01a0b318-882c-748c-b691-1ea2282e8934'::uuid)
+               Filter: ("deletedAt" IS NULL)
+         ->  Index Scan using "message_p5_channelId_id_idx" on message_p5 message_part_6  (cost=0.42..20360.36 rows=5472 width=87) (never executed)
+               Index Cond: ("channelId" = '01a0b318-882c-748c-b691-1ea2282e8934'::uuid)
+               Filter: ("deletedAt" IS NULL)
+         ->  Index Scan using "message_p4_channelId_id_idx" on message_p4 message_part_5  (cost=0.42..23230.13 rows=6306 width=87) (never executed)
+               Index Cond: ("channelId" = '01a0b318-882c-748c-b691-1ea2282e8934'::uuid)
+               Filter: ("deletedAt" IS NULL)
+         ->  Index Scan using "message_p3_channelId_id_idx" on message_p3 message_part_4  (cost=0.42..22167.73 rows=6000 width=87) (never executed)
+               Index Cond: ("channelId" = '01a0b318-882c-748c-b691-1ea2282e8934'::uuid)
+               Filter: ("deletedAt" IS NULL)
+         ->  Index Scan using "message_p2_channelId_id_idx" on message_p2 message_part_3  (cost=0.42..22652.87 rows=6139 width=87) (never executed)
+               Index Cond: ("channelId" = '01a0b318-882c-748c-b691-1ea2282e8934'::uuid)
+               Filter: ("deletedAt" IS NULL)
+         ->  Index Scan using "message_p1_channelId_id_idx" on message_p1 message_part_2  (cost=0.42..18706.24 rows=5000 width=86) (never executed)
+               Index Cond: ("channelId" = '01a0b318-882c-748c-b691-1ea2282e8934'::uuid)
+               Filter: ("deletedAt" IS NULL)
+         ->  Index Scan using "message_p0_channelId_id_idx" on message_p0 message_part_1  (cost=0.42..20021.96 rows=5389 width=85) (never executed)
+               Index Cond: ("channelId" = '01a0b318-882c-748c-b691-1ea2282e8934'::uuid)
+               Filter: ("deletedAt" IS NULL)
+ Planning Time: 0.251 ms
+ Execution Time: 6.929 ms
+(43 rows)
+
+== 2. Trang sâu (cursor before = id ở giữa lịch sử của channel nóng)
+                                                                                 QUERY PLAN                                                                                  
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=4.67..20.64 rows=51 width=87) (actual time=0.026..0.112 rows=51 loops=1)
+   Buffers: shared hit=3 read=10
+   ->  Append  (cost=4.67..729510.08 rows=2330185 width=87) (actual time=0.023..0.107 rows=51 loops=1)
+         Buffers: shared hit=3 read=10
+         ->  Index Scan Backward using message_p10_pkey on message_p10 message_part_11  (cost=0.42..14774.06 rows=53286 width=87) (actual time=0.023..0.103 rows=51 loops=1)
+               Index Cond: (id < '01a1ba5c-9201-7bbb-941d-e1723c816d5c'::uuid)
+               Filter: (("deletedAt" IS NULL) AND ("channelId" = '01a0b318-87fb-709e-9094-c08e4475c8c7'::uuid))
+               Rows Removed by Filter: 117
+               Buffers: shared hit=3 read=10
+         ->  Index Scan Backward using message_p9_pkey on message_p9 message_part_10  (cost=0.42..62848.04 rows=225222 width=87) (never executed)
+               Index Cond: (id < '01a1ba5c-9201-7bbb-941d-e1723c816d5c'::uuid)
+               Filter: (("deletedAt" IS NULL) AND ("channelId" = '01a0b318-87fb-709e-9094-c08e4475c8c7'::uuid))
+         ->  Index Scan Backward using message_p8_pkey on message_p8 message_part_9  (cost=0.42..62848.07 rows=228555 width=87) (never executed)
+               Index Cond: (id < '01a1ba5c-9201-7bbb-941d-e1723c816d5c'::uuid)
+               Filter: (("deletedAt" IS NULL) AND ("channelId" = '01a0b318-87fb-709e-9094-c08e4475c8c7'::uuid))
+         ->  Index Scan Backward using message_p7_pkey on message_p7 message_part_8  (cost=0.42..62848.04 rows=227083 width=87) (never executed)
+               Index Cond: (id < '01a1ba5c-9201-7bbb-941d-e1723c816d5c'::uuid)
+               Filter: (("deletedAt" IS NULL) AND ("channelId" = '01a0b318-87fb-709e-9094-c08e4475c8c7'::uuid))
+         ->  Index Scan Backward using message_p6_pkey on message_p6 message_part_7  (cost=0.42..62848.04 rows=228610 width=87) (never executed)
+               Index Cond: (id < '01a1ba5c-9201-7bbb-941d-e1723c816d5c'::uuid)
+               Filter: (("deletedAt" IS NULL) AND ("channelId" = '01a0b318-87fb-709e-9094-c08e4475c8c7'::uuid))
+         ->  Index Scan Backward using message_p5_pkey on message_p5 message_part_6  (cost=0.42..62848.04 rows=230110 width=87) (never executed)
+               Index Cond: (id < '01a1ba5c-9201-7bbb-941d-e1723c816d5c'::uuid)
+               Filter: (("deletedAt" IS NULL) AND ("channelId" = '01a0b318-87fb-709e-9094-c08e4475c8c7'::uuid))
+         ->  Index Scan Backward using message_p4_pkey on message_p4 message_part_5  (cost=0.42..62848.07 rows=225972 width=87) (never executed)
+               Index Cond: (id < '01a1ba5c-9201-7bbb-941d-e1723c816d5c'::uuid)
+               Filter: (("deletedAt" IS NULL) AND ("channelId" = '01a0b318-87fb-709e-9094-c08e4475c8c7'::uuid))
+         ->  Index Scan Backward using message_p3_pkey on message_p3 message_part_4  (cost=0.42..62848.04 rows=229833 width=87) (never executed)
+               Index Cond: (id < '01a1ba5c-9201-7bbb-941d-e1723c816d5c'::uuid)
+               Filter: (("deletedAt" IS NULL) AND ("channelId" = '01a0b318-87fb-709e-9094-c08e4475c8c7'::uuid))
+         ->  Index Scan Backward using message_p2_pkey on message_p2 message_part_3  (cost=0.42..62848.04 rows=227888 width=87) (never executed)
+               Index Cond: (id < '01a1ba5c-9201-7bbb-941d-e1723c816d5c'::uuid)
+               Filter: (("deletedAt" IS NULL) AND ("channelId" = '01a0b318-87fb-709e-9094-c08e4475c8c7'::uuid))
+         ->  Index Scan Backward using message_p1_pkey on message_p1 message_part_2  (cost=0.42..62592.19 rows=226459 width=86) (never executed)
+               Index Cond: (id < '01a1ba5c-9201-7bbb-941d-e1723c816d5c'::uuid)
+               Filter: (("deletedAt" IS NULL) AND ("channelId" = '01a0b318-87fb-709e-9094-c08e4475c8c7'::uuid))
+         ->  Index Scan using "message_p0_channelId_id_idx" on message_p0 message_part_1  (cost=0.42..137708.51 rows=227167 width=85) (never executed)
+               Index Cond: (("channelId" = '01a0b318-87fb-709e-9094-c08e4475c8c7'::uuid) AND (id < '01a1ba5c-9201-7bbb-941d-e1723c816d5c'::uuid))
+               Filter: ("deletedAt" IS NULL)
+ Planning:
+   Buffers: shared hit=1 read=42
+ Planning Time: 70.769 ms
+ Execution Time: 0.169 ms
+(43 rows)
+
+== 5. Tìm từ HIẾM, truy vấn gốc (ORDER BY id DESC LIMIT 21) trên bảng phân vùng
+                                                                  QUERY PLAN                                                                  
+----------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=158829.66..158829.72 rows=21 width=16) (actual rows=1 loops=1)
+   Buffers: shared hit=93 read=182
+   CTE hits
+     ->  Gather  (cost=1216.01..156286.15 rows=51000 width=32) (actual rows=1 loops=1)
+           Workers Planned: 2
+           Workers Launched: 2
+           Buffers: shared hit=89 read=181
+           ->  Parallel Append  (cost=216.01..150186.15 rows=21252 width=32) (actual rows=0 loops=3)
+                 Buffers: shared hit=89 read=181
+                 ->  Parallel Bitmap Heap Scan on message_p4 m_5  (cost=216.01..12518.64 rows=1771 width=32) (actual rows=0 loops=1)
+                       Recheck Cond: ((search @@ '''7654321'''::tsquery) OR (f_unaccent(content) ~~* '%7654321%'::text))
+                       Filter: ("deletedAt" IS NULL)
+                       Buffers: shared hit=7 read=14
+                       ->  BitmapOr  (cost=216.01..216.01 rows=4250 width=0) (actual rows=0 loops=1)
+                             Buffers: shared hit=7 read=14
+                             ->  Bitmap Index Scan on message_p4_search_idx  (cost=0.00..46.31 rows=4167 width=0) (actual rows=0 loops=1)
+                                   Index Cond: (search @@ '''7654321'''::tsquery)
+                                   Buffers: shared hit=1 read=3
+                             ->  Bitmap Index Scan on message_p4_f_unaccent_idx  (cost=0.00..167.58 rows=83 width=0) (actual rows=0 loops=1)
+                                   Index Cond: (f_unaccent(content) ~~* '%7654321%'::text)
+                                   Buffers: shared hit=6 read=11
+                 ->  Parallel Bitmap Heap Scan on message_p8 m_9  (cost=216.01..12518.64 rows=1771 width=32) (actual rows=0 loops=1)
+                       Recheck Cond: ((search @@ '''7654321'''::tsquery) OR (f_unaccent(content) ~~* '%7654321%'::text))
+                       Filter: ("deletedAt" IS NULL)
+                       Buffers: shared hit=8 read=14
+                       ->  BitmapOr  (cost=216.01..216.01 rows=4250 width=0) (actual rows=0 loops=1)
+                             Buffers: shared hit=8 read=14
+                             ->  Bitmap Index Scan on message_p8_search_idx  (cost=0.00..46.31 rows=4167 width=0) (actual rows=0 loops=1)
+                                   Index Cond: (search @@ '''7654321'''::tsquery)
+                                   Buffers: shared hit=1 read=3
+                             ->  Bitmap Index Scan on message_p8_f_unaccent_idx  (cost=0.00..167.58 rows=83 width=0) (actual rows=0 loops=1)
+                                   Index Cond: (f_unaccent(content) ~~* '%7654321%'::text)
+                                   Buffers: shared hit=7 read=11
+                 ->  Parallel Bitmap Heap Scan on message_p11 m_12  (cost=216.01..12518.64 rows=1771 width=32) (actual rows=0 loops=1)
+                       Recheck Cond: ((search @@ '''7654321'''::tsquery) OR (f_unaccent(content) ~~* '%7654321%'::text))
+                       Filter: ("deletedAt" IS NULL)
+                       Buffers: shared hit=6 read=14
+                       ->  BitmapOr  (cost=216.01..216.01 rows=4250 width=0) (actual rows=0 loops=1)
+                             Buffers: shared hit=6 read=14
+                             ->  Bitmap Index Scan on message_p11_search_idx  (cost=0.00..46.31 rows=4167 width=0) (actual rows=0 loops=1)
+                                   Index Cond: (search @@ '''7654321'''::tsquery)
+                                   Buffers: shared hit=1 read=3
+                             ->  Bitmap Index Scan on message_p11_f_unaccent_idx  (cost=0.00..167.58 rows=83 width=0) (actual rows=0 loops=1)
+                                   Index Cond: (f_unaccent(content) ~~* '%7654321%'::text)
+                                   Buffers: shared hit=5 read=11
+                 ->  Parallel Bitmap Heap Scan on message_p2 m_3  (cost=216.01..12518.64 rows=1771 width=32) (actual rows=0 loops=1)
+                       Recheck Cond: ((search @@ '''7654321'''::tsquery) OR (f_unaccent(content) ~~* '%7654321%'::text))
+                       Filter: ("deletedAt" IS NULL)
+                       Buffers: shared hit=8 read=14
+                       ->  BitmapOr  (cost=216.01..216.01 rows=4250 width=0) (actual rows=0 loops=1)
+                             Buffers: shared hit=8 read=14
+                             ->  Bitmap Index Scan on message_p2_search_idx  (cost=0.00..46.31 rows=4167 width=0) (actual rows=0 loops=1)
+                                   Index Cond: (search @@ '''7654321'''::tsquery)
+                                   Buffers: shared hit=1 read=3
+                             ->  Bitmap Index Scan on message_p2_f_unaccent_idx  (cost=0.00..167.58 rows=83 width=0) (actual rows=0 loops=1)
+                                   Index Cond: (f_unaccent(content) ~~* '%7654321%'::text)
+                                   Buffers: shared hit=7 read=11
+                 ->  Parallel Bitmap Heap Scan on message_p3 m_4  (cost=216.01..12518.64 rows=1771 width=32) (actual rows=0 loops=1)
+                       Recheck Cond: ((search @@ '''7654321'''::tsquery) OR (f_unaccent(content) ~~* '%7654321%'::text))
+                       Filter: ("deletedAt" IS NULL)
+                       Buffers: shared hit=8 read=17
+                       ->  BitmapOr  (cost=216.01..216.01 rows=4250 width=0) (actual rows=0 loops=1)
+                             Buffers: shared hit=8 read=17
+                             ->  Bitmap Index Scan on message_p3_search_idx  (cost=0.00..46.31 rows=4167 width=0) (actual rows=0 loops=1)
+                                   Index Cond: (search @@ '''7654321'''::tsquery)
+                                   Buffers: shared hit=1 read=3
+                             ->  Bitmap Index Scan on message_p3_f_unaccent_idx  (cost=0.00..167.58 rows=83 width=0) (actual rows=0 loops=1)
+                                   Index Cond: (f_unaccent(content) ~~* '%7654321%'::text)
+                                   Buffers: shared hit=7 read=14
+                 ->  Parallel Bitmap Heap Scan on message_p5 m_6  (cost=216.01..12518.64 rows=1771 width=32) (actual rows=0 loops=1)
+                       Recheck Cond: ((search @@ '''7654321'''::tsquery) OR (f_unaccent(content) ~~* '%7654321%'::text))
+                       Filter: ("deletedAt" IS NULL)
+                       Buffers: shared hit=7 read=16
+                       ->  BitmapOr  (cost=216.01..216.01 rows=4250 width=0) (actual rows=0 loops=1)
+                             Buffers: shared hit=7 read=16
+                             ->  Bitmap Index Scan on message_p5_search_idx  (cost=0.00..46.31 rows=4167 width=0) (actual rows=0 loops=1)
+                                   Index Cond: (search @@ '''7654321'''::tsquery)
+                                   Buffers: shared hit=1 read=3
+                             ->  Bitmap Index Scan on message_p5_f_unaccent_idx  (cost=0.00..167.58 rows=83 width=0) (actual rows=0 loops=1)
+                                   Index Cond: (f_unaccent(content) ~~* '%7654321%'::text)
+                                   Buffers: shared hit=6 read=13
+                 ->  Parallel Bitmap Heap Scan on message_p6 m_7  (cost=216.01..12518.64 rows=1771 width=32) (actual rows=0 loops=1)
+                       Recheck Cond: ((search @@ '''7654321'''::tsquery) OR (f_unaccent(content) ~~* '%7654321%'::text))
+                       Filter: ("deletedAt" IS NULL)
+                       Buffers: shared hit=7 read=16
+                       ->  BitmapOr  (cost=216.01..216.01 rows=4250 width=0) (actual rows=0 loops=1)
+                             Buffers: shared hit=7 read=16
+                             ->  Bitmap Index Scan on message_p6_search_idx  (cost=0.00..46.31 rows=4167 width=0) (actual rows=0 loops=1)
+                                   Index Cond: (search @@ '''7654321'''::tsquery)
+                                   Buffers: shared hit=1 read=3
+                             ->  Bitmap Index Scan on message_p6_f_unaccent_idx  (cost=0.00..167.58 rows=83 width=0) (actual rows=0 loops=1)
+                                   Index Cond: (f_unaccent(content) ~~* '%7654321%'::text)
+                                   Buffers: shared hit=6 read=13
+                 ->  Parallel Bitmap Heap Scan on message_p7 m_8  (cost=216.01..12518.64 rows=1771 width=32) (actual rows=0 loops=1)
+                       Recheck Cond: ((search @@ '''7654321'''::tsquery) OR (f_unaccent(content) ~~* '%7654321%'::text))
+                       Filter: ("deletedAt" IS NULL)
+                       Buffers: shared hit=8 read=17
+                       ->  BitmapOr  (cost=216.01..216.01 rows=4250 width=0) (actual rows=0 loops=1)
+                             Buffers: shared hit=8 read=17
+                             ->  Bitmap Index Scan on message_p7_search_idx  (cost=0.00..46.31 rows=4167 width=0) (actual rows=0 loops=1)
+                                   Index Cond: (search @@ '''7654321'''::tsquery)
+                                   Buffers: shared hit=1 read=3
+                             ->  Bitmap Index Scan on message_p7_f_unaccent_idx  (cost=0.00..167.58 rows=83 width=0) (actual rows=0 loops=1)
+                                   Index Cond: (f_unaccent(content) ~~* '%7654321%'::text)
+                                   Buffers: shared hit=7 read=14
+                 ->  Parallel Bitmap Heap Scan on message_p9 m_10  (cost=216.01..12518.64 rows=1771 width=32) (actual rows=1 loops=1)
+                       Recheck Cond: ((search @@ '''7654321'''::tsquery) OR (f_unaccent(content) ~~* '%7654321%'::text))
+                       Filter: ("deletedAt" IS NULL)
+                       Heap Blocks: exact=1
+                       Buffers: shared hit=7 read=17
+                       ->  BitmapOr  (cost=216.01..216.01 rows=4250 width=0) (actual rows=0 loops=1)
+                             Buffers: shared hit=7 read=16
+                             ->  Bitmap Index Scan on message_p9_search_idx  (cost=0.00..46.31 rows=4167 width=0) (actual rows=1 loops=1)
+                                   Index Cond: (search @@ '''7654321'''::tsquery)
+                                   Buffers: shared hit=1 read=3
+                             ->  Bitmap Index Scan on message_p9_f_unaccent_idx  (cost=0.00..167.58 rows=83 width=0) (actual rows=1 loops=1)
+                                   Index Cond: (f_unaccent(content) ~~* '%7654321%'::text)
+                                   Buffers: shared hit=6 read=13
+                 ->  Parallel Bitmap Heap Scan on message_p10 m_11  (cost=216.01..12518.64 rows=1771 width=32) (actual rows=0 loops=1)
+                       Recheck Cond: ((search @@ '''7654321'''::tsquery) OR (f_unaccent(content) ~~* '%7654321%'::text))
+                       Filter: ("deletedAt" IS NULL)
+                       Buffers: shared hit=7 read=14
+                       ->  BitmapOr  (cost=216.01..216.01 rows=4250 width=0) (actual rows=0 loops=1)
+                             Buffers: shared hit=7 read=14
+                             ->  Bitmap Index Scan on message_p10_search_idx  (cost=0.00..46.31 rows=4167 width=0) (actual rows=0 loops=1)
+                                   Index Cond: (search @@ '''7654321'''::tsquery)
+                                   Buffers: shared hit=1 read=3
+                             ->  Bitmap Index Scan on message_p10_f_unaccent_idx  (cost=0.00..167.58 rows=83 width=0) (actual rows=0 loops=1)
+                                   Index Cond: (f_unaccent(content) ~~* '%7654321%'::text)
+                                   Buffers: shared hit=6 read=11
+                 ->  Parallel Bitmap Heap Scan on message_p1 m_2  (cost=211.89..12493.55 rows=1771 width=32) (actual rows=0 loops=1)
+                       Recheck Cond: ((search @@ '''7654321'''::tsquery) OR (f_unaccent(content) ~~* '%7654321%'::text))
+                       Filter: ("deletedAt" IS NULL)
+                       Buffers: shared hit=6 read=14
+                       ->  BitmapOr  (cost=211.89..211.89 rows=4250 width=0) (actual rows=0 loops=1)
+                             Buffers: shared hit=6 read=14
+                             ->  Bitmap Index Scan on message_p1_search_idx  (cost=0.00..46.31 rows=4167 width=0) (actual rows=0 loops=1)
+                                   Index Cond: (search @@ '''7654321'''::tsquery)
+                                   Buffers: shared hit=1 read=3
+                             ->  Bitmap Index Scan on message_p1_f_unaccent_idx  (cost=0.00..163.45 rows=83 width=0) (actual rows=0 loops=1)
+                                   Index Cond: (f_unaccent(content) ~~* '%7654321%'::text)
+                                   Buffers: shared hit=5 read=11
+                 ->  Parallel Bitmap Heap Scan on message_p0 m_1  (cost=203.64..12399.95 rows=1771 width=32) (actual rows=0 loops=1)
+                       Recheck Cond: ((search @@ '''7654321'''::tsquery) OR (f_unaccent(content) ~~* '%7654321%'::text))
+                       Filter: ("deletedAt" IS NULL)
+                       Buffers: shared hit=10 read=14
+                       ->  BitmapOr  (cost=203.64..203.64 rows=4250 width=0) (actual rows=0 loops=1)
+                             Buffers: shared hit=10 read=14
+                             ->  Bitmap Index Scan on message_p0_search_idx  (cost=0.00..46.31 rows=4167 width=0) (actual rows=0 loops=1)
+                                   Index Cond: (search @@ '''7654321'''::tsquery)
+                                   Buffers: shared hit=1 read=3
+                             ->  Bitmap Index Scan on message_p0_f_unaccent_idx  (cost=0.00..155.20 rows=83 width=0) (actual rows=0 loops=1)
+                                   Index Cond: (f_unaccent(content) ~~* '%7654321%'::text)
+                                   Buffers: shared hit=9 read=11
+   ->  Sort  (cost=2543.51..2671.01 rows=51000 width=16) (actual rows=1 loops=1)
+         Sort Key: h.id DESC
+         Sort Method: quicksort  Memory: 25kB
+         Buffers: shared hit=93 read=182
+         ->  Hash Join  (cost=3.25..1168.47 rows=51000 width=16) (actual rows=1 loops=1)
+               Hash Cond: (h."channelId" = c.id)
+               Buffers: shared hit=90 read=182
+               ->  CTE Scan on hits h  (cost=0.00..1020.00 rows=51000 width=32) (actual rows=1 loops=1)
+                     Buffers: shared hit=89 read=181
+               ->  Hash  (cost=2.62..2.62 rows=50 width=16) (actual rows=50 loops=1)
+                     Buckets: 1024  Batches: 1  Memory Usage: 11kB
+                     Buffers: shared hit=1 read=1
+                     ->  Seq Scan on "Channel" c  (cost=0.00..2.62 rows=50 width=16) (actual rows=50 loops=1)
+                           Filter: ("serverId" = '01a0b318-87f9-7348-8d1b-f2366ebe4cf4'::uuid)
+                           Buffers: shared hit=1 read=1
+ Planning:
+   Buffers: shared hit=150 read=113
+ Planning Time: 8.295 ms
+ JIT:
+   Functions: 229
+   Options: Inlining false, Optimization false, Expressions true, Deforming true
+ Execution Time: 56.463 ms
+(176 rows)
+

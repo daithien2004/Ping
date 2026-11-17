@@ -1,0 +1,18 @@
+db=81 MB messages=108000
+dump_ms=695
+dump_bytes=1135976
+restore_ms=3232
+-- original
+8505723c9bf3d8d131323464fc65140a *tools/loadtest/data/b6/orig.txt
+8505723c9bf3d8d131323464fc65140a *tools/loadtest/data/b6/restored.txt
+IDENTICAL
+AuditLog|0
+Channel|9
+Member|12
+MemberRole|12
+Message|108000
+_prisma_migrations|33
+Role|3
+Server|3
+Session|12
+User|4

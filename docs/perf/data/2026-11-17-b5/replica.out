@@ -1,0 +1,40 @@
+
+> api@0.2.0 loadtest:replica D:\Ping\apps\api
+> tsx test/loadtest/replica-lag.ts
+
+(node:15928) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+{
+  "replication": {
+    "state": "streaming",
+    "sync_state": "async"
+  },
+  "immediateRead": {
+    "writes": 300,
+    "staleOnFirstRead": 0,
+    "staleRate": 0,
+    "visibleMs": {
+      "p50": 0.6234,
+      "p95": 0.9467,
+      "max": 2.055
+    }
+  },
+  "sustained500PerSec": {
+    "samples": 84,
+    "lagBytes": {
+      "p50": 0,
+      "p95": 8080,
+      "max": 17496
+    },
+    "replayLagMs": {
+      "p50": 1.193,
+      "p95": 4.13,
+      "max": 30.419
+    }
+  },
+  "burst200k": {
+    "primaryCommittedMs": 6100,
+    "visibleOnReplicaMs": 6212,
+    "extraMs": 112
+  }
+}

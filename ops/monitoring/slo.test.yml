@@ -1,0 +1,89 @@
+# Kiểm thử quy tắc cảnh báo bằng chuỗi số liệu giả lập: promtool test rules ops/monitoring/slo.test.yml
+rule_files:
+  - ../alerts.yml
+evaluation_interval: 1m
+
+tests:
+  - name: lỗi 5xx 10% kéo dài thì đốt nhanh báo trang
+    interval: 1m
+    input_series:
+      - series: 'http_request_duration_seconds_count{status_class="5xx",job="ping-api"}'
+        values: '0+10x120'
+      - series: 'http_request_duration_seconds_count{status_class="2xx",job="ping-api"}'
+        values: '0+90x120'
+    alert_rule_test:
+      - eval_time: 1m
+        alertname: PingErrorBudgetFastBurn
+        exp_alerts: []
+      - eval_time: 75m
+        alertname: PingErrorBudgetFastBurn
+        exp_alerts:
+          - exp_labels:
+              severity: page
+            exp_annotations:
+              summary: 'Đang đốt ngân sách lỗi (5xx) nhanh gấp 14,4 lần mức cho phép'
+              runbook: docs/runbook/alerts.md#pingerrorbudgetfastburn
+
+  - name: lỗi 5xx 0,3% (dưới ngân sách 0,5%) không báo gì
+    interval: 1m
+    input_series:
+      - series: 'http_request_duration_seconds_count{status_class="5xx",job="ping-api"}'
+        values: '0+3x480'
+      - series: 'http_request_duration_seconds_count{status_class="2xx",job="ping-api"}'
+        values: '0+997x480'
+    alert_rule_test:
+      - eval_time: 7h
+        alertname: PingErrorBudgetFastBurn
+        exp_alerts: []
+      - eval_time: 7h
+        alertname: PingErrorBudgetSlowBurn
+        exp_alerts: []
+
+  - name: lỗi 5xx 4% (gấp 8 lần ngân sách, dưới ngưỡng đốt nhanh 7,2%) chỉ mở ticket đốt chậm
+    interval: 1m
+    input_series:
+      - series: 'http_request_duration_seconds_count{status_class="5xx",job="ping-api"}'
+        values: '0+4x480'
+      - series: 'http_request_duration_seconds_count{status_class="2xx",job="ping-api"}'
+        values: '0+96x480'
+    alert_rule_test:
+      - eval_time: 7h
+        alertname: PingErrorBudgetFastBurn
+        exp_alerts: []
+      - eval_time: 7h
+        alertname: PingErrorBudgetSlowBurn
+        exp_alerts:
+          - exp_labels:
+              severity: ticket
+            exp_annotations:
+              summary: 'Đang đốt ngân sách lỗi (5xx) nhanh gấp 6 lần mức cho phép trong 6 giờ'
+              runbook: docs/runbook/alerts.md#pingerrorbudgetslowburn
+
+  - name: 80% request chậm hơn 500 ms thì đốt ngân sách độ trễ nhanh
+    interval: 1m
+    input_series:
+      - series: 'http_request_duration_seconds_bucket{le="0.5",job="ping-api"}'
+        values: '0+20x120'
+      - series: 'http_request_duration_seconds_bucket{le="+Inf",job="ping-api"}'
+        values: '0+100x120'
+      - series: 'http_request_duration_seconds_count{status_class="2xx",job="ping-api"}'
+        values: '0+100x120'
+    alert_rule_test:
+      - eval_time: 75m
+        alertname: PingLatencyBudgetFastBurn
+        exp_alerts:
+          - exp_labels:
+              severity: page
+            exp_annotations:
+              summary: 'Đang đốt ngân sách độ trễ nhanh gấp 14,4 lần mức cho phép'
+              runbook: docs/runbook/alerts.md#pinglatencybudgetfastburn
+
+  - name: không có lưu lượng thì không báo (chia cho 0 ra NaN)
+    interval: 1m
+    input_series:
+      - series: 'http_request_duration_seconds_count{status_class="2xx",job="ping-api"}'
+        values: '0+0x120'
+    alert_rule_test:
+      - eval_time: 75m
+        alertname: PingErrorBudgetFastBurn
+        exp_alerts: []

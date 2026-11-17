@@ -1,0 +1,64 @@
+{
+  "model": "Xenova/multilingual-e5-small",
+  "dims": 384,
+  "corpusSize": 64,
+  "queries": {
+    "semantic": 8,
+    "exact": 8
+  },
+  "embedCorpusMs": 1508,
+  "engines": {
+    "fts": {
+      "semantic": {
+        "precision5": 0,
+        "hit1": 0,
+        "mrr": 0
+      },
+      "exact": {
+        "precision5": 1,
+        "hit1": 1,
+        "mrr": 1
+      },
+      "avgQueryMs": 0.715
+    },
+    "qdrant": {
+      "semantic": {
+        "precision5": 0.575,
+        "hit1": 0.75,
+        "mrr": 0.875
+      },
+      "exact": {
+        "precision5": 0.2,
+        "hit1": 0.875,
+        "mrr": 0.938
+      },
+      "avgQueryMs": 2.114
+    },
+    "pgvector": {
+      "semantic": {
+        "precision5": 0.575,
+        "hit1": 0.75,
+        "mrr": 0.875
+      },
+      "exact": {
+        "precision5": 0.2,
+        "hit1": 0.875,
+        "mrr": 0.938
+      },
+      "avgQueryMs": 0.809
+    },
+    "hybrid_fts_qdrant": {
+      "semantic": {
+        "precision5": 0.575,
+        "hit1": 0.75,
+        "mrr": 0.875
+      },
+      "exact": {
+        "precision5": 0.2,
+        "hit1": 1,
+        "mrr": 1
+      },
+      "avgQueryMs": 3.298
+    }
+  }
+}
