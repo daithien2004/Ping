@@ -30,12 +30,12 @@ Số nào chưa đo thì ghi "chưa đo": quét outbox ở 10 triệu hàng, RPO
     points: [
       'Phân trang bằng cursor (channelId, id DESC) vẫn vài mili giây ở 10 triệu hàng (trang đầu 0,09 đến 2,3 ms, trang sâu 0,8 đến 3,2 ms, đếm chưa đọc có trần 100 dưới 1,1 ms).',
       'Tìm từ hiếm với ORDER BY id DESC LIMIT 21 mất 75 đến 112 giây: planner ước lượng 50 nghìn hàng khớp nên quét ngược pkey rồi lọc (Rows Removed by Filter 9.999.999); thực tế chỉ có một hàng khớp. Từ phổ biến thì 1 ms.',
-      'Lấy hàng khớp qua bitmap index trước rồi mới sắp xếp (CTE MATERIALIZED) còn 0,3 s, nhưng nguy hiểm với từ phổ biến nên cần thăm dò đếm tối đa 1000 hàng. Chưa nằm trong code (ADR-0095).',
+      'Lấy hàng khớp qua bitmap index trước rồi mới sắp xếp (CTE MATERIALIZED) còn 48 ms (đo cả truy vấn đầy đủ), nhưng nguy hiểm với từ phổ biến nên có bước thăm dò đếm tối đa 1000 hàng; đã áp vào search.service.ts (ADR-0095). Bản CTE chỉ lấy id rồi join lại Message vẫn 50 s vì planner quét pkey.',
       'Phân vùng RANGE theo id (12 phân vùng) không nhanh hơn, planning time tăng 8 đến 25 ms, và không tạo được khóa duy nhất (channelId, authorId, nonce): khóa duy nhất trên bảng phân vùng phải chứa cột phân vùng.',
       'Replica streaming async cùng máy: replay lag p95 4 ms, đợt ghi 200 nghìn dòng chậm thêm 112 ms; chưa đo giữa hai máy.',
     ],
     more: ['Dữ liệu seed tổng hợp, mỗi truy vấn hai mẫu, VM nhỏ hơn bảng. Quét outbox ở quy mô lớn: chưa đo.'],
-    ping: 'Số đo ở docs/perf/2026-11-17-big-data.md. Quyết định: không phân vùng, chưa dùng replica, sửa tìm kiếm từ hiếm khi có dữ liệu thật (ADR-0095).',
+    ping: 'Số đo ở docs/perf/2026-11-17-big-data.md. Quyết định: không phân vùng, chưa dùng replica, đã sửa tìm kiếm từ hiếm bằng thăm dò + CTE (ADR-0095).',
     real: { file: 'apps/api/src/modules/messages/search.service.ts', from: 'ORDER BY m.id DESC', n: 1, note: 'ORDER BY id DESC kèm LIMIT kéo planner đi theo pkey khi từ tìm rất hiếm.' },
     qa: [
       { q: 'Vì sao truy vấn có index GIN vẫn có thể mất hơn một phút trên 10 triệu hàng?', a: 'ORDER BY id DESC LIMIT cho planner đi theo pkey và dừng sau đủ hàng khớp; ước lượng sai về số hàng khớp thì nó quét hết bảng. Dấu hiệu: Rows Removed by Filter gần bằng cả bảng.' },

@@ -22,3 +22,26 @@ describe('Search latency', () => {
     );
   });
 });
+
+describe('Search plan guard (ADR-0095)', () => {
+  const run = async (matched: number) => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce([{ n: matched }])
+      .mockResolvedValueOnce([]);
+    const service = new SearchService(
+      { $queryRaw: query } as unknown as PrismaService,
+      { searchCompleted: vi.fn() } as unknown as MetricsService,
+    );
+    await service.search('server-id', { q: 'rare', limit: 20 });
+    return (query.mock.calls[1]![0] as { sql: string }).sql;
+  };
+
+  it('materializes the matches first when few rows match', async () => {
+    expect(await run(3)).toContain('WITH hits AS MATERIALIZED');
+  });
+
+  it('keeps the plain ordered scan when the probe hits its cap', async () => {
+    expect(await run(1000)).not.toContain('WITH hits');
+  });
+});

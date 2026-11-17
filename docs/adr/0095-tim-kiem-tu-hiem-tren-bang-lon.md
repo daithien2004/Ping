@@ -1,6 +1,6 @@
 # ADR-0095: Tìm kiếm từ hiếm trên bảng lớn và quyết định không phân vùng `Message`
 
-- Trạng thái: đề xuất
+- Trạng thái: chấp nhận
 - Ngày: 2026-11-17
 
 ## Bối cảnh
@@ -15,12 +15,13 @@ và lọc ~10 triệu hàng.
    khóa duy nhất `(channelId, authorId, nonce)` mà quy tắc 12 cần. Xem lại khi cần xóa dữ liệu cũ hàng loạt.
 2. **Không dùng replica đọc lúc này.** Lag cận dưới cỡ mili giây trên một máy, nhưng chưa có tải đọc nào đòi hỏi; thêm replica kéo theo
    vấn đề đọc-sau-ghi và vận hành.
-3. **Sửa tìm kiếm khi có dữ liệu thật:** thăm dò đếm tối đa 1000 hàng khớp; dưới ngưỡng thì lấy hàng khớp qua bitmap index trước
-   rồi sắp xếp (đã đo 0,3 s thay cho 75–112 s); trên ngưỡng giữ truy vấn gốc. Chưa áp vào code vì chưa đo dạng này với từ phổ biến và
-   dữ liệu seed là tổng hợp.
+3. **Sửa tìm kiếm (đã áp vào `search.service.ts`):** thăm dò đếm tối đa 1000 hàng khớp (toàn bảng, 30–170 ms ở 10 triệu tin). Dưới
+   ngưỡng thì lấy hàng khớp qua bitmap index vào CTE `MATERIALIZED` (kèm các cột cần dùng, **không** join lại `Message`) rồi mới sắp xếp:
+   48 ms thay cho 75–112 s. Từ ngưỡng trở lên giữ truy vấn gốc. Bài học khi đo: bản CTE chỉ lấy `id` rồi join lại `Message` vẫn mất
+   50 s vì planner join bằng cách quét pkey; phải mang cột theo CTE ([dữ liệu](../perf/data/2026-11-17-b5/)).
 
 ## Hệ quả
 
-- Hôm nay endpoint tìm kiếm có thể treo vài chục giây trên server có hàng chục triệu tin; timeout 503 của Postgres (quy tắc 17) là lớp
-  chặn duy nhất. Đây là rủi ro đã biết, ghi lại ở đây.
-- Cần một task riêng để sửa `search.service.ts` kèm test và đo lại.
+- Mỗi lần tìm kiếm thêm một truy vấn thăm dò (rẻ khi từ phổ biến vì dừng sau 1000 hàng khớp).
+- Chưa đo trường hợp giữa (vài nghìn hàng khớp) và trên dữ liệu tiếng thật; trần 1000 là điểm khởi đầu.
+- Test: `search.service.spec.ts` kiểm hai nhánh; e2e tìm kiếm và IDOR xanh.

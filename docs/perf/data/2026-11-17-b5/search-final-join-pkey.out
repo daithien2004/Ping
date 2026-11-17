@@ -1,0 +1,70 @@
+Timing is on.
+ probe 
+-------
+     1
+(1 row)
+
+Time: 30.874 ms
+                                                                             QUERY PLAN                                                                              
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=172756.79..310938.77 rows=21 width=28) (actual rows=1 loops=1)
+   Buffers: shared hit=80668 read=441603
+   CTE hits
+     ->  Gather  (cost=5524.60..158110.07 rows=50994 width=16) (actual rows=1 loops=1)
+           Workers Planned: 2
+           Workers Launched: 2
+           Buffers: shared hit=50 read=1002
+           ->  Parallel Bitmap Heap Scan on "Message" m_1  (cost=4524.60..152010.67 rows=21248 width=16) (actual rows=0 loops=3)
+                 Recheck Cond: ((search @@ '''7654321'''::tsquery) OR (f_unaccent(content) ~~* '%7654321%'::text))
+                 Filter: ("deletedAt" IS NULL)
+                 Heap Blocks: exact=1
+                 Buffers: shared hit=50 read=1002
+                 ->  BitmapOr  (cost=4524.60..4524.60 rows=50999 width=0) (actual rows=0 loops=1)
+                       Buffers: shared hit=49 read=1002
+                       ->  Bitmap Index Scan on "Message_search_key"  (cost=0.00..2096.62 rows=49999 width=0) (actual rows=1 loops=1)
+                             Index Cond: (search @@ '''7654321'''::tsquery)
+                             Buffers: shared read=415
+                       ->  Bitmap Index Scan on "Message_content_trgm_key"  (cost=0.00..2402.49 rows=1000 width=0) (actual rows=1 loops=1)
+                             Index Cond: (f_unaccent(content) ~~* '%7654321%'::text)
+                             Buffers: shared hit=49 read=587
+   ->  Nested Loop  (cost=14646.73..1725471.25 rows=260 width=28) (actual rows=1 loops=1)
+         Buffers: shared hit=80668 read=441603
+         ->  Nested Loop  (cost=14646.45..1725392.78 rows=260 width=37) (actual rows=1 loops=1)
+               Join Filter: (m."channelId" = c.id)
+               Rows Removed by Join Filter: 37
+               Buffers: shared hit=80668 read=441600
+               ->  Merge Join  (cost=14646.45..1725198.63 rows=260 width=48) (actual rows=1 loops=1)
+                     Merge Cond: (m.id = h.id)
+                     Buffers: shared hit=80668 read=441599
+                     ->  Gather Merge  (cost=1000.46..1728445.35 rows=50994 width=48) (actual rows=1 loops=1)
+                           Workers Planned: 2
+                           Workers Launched: 2
+                           Buffers: shared hit=80618 read=440597
+                           ->  Parallel Index Scan Backward using "Message_pkey" on "Message" m  (cost=0.43..1721559.35 rows=21248 width=48) (actual rows=0 loops=3)
+                                 Filter: (("deletedAt" IS NULL) AND ((search @@ '''7654321'''::tsquery) OR (f_unaccent(content) ~~* '%7654321%'::text)))
+                                 Rows Removed by Filter: 3333333
+                                 Buffers: shared hit=80618 read=440597
+                     ->  Sort  (cost=5007.11..5134.60 rows=50994 width=16) (actual rows=1 loops=1)
+                           Sort Key: h.id DESC
+                           Sort Method: quicksort  Memory: 25kB
+                           Buffers: shared hit=50 read=1002
+                           ->  CTE Scan on hits h  (cost=0.00..1019.88 rows=50994 width=16) (actual rows=1 loops=1)
+                                 Buffers: shared hit=50 read=1002
+               ->  Materialize  (cost=0.00..2.88 rows=50 width=21) (actual rows=38 loops=1)
+                     Buffers: shared read=1
+                     ->  Seq Scan on "Channel" c  (cost=0.00..2.62 rows=50 width=21) (actual rows=38 loops=1)
+                           Filter: ("serverId" = '01a0b318-87f9-7348-8d1b-f2366ebe4cf4'::uuid)
+                           Buffers: shared read=1
+         ->  Index Scan using "User_pkey" on "User" u  (cost=0.28..0.30 rows=1 width=23) (actual rows=1 loops=1)
+               Index Cond: (id = m."authorId")
+               Buffers: shared read=3
+ Planning:
+   Buffers: shared hit=221 read=47
+ Planning Time: 12.441 ms
+ JIT:
+   Functions: 49
+   Options: Inlining false, Optimization false, Expressions true, Deforming true
+ Execution Time: 54905.150 ms
+(58 rows)
+
+Time: 54922.869 ms (00:54.923)

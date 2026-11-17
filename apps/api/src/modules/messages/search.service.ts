@@ -20,6 +20,8 @@ interface SearchRow {
   author: { id: string; username: string; displayName: string; avatarUrl: string | null };
 }
 
+const SEARCH_PROBE_CAP = 1000;
+
 // WHERE luôn ràng buộc `channel.serverId` + `deletedAt IS NULL`: không lộ server khác, không trả tin đã xóa.
 @Injectable()
 export class SearchService {
@@ -49,7 +51,29 @@ export class SearchService {
       });
     }
 
+    const matches = Prisma.sql`(
+          m.search @@ websearch_to_tsquery('simple', public.f_unaccent(${q}))
+          OR public.f_unaccent(m.content) ILIKE ('%' || public.f_unaccent(${q}) || '%')
+        )`;
+    // ADR-0095: với từ hiếm, `ORDER BY id LIMIT` khiến planner quét ngược pkey và lọc cả bảng (75-112 s ở 10 triệu tin).
+    // Thăm dò có trần: ít khớp thì lấy hàng khớp qua index trước rồi mới sắp xếp.
+    const [probe] = await this.prisma.$queryRaw<{ n: number }[]>(Prisma.sql`
+      SELECT count(*)::int AS n FROM (
+        SELECT 1 FROM "Message" m WHERE m."deletedAt" IS NULL AND ${matches} LIMIT ${SEARCH_PROBE_CAP}
+      ) probe
+    `);
+    const rare = (probe?.n ?? SEARCH_PROBE_CAP) < SEARCH_PROBE_CAP;
+    const source = rare
+      ? Prisma.sql`WITH hits AS MATERIALIZED (
+          SELECT m.id, m.content, m."channelId", m."createdAt", m."authorId", m."deletedAt"
+          FROM "Message" m WHERE m."deletedAt" IS NULL AND ${matches}
+        )`
+      : Prisma.empty;
+    const from = rare ? Prisma.sql`hits m` : Prisma.sql`"Message" m`;
+    const recheck = rare ? Prisma.empty : Prisma.sql`AND ${matches}`;
+
     const rows = await this.prisma.$queryRaw<SearchRow[]>(Prisma.sql`
+      ${source}
       SELECT
         m.id::text AS "id",
         m.content,
@@ -61,15 +85,12 @@ export class SearchService {
           'id', u.id::text, 'username', u.username,
           'displayName', u."displayName", 'avatarUrl', u."avatarUrl"
         ) AS "author"
-      FROM "Message" m
+      FROM ${from}
       JOIN "Channel" c ON c.id = m."channelId"
       JOIN "User" u ON u.id = m."authorId"
       WHERE c."serverId" = ${serverId}::uuid
         AND m."deletedAt" IS NULL
-        AND (
-          m.search @@ websearch_to_tsquery('simple', public.f_unaccent(${q}))
-          OR public.f_unaccent(m.content) ILIKE ('%' || public.f_unaccent(${q}) || '%')
-        )
+        ${recheck}
         AND (${query.channelId ?? null}::uuid IS NULL OR m."channelId" = ${query.channelId ?? null}::uuid)
         AND (${query.authorId ?? null}::uuid IS NULL OR m."authorId" = ${query.authorId ?? null}::uuid)
         AND (${query.since ?? null}::timestamptz IS NULL OR m."createdAt" >= ${query.since ?? null}::timestamptz)

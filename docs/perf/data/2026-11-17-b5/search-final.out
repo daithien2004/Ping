@@ -1,0 +1,57 @@
+Timing is on.
+                                                                QUERY PLAN                                                                 
+-------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=162023.78..162023.84 rows=21 width=189) (actual rows=1 loops=1)
+   Buffers: shared hit=1058 read=43
+   CTE hits
+     ->  Gather  (cost=5524.60..158110.07 rows=50994 width=126) (actual rows=1 loops=1)
+           Workers Planned: 2
+           Workers Launched: 2
+           Buffers: shared hit=1052
+           ->  Parallel Bitmap Heap Scan on "Message" m_1  (cost=4524.60..152010.67 rows=21248 width=126) (actual rows=0 loops=3)
+                 Recheck Cond: ((search @@ '''7654321'''::tsquery) OR (f_unaccent(content) ~~* '%7654321%'::text))
+                 Filter: ("deletedAt" IS NULL)
+                 Heap Blocks: exact=1
+                 Buffers: shared hit=1052
+                 ->  BitmapOr  (cost=4524.60..4524.60 rows=50999 width=0) (actual rows=0 loops=1)
+                       Buffers: shared hit=1051
+                       ->  Bitmap Index Scan on "Message_search_key"  (cost=0.00..2096.62 rows=49999 width=0) (actual rows=1 loops=1)
+                             Index Cond: (search @@ '''7654321'''::tsquery)
+                             Buffers: shared hit=415
+                       ->  Bitmap Index Scan on "Message_content_trgm_key"  (cost=0.00..2402.49 rows=1000 width=0) (actual rows=1 loops=1)
+                             Index Cond: (f_unaccent(content) ~~* '%7654321%'::text)
+                             Buffers: shared hit=636
+   ->  Sort  (cost=3913.72..4041.20 rows=50994 width=189) (actual rows=1 loops=1)
+         Sort Key: m.id DESC
+         Sort Method: quicksort  Memory: 25kB
+         Buffers: shared hit=1058 read=43
+         ->  Hash Join  (cost=92.25..2538.84 rows=50994 width=189) (actual rows=1 loops=1)
+               Hash Cond: (m."authorId" = u.id)
+               Buffers: shared hit=1055 read=43
+               ->  Hash Join  (cost=3.25..1168.34 rows=50994 width=93) (actual rows=1 loops=1)
+                     Hash Cond: (m."channelId" = c.id)
+                     Buffers: shared hit=1054
+                     ->  CTE Scan on hits m  (cost=0.00..1019.88 rows=50994 width=88) (actual rows=1 loops=1)
+                           Filter: ("deletedAt" IS NULL)
+                           Buffers: shared hit=1052
+                     ->  Hash  (cost=2.62..2.62 rows=50 width=21) (actual rows=50 loops=1)
+                           Buckets: 1024  Batches: 1  Memory Usage: 11kB
+                           Buffers: shared hit=2
+                           ->  Seq Scan on "Channel" c  (cost=0.00..2.62 rows=50 width=21) (actual rows=50 loops=1)
+                                 Filter: ("serverId" = '01a0b318-87f9-7348-8d1b-f2366ebe4cf4'::uuid)
+                                 Buffers: shared hit=2
+               ->  Hash  (cost=64.00..64.00 rows=2000 width=23) (actual rows=2000 loops=1)
+                     Buckets: 2048  Batches: 1  Memory Usage: 125kB
+                     Buffers: shared hit=1 read=43
+                     ->  Seq Scan on "User" u  (cost=0.00..64.00 rows=2000 width=23) (actual rows=2000 loops=1)
+                           Buffers: shared hit=1 read=43
+ Planning:
+   Buffers: shared hit=396 read=79
+ Planning Time: 18.800 ms
+ JIT:
+   Functions: 42
+   Options: Inlining false, Optimization false, Expressions true, Deforming true
+ Execution Time: 48.556 ms
+(51 rows)
+
+Time: 79.359 ms
